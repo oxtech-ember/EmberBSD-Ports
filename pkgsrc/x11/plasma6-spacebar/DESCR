@@ -1,0 +1,2 @@
+Plasma SMS client. The package is built only. It does not start the message
+daemon and it does not send messages.

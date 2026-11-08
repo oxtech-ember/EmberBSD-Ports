@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (spacebar-6.8.2.tar.xz) = b59efe9ce037dcab4de4e1a901cd832265c237b9d9c49d15d81afcdcd660cf1e
+SHA512 (spacebar-6.8.2.tar.xz) = 973233eb90ddb07233cbd20b179707d0a7181726e20745db77fd391df9d279040b497940ab57eaf9340f9dda90639a3bb54e6b52cb4255a86c4db7f0807f7636
+Size (spacebar-6.8.2.tar.xz) = 148204 bytes
+SHA1 (patch-src_messagemodel.cpp) = 4e8a304082f593fcfd8cf9e585802c3dcc8eb4cc

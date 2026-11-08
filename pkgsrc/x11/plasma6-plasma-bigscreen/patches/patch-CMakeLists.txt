@@ -1,0 +1,37 @@
+$NetBSD$
+
+Skip the WebEngine viewer and the Linux evdev input handler.
+
+--- CMakeLists.txt.orig	2026-10-27 14:29:28.000000000 +0300
++++ CMakeLists.txt	2026-11-08 14:00:31.521855365 +0300
+@@ -68,10 +68,11 @@
+     DBus
+     Network
+     Multimedia
+-    WebEngineCore
+-    WebEngineQuick
+     WaylandClient
+ )
++# Qt WebEngine is not in this sysroot. The webapp viewer is a separate
++# executable and is not built. The rest of the shell does not link it.
++option(BUILD_WEBAPP_VIEWER "Build the Qt WebEngine webapp viewer" OFF)
+ find_package(QCoro6 ${QCORO_MIN_VERSION} REQUIRED COMPONENTS Core Quick Qml)
+ 
+ find_package(PlasmaWaylandProtocols REQUIRED)
+@@ -106,8 +107,14 @@
+ add_subdirectory(envmanager)
+ add_subdirectory(uvcviewer)
+ add_subdirectory(settingsapp)
+-add_subdirectory(webapp-viewer)
+-add_subdirectory(inputhandler)
++if (BUILD_WEBAPP_VIEWER)
++    add_subdirectory(webapp-viewer)
++endif()
++# inputhandler calls EVIOCGUNIQ from linux/input.h. NetBSD has no
++# equivalent in this source, so the controller process is not built.
++if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
++    add_subdirectory(inputhandler)
++endif()
+ add_subdirectory(kded)
+ 
+ plasma_install_package(shell org.kde.plasma.bigscreen shells)

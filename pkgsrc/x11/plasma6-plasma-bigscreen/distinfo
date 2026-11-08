@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (plasma-bigscreen-6.8.2.tar.xz) = 92c5df619e43f36c1363917368380bad0d391bfe9cf44fef6ebc65154496ae78
+SHA512 (plasma-bigscreen-6.8.2.tar.xz) = b5131f5bad92a460b48252ee8bf05e9d7f5a99c8194df959508dce0a687b196c1c9f08287fd9bcfc006877098bedd5925a79561f572d6b8588e0018224af36ca
+Size (plasma-bigscreen-6.8.2.tar.xz) = 2664108 bytes
+SHA1 (patch-CMakeLists.txt) = b43480b80cd6bc20b6b112788d89c92c26a41216

@@ -1,0 +1,3 @@
+Plasma dialer user interface and the D-Bus telephony front end it talks to.
+The package is built only. It does not start a modem daemon and it does not
+place calls.
