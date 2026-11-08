@@ -11,12 +11,13 @@ submodules. Its SHA256 is
 The downloaded bytes match the release API asset digest. The recipe also records
 BLAKE2s, SHA512 and size.
 
-The recipe retains the pinned pkgsrc 3.2.11 configuration and complete PLIST
-sets. Its three existing patches apply to 3.2.12 with zero fuzz. They preserve
-SunOS library naming, the Wayland guard and the statvfs selection. The default
-build uses Autoconf; the existing CMake option remains available. System codecs,
-OpenGL, GTK3 WebView and media control remain enabled. The recipe keeps its
-WebKitGTK 4.1, GStreamer core/base/bad, GTK3, Mesa and GLU dependencies.
+The common `x11/wxGTK32` recipe selects GTK4 on non-Darwin platforms; its
+package path identifies the wxWidgets 3.2 series, not the GTK version. Darwin
+retains Cocoa. The default build uses Autoconf, with the existing CMake option
+available. Shared GTK4, WebKitGTK 6.0, libspelling, GStreamer, Mesa, GLU and
+system codec providers supply the application stack. The GTK4 source changes
+and focused runtime contracts are documented in the
+[wxWidgets tests](../../../pkgsrc/x11/wxGTK32/tests/README.md).
 
 The AI-assisted cross recipe enables pkgsrc `USE_GNU_CONFIGURE_HOST`.
 The GNU configure framework supplies the selected `--build` and `--host`
@@ -54,12 +55,9 @@ to an empty temporary directory. Configure that directory with the same cross
 toolchain arguments and the two provider settings above. Compile `headers.cpp`
 with target GCC and the staged `wx-config --cxxflags` output.
 
-Actual native Linux and AArch64 cross `bmake show-vars` select version 3.2.12,
-Autoconf and the same feature flags and dependency families. The graphics
-exporter's complete source and patch preflight passes. These are source and
-metadata checks. The cross configuration still reports its missing X11 base
-path; the native configuration has no package failure reason. Neither result
-establishes a complete configure, library build, installed PLIST or GUI runtime.
+The older GCC16 configure/header checks above establish only the provider
+lookup and cross flags they exercise. Full GTK4 library, installed package and
+GUI acceptance remain separate from those checks.
 
 ## WebKitGTK 2.54.2
 
@@ -70,28 +68,30 @@ patch directory and distinfo. The archive SHA256 is
 The bytes match the publisher's checksum file. This does not establish
 verification of the separate detached signature.
 
-All 29 selected patches pass pkgsrc checksum verification and apply with zero
-fuzz. Nineteen pinned pkgsrc patches remain unchanged. Refreshed patches retain
+The shared patch set retains
 the X11 macro, numeric classification, DMA buffer and platform JIT boundaries.
 Upstream already supplies the old round-even and process-launch fixes.
 The ARM64 patch now calls GCC's real instruction-cache synchronization builtin.
 It does not replace an unsupported-platform error with a warning.
 
 GTK API 4.1 and API 6.0 keep their shared source version and separate libraries.
-Actual upstream CMake version calculations produce `0.24.4` and `0.11.8` for
-API 4.1, and `4.19.4` and `1.8.8` for API 6.0. The recipes update these four
-PLIST names. Complete installed PLIST validation remains pending.
+The actual API 6.0 install output for 2.54.2 contains
+`libwebkitgtk-6.0.so.4.19.5` and `libjavascriptcoregtk-6.0.so.1.8.9`.
+Complete installed PLIST validation remains pending.
 
-For 2.54.2, archive provenance, source patches and the upstream ABI declarations
-are checked; normal metadata evaluation, package builds and runtime checks have
-not yet run. The GCC16, Skia locale, target-link and introspection results below
-were recorded against 2.54.1 and do not validate the updated release.
+API 6.0 C/C++ compilation has completed for AArch64 with the selected Clang
+SDK. The real JavaScriptCore, WebKit and WebKitWebProcessExtension scanner
+queries ran on EmberBSD; all three commands then passed replay without a VM
+using the checked-in [GI dumps](../../../pkgsrc/www/webkit-gtk60/files/gi-dump/NetBSD-11.0-aarch64).
+These results do not establish a finished binary package or WebView runtime.
+The GCC16 and Skia locale results below retain their narrower 2.54.1 scope.
 
-The recipes select C++23, GCC16 and Ninja. Canonical X11/Wayland, GL, video,
+The recipes require C++23 and Ninja and use the compiler family selected by
+the SDK configuration. Canonical X11/Wayland, GL, video,
 WebAudio, WebRTC, introspection, documentation and existing options remain.
 The inherited default keeps JIT off and the C loop on. The cache-flush source
 check does not establish that a complete modern JIT build works.
-Release C and C++ flags use `-O2 -DNDEBUG` to keep the GCC16 WebKit cross-build
+Release C and C++ flags use `-O2 -DNDEBUG` to keep the WebKit cross-build
 optimized while avoiding the excessive compile cost of `-O3` on large unified
 source files.
 
