@@ -2232,7 +2232,12 @@ build()
                 built) echo "$path $*" >> "$state/done"; echo "$path done" >> "$run/status" ;;
                 done) echo "$path done" >> "$run/status" ;;
                 skipped) echo "$path $*" >> "$state/skipped"; echo "$path skipped" >> "$run/status" ;;
-                *) echo "$path $*" >> "$state/failed"; echo "$path failed" >> "$run/status" ;;
+                *)
+                    echo "$path $*" >> "$state/failed"
+                    echo "$path failed" >> "$run/status"
+                    worker_key=$(echo "$path" | tr / _)
+                    echo "Package worker log: $state/logs/$worker_key.worker.log" >&2
+                    ;;
             esac
             # A request of a job that ended without its replace.
             res=${res%.result}
@@ -2302,6 +2307,8 @@ build()
                     printf '%s\n' "$worker_make_jobs" > "$run/$budget_key.jobs"
                     jobs_in_use=$((jobs_in_use + worker_make_jobs))
                     ready_left=$((ready_left - 1))
+                    worker_log=$state/logs/$budget_key.worker.log
+                    : > "$worker_log"
                     # Without errexit: every package reports a result.
                     # The scheduler may take the result at once, so the
                     # check is a flag, not the file; build_one changes $path.
@@ -2313,7 +2320,7 @@ build()
                         reported=
                         build_one "$node"
                         [ -n "$reported" ] || result "$(echo "$node" | tr / _)" "failed $node build"
-                    ) < /dev/null > /dev/null 2>&1 &
+                    ) < /dev/null > "$worker_log" 2>&1 &
                     poll_delay=0.05
                 fi
             done < "$run/ready"

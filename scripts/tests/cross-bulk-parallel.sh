@@ -136,7 +136,7 @@ work()
     ls \$out/active | wc -l >> \$out/concurrency
     echo "finish \$pkg \$jobs" >> \$out/budget-events
     rmdir \$out/active/\$pkg
-    [ ! -f \$dir/fail ] || exit 1
+    [ ! -f \$dir/fail ] || { echo "intentional package failure: \$pkg" >&2; exit 1; }
     : > \$out/work/\$pkg.built
 }
 case "\$target" in
@@ -151,6 +151,7 @@ case "\$target" in
             *) echo ;;
         esac ;;
     show-vars)
+        if [ -f \$dir/vars-fail ]; then echo 'intentional worker metadata failure' >&2; exit 1; fi
         if [ "\$varnames" = 'EMBERBSD_HOST_PYTHON EMBERBSD_SDK_SOURCE' ]; then
             echo \$out/bin/selected-python
             echo \$out/sdk
@@ -186,6 +187,35 @@ run_bulk()
         sleep() { env sleep "$@"; }
         script=$1
         shift
+        state=$3
+        manifest=$state/test-stage-manifest
+        root=${state%/*}
+        : > "$manifest"
+        while IFS= read -r node; do
+            echo "$root/work/${node##*/}" >> "$manifest"
+        done < "$2"
+        CROSS_BULK_STAGE_MANIFEST=$manifest
+        CROSS_BULK_SUPERVISED="$PPID|$1|$2|$3"
+        export CROSS_BULK_STAGE_MANIFEST CROSS_BULK_SUPERVISED
+        . "$script"
+    ' "$ports/scripts/cross-bulk.sh" "$ports/scripts/cross-bulk.sh" "$@"
+}
+run_bulk_signal()
+{
+    exec sh -c '
+        sleep() { env sleep "$@"; }
+        script=$1
+        shift
+        state=$3
+        manifest=$state/test-stage-manifest
+        root=${state%/*}
+        : > "$manifest"
+        while IFS= read -r node; do
+            echo "$root/work/${node##*/}" >> "$manifest"
+        done < "$2"
+        CROSS_BULK_STAGE_MANIFEST=$manifest
+        CROSS_BULK_SUPERVISED="$PPID|$1|$2|$3"
+        export CROSS_BULK_STAGE_MANIFEST CROSS_BULK_SUPERVISED
         . "$script"
     ' "$ports/scripts/cross-bulk.sh" "$ports/scripts/cross-bulk.sh" "$@"
 }
@@ -293,6 +323,10 @@ newstate
 : > "$out/calls"
 bulk_expected_failure
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
+grep -Fxq "intentional package failure: f" "$out/state/logs/t_f.log" ||
+    fail 'failed package stderr was not preserved in its package log'
+grep -Fq "Package worker log: $out/state/logs/t_f.worker.log" "$out/bulk.log" ||
+    fail 'failed package output did not identify its worker log'
 grep -q 'selected SDK CPU capacity=6' "$out/bulk.log" || fail 'explicit CROSS_BULK_CPUS was not preserved'
 [ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py --jobs 6" ] || fail 'explicit CROSS_BULK_CPUS did not use the shared resolver'
 max=$(sort -n "$out/concurrency" | tail -n 1)
@@ -417,8 +451,10 @@ reject_budget_case 6 '' 7 10 'CROSS_BULK_MAKE_JOBS=7 exceeds resolved CPU capaci
 newstate
 : > "$out/calls"
 FAKE_SLEEP=3 BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
-    sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1 &
+    run_bulk_signal build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1 &
 pid=$!
+mkdir -p "$out/state/build.lock"
+echo "$pid" > "$out/state/build.lock/pid"
 n=0
 until grep -q ' start ' "$out/state/progress" 2> /dev/null; do
     n=$((n + 1)); [ "$n" -lt 100 ] || fail 'no package started'
@@ -433,4 +469,26 @@ started=$(grep -c ' start ' "$out/state/progress")
 finished=$(grep -c ' done \| FAILED ' "$out/state/progress")
 [ "$started" = "$finished" ] || fail "$started started, $finished finished after SIGTERM"
 [ "$(calls d)" = 0 ] && [ "$(calls j)" = 0 ] || fail 'a package started after SIGTERM'
+rm -rf "$out/state/build.lock"
+
+# A worker-side show-vars failure happens before the package log is opened.
+# Keep its stderr in the worker log and identify that log in the result.
+mkdir -p "$out/tree/t/worker-fail" "$out/worker-state"
+: > "$out/tree/t/worker-fail/vars-fail"
+echo 't/worker-fail t/worker-fail' > "$out/worker-edges"
+cp "$out/worker-edges" "$out/worker-state/edges"
+tsort "$out/worker-edges" > "$out/worker-state/order"
+: > "$out/worker-state/done"
+: > "$out/worker-state/failed"
+: > "$out/worker-state/blocked"
+: > "$out/worker-state/skipped"
+rc=0
+PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
+    CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=1 \
+    run_bulk build "$out/worker-state/order" "$out/worker-state" > "$out/worker.log" 2>&1 || rc=$?
+[ "$rc" = 1 ] || fail "worker-side failure exited $rc, expected 1: $(cat "$out/worker.log")"
+grep -Fxq 'intentional worker metadata failure' "$out/worker-state/logs/t_worker-fail.worker.log" ||
+    fail 'worker-side stderr was not preserved before the package log opened'
+grep -Fq "Package worker log: $out/worker-state/logs/t_worker-fail.worker.log" "$out/worker.log" ||
+    fail 'worker-side failure did not identify its log'
 echo 'PASS: parallel packages, dependency order, one install per database, blocking, resume and SIGTERM drain'
