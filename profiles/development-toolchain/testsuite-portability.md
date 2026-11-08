@@ -21,8 +21,8 @@ runtime ABI, test expectations and optimization flags are unchanged.
 
 Both `development-toolchain` and `common-build-tools` exports include the patch.
 The pkgsrc patch checksum is verified by pkgsrc's own checksum machinery.
-Do not apply it to a source tree whose original tests are still running.
-Use private copies for a focused check:
+Keep the source tree unchanged while its original tests run.
+Apply the patch to private copies for a focused check:
 
 ```sh
 CC=/usr/pkg/gcc16/bin/gcc sh profiles/development-toolchain/tests/tsvc-netbsd.sh \

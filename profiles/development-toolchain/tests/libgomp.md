@@ -42,8 +42,8 @@ Run the prebuilt executable in the target environment:
 ./libgomp-test /usr/pkg/gcc16/lib/libgomp.so.1
 ```
 
-Do not use an alternate loader search path to select a second runtime.
-Keep the package's normal runtime path and record the actual loaded provider.
+Use the package's normal loader search path and single selected runtime.
+Record the actual loaded provider.
 The baseline needs four available OpenMP threads. A target policy that limits
 the process to fewer threads causes a test failure.
 

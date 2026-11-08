@@ -35,7 +35,7 @@ Replay them with separate object and dependency outputs. Keep the original
 flags, definitions, include roots and diagnostics. For copied source files, keep
 the original source directory as an iquote root. Compare each input on both
 sides. Keep the complete-types patch on both sides of the dispatch comparison.
-Do not execute target objects on the build host.
+Execute target objects only on the selected target.
 
 The executed GCC16.2 AMD64 comparison gives these results:
 

@@ -76,7 +76,7 @@ use epoll-shim or libffi. Target and native EmberBSD packages do not change.
 The cross buildlink requires `wayland-devel` only during target compilation.
 Application runtime dependencies retain `wayland`. The build-host scanner
 comes from the selected native Wayland package.
-Do not install `wayland-devel` in a runtime image.
+Install `wayland-devel` only in the development environment; keep runtime images limited to runtime packages.
 
 The source contract checks actual pkgsrc metadata and a copy of a completed
 normal package stage. It checks both partitions, unchanged bytes/modes/links,

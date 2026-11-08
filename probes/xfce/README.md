@@ -74,7 +74,7 @@ JOBS=1 sh build-component.sh "$HOME/.cache/emberbsd-xfce" yaml
 directory. The per-component builder can repeat a component after a
 failure. Logs, sources, build directories and installs remain below the
 work path. The YAML parser's upstream `make check` runs after its build.
-Do not claim application support from configuration or compilation alone.
+Claim application support only from the corresponding runtime acceptance.
 The session's `--with-xsession-prefix` explicitly uses the private prefix;
 upstream otherwise installs its display-manager entry under `/usr`,
 independently of `--prefix`.

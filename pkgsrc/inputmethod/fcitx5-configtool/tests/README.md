@@ -19,7 +19,7 @@ The recipe selects native `msgfmt` and `msgmerge` through pkgsrc's tool paths.
 It retains Qt6, the KDE configuration module, X11 dependencies and both configuration interfaces.
 
 The nb2 package rebuilds the consumer for Plasma 6.8 and `libPlasma.so.8`.
-Do not reuse objects or package metadata from the `libPlasma.so.7` build.
+Rebuild objects and package metadata against `libPlasma.so.8`.
 Inspect the theme generator's ELF dependencies and the package `REQUIRES` list.
 Both must select the current library. Installed interface acceptance remains separate.
 

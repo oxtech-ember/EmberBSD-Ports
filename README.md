@@ -887,7 +887,7 @@ tabs between the fields. The export uses them in the order of the file:
 - `recipe SOURCE PKGPATH` copies a complete recipe from a profile.
 - `patch FILE` applies an infrastructure patch with zero fuzz and disables
   patch backups (`-F 0 -V none`). The SDK worker sets `PATCH_VERSION_CONTROL=none`.
-  Do not pass `--posix`; it changes file-name selection and blocks `/dev/null` additions.
+  Use the documented patch options to preserve file-name selection and `/dev/null` additions; `--posix` is incompatible with that behavior.
 - `git-apply FILE MANIFEST` applies a binary patch after it checks the
   SHA256 in `MANIFEST`.
 - `recipe-patch FILE PKGPATH NAME` adds a patch to a recipe and its
@@ -1066,8 +1066,7 @@ QtBase's cross runtime/devel revisions are declared once in
 Its exact devel-to-runtime dependency and revision refusal checks derive from
 those declarations. Keep the separate native revision and API/ABI floors
 independent. When changing the runtime revision, check whether the resulting
-devel dependency metadata needs its own revision before publication. Do not
-relax that exact dependency to work around an incomplete package update.
+devel dependency metadata needs its own revision before publication. Complete the package update while preserving that exact dependency.
 The [bmake metadata regression](pkgsrc/x11/qt6-qtbase/tests/package-revisions.py)
 checks both target architectures, invalid overrides and a simulated single
 revision edit; it does not compile Qt or qualify package installation.

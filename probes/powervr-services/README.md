@@ -42,7 +42,7 @@ must expose the actual target, not only compare `dlsym` addresses.
 ## Build boundary
 
 Use native-tools v2 and separate `EMBER_HOST_ABI_*` settings.
-Do not reuse objects built through native-tools v1.
+Replace native-tools v1 objects with native-tools v2 objects; reuse compatible v2 outputs.
 Build host tools for the host and target consumers for native EmberBSD.
 Synthetic foreign DSOs deliberately select the Linux AArch64 ELF target;
 they do not import a Linux runtime or replace the EmberBSD application ABI.

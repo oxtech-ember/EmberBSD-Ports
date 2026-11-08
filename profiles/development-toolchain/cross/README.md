@@ -605,7 +605,7 @@ This covers the focused source scenarios, not the full upstream compiler
 suite, arbitrary Ports packages, a full GCC16-built OS or GPU acceleration.
 
 The common `mk.conf` still describes the **installed native compiler** policy.
-Do not feed a target `/usr/pkg/gcc16/bin/gcc` to a Darwin build process.
+Use a native Darwin compiler for Darwin build processes; reserve target `/usr/pkg/gcc16/bin/gcc` for target execution.
 General pkgsrc cross-package orchestration and Canadian-cross building of
 an installable target GCC package require separate build/host/target handling.
 The standalone cross compiler here is immediately usable for target source

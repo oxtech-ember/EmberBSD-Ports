@@ -30,7 +30,7 @@ It preserves both the package version and the protocol version.
 The KWin recipe exports complete D-Bus property signatures. The native QtDBus
 code generators must link the native D-Bus library, as described in
 [the actual-generator regression](../tests/kwin-inputdevice-xml.md).
-Do not edit the installed XML to repair an incomplete host generator.
+Repair the owning host generator and regenerate the installed XML through its normal build.
 
 Xwayland keeps Glamor, GLX and DRI3. Its common libei 1.6.0nb1 provider keeps
 libei, libeis, liboeffis and the target C/C++ test consumers.

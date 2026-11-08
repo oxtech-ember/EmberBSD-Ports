@@ -74,7 +74,7 @@ The pre-configure check verifies the exact hash before execution and requires
 The fragment sets `PROTOC_FOR_BUILD`, `PROTOC` in the build environments and
 CMake's `Protobuf_PROTOC_EXECUTABLE`. A consumer that calls config-mode
 `protobuf_generate()` must also pass `PROTOC_EXE` with that native executable.
-Do not execute the imported target `protobuf::protoc` during a cross build.
+Use the selected native executable for cross-build code generation; keep imported target `protobuf::protoc` for target use.
 
 KiCad 10.0.7 uses `Protobuf_PROTOC_EXECUTABLE` directly in its API generation
 command. Its top-level CMake selects `protobuf::protoc` only when that variable

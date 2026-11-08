@@ -24,7 +24,7 @@ Cross GIR restoration remains separate work.
 The `tests` option needs target GTK4 build headers and native D-Bus tools,
 Python, `dbus` and `dbusmock`. Configuration refuses missing native prerequisites.
 A `dbusmock` package provider is not available in the current pkgsrc tree.
-Do not accept upstream's empty test list as a successful C test suite.
+Accept the C test suite only after its declared C test programs execute successfully.
 The source declares 20 C test programs and one Python CLI test.
 Native tests use a private mock session bus. Graphical and interactive suites
 have additional display requirements. Cross test execution needs a target plan.

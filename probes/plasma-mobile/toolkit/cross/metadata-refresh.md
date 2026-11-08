@@ -1,7 +1,7 @@
 # Refresh metadata for an unchanged package payload
 
 A `MAKE_DIRS` or configuration-script repair does not change compiled code.
-Do not rebuild C++ solely to regenerate those package records.
+Reuse the accepted compiled outputs when regenerating only those package records.
 Use the normal pkgsrc metadata and archive generators with an accepted staging tree.
 Keep the original compilation receipt and identify the later packaging revision separately.
 
@@ -20,8 +20,8 @@ It does not verify reconstruction of a removed build state from an archive alone
 
 Unchanged dependency constraints may reuse the accepted resolved dependency records.
 Changed constraints require fresh resolution and a separate ABI compatibility check.
-Do not copy an old `.rdepends` into a package with new runtime requirements.
-Do not describe refreshed metadata as a fresh compilation against a different library.
+Resolve a new `.rdepends` for changed runtime requirements.
+Report refreshed metadata separately from compilation against a different library.
 
 ## Generate new records
 
@@ -59,7 +59,7 @@ The tested baseline is `fff4deb639a1a640476203c80f752fb77b6cb14b`, with the comm
 The old install metadata and script cache are not reused. `install-script-data`
 appends current PLIST-derived entries, including info files, before packaging;
 skipping it can silently omit install and removal registration.
-Do not create compile or install completion cookies to bypass a phase.
+Use completion cookies produced by the actual successful compile or install phase.
 
 The public `repackage` target is different: its `_package-clean` removes `DESTDIR`.
 It then repeats stage-install from the retained build. It is not the narrow refresh above.

@@ -14,7 +14,7 @@ Use the accepted MesaLib 26.2.4nb5 to isolate the kernel transition from Mesa ch
 The kernel must include native `TRANSFER_FRAG` admission and the reviewed graphics series.
 See the [OS execution contract](https://github.com/oxtech-ember/EmberBSD/blob/2b617f0e213adcf4dc756c92465b53446bb8e7d2/ember/boot/a733-pvr-execution.md).
 This source revision is a local integration dependency until it reaches the main branch.
-Do not treat enumeration or the earlier compute result as graphics acceptance.
+Establish graphics acceptance with this graphics scenario; retain enumeration and earlier compute results at their own evidence levels.
 
 ## Cross-build
 

@@ -16,8 +16,8 @@ Normal packing-list checks remain enabled.
 The recipes use normal pkgsrc compiler and Libtool wrappers. The common
 cross profile supplies the GCC16 CRT and OpenMP metadata paths, target
 runtime paths and the complete native compiler command for XSPICE `cmpp`.
-Do not run a target `cmpp` on the build host. Do not invoke the cross-host
-Libtool directly outside its pkgsrc wrapper environment.
+Use native `cmpp` on the build host and invoke cross-host Libtool through
+its pkgsrc wrapper environment.
 Set optimization and debug flags in `MAKECONF`. Passing `CFLAGS` on the make
 command line overrides the language and OpenMP flags added by `configure`.
 Check actual compile commands and `_OPENMP`, not only `USE_OMP` in config.h.

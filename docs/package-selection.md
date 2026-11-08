@@ -75,8 +75,8 @@ verified binary selections in the same two-column format. Target builds skip a
 listed node only when its evaluated PKGNAME still matches and pkg_info confirms
 that exact name is installed. Ordinary source builds and explicit package-stage
 recovery keep their existing rebuild rules. Native packages retain their
-existing installed-version reuse. Do not manufacture this input from file names
-or use it to suppress a deliberately requested source rebuild.
+existing installed-version reuse. Derive this input from the installed package metadata. Honor an explicitly
+requested source rebuild.
 
 For binary package updates, use the SDK client's
 [`installed`, `plan --installed` and `update` commands](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/sdk-client.md#installed-versions-and-updates).

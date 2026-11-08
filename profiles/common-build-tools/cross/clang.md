@@ -51,7 +51,7 @@ The recipe rejects absent or incorrect TableGen versions. The explicit
 
 Build Perl executes only on the host. Installed scan-build tools retain a
 normal target Perl >=5.44 dependency and `/usr/pkg/bin/perl` shebangs.
-Do not bypass that runtime dependency to accept the final package.
+Accept the final package only with that runtime dependency satisfied.
 
 ## Native compiler defaults
 

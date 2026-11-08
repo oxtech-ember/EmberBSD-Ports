@@ -56,7 +56,7 @@ The exported reference images remain byte-identical.
 Prepare the normal `common-graphics` export and configure the common GCC16 profile.
 Build `graphics/jbigkit` with `bmake package`; use `bmake test` for native tests.
 Cross builds compile the same test programs but do not execute target code on the host.
-Do not substitute host test results for EmberBSD execution.
+Record host test results separately; establish EmberBSD execution with the target runner.
 
 The [installed-test adapter](../tests/jbigkit/CMakeLists.txt) rebuilds the three
 upstream test programs against an installed or staged prefix.

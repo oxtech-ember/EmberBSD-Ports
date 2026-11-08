@@ -16,7 +16,7 @@ their normal external-codec options.
 Use the GCC16 compiler prefix and a sysroot built from EmberBSD source. Keep
 the upstream `aarch64--netbsd` triplet and `NetBSD` CMake platform. The accepted
 base source revision is `267ee85eee1027198175809a8b7b0572df36ad1e`.
-Do not combine libc, headers or runtime modules from a different OS revision.
+Use libc, headers and runtime modules from the same selected OS revision.
 
 The sysroot needs the GCC16 CRT/runtime, OpenSSL 3.5.7 and its base pkg-config
 files, compression libraries and `libossaudio`. The target needs the fork's

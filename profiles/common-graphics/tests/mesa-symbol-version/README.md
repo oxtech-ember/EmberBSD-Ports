@@ -30,7 +30,7 @@ It does not execute target binaries and does not prove hardware operation.
 
 The full package audit must also compare exported function, object, and TLS
 symbols against the accepted package. Check SONAME and version definitions.
-Do not discard version suffixes during the comparison.
+Retain and compare the complete symbol names, including their version suffixes.
 GNU-only BSS/end linker-script markers are not Mesa API symbols.
 Report their exact names separately when switching linkers.
 

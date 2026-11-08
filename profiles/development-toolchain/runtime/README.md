@@ -123,7 +123,7 @@ exactly once with its original value.
 all optional libraries belong to this same provider and conflict policy.
 The native host must resolve `root` and `wheel` to UID/GID 0.
 On Linux, a process-scoped NSS wrapper can provide the target group mapping.
-Do not change package ownership to match a different host group name.
+Preserve target package ownership independently of host group names.
 Before creating the output, the packager queries the supplied native
 `pkg_create -V`. It requires one eight-digit version line and a valid
 calendar date. The package records this queried `PKGTOOLS_VERSION` and

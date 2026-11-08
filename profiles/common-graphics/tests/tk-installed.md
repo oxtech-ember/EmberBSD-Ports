@@ -35,7 +35,7 @@ Upstream Tk's complete test suite has additional window-manager requirements.
 The canonical pkgsrc `x11/modular-xorg-server` 21.1.24 package includes `Xvfb`.
 Use the complete provider with its default `inet6 dri` options. These retain
 DRI, DRI2, DRI3, GLX and Present. Glamor remains enabled when Mesa provides EGL.
-Do not disable these features to obtain the virtual-display contract.
+Keep these features enabled during the virtual-display contract.
 `Xvfb` needs no physical framebuffer or GPU for this contract.
 
 The package declares runtime dependencies on `xkbcomp` and `xkeyboard-config`.

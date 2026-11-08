@@ -56,7 +56,7 @@ Expected invalid-device and virtual-filter warnings are kept in the log.
 The cross build uses the production `TRANSLATION_DOMAIN` definition.
 The emitted `compile_commands.json` records the actual compilation parameters.
 Run Cppcheck and Clang Static Analyzer with those target headers and definitions.
-Do not treat a parser failure or a missing header as a clean analysis result.
+Report parser failures and missing headers as incomplete analysis.
 Valgrind execution requires a supported platform. No Valgrind pass is implied.
 
 For an independent UBSan run, select the current native Clang frontend.

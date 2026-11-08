@@ -17,12 +17,12 @@ base. The recipe owns the source pin, archive hashes and complete patch set.
 Base build rules consume those prepared sources and retain the native OS ABI,
 header installation and build integration. SDK tools own host preparation.
 
-Do not add separate source copies or patch subsets for a base library, profile,
-board or application. Update the canonical recipe and rebuild affected consumers.
+Update the canonical recipe and its complete patch set for base libraries,
+profiles, boards and applications. Rebuild affected consumers from that shared source.
 A builtin provider must prove that its installed source identity matches the
 recipe. A matching version string alone does not prove that patches are present.
-Keep one installed provider on EmberBSD. Reject a stale base and rebuild it;
-do not silently add a portable package beside it. Other systems can retain the
+Keep one installed provider on EmberBSD. Reject a stale base and rebuild it
+from the canonical recipe before resuming its consumers. Other systems can retain the
 recipe's documented portable fallback. The [libedit contract](../pkgsrc/devel/editline/README.md)
 provides the current source, builtin and regression interfaces.
 
@@ -209,7 +209,8 @@ ordering; they do not allocate build resources or grant installation permission.
 The separate `scripts/cross-bulk.sh` helper has a different resume contract.
 Its `done` records compare package names and output hashes, without binding build
 inputs. Those records cannot qualify reuse under an update plan. Use the SDK
-receipts for this workflow; do not import bulk `done` entries as success evidence.
+receipts as success evidence for this workflow. Keep bulk `done` entries scoped
+to the separate cross-bulk resume contract.
 For a fresh control build, use cross-bulk directly; the graph exporter and SDK
 plan/receipt workflow are optional incremental-update tooling.
 
@@ -250,9 +251,7 @@ A compatibility patch requires a fresh export, lock, and plan. Follow the
 [SDK evidence and resume contract](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/ports-plan.md#validate-results-and-resume)
 for unchanged dependencies and reusable artifacts.
 Reuse follows the common [input key rule](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/input-keys.md). A matching key means reuse
-without rereading, rehashing or re-archiving sources, stages or outputs. Do not
-add checks that reread or rehash inputs that a git hash or input key already
-identifies.
+without rereading, rehashing or re-archiving sources, stages or outputs. Use the recorded Git hash or input key to identify those unchanged inputs.
 
 ## Checks and limits
 

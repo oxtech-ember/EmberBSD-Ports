@@ -18,14 +18,14 @@ The symbols recipe retains default symbol packing. It uses the build-host
 Python from `lang/python/tool.mk` through `Python3_EXECUTABLE`.
 The upstream packer uses the Python standard library. It is not installed
 as a target dependency. Keep `PYTHON_FOR_BUILD_ONLY=tool`.
-Do not replace the packed table with the source table. The source table names
+Keep the packed table as the installed table. The source table names
 `.kicad_symdir` directories. The packed table names installed `.kicad_sym` files.
 Both default tables use the `KICAD10_*` resource paths.
 
 Each package installs its original `LICENSE.md` in `share/doc/PKGBASE`.
 The data uses CC-BY-SA 4.0 with the upstream design-output exception.
 Retain this exception and the attribution when redistributing the libraries.
-Do not copy an unrelated package's license declaration.
+Declare this package's own license and attribution.
 
 The static PLISTs follow the tagged CMake install rules. The 3D release installs
 STEP models. It does not install the optional `list_models` build target.

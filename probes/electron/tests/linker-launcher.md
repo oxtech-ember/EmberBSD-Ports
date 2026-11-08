@@ -39,7 +39,7 @@ Configure other concurrent producers with the same SDK launcher, lock root
 and context. The ordinary GN link pool limits links in one Ninja process.
 The SDK context coordinates the participating producers.
 The launcher retains the context until its owned command group is drained.
-Do not replace the selected C or C++ compiler with this launcher.
+Keep the selected C and C++ compilers as compiler commands; use this launcher only for its documented link role.
 
 ## Compare captured production rules
 

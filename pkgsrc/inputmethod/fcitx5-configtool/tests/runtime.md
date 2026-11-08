@@ -40,7 +40,7 @@ CMAKE_CONFIGURE_ARGS+= -DCMAKE_MODULE_LINKER_FLAGS:STRING=${LDFLAGS:Q}
 Use the public pkgsrc `package` target. It prepares the complete buildlink context.
 A direct private `cmake-configure` call can omit dependency flags and cache incomplete RPATHs.
 This selection does not change compiler defaults or validate LTO and relocatable links.
-Do not remove strict linker flags to accept a package.
+Keep strict linker flags enabled when accepting a package.
 
 ## Prepared installed-package check
 

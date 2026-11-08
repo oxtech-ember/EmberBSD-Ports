@@ -116,7 +116,7 @@ LLVM path; upstream AArch64 can still choose MCJIT. ORC JIT, llvmpipe, softpipe
 and classic VirGL remain enabled together. Vulkan, video frontends, Rusticl,
 physical-driver tools and GLVND are outside this initial probe.
 Mesa 26 installs `libgallium-26.2.4.so`; shared libglapi is no longer installed.
-Do not emulate its old SONAME with symlinks. Audit and rebuild Qt/GNOME/Xorg
+Retain the current SONAME. Audit and rebuild Qt/GNOME/Xorg
 consumers against the common ABI before package promotion. The
 [temporary headless cross diagnostic](../../profiles/common-graphics/cross/README.md)
 has separate softpipe board evidence; it does not establish the complete

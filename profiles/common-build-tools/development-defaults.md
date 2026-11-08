@@ -60,11 +60,9 @@ Keep native and target selection separate when preparing a cross SDK.
 
 Before updating an existing `/etc/mk.conf` or user profile, preserve its contents,
 permissions and unrelated settings. Install a durable source include and its
-generated mapping together; do not leave a system default pointing into a
-temporary export. Restore the previous configuration if its selected package
+generated mapping together. Point system defaults only at durable source paths. Restore the previous configuration if its selected package
 closure is not ready. Keep matching packages available for normal `pkg_add -u`
-rollback. Do not overwrite base compiler files or change SSH/login settings just
-to select pkgsrc compilers.
+rollback. Preserve base compiler files and SSH/login settings when selecting pkgsrc compilers.
 
 For interactive compilation, invoke the selected prefix's `clang`/`clang++`, or
 its explicitly selected GCC drivers. Existing CMake/Meson build directories

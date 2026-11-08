@@ -38,7 +38,7 @@ bmake USE_CROSS_COMPILE=no \
 Inspect the actual generated FC and F77 tag blocks.
 The host package owns only the two distinct Fortran dispatcher scripts.
 It does not own target runtime libraries or the C/C++ Libtool payload.
-Do not suppress a failed native Fortran dependency by installing an old GCC.
+Repair the native Fortran dependency with the current selected GCC provider.
 For native Darwin `devel/libtool-fortran`, first select the real native GCC16
 prefix with `GCCBASE`, `GCC_VERSION_SUFFIX=-16`, `USE_NATIVE_GCC=yes` and
 `USE_PKGSRC_GCC=no`. Verify `FCPATH`, version, host format and runtime closure.

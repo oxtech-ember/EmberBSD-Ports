@@ -47,7 +47,7 @@ Format 1 keeps its existing verifier contract and interface checks.
 
 Use one native Ports prefix with Clang/LLVM by default. The shared recipes own
 LLVM, Clang CLC libraries, SPIRV-Headers, SPIRV-Tools and SPIRV-LLVM-Translator.
-Do not download a binary compiler or build a private dependency stack.
+Build these tools and dependencies through the common Ports recipes.
 The native LLVM and Clang libraries and the generators need a compatible host
 C++ runtime. GCC16 remains an explicit host compiler alternative.
 

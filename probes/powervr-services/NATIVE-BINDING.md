@@ -111,7 +111,7 @@ Compare options using `RGX_BUILD_OPTIONS_MASK_KM` (`0x0000ffff`), the native
 Version/build identity alone is insufficient. No native option value exists
 until that provider has an actual configuration.
 Reply masks must advertise only implemented native Services/RGX operations.
-Do not copy the donor's full bridge mask as a capability claim.
+Construct the reply mask from the native operations actually implemented.
 
 ## Smallest real port slice and graphics distance
 

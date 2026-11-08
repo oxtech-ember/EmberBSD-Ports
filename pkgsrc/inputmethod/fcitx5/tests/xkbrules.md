@@ -21,7 +21,7 @@ The script uses the recorded native compiler and flags.
 It compiles the actual XKB parser, XML parser and separate regression.
 It does not replace the XML parser with a fixture implementation.
 Use a matching ASan/UBSan Utils build to instrument the same regression.
-Do not mix compiler sanitizer runtimes.
+Use one matching compiler sanitizer runtime throughout the instrumented check.
 
 Five XML files exercise two directories, their extras and an explicit extra file.
 Checks retain every model, group, option and their field values in parse order.
