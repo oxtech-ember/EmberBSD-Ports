@@ -42,10 +42,12 @@ public:
     QUrl homepage() override;
     QUrl url() const override;
     bool isDesktop() const;
+    bool isComponent() const;
     bool matchesText(const QString &text) const;
 
 private:
     bool m_desktop = false;
+    bool m_component = false;
     QString m_packageId;
     QString m_version;
     QString m_root;

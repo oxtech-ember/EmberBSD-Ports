@@ -173,11 +173,16 @@ QVector<StreamResult> EmberBSDBackend::match(const Filters &filter) const
 {
     QVector<StreamResult> found;
     const bool allPackages = filter.category && filter.category->matchesCategoryName(QStringLiteral("packages"));
+    const bool components = filter.category && filter.category->matchesCategoryName(QStringLiteral("components"));
     for (EmberBSDResource *resource : m_resources) {
         if (!filter.resourceUrl.isEmpty() && resource->url() != filter.resourceUrl)
             continue;
-        if (!allPackages && !resource->isDesktop())
+        if (components) {
+            if (!resource->isComponent())
+                continue;
+        } else if (!allPackages && !resource->isDesktop()) {
             continue;
+        }
         if (!filter.search.isEmpty() && !resource->matchesText(filter.search))
             continue;
         if (filter.shouldFilter(resource))

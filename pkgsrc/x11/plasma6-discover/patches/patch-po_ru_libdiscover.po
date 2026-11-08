@@ -1,0 +1,16 @@
+$NetBSD$
+
+Russian name for the Plasma components category.
+
+--- po/ru/libdiscover.po.orig
++++ po/ru/libdiscover.po
+@@ -4606,3 +4606,9 @@
+ #~ msgctxt "@status describes a past-tense action"
+ #~ msgid "Installed"
+ #~ msgstr "установлен"
++
++#: libdiscover/backends/EmberBSDBackend/emberbsd-categories.xml
++#, kde-format
++msgctxt "Category"
++msgid "Components"
++msgstr "Компоненты"

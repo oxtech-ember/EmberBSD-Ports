@@ -24,6 +24,13 @@
     </Include>
   </Menu>
   <Menu>
+    <Name>Components</Name>
+    <Icon>package-x-generic</Icon>
+    <Include>
+      <Category>components</Category>
+    </Include>
+  </Menu>
+  <Menu>
     <Name>All packages</Name>
     <Icon>package</Icon>
     <Include>

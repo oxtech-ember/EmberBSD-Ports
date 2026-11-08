@@ -24,6 +24,32 @@ QString canonicalInside(const QString &prefix, const QString &path)
     return canonical;
 }
 
+// Signed catalog rows carry PKGPATH, PKGNAME and catalog_role. A missing
+// desktop file is not enough: libraries, the Plasma SDK and the Wayland
+// scanner also have none. These names are that signed identity.
+const QStringList plasmaLibraryOrSdk = {
+    QStringLiteral("plasma6-kdecoration"),
+    QStringLiteral("plasma6-kpipewire"),
+    QStringLiteral("plasma6-kwayland"),
+    QStringLiteral("plasma6-kwin-qtwaylandscanner"),
+    QStringLiteral("plasma6-layer-shell-qt"),
+    QStringLiteral("plasma6-plasma-activities"),
+    QStringLiteral("plasma6-plasma-activities-stats"),
+    QStringLiteral("plasma6-plasma-sdk"),
+    QStringLiteral("plasma6-plasma5support"),
+    QStringLiteral("plasma6-qqc2-breeze-style"),
+    QStringLiteral("plasma6-union"),
+};
+
+bool isPlasmaComponent(const QString &base, const QString &catalogRole)
+{
+    if (catalogRole == QLatin1String("library") || catalogRole == QLatin1String("desktop"))
+        return false;
+    if (!base.startsWith(QLatin1String("plasma6-")) || base.startsWith(QLatin1String("plasma6-lib")))
+        return false;
+    return !plasmaLibraryOrSdk.contains(base);
+}
+
 QString localizedValue(const QJsonObject &values)
 {
     const QStringList languages = QLocale().uiLanguages();
@@ -59,50 +85,52 @@ EmberBSDResource::EmberBSDResource(const QJsonObject &package, const QJsonObject
     else if (m_action == QLatin1String("installed") || m_action == QLatin1String("installed-newer") || m_action == QLatin1String("version-uncompared"))
         m_state = Installed;
 
-    if (desktop.isEmpty())
-        return;
-    const QString relative = desktop.value(QStringLiteral("file")).toString();
-    const QString desktopPath = canonicalInside(m_prefix, m_prefix + QLatin1Char('/') + relative);
-    const bool desktopLocation = !relative.contains(QLatin1String("..")) && relative.startsWith(QLatin1String("share/applications/")) && relative.endsWith(QLatin1String(".desktop"))
-        && desktopPath.startsWith(QFileInfo(m_prefix).canonicalFilePath() + QStringLiteral("/share/applications/"));
-    QStringList exec;
-    const QJsonArray argv = desktop.value(QStringLiteral("exec")).toArray();
-    for (const QJsonValue &value : argv) {
-        const QString arg = value.toString();
-        if (arg.isEmpty() || arg.contains(QLatin1Char('\n')) || arg.contains(QChar::Null)) {
-            exec.clear();
-            break;
+    if (!desktop.isEmpty()) {
+        const QString relative = desktop.value(QStringLiteral("file")).toString();
+        const QString desktopPath = canonicalInside(m_prefix, m_prefix + QLatin1Char('/') + relative);
+        const bool desktopLocation = !relative.contains(QLatin1String("..")) && relative.startsWith(QLatin1String("share/applications/")) && relative.endsWith(QLatin1String(".desktop"))
+            && desktopPath.startsWith(QFileInfo(m_prefix).canonicalFilePath() + QStringLiteral("/share/applications/"));
+        QStringList exec;
+        const QJsonArray argv = desktop.value(QStringLiteral("exec")).toArray();
+        for (const QJsonValue &value : argv) {
+            const QString arg = value.toString();
+            if (arg.isEmpty() || arg.contains(QLatin1Char('\n')) || arg.contains(QChar::Null)) {
+                exec.clear();
+                break;
+            }
+            exec.append(arg);
         }
-        exec.append(arg);
+        QString program;
+        if (!exec.isEmpty())
+            program = canonicalInside(m_prefix, exec.first());
+        const QString name = localizedValue(desktop.value(QStringLiteral("names")).toObject());
+        const QString fallbackName = desktop.value(QStringLiteral("name")).toString();
+        if (desktopLocation && !program.isEmpty() && QFileInfo(program).isExecutable() && !(name.isEmpty() && fallbackName.isEmpty())) {
+            exec[0] = program;
+            m_desktop = true;
+            m_role = QStringLiteral("desktop");
+            m_desktopId = desktop.value(QStringLiteral("id")).toString();
+            if (m_desktopId.isEmpty())
+                m_desktopId = QFileInfo(relative).completeBaseName();
+            m_name = name.isEmpty() ? fallbackName : name;
+            m_comment = desktop.value(QStringLiteral("comment")).toString();
+            m_desktopFile = relative;
+            m_desktopPackage = desktop.value(QStringLiteral("pkgname")).toString();
+            m_exec = exec;
+            const QString icon = desktop.value(QStringLiteral("icon")).toString();
+            if (icon.contains(QLatin1Char('/')))
+                m_icon = canonicalInside(m_prefix, icon);
+            else if (!icon.isEmpty() && !icon.contains(QLatin1String("..")))
+                m_icon = icon;
+            for (const QJsonValue &category : desktop.value(QStringLiteral("categories")).toArray()) {
+                const QString text = category.toString();
+                if (!text.isEmpty() && !text.contains(QLatin1Char('/')) && !text.contains(QLatin1Char('\n')))
+                    m_categories.append(text);
+            }
+        }
     }
-    QString program;
-    if (!exec.isEmpty())
-        program = canonicalInside(m_prefix, exec.first());
-    const QString name = localizedValue(desktop.value(QStringLiteral("names")).toObject());
-    const QString fallbackName = desktop.value(QStringLiteral("name")).toString();
-    if (!desktopLocation || program.isEmpty() || !QFileInfo(program).isExecutable() || (name.isEmpty() && fallbackName.isEmpty()))
-        return;
-    exec[0] = program;
-    m_desktop = true;
-    m_role = QStringLiteral("desktop");
-    m_desktopId = desktop.value(QStringLiteral("id")).toString();
-    if (m_desktopId.isEmpty())
-        m_desktopId = QFileInfo(relative).completeBaseName();
-    m_name = name.isEmpty() ? fallbackName : name;
-    m_comment = desktop.value(QStringLiteral("comment")).toString();
-    m_desktopFile = relative;
-    m_desktopPackage = desktop.value(QStringLiteral("pkgname")).toString();
-    m_exec = exec;
-    const QString icon = desktop.value(QStringLiteral("icon")).toString();
-    if (icon.contains(QLatin1Char('/')))
-        m_icon = canonicalInside(m_prefix, icon);
-    else if (!icon.isEmpty() && !icon.contains(QLatin1String("..")))
-        m_icon = icon;
-    for (const QJsonValue &category : desktop.value(QStringLiteral("categories")).toArray()) {
-        const QString text = category.toString();
-        if (!text.isEmpty() && !text.contains(QLatin1Char('/')) && !text.contains(QLatin1Char('\n')))
-            m_categories.append(text);
-    }
+    const QString catalogRole = package.value(QStringLiteral("catalog_role")).toString(package.value(QStringLiteral("role")).toString());
+    m_component = !m_desktop && isPlasmaComponent(m_packageId, catalogRole);
 }
 
 QString EmberBSDResource::packageName() const
@@ -130,6 +158,12 @@ QString EmberBSDResource::longDescription()
                     m_desktopPackage,
                     m_root,
                     m_releaseId);
+    }
+    if (m_component) {
+        return i18n("Plasma component %1 from signed catalog %2, root %3. No standalone desktop launcher is recorded. Install and remove stay unavailable.",
+                    m_version,
+                    m_releaseId,
+                    m_root);
     }
     return i18n("Signed package %1 from %2. Catalog root %3. This is not a desktop application.", m_version, m_releaseId, m_root);
 }
@@ -188,6 +222,8 @@ bool EmberBSDResource::hasCategory(const QString &category) const
 {
     if (category == QLatin1String("packages"))
         return true;
+    if (category == QLatin1String("components"))
+        return m_component;
     if (!m_desktop)
         return false;
     if (category == QLatin1String("desktop") || category == QLatin1String("applications"))
@@ -254,6 +290,11 @@ QUrl EmberBSDResource::url() const
 bool EmberBSDResource::isDesktop() const
 {
     return m_desktop;
+}
+
+bool EmberBSDResource::isComponent() const
+{
+    return m_component;
 }
 
 bool EmberBSDResource::matchesText(const QString &text) const
