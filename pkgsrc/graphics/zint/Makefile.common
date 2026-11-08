@@ -1,5 +1,6 @@
 # Shared source identity and full patch set for libzint and its frontends.
-.include "${PKGSRCDIR}/graphics/zint/version.mk"
+# PKGSRCDIR is still empty here: bsd.prefs.mk is included later.
+.include "../../graphics/zint/version.mk"
 
 DISTNAME=		zint-${ZINT_VERSION}-src
 CATEGORIES=		graphics
