@@ -1,0 +1,15 @@
+$NetBSD$
+
+The 0.1.1 tarball still declares project version 0.1.0.
+
+--- CMakeLists.txt.orig	2023-05-08 00:56:17.000000000 +0300
++++ CMakeLists.txt	2026-11-08 14:05:17.265662922 +0300
+@@ -4,7 +4,7 @@
+ 
+ cmake_minimum_required(VERSION 3.19)
+ 
+-project(futuresql LANGUAGES CXX VERSION "0.1.0")
++project(futuresql LANGUAGES CXX VERSION "0.1.1")
+ 
+ option(BUILD_EXAMPLES "Build examples" OFF)
+ option(BUILD_TESTING "Build tests" ON)
