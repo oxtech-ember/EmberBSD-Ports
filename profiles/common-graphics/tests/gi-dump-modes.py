@@ -187,6 +187,17 @@ class DumpModes(unittest.TestCase):
                                  [prefix + '/share/gir-1.0'])
                 self.assertEqual(generated['properties']['emberbsd_vapi_dirs'],
                                  [prefix + '/share/vala/vapi'])
+                before = cross.stat()
+                repeated = bmake(recipe, 'WRKDIR=' + str(work), str(cross))
+                self.assertEqual(repeated.returncode, 0, repeated.stdout + repeated.stderr)
+                self.assertEqual((cross.stat().st_ino, cross.stat().st_mtime_ns),
+                                 (before.st_ino, before.st_mtime_ns))
+                changed = bmake(recipe, 'WRKDIR=' + str(work),
+                                "MESON_CROSS.emberbsd_gir_dirs=['/changed/target/gir']",
+                                str(cross))
+                self.assertEqual(changed.returncode, 0, changed.stdout + changed.stderr)
+                self.assertEqual(tomllib.loads(cross.read_text())['properties']['emberbsd_gir_dirs'],
+                                 ['/changed/target/gir'])
 
 
 def main():

@@ -76,6 +76,8 @@ MESON_CROSS_VARS+=	sys_root
 MESON_CROSS.sys_root=	'${_CROSS_DESTDIR}'
 
 MESON_CROSS_FILE=	${WRKDIR}/.meson_cross
+# Reconfigure must see changed properties; identical inputs keep their mtime.
+.PHONY: ${MESON_CROSS_FILE}
 ${MESON_CROSS_FILE}:
 	@${STEP_MSG} Creating meson cross file
 .if !empty(EMBERBSD_CROSS_COMPILER_FAMILY:U)
@@ -114,6 +116,7 @@ ${MESON_CROSS_FILE}:
 	${RUN}${ECHO} ${MESON_BINARY_KEY.${_v_}:U${_v_}} = \'${MESON_BINARY.${_v_}:Q}\' \
 		>>${.TARGET}.tmp
 .  endfor
-	${RUN}${MV} -f ${.TARGET}.tmp ${.TARGET}
+	${RUN}if ${CMP} -s ${.TARGET}.tmp ${.TARGET}; then \
+	    ${RM} -f ${.TARGET}.tmp; else ${MV} -f ${.TARGET}.tmp ${.TARGET}; fi
 
 .endif	# MESON_CROSS_FILE_MK
