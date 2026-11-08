@@ -14,3 +14,22 @@ The official archive checksums, cross configure, selected host Wayland
 scanner and target C compilation have been exercised. The full package,
 introspection output, installation manifest and GUI runtime are still being
 validated; source preparation is not a published GTK4 binary.
+
+The embedded `GtkFileChooserWidget` and `GtkFileChooserDialog` expose two
+EmberBSD instance properties: `show-hidden` and `do-overwrite-confirmation`.
+An explicitly set hidden-file value survives remapping and does not overwrite
+the desktop hidden-file preference. Overwrite confirmation defaults to true,
+preserving GTK4 behavior; applications implementing their own save policy can
+turn it off. These properties are not advertised on `GtkFileChooserNative`,
+the `GtkFileChooser` interface, or portal implementations.
+
+The two concrete classes also expose `selection-changed`,
+`current-folder-changed`, and `file-activated` signals. Selection changes are
+coalesced on the default main context after internal model/entry transitions;
+callbacks query the current selection with the public GFile APIs. Disposal
+cancels pending delivery. Folder notifications follow successful asynchronous
+navigation; activation occurs before native acceptance. These capabilities
+serve embedded file controls and native dialogs without exposing private
+chooser state. The wxGTK32 file-chooser fixture exercises the shared contract.
+Both modified GTK translation units pass target syntax compilation. Real
+chooser execution, including desktop preference isolation, remains pending.

@@ -2,7 +2,7 @@
 
 DISTNAME=	wxWidgets-3.2.12
 PKGNAME=	${DISTNAME:S/wxWidgets/wxGTK32/}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	x11
 MASTER_SITES=	${MASTER_SITE_GITHUB:=wxWidgets/}
 GITHUB_PROJECT=	wxWidgets
@@ -174,7 +174,7 @@ post-install:
 .include "../../www/webkit-gtk60/buildlink3.mk"
 .include "../../x11/libSM/buildlink3.mk"
 .include "../../x11/libXi/buildlink3.mk"
-BUILDLINK_API_DEPENDS.gtk4+=	gtk4>=4.24.0
+BUILDLINK_API_DEPENDS.gtk4+=	gtk4>=4.24.1nb1
 .include "../../x11/gtk4/buildlink3.mk"
 PLIST_SRC+=	PLIST.gtk4
 .endif

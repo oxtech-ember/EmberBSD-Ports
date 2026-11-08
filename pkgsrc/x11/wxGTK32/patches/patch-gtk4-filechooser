@@ -1,0 +1,842 @@
+$NetBSD$
+
+Use GFile/GListModel with the common embedded GTK4 chooser capabilities,
+native dialog content for preview/extra controls, and GtkButton pickers using
+the existing shared wx modal dialog workflow. Track modal picker ownership.
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- include/wx/gtk/private/filechooser4.h.orig
++++ include/wx/gtk/private/filechooser4.h
+@@ -0,0 +1,55 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 chooser GFile ownership and local-path conversion.
++// Origin: EmberBSD (AI-assisted). wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#ifndef _WX_GTK_PRIVATE_FILECHOOSER4_H_
++#define _WX_GTK_PRIVATE_FILECHOOSER4_H_
++#include <gtk/gtk.h>
++#include "wx/gtk/private/object.h"
++#include "wx/gtk/private/string.h"
++#include "wx/filename.h"
++namespace wxGTKFileChooser4
++{
++inline char* Filename(GtkFileChooser* chooser)
++{
++    wxGtkObject<GFile> file(gtk_file_chooser_get_file(chooser));
++    return file.get() ? g_file_get_path(file) : NULL;
++}
++inline char* Directory(GtkFileChooser* chooser)
++{
++    wxGtkObject<GFile> file(gtk_file_chooser_get_current_folder(chooser));
++    return file.get() ? g_file_get_path(file) : NULL;
++}
++inline bool Paths(GtkFileChooser* chooser, wxArrayString& paths)
++{
++    paths.Clear();
++    wxArrayString result;
++    wxGtkObject<GListModel> files(gtk_file_chooser_get_files(chooser));
++    if (!files.get()) return false;
++    for (guint i = 0; i < g_list_model_get_n_items(files); ++i)
++    {
++        wxGtkObject<GFile> file(G_FILE(g_list_model_get_item(files, i)));
++        wxGtkString path(g_file_get_path(file));
++        if (!path) return false; // Never turn a remote URI into a local pathname.
++        result.Add(wxString::FromUTF8(path));
++    }
++    paths.swap(result);
++    return true;
++}
++inline bool SetDirectory(GtkFileChooser* chooser, const wxString& path)
++{
++    wxGtkObject<GFile> file(g_file_new_for_path(wxFileName::DirName(path).GetAbsolutePath().utf8_str()));
++    return gtk_file_chooser_set_current_folder(chooser, file, NULL) != FALSE;
++}
++inline bool SetFile(GtkFileChooser* chooser, const wxString& path)
++{
++    wxGtkObject<GFile> file(g_file_new_for_path(wxFileName(path).GetAbsolutePath().utf8_str()));
++    return gtk_file_chooser_set_file(chooser, file, NULL) != FALSE;
++}
++inline void ShowHidden(GtkFileChooser* chooser, bool show)
++{
++    // Public concrete-class property supplied by the shared GTK4 provider.
++    g_object_set(chooser, "show-hidden", gboolean(show), NULL);
++}
++}
++#endif
+--- include/wx/gtk/filepicker.h.orig
++++ include/wx/gtk/filepicker.h
+@@ -22,6 +22,9 @@
+ //  and from wxGenericDirButton classes !)
+ //-----------------------------------------------------------------------------
+ 
++#ifdef __WXGTK4__
++#define FILEDIRBTN_OVERRIDES
++#else
+ #define FILEDIRBTN_OVERRIDES                                                  \
+     /* NULL is because of a problem with destruction order which happens   */ \
+     /* if we pass GetParent(): in fact, this GTK native implementation     */ \
+@@ -46,6 +49,8 @@
+         { return NULL; }
+ 
+ 
++#endif
++
+ //-----------------------------------------------------------------------------
+ // wxFileButton
+ //-----------------------------------------------------------------------------
+@@ -90,7 +95,9 @@
+                 const wxString& name = wxASCII_STR(wxFilePickerWidgetNameStr));
+ 
+     // event handler for the click
++#ifndef __WXGTK4__
+     void OnDialogOK(wxCommandEvent &);
++#endif
+ 
+     virtual void SetPath(const wxString &str) wxOVERRIDE;
+     virtual void SetInitialDirectory(const wxString& dir) wxOVERRIDE;
+@@ -101,7 +108,12 @@
+ protected:
+     wxDialog *m_dialog;
+ 
++#ifdef __WXGTK4__
++    wxString m_pickerLabel;
++    virtual void UpdatePathFromDialog(wxDialog* dialog) wxOVERRIDE;
++#else
+     virtual void DoApplyWidgetStyle(GtkRcStyle*) wxOVERRIDE;
++#endif
+ 
+ private:
+     // common part of all ctors
+@@ -160,7 +172,11 @@
+     // thus we must ensure that the wxDD_DIR_MUST_EXIST style was given
+     long GetDialogStyle() const wxOVERRIDE
+     {
++#ifdef __WXGTK4__
++        return wxGenericDirButton::GetDialogStyle();
++#else
+         return (wxGenericDirButton::GetDialogStyle() | wxDD_DIR_MUST_EXIST);
++#endif
+     }
+ 
+     virtual void SetPath(const wxString &str) wxOVERRIDE;
+@@ -172,13 +188,20 @@
+ protected:
+     wxDialog *m_dialog;
+ 
++#ifdef __WXGTK4__
++    wxString m_pickerLabel;
++    virtual void UpdatePathFromDialog(wxDialog* dialog) wxOVERRIDE;
++#else
+     virtual void DoApplyWidgetStyle(GtkRcStyle*) wxOVERRIDE;
++#endif
+ 
+ public:    // used by the GTK callback only
+ 
+     bool m_bIgnoreNextChange;
+ 
++#ifndef __WXGTK4__
+     void GTKUpdatePath(const char *gtkpath);
++#endif
+ 
+ private:
+     void Init()
+--- src/gtk/filectrl.cpp.orig
++++ src/gtk/filectrl.cpp
+@@ -17,6 +17,10 @@
+ #include "wx/filename.h"
+ #include "wx/scopeguard.h"
+ #include "wx/tokenzr.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/filechooser4.h"
++#include <vector>
++#endif
+ 
+ //-----------------------------------------------------------------------------
+ // wxGtkFileChooser implementation
+@@ -33,7 +37,11 @@
+ 
+ wxString wxGtkFileChooser::GetPath() const
+ {
++#ifdef __WXGTK4__
++    wxGtkString str(wxGTKFileChooser4::Filename(m_widget));
++#else
+     wxGtkString str( gtk_file_chooser_get_filename( m_widget ) );
++#endif
+ 
+     wxString string;
+     if (str)
+@@ -53,6 +61,9 @@
+ 
+ void wxGtkFileChooser::GetPaths( wxArrayString& paths ) const
+ {
++#ifdef __WXGTK4__
++    wxGTKFileChooser4::Paths(m_widget, paths);
++#else
+     paths.Empty();
+     if ( gtk_file_chooser_get_select_multiple( m_widget ) )
+     {
+@@ -70,6 +81,7 @@
+     }
+     else
+         paths.Add( GetPath() );
++#endif
+ }
+ 
+ bool wxGtkFileChooser::SetPath( const wxString& path )
+@@ -88,15 +100,25 @@
+ 
+                 // set the initial file name and/or directory
+                 const wxString dir = fn.GetPath();
++#ifdef __WXGTK4__
++                return wxGTKFileChooser4::SetDirectory(m_widget, dir);
++#else
+                 return gtk_file_chooser_set_current_folder( m_widget,
+                                                             dir.utf8_str() ) != 0;
++#endif
+             }
+ 
+         case GTK_FILE_CHOOSER_ACTION_OPEN:
++#ifdef __WXGTK4__
++            return wxGTKFileChooser4::SetFile(m_widget, path);
++#else
+             return gtk_file_chooser_set_filename( m_widget, path.utf8_str() ) != 0;
++#endif
+ 
+         case GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER:
++#ifndef __WXGTK4__
+         case GTK_FILE_CHOOSER_ACTION_CREATE_FOLDER:
++#endif
+             break;
+     }
+ 
+@@ -107,12 +129,20 @@
+ 
+ bool wxGtkFileChooser::SetDirectory( const wxString& dir )
+ {
++#ifdef __WXGTK4__
++    return wxGTKFileChooser4::SetDirectory(m_widget, dir);
++#else
+     return gtk_file_chooser_set_current_folder( m_widget, dir.utf8_str() ) != 0;
++#endif
+ }
+ 
+ wxString wxGtkFileChooser::GetDirectory() const
+ {
++#ifdef __WXGTK4__
++    const wxGtkString str(wxGTKFileChooser4::Directory(m_widget));
++#else
+     const wxGtkString str( gtk_file_chooser_get_current_folder( m_widget ) );
++#endif
+     return wxString::FromUTF8(str);
+ }
+ 
+@@ -137,6 +167,20 @@
+         // Parsing went fine. Set m_wildCard to be returned by wxGtkFileChooserBase::GetWildcard
+         GtkFileChooser* chooser = m_widget;
+ 
++#ifdef __WXGTK4__
++        m_ignoreNextFilterEvent = true;
++        wxON_BLOCK_EXIT_SET(m_ignoreNextFilterEvent, false);
++        wxGtkObject<GListModel> filters(gtk_file_chooser_get_filters(chooser));
++        // The model may be live or a snapshot: retain every item before removal.
++        struct FilterRefs
++        {
++            std::vector<GtkFileFilter*> values;
++            ~FilterRefs() { for (auto value : values) g_object_unref(value); }
++        } previous;
++        for (guint i = 0; i < g_list_model_get_n_items(filters); ++i)
++            previous.values.push_back(GTK_FILE_FILTER(g_list_model_get_item(filters, i)));
++        for (auto filter : previous.values) gtk_file_chooser_remove_filter(chooser, filter);
++#else
+         // empty current filter list:
+         GSList* ifilters = gtk_file_chooser_list_filters( chooser );
+         GSList* filters = ifilters;
+@@ -150,6 +194,8 @@
+             ifilters = ifilters->next;
+         }
+         g_slist_free( filters );
++
++#endif
+ 
+         if (!wildCard.empty())
+         {
+@@ -174,6 +220,9 @@
+                 }
+ 
+                 gtk_file_chooser_add_filter( chooser, filter );
++#ifdef __WXGTK4__
++                g_object_unref(filter);
++#endif
+             }
+ 
+             // Reset the filter index
+@@ -184,6 +233,12 @@
+ 
+ void wxGtkFileChooser::SetFilterIndex( int filterIndex )
+ {
++#ifdef __WXGTK4__
++    wxGtkObject<GListModel> filters(gtk_file_chooser_get_filters(m_widget));
++    wxCHECK_RET(filterIndex >= 0 && guint(filterIndex) < g_list_model_get_n_items(filters), "invalid filter index");
++    wxGtkObject<GtkFileFilter> filter(GTK_FILE_FILTER(g_list_model_get_item(filters, filterIndex)));
++    gtk_file_chooser_set_filter(m_widget, filter);
++#else
+     gpointer filter;
+     GtkFileChooser *chooser = m_widget;
+     GSList *filters = gtk_file_chooser_list_filters( chooser );
+@@ -200,10 +255,21 @@
+     }
+ 
+     g_slist_free( filters );
++#endif
+ }
+ 
+ int wxGtkFileChooser::GetFilterIndex() const
+ {
++#ifdef __WXGTK4__
++    wxGtkObject<GListModel> filters(gtk_file_chooser_get_filters(m_widget));
++    GtkFileFilter* current = gtk_file_chooser_get_filter(m_widget);
++    for (guint i = 0; i < g_list_model_get_n_items(filters); ++i)
++    {
++        wxGtkObject<GtkFileFilter> filter(GTK_FILE_FILTER(g_list_model_get_item(filters, i)));
++        if (filter.get() == current) return i;
++    }
++    return 0;
++#else
+     GtkFileChooser *chooser = m_widget;
+     GtkFileFilter *filter = gtk_file_chooser_get_filter( chooser );
+     GSList *filters = gtk_file_chooser_list_filters( chooser );
+@@ -217,6 +283,7 @@
+     }
+     else
+         return index;
++#endif
+ }
+ 
+ bool wxGtkFileChooser::HasFilterChoice() const
+@@ -267,6 +334,7 @@
+     static void
+     gtkfilechooserwidget_folder_changed_callback( GtkWidget *WXUNUSED( widget ), wxGtkFileCtrl *fileCtrl )
+     {
++        fileCtrl->m_checkNextSelEvent = true;
+         if ( fileCtrl->m_ignoreNextFolderChangeEvent )
+         {
+             fileCtrl->m_ignoreNextFolderChangeEvent = false;
+@@ -276,7 +344,6 @@
+             wxGenerateFolderChangedEvent( fileCtrl, fileCtrl );
+         }
+ 
+-        fileCtrl->m_checkNextSelEvent = true;
+     }
+ }
+ 
+@@ -307,6 +374,7 @@
+ 
+ void wxGtkFileCtrl::Init()
+ {
++    m_fcWidget = NULL;
+     m_checkNextSelEvent = false;
+ 
+     // ignore the first folder change event which is fired upon startup.
+@@ -379,8 +447,12 @@
+     const wxString dir = fn.GetPath();
+     if ( !dir.empty() )
+     {
++#ifdef __WXGTK4__
++        wxGTKFileChooser4::SetDirectory(m_fcWidget, dir);
++#else
+         gtk_file_chooser_set_current_folder( m_fcWidget,
+                                              wxGTK_CONV_FN(dir) );
++#endif
+     }
+ 
+     const wxString fname = fn.GetFullName();
+@@ -396,8 +468,12 @@
+     {
+         if ( !fname.empty() )
+         {
++#ifdef __WXGTK4__
++            wxGTKFileChooser4::SetFile(m_fcWidget, fn.GetFullPath());
++#else
+             gtk_file_chooser_set_filename( m_fcWidget,
+                                            wxGTK_CONV_FN(fn.GetFullPath()) );
++#endif
+         }
+     }
+ 
+@@ -468,7 +544,11 @@
+ 
+ void wxGtkFileCtrl::ShowHidden(bool show)
+ {
++#ifdef __WXGTK4__
++    wxGTKFileChooser4::ShowHidden(m_fcWidget, show);
++#else
+     gtk_file_chooser_set_show_hidden(m_fcWidget, show);
++#endif
+ }
+ 
+ #endif // wxUSE_FILECTRL
+--- src/gtk/filedlg.cpp.orig
++++ src/gtk/filedlg.cpp
+@@ -21,6 +21,10 @@
+ 
+ #include "wx/gtk/private.h"
+ #include "wx/gtk/private/error.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/filechooser4.h"
++#endif
++#include "wx/weakref.h"
+ #include "wx/gtk/private/mnemonics.h"
+ 
+ #ifdef __UNIX__
+@@ -42,7 +46,19 @@
+ static void gtk_filedialog_ok_callback(GtkWidget *widget, wxFileDialog *dialog)
+ {
+     int style = dialog->GetWindowStyle();
++#ifdef __WXGTK4__
++    wxArrayString paths;
++    if (!wxGTKFileChooser4::Paths(GTK_FILE_CHOOSER(widget), paths) || paths.empty())
++    {
++        wxMessageDialog dlg(dialog, _("Please choose a local file."),
++                            _("Error"), wxOK | wxICON_ERROR);
++        dlg.ShowModal();
++        return;
++    }
++    wxGtkString filename(wxGTKFileChooser4::Filename(GTK_FILE_CHOOSER(widget)));
++#else
+     wxGtkString filename(gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget)));
++#endif
+ 
+     // gtk version numbers must be identical with the one in ctor (that calls set_do_overwrite_confirmation)
+ #ifndef __WXGTK3__
+@@ -126,7 +142,11 @@
+ static void gtk_filedialog_selchanged_callback(GtkFileChooser *chooser,
+                                                wxFileDialog *dialog)
+ {
++#ifdef __WXGTK4__
++    wxGtkString filename(wxGTKFileChooser4::Filename(chooser));
++#else
+     wxGtkString filename(gtk_file_chooser_get_preview_filename(chooser));
++#endif
+ 
+     dialog->GTKSelectionChanged(wxString::FromUTF8(filename));
+ }
+@@ -137,10 +157,19 @@
+ {
+     GtkWidget *preview = GTK_WIDGET(user_data);
+ 
++#ifdef __WXGTK4__
++    wxGtkString filename(wxGTKFileChooser4::Filename(chooser));
++#else
+     wxGtkString filename(gtk_file_chooser_get_preview_filename(chooser));
++#endif
+ 
+     if ( !filename )
++    {
++#ifdef __WXGTK4__
++        gtk_widget_set_visible(preview, FALSE);
++#endif
+         return;
++    }
+ 
+     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_size(filename, 128, 128, NULL);
+     gboolean have_preview = pixbuf != NULL;
+@@ -149,7 +178,11 @@
+     if ( pixbuf )
+         g_object_unref (pixbuf);
+ 
++#ifdef __WXGTK4__
++    gtk_widget_set_visible(preview, have_preview);
++#else
+     gtk_file_chooser_set_preview_widget_active(chooser, have_preview);
++#endif
+ }
+ 
+ } // extern "C"
+@@ -160,8 +193,13 @@
+     gtk_widget_set_size_request(
+         child->m_widget, child->GetMinWidth(), child->m_height);
+ 
++#ifdef __WXGTK4__
++    gtk_box_append(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(m_widget))),
++                   child->m_widget);
++#else
+     gtk_file_chooser_set_extra_widget(
+         GTK_FILE_CHOOSER(m_widget), child->m_widget);
++#endif
+ }
+ 
+ //-----------------------------------------------------------------------------
+@@ -214,7 +252,14 @@
+     GtkFileChooserAction gtk_action;
+     GtkWindow* gtk_parent = NULL;
+     if (parent)
++#ifdef __WXGTK4__
++    {
++        GtkRoot* root = gtk_widget_get_root(parent->m_widget);
++        if (GTK_IS_WINDOW(root)) gtk_parent = GTK_WINDOW(root);
++    }
++#else
+         gtk_parent = GTK_WINDOW( gtk_widget_get_toplevel(parent->m_widget) );
++#endif
+ 
+     wxString ok_btn_stock;
+     if ( style & wxFD_SAVE )
+@@ -311,7 +356,11 @@
+     const wxString dir = fn.GetPath();
+     if ( !dir.empty() )
+     {
++#ifdef __WXGTK4__
++        wxGTKFileChooser4::SetDirectory(file_chooser, dir);
++#else
+         gtk_file_chooser_set_current_folder(file_chooser, wxGTK_CONV_FN(dir));
++#endif
+     }
+ 
+     const wxString fname = fn.GetFullName();
+@@ -322,7 +371,10 @@
+             gtk_file_chooser_set_current_name(file_chooser, wxGTK_CONV_FN(fname));
+         }
+ 
+-#if GTK_CHECK_VERSION(2,7,3)
++#ifdef __WXGTK4__
++        g_object_set(file_chooser, "do-overwrite-confirmation",
++                     gboolean((style & wxFD_OVERWRITE_PROMPT) != 0), NULL);
++#elif GTK_CHECK_VERSION(2,7,3)
+         if ((style & wxFD_OVERWRITE_PROMPT) && wx_is_at_least_gtk2(8))
+         {
+             gtk_file_chooser_set_do_overwrite_confirmation(file_chooser, true);
+@@ -333,8 +385,12 @@
+     {
+         if ( !fname.empty() )
+         {
++#ifdef __WXGTK4__
++            wxGTKFileChooser4::SetFile(file_chooser, fn.GetFullPath());
++#else
+             gtk_file_chooser_set_filename(file_chooser,
+                                           wxGTK_CONV_FN(fn.GetFullPath()));
++#endif
+         }
+     }
+ 
+@@ -342,14 +398,27 @@
+     {
+         GtkWidget *previewImage = gtk_image_new();
+ 
++#ifdef __WXGTK4__
++        gtk_widget_set_visible(previewImage, FALSE);
++        gtk_box_append(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(m_widget))),
++                       previewImage);
++        g_signal_connect_object(m_widget, "selection-changed",
++                         G_CALLBACK(gtk_filedialog_update_preview_callback),
++                         previewImage, G_CONNECT_DEFAULT);
++#else
+         gtk_file_chooser_set_preview_widget(file_chooser, previewImage);
+         g_signal_connect(m_widget, "update-preview",
+                          G_CALLBACK(gtk_filedialog_update_preview_callback),
+                          previewImage);
+-    }
+-
++#endif
++    }
++
++#ifdef __WXGTK4__
++    wxGTKFileChooser4::ShowHidden(file_chooser, (style & wxFD_SHOW_HIDDEN) != 0);
++#else
+     gtk_file_chooser_set_show_hidden(file_chooser,
+                                      style & wxFD_SHOW_HIDDEN ? TRUE : FALSE);
++#endif
+ 
+     return true;
+ }
+@@ -360,8 +429,14 @@
+     {
+         // get chooser to drop its reference right now, allowing wxWindow dtor
+         // to verify that ref count drops to zero
++#ifdef __WXGTK4__
++        GtkWidget* child = m_extraControl->m_widget;
++        GtkWidget* parent = gtk_widget_get_parent(child);
++        if (GTK_IS_BOX(parent)) gtk_box_remove(GTK_BOX(parent), child);
++#else
+         gtk_file_chooser_set_extra_widget(
+             GTK_FILE_CHOOSER(m_widget), NULL);
++#endif
+     }
+ }
+ 
+@@ -369,13 +444,17 @@
+ {
+     // Update the current directory from here, accessing it later may not work
+     // due to the strange way GtkFileChooser works.
++#ifdef __WXGTK4__
++    wxGtkString str(wxGTKFileChooser4::Directory(GTK_FILE_CHOOSER(m_widget)));
++#else
+     wxGtkString
+         str(gtk_file_chooser_get_current_folder(GTK_FILE_CHOOSER(m_widget)));
++#endif
+     m_dir = wxString::FromUTF8(str);
+ 
++    wxWeakRef<wxFileDialog> self(this);
+     TransferDataFromExtraControl();
+-
+-    EndDialog(wxID_OK);
++    if (self && !self->IsBeingDeleted()) self->EndDialog(wxID_OK);
+ }
+ 
+ int wxFileDialog::ShowModal()
+@@ -507,8 +586,16 @@
+ {
+     wxGtkError error;
+ 
++#ifdef __WXGTK4__
++    wxGtkObject<GFile> folder(g_file_new_for_path(
++        wxFileName::DirName(directory).GetAbsolutePath().utf8_str()));
++#endif
+     if ( !gtk_file_chooser_add_shortcut_folder(GTK_FILE_CHOOSER(m_widget),
++#ifdef __WXGTK4__
++                                               folder,
++#else
+                                                directory.utf8_str(),
++#endif
+                                                error.Out()) )
+     {
+         wxLogDebug("Failed to add shortcut \"%s\": %s",
+--- src/gtk/dirdlg.cpp.orig
++++ src/gtk/dirdlg.cpp
+@@ -31,6 +31,10 @@
+ #include "wx/gtk/private.h"
+ #include "wx/gtk/private/mnemonics.h"
+ #include "wx/stockitem.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/filechooser4.h"
++#include "wx/msgdlg.h"
++#endif
+ 
+ extern "C" {
+ static void gtk_dirdialog_response_callback(GtkWidget * WXUNUSED(w),
+@@ -86,7 +90,14 @@
+ 
+     GtkWindow* gtk_parent = NULL;
+     if (parent)
++#ifdef __WXGTK4__
++    {
++        GtkRoot* root = gtk_widget_get_root(parent->m_widget);
++        if (GTK_IS_WINDOW(root)) gtk_parent = GTK_WINDOW(root);
++    }
++#else
+         gtk_parent = GTK_WINDOW( gtk_widget_get_toplevel(parent->m_widget) );
++#endif
+ 
+     m_widget = gtk_file_chooser_dialog_new(
+                    wxGTK_CONV(m_message),
+@@ -122,8 +133,12 @@
+         GTK_FILE_CHOOSER(m_widget), HasFlag(wxDD_MULTIPLE) );
+ 
+     // Enable show hidden folders if desired
++#ifdef __WXGTK4__
++    wxGTKFileChooser4::ShowHidden(GTK_FILE_CHOOSER(m_widget), HasFlag(wxDD_SHOW_HIDDEN));
++#else
+     gtk_file_chooser_set_show_hidden(
+         GTK_FILE_CHOOSER(m_widget), HasFlag(wxDD_SHOW_HIDDEN) );
++#endif
+ 
+     // local-only property could be set to false to allow non-local files to be loaded.
+     // In that case get/set_uri(s) should be used instead of get/set_filename(s) everywhere
+@@ -143,6 +158,16 @@
+ 
+ void wxDirDialog::GTKOnAccept()
+ {
++#ifdef __WXGTK4__
++    if (!wxGTKFileChooser4::Paths(GTK_FILE_CHOOSER(m_widget), m_paths) || m_paths.empty())
++    {
++        wxMessageDialog dlg(this, _("Please choose a local directory."),
++                            _("Error"), wxOK | wxICON_ERROR);
++        dlg.ShowModal();
++        return;
++    }
++#else
++    m_paths.Clear();
+     GSList *fnamesi = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(m_widget));
+     GSList *fnames = fnamesi;
+ 
+@@ -156,6 +181,8 @@
+     }
+ 
+     g_slist_free(fnames);
++    if (m_paths.empty()) return;
++#endif
+ 
+     // change to the directory where the user went if asked
+     if (HasFlag(wxDD_CHANGE_DIR))
+@@ -188,8 +215,12 @@
+ {
+     if (wxDirExists(dir))
+     {
++#ifdef __WXGTK4__
++        wxGTKFileChooser4::SetDirectory(GTK_FILE_CHOOSER(m_widget), dir);
++#else
+         gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(m_widget),
+                                             wxGTK_CONV_FN(dir));
++#endif
+     }
+ }
+ 
+--- src/gtk/filepicker.cpp.orig
++++ src/gtk/filepicker.cpp
+@@ -16,6 +16,9 @@
+ // For compilers that support precompilation, includes "wx.h".
+ #include "wx/wxprec.h"
+ 
++#ifdef __WXGTK4__
++#include "filepicker_gtk4.inc"
++#else
+ #if wxUSE_FILEPICKERCTRL
+ 
+ #ifndef WX_PRECOMP
+@@ -337,3 +340,5 @@
+ {
+ }
+ #endif // wxUSE_DIRPICKERCTRL
++
++#endif // !__WXGTK4__
+--- src/gtk/filepicker_gtk4.inc.orig
++++ src/gtk/filepicker_gtk4.inc
+@@ -0,0 +1,87 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 picker: GtkButton with the shared wx native file/directory dialogs.
++// Origin: EmberBSD (AI-assisted). wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#if wxUSE_FILEPICKERCTRL || wxUSE_DIRPICKERCTRL
++#include "wx/filepicker.h"
++#include "wx/filename.h"
++
++#if wxUSE_FILEPICKERCTRL
++wxIMPLEMENT_DYNAMIC_CLASS(wxFileButton, wxButton);
++wxFileButton::~wxFileButton() {}
++
++bool wxFileButton::Create(wxWindow* parent, wxWindowID id,
++    const wxString& label, const wxString& path, const wxString& message,
++    const wxString& wildcard, const wxPoint& pos, const wxSize& size,
++    long style, const wxValidator& validator, const wxString& name)
++{
++    if (!wxGenericFileButton::Create(parent, id, label, path, message, wildcard,
++                                      pos, size, style, validator, name))
++        return false;
++    m_pickerLabel = GetLabel();
++    SetPath(path);
++    return true;
++}
++
++void wxFileButton::SetPath(const wxString& path)
++{
++    m_path = path;
++    if (!(m_pickerStyle & (wxFLP_USE_TEXTCTRL | wxPB_SMALL)))
++    {
++        wxString label = wxFileName(path).GetFullName();
++        if (label.empty() && !path.empty()) label = path;
++        SetLabel(label.empty() ? m_pickerLabel : label);
++    }
++}
++
++void wxFileButton::SetInitialDirectory(const wxString& dir)
++{
++    wxGenericFileButton::SetInitialDirectory(dir);
++}
++
++void wxFileButton::UpdatePathFromDialog(wxDialog* dialog)
++{
++    SetPath(wxStaticCast(dialog, wxFileDialog)->GetPath());
++}
++#endif
++
++#if wxUSE_DIRPICKERCTRL
++wxIMPLEMENT_DYNAMIC_CLASS(wxDirButton, wxButton);
++wxDirButton::~wxDirButton() {}
++
++bool wxDirButton::Create(wxWindow* parent, wxWindowID id,
++    const wxString& label, const wxString& path, const wxString& message,
++    const wxString& wildcard, const wxPoint& pos, const wxSize& size,
++    long style, const wxValidator& validator, const wxString& name)
++{
++    if (!wxGenericDirButton::Create(parent, id, label, path, message, wildcard,
++                                      pos, size, style, validator, name))
++        return false;
++    m_pickerLabel = GetLabel();
++    SetPath(path);
++    return true;
++}
++
++void wxDirButton::SetPath(const wxString& path)
++{
++    m_path = path;
++    if (!(m_pickerStyle & (wxDIRP_USE_TEXTCTRL | wxPB_SMALL)))
++    {
++        wxString label = wxFileName(path).GetFullName();
++        if (label.empty() && !path.empty()) label = path;
++        SetLabel(label.empty() ? m_pickerLabel : label);
++    }
++}
++
++void wxDirButton::SetInitialDirectory(const wxString& dir)
++{
++    wxGenericDirButton::SetInitialDirectory(dir);
++}
++
++void wxDirButton::UpdatePathFromDialog(wxDialog* dialog)
++{
++    SetPath(wxStaticCast(dialog, wxDirDialog)->GetPath());
++}
++#endif
++
++#endif // file or directory picker
+--- src/generic/filepickerg.cpp.orig
++++ src/generic/filepickerg.cpp
+@@ -25,7 +25,7 @@
+ #include "wx/filename.h"
+ #include "wx/filepicker.h"
+ 
+-#include "wx/scopedptr.h"
++#include "wx/weakref.h"
+ 
+ 
+ // ============================================================================
+@@ -89,15 +89,32 @@
+ 
+ void wxGenericFileDirButton::OnButtonClick(wxCommandEvent& WXUNUSED(ev))
+ {
+-    wxScopedPtr<wxDialog> p(CreateDialog());
+-    if (p->ShowModal() == wxID_OK)
++    // A parent can be destroyed by user code while the dialog runs its nested
++    // event loop. Track both windows, and never delete an already destroyed
++    // child or dereference the picker after returning from that loop.
++    wxWeakRef<wxGenericFileDirButton> self(this);
++    struct DialogScope
+     {
+-        // save updated path in m_path
+-        UpdatePathFromDialog(p.get());
+-
+-        // fire an event
+-        wxFileDirPickerEvent event(GetEventType(), this, GetId(), m_path);
+-        GetEventHandler()->ProcessEvent(event);
++        explicit DialogScope(wxDialog* dialog) : window(dialog) {}
++        ~DialogScope()
++        {
++            if (window && !window->IsBeingDeleted()) window->Destroy();
++        }
++        wxWeakRef<wxDialog> window;
++    private:
++        DialogScope(const DialogScope&);
++        DialogScope& operator=(const DialogScope&);
++    } dialog(CreateDialog());
++    if (!self || self->IsBeingDeleted() || !dialog.window) return;
++    const int result = dialog.window->ShowModal();
++    if (result == wxID_OK && self && !self->IsBeingDeleted() &&
++        dialog.window && !dialog.window->IsBeingDeleted())
++    {
++        self->UpdatePathFromDialog(dialog.window.get());
++        if (!self || self->IsBeingDeleted()) return;
++        wxFileDirPickerEvent event(self->GetEventType(), self.get(),
++                                   self->GetId(), self->m_path);
++        self->GetEventHandler()->ProcessEvent(event);
+     }
+ }
+ 

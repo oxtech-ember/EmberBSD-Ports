@@ -91,3 +91,22 @@ caption appearance follows the desktop theme/window manager; the previous
 hand-painted small caption is not reproduced pixel for pixel. The top-level
 fixture includes a mapped mini-frame and checks its parent, client size and
 native capabilities; real-desktop execution remains pending.
+
+`patch-gtk4-filechooser` keeps native GTK file/directory dialogs and embedded
+file controls, using GFile/GListModel ownership and the common GTK provider's
+per-instance hidden-file/overwrite properties. Preview and extra controls use
+the dialog content box. GTK4 pickers use GtkButton and the existing wx native
+dialog workflow, including directory creation and modal parent lifetime.
+Non-local selections are rejected by dialogs because wx path APIs represent
+local filesystem paths. No portal/private chooser fields are used.
+
+`filechooser4-contract.cpp` checks native property propagation, filter
+replacement, native overwrite acceptance/confirmation, asynchronous selection,
+coalesced-notification disposal, desktop hidden-file preference isolation, picker
+labels and destruction of a parent during a picker modal loop. Run its
+`interactive` mode to inspect preview, save-overwrite confirmation and directory
+creation on a real display; interactive observations are not automatic PASS.
+The five affected wx translation units, the shared GTK producer's two C units,
+and the fixture pass target syntax compilation. GUI, memory-check and package
+acceptance are pending the shared GTK4 build, including preference isolation
+and preview/extra-control layout under the actual theme.

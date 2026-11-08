@@ -1,0 +1,355 @@
+$NetBSD$
+
+Expose per-instance hidden-file and overwrite policy, plus selection/folder
+notifications, on the embedded chooser and dialog. Native/portal contracts
+are unchanged. Selection delivery is coalesced after native state transitions.
+Origin: EmberBSD (AI-assisted), under the upstream LGPL-2.1-or-later licence.
+
+--- gtk/gtkfilechooserwidget.c.orig
++++ gtk/gtkfilechooserwidget.c
+@@ -154,6 +154,8 @@
+   PROP_SEARCH_MODE = 1,
+   PROP_SUBTITLE,
+   PROP_SHOW_TIME,
++  PROP_SHOW_HIDDEN,
++  PROP_DO_OVERWRITE_CONFIRMATION,
+   N_PROPS
+ };
+ 
+@@ -328,6 +330,8 @@
+   GtkColumnViewColumn *column_view_type_column;
+ 
+   guint location_changed_id;
++  guint selection_changed_id;
++  guint chooser_disposing : 1;
+ 
+   gulong settings_signal_id;
+ 
+@@ -350,6 +354,8 @@
+ 
+   guint select_multiple : 1;
+   guint show_hidden : 1;
++  guint show_hidden_explicit : 1;
++  guint do_overwrite_confirmation : 1;
+   guint sort_directories_first : 1;
+   guint show_time : 1;
+   guint shortcuts_current_folder_active : 1;
+@@ -2187,6 +2193,27 @@
+   impl->location_changed_id = 0;
+ }
+ 
++/* Selection changes often originate inside native model/entry transitions.
++ * Deliver application callbacks after those transitions have unwound, rather
++ * than exposing partially updated state or letting a callback dispose it. */
++static gboolean
++emit_selection_changed (gpointer data)
++{
++  GtkFileChooserWidget *impl = data;
++  impl->selection_changed_id = 0;
++  g_object_ref (impl);
++  g_signal_emit_by_name (impl, "selection-changed");
++  g_object_unref (impl);
++  return G_SOURCE_REMOVE;
++}
++
++static void
++queue_selection_changed (GtkFileChooserWidget *impl)
++{
++  if (!impl->chooser_disposing && impl->selection_changed_id == 0)
++    impl->selection_changed_id = g_idle_add (emit_selection_changed, impl);
++}
++
+ static void
+ location_entry_changed_cb (GtkEditable          *editable,
+                            GtkFileChooserWidget *impl)
+@@ -2209,6 +2236,7 @@
+       impl->location_changed_id = g_timeout_add_once (LOCATION_CHANGED_TIMEOUT, location_changed_timeout_cb, impl);
+       gdk_source_set_static_name_by_id (impl->location_changed_id, "[gtk] location_changed_timeout_cb");
+     }
++  queue_selection_changed (impl);
+ }
+ 
+ static void
+@@ -2934,6 +2962,7 @@
+ 
+       gtk_filter_changed (gtk_filter_list_model_get_filter (impl->filter_model),
+                           GTK_FILTER_CHANGE_DIFFERENT);
++      g_object_notify_by_pspec (G_OBJECT (impl), props[PROP_SHOW_HIDDEN]);
+     }
+ }
+ 
+@@ -2948,6 +2977,19 @@
+ 
+   switch (prop_id)
+     {
++    case PROP_SHOW_HIDDEN:
++      impl->show_hidden_explicit = TRUE;
++      set_show_hidden (impl, g_value_get_boolean (value));
++      break;
++
++    case PROP_DO_OVERWRITE_CONFIRMATION:
++      if (impl->do_overwrite_confirmation != g_value_get_boolean (value))
++        {
++          impl->do_overwrite_confirmation = g_value_get_boolean (value);
++          g_object_notify_by_pspec (object, props[PROP_DO_OVERWRITE_CONFIRMATION]);
++        }
++      break;
++
+     case PROP_SEARCH_MODE:
+       if (g_value_get_boolean (value))
+         operation_mode_set (impl, OPERATION_MODE_SEARCH);
+@@ -3038,6 +3080,14 @@
+ 
+   switch (prop_id)
+     {
++    case PROP_SHOW_HIDDEN:
++      g_value_set_boolean (value, impl->show_hidden);
++      break;
++
++    case PROP_DO_OVERWRITE_CONFIRMATION:
++      g_value_set_boolean (value, impl->do_overwrite_confirmation);
++      break;
++
+     case PROP_SEARCH_MODE:
+       g_value_set_boolean (value, impl->operation_mode == OPERATION_MODE_SEARCH);
+       break;
+@@ -3113,6 +3163,12 @@
+   GtkFileChooserWidget *impl = (GtkFileChooserWidget *) object;
+   GtkSorter *sorter;
+ 
++  impl->chooser_disposing = TRUE;
++  if (impl->selection_changed_id != 0)
++    {
++      g_source_remove (impl->selection_changed_id);
++      impl->selection_changed_id = 0;
++    }
+   cancel_all_operations (impl);
+ 
+   sorter = gtk_column_view_get_sorter (GTK_COLUMN_VIEW (impl->browse_files_column_view));
+@@ -3210,7 +3266,8 @@
+   type_format = g_settings_get_enum (settings, SETTINGS_KEY_TYPE_FORMAT);
+   view_type = g_settings_get_enum (settings, SETTINGS_KEY_VIEW_TYPE);
+ 
+-  set_show_hidden (impl, show_hidden);
++  if (!impl->show_hidden_explicit)
++    set_show_hidden (impl, show_hidden);
+ 
+   g_settings_bind (settings, SETTINGS_KEY_SHOW_SIZE_COLUMN, impl->column_view_size_column, "visible", G_SETTINGS_BIND_DEFAULT);
+   g_settings_bind (settings, SETTINGS_KEY_SHOW_TYPE_COLUMN, impl->column_view_type_column, "visible", G_SETTINGS_BIND_DEFAULT);
+@@ -3251,7 +3308,8 @@
+   /* All the other state */
+ 
+   g_settings_set_enum (settings, SETTINGS_KEY_LOCATION_MODE, impl->location_mode);
+-  g_settings_set_boolean (settings, SETTINGS_KEY_SHOW_HIDDEN, impl->show_hidden);
++  if (!impl->show_hidden_explicit)
++    g_settings_set_boolean (settings, SETTINGS_KEY_SHOW_HIDDEN, impl->show_hidden);
+   g_settings_set_boolean (settings, SETTINGS_KEY_SORT_DIRECTORIES_FIRST, impl->sort_directories_first);
+   g_settings_set_enum (settings, SETTINGS_KEY_SORT_COLUMN, impl->sort_column);
+   g_settings_set_enum (settings, SETTINGS_KEY_SORT_ORDER, impl->sort_order);
+@@ -4339,6 +4397,8 @@
+ 
+   update_default (impl);
+ 
++  g_signal_emit_by_name (impl, "current-folder-changed");
++
+ out:
+   g_object_unref (data->impl);
+   g_object_unref (data->file);
+@@ -5076,6 +5136,9 @@
+                                         GFile                *parent_file)
+ {
+   struct GetDisplayNameData *data;
++
++  if (!impl->do_overwrite_confirmation)
++    return TRUE;
+ 
+   g_assert (file_part != NULL);
+ 
+@@ -6096,6 +6159,7 @@
+ 
+   location_bar_update (impl);
+   update_default (impl);
++  queue_selection_changed (impl);
+ }
+ 
+ static void
+@@ -6149,10 +6213,16 @@
+   else if (self->action == GTK_FILE_CHOOSER_ACTION_OPEN ||
+            self->action == GTK_FILE_CHOOSER_ACTION_SAVE)
+     {
+-      /* prevent recursion */
++      /* Application activation callbacks may remove the chooser. */
++      g_object_ref (self);
++      g_object_ref (view);
+       g_signal_handlers_block_by_func (view, browse_files_view_row_activated_cb, self);
+-      gtk_widget_activate_default (GTK_WIDGET (self));
++      g_signal_emit_by_name (self, "file-activated");
++      if (gtk_widget_get_root (GTK_WIDGET (self)) != NULL)
++        gtk_widget_activate_default (GTK_WIDGET (self));
+       g_signal_handlers_unblock_by_func (view, browse_files_view_row_activated_cb, self);
++      g_object_unref (view);
++      g_object_unref (self);
+     }
+ 
+   g_clear_object (&info);
+@@ -6763,6 +6833,52 @@
+                                                 FALSE,
+                                                 G_PARAM_READABLE | G_PARAM_STATIC_NAME);
+ 
++  /**
++   * GtkFileChooserWidget:show-hidden:
++   *
++   * Whether hidden files are visible. An explicit value is local to this
++   * chooser, survives map/unmap and does not overwrite the desktop preference.
++   * EmberBSD extension for embedded choosers; Native/portal is unaffected.
++   */
++  props[PROP_SHOW_HIDDEN] = g_param_spec_boolean ("show-hidden", NULL, NULL,
++                                                 FALSE,
++                                                 G_PARAM_READWRITE | G_PARAM_STATIC_NAME | G_PARAM_EXPLICIT_NOTIFY);
++  /**
++   * GtkFileChooserWidget:do-overwrite-confirmation:
++   *
++   * Whether saving over an existing file asks for confirmation. Defaults to
++   * TRUE, preserving GTK4 behavior. EmberBSD extension for embedded choosers.
++   */
++  props[PROP_DO_OVERWRITE_CONFIRMATION] =
++    g_param_spec_boolean ("do-overwrite-confirmation", NULL, NULL, TRUE,
++                          G_PARAM_READWRITE | G_PARAM_STATIC_NAME | G_PARAM_EXPLICIT_NOTIFY);
++
++  /**
++   * GtkFileChooserWidget::selection-changed:
++   *
++   * Emitted from the main context after selected files or the location entry
++   * change. Multiple pending changes are coalesced. Query the current selection
++   * using public GFile getters. EmberBSD embedded-chooser extension.
++   */
++  g_signal_new ("selection-changed", G_TYPE_FROM_CLASS (class), G_SIGNAL_RUN_LAST,
++                0, NULL, NULL, NULL, G_TYPE_NONE, 0);
++  /**
++   * GtkFileChooserWidget::current-folder-changed:
++   *
++   * Emitted after successful asynchronous folder navigation completes.
++   * EmberBSD embedded-chooser extension.
++   */
++  g_signal_new ("current-folder-changed", G_TYPE_FROM_CLASS (class), G_SIGNAL_RUN_LAST,
++                0, NULL, NULL, NULL, G_TYPE_NONE, 0);
++  /**
++   * GtkFileChooserWidget::file-activated:
++   *
++   * Emitted when a non-directory row is activated, before native acceptance.
++   * EmberBSD embedded-chooser extension.
++   */
++  g_signal_new ("file-activated", G_TYPE_FROM_CLASS (class), G_SIGNAL_RUN_LAST,
++                0, NULL, NULL, NULL, G_TYPE_NONE, 0);
++
+   g_object_class_install_properties (gobject_class, N_PROPS, props);
+ 
+   _gtk_file_chooser_install_properties (gobject_class);
+@@ -7493,6 +7609,7 @@
+   impl->select_multiple = FALSE;
+   impl->sort_directories_first = FALSE;
+   impl->show_hidden = FALSE;
++  impl->do_overwrite_confirmation = TRUE;
+   impl->type_format = TYPE_FORMAT_MIME;
+   impl->load_state = LOAD_EMPTY;
+   impl->reload_state = RELOAD_EMPTY;
+--- gtk/gtkfilechooserdialog.c.orig
++++ gtk/gtkfilechooserdialog.c
+@@ -278,6 +278,37 @@
+                          G_IMPLEMENT_INTERFACE (GTK_TYPE_FILE_CHOOSER,
+                                                 _gtk_file_chooser_delegate_iface_init))
+ 
++/* Concrete chooser capabilities, deliberately not advertised by the
++ * GtkFileChooser interface or Native/portal implementations. */
++enum {
++  PROP_SHOW_HIDDEN = 1,
++  PROP_DO_OVERWRITE_CONFIRMATION
++};
++
++static void
++chooser_selection_changed (GtkWidget *widget, GtkFileChooserDialog *dialog)
++{
++  g_signal_emit_by_name (dialog, "selection-changed");
++}
++
++static void
++chooser_folder_changed (GtkWidget *widget, GtkFileChooserDialog *dialog)
++{
++  g_signal_emit_by_name (dialog, "current-folder-changed");
++}
++
++static void
++chooser_file_activated (GtkWidget *widget, GtkFileChooserDialog *dialog)
++{
++  g_signal_emit_by_name (dialog, "file-activated");
++}
++
++static void
++chooser_property_changed (GObject *widget, GParamSpec *pspec, GtkFileChooserDialog *dialog)
++{
++  g_object_notify (G_OBJECT (dialog), pspec->name);
++}
++
+ static void
+ gtk_file_chooser_dialog_class_init (GtkFileChooserDialogClass *class)
+ {
+@@ -293,6 +324,46 @@
+   widget_class->map = gtk_file_chooser_dialog_map;
+   widget_class->unmap = gtk_file_chooser_dialog_unmap;
+   widget_class->size_allocate = gtk_file_chooser_dialog_size_allocate;
++
++  /**
++   * GtkFileChooserDialog:show-hidden:
++   *
++   * Per-dialog hidden-file visibility. See GtkFileChooserWidget:show-hidden.
++   * EmberBSD extension; does not alter Native/portal dialogs.
++   */
++  g_object_class_install_property (gobject_class, PROP_SHOW_HIDDEN,
++    g_param_spec_boolean ("show-hidden", NULL, NULL, FALSE,
++                          G_PARAM_READWRITE | G_PARAM_STATIC_NAME | G_PARAM_EXPLICIT_NOTIFY));
++  /**
++   * GtkFileChooserDialog:do-overwrite-confirmation:
++   *
++   * Whether existing save destinations require confirmation. Defaults to TRUE.
++   * See GtkFileChooserWidget:do-overwrite-confirmation. EmberBSD extension.
++   */
++  g_object_class_install_property (gobject_class, PROP_DO_OVERWRITE_CONFIRMATION,
++    g_param_spec_boolean ("do-overwrite-confirmation", NULL, NULL, TRUE,
++                          G_PARAM_READWRITE | G_PARAM_STATIC_NAME | G_PARAM_EXPLICIT_NOTIFY));
++  /**
++   * GtkFileChooserDialog::selection-changed:
++   *
++   * Forwards GtkFileChooserWidget::selection-changed. EmberBSD extension.
++   */
++  g_signal_new ("selection-changed", G_TYPE_FROM_CLASS (class), G_SIGNAL_RUN_LAST,
++                0, NULL, NULL, NULL, G_TYPE_NONE, 0);
++  /**
++   * GtkFileChooserDialog::current-folder-changed:
++   *
++   * Forwards GtkFileChooserWidget::current-folder-changed. EmberBSD extension.
++   */
++  g_signal_new ("current-folder-changed", G_TYPE_FROM_CLASS (class), G_SIGNAL_RUN_LAST,
++                0, NULL, NULL, NULL, G_TYPE_NONE, 0);
++  /**
++   * GtkFileChooserDialog::file-activated:
++   *
++   * Forwards GtkFileChooserWidget::file-activated. EmberBSD extension.
++   */
++  g_signal_new ("file-activated", G_TYPE_FROM_CLASS (class), G_SIGNAL_RUN_LAST,
++                0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+ 
+   _gtk_file_chooser_install_properties (gobject_class);
+ 
+@@ -325,6 +396,12 @@
+ 
+   _gtk_file_chooser_set_delegate (GTK_FILE_CHOOSER (dialog),
+                                   GTK_FILE_CHOOSER (priv->widget));
++  g_signal_connect_object (priv->widget, "selection-changed", G_CALLBACK (chooser_selection_changed), dialog, 0);
++  g_signal_connect_object (priv->widget, "current-folder-changed", G_CALLBACK (chooser_folder_changed), dialog, 0);
++  g_signal_connect_object (priv->widget, "file-activated", G_CALLBACK (chooser_file_activated), dialog, 0);
++  g_signal_connect_object (priv->widget, "notify::show-hidden", G_CALLBACK (chooser_property_changed), dialog, 0);
++  g_signal_connect_object (priv->widget, "notify::do-overwrite-confirmation", G_CALLBACK (chooser_property_changed), dialog, 0);
++
+ }
+ 
+ static GtkWidget *
