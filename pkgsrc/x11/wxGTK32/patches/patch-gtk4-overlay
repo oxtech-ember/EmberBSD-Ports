@@ -1,0 +1,28 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), wxWindows licence.
+Use the common bitmap overlay with GTK4's retained client drawing context.
+The GTK3 Wayland popup workaround uses removed GdkWindow APIs.
+
+--- include/wx/private/overlay.h.orig
++++ include/wx/private/overlay.h
+@@ -17,7 +17,7 @@
+     #define wxHAS_NATIVE_OVERLAY 1
+ #elif defined(__WXOSX__) && wxOSX_USE_COCOA
+     #define wxHAS_NATIVE_OVERLAY 1
+-#elif defined(__WXGTK3__)
++#elif defined(__WXGTK3__) && !defined(__WXGTK4__)
+     #define wxHAS_NATIVE_OVERLAY 1
+     #define wxHAS_GENERIC_OVERLAY 1
+ #else
+--- src/gtk/overlay.cpp.orig
++++ src/gtk/overlay.cpp
+@@ -7,7 +7,7 @@
+ 
+ #include "wx/wxprec.h"
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+ 
+ #include "wx/private/overlay.h"
+ #include "wx/dc.h"

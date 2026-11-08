@@ -592,3 +592,20 @@ of GTK3's foreign GdkWindow ownership/reparent API. This capability boundary is
 checked by the fixture at compile time; foreign toplevel embedding is not
 represented by a successful no-op Create. GTK3's existing container path is
 unchanged.
+
+# GTK4 bitmap overlays
+
+`patch-gtk4-overlay` selects the existing common bitmap overlay on GTK4.
+It captures and restores pixels through the shared Cairo drawing context and
+the retained wxPizza client content. GTK3 retains its existing Wayland popup
+implementation. There is no second overlay engine or removed drawing feature.
+The client content path requires an already painted wx window; it does not
+capture other windows, desktop pixels or native child controls.
+
+`overlay4-contract` checks capture, clipping, clear and reset on memory drawing
+contexts at scales 1 and 2, then on a painted window's ClientDC. A fresh ClientDC
+must see the restored content after the first drawing session ends. Build it
+with `BUILD_OVERLAY_CONTRACT=ON`; run on a real GTK4 display, including a scaled
+display for window HiDPI acceptance. The modified overlay translation units and
+fixture pass target syntax checks. Linked GUI execution and pixel checks remain
+pending the shared wxGTK4 build.
