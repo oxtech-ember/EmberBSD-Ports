@@ -1,9 +1,0 @@
-Origin: EmberBSD (AI-assisted). Rebuild the QCoro consumer for 0.13.0.
-
---- a/sysutils/plasma6-powerdevil/Makefile
-+++ b/sysutils/plasma6-powerdevil/Makefile
-@@ -3,3 +3,4 @@
- DISTNAME=	powerdevil-${PLASMAVER}
-+PKGREVISION=	1
- CATEGORIES=	sysutils
- 
