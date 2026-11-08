@@ -168,6 +168,6 @@ public:
         frame->Show();
         return true;
     }
-    int OnExit() wxOVERRIDE { return result; }
+    int OnRun() wxOVERRIDE { wxApp::OnRun(); return result; }
 };
 wxIMPLEMENT_APP(DataViewContract);

@@ -118,6 +118,6 @@ public:
         CallAfter([this]() { Run(); });
         return true;
     }
-    int OnExit() wxOVERRIDE { return status; }
+    int OnRun() wxOVERRIDE { wxApp::OnRun(); return status; }
 };
 wxIMPLEMENT_APP(AboutContract);

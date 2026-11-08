@@ -147,6 +147,6 @@ public:
         timer.StartOnce(300);
         return true;
     }
-    int OnExit() wxOVERRIDE { return result; }
+    int OnRun() wxOVERRIDE { wxApp::OnRun(); return result; }
 };
 wxIMPLEMENT_APP(ToolbarContract);
