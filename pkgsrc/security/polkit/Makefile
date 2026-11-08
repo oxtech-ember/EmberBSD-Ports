@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.62 2026/09/02 19:04:19 wiz Exp $
 
 DISTNAME=	polkit-128
+PKGREVISION=	1
 CATEGORIES=	security
 MASTER_SITES=	${MASTER_SITE_GITHUB:=polkit-org/}
 
@@ -33,6 +34,14 @@ CPPFLAGS.SunOS+=		-D_POSIX_PTHREAD_SEMANTICS -D__EXTENSIONS__
 LDFLAGS.SunOS+=			-lsocket
 
 .include "../../mk/bsd.prefs.mk"
+
+# Without os_type the PAM policy includes the Linux "system-auth" chain.
+# OpenPAM on NetBSD has no such policy, so pam_start fails in
+# polkit-agent-helper-1 and every authentication dialog is refused.
+# The NetBSD os_type selects the base "system" policy.
+.if ${OPSYS} == "NetBSD"
+MESON_ARGS+=	-Dos_type=netbsd
+.endif
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Native generators use host metadata; introspection queries execute on the target.
