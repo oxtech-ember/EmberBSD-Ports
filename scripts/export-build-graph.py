@@ -75,13 +75,56 @@ def make_variables(values, option='--make-variable'):
     return dict(sorted(result.items()))
 
 
+def native_current_pattern(base, name):
+    """Match cross-bulk native_current: PKGBASE-[0-9]* becomes PKGBASE>=suffix."""
+    prefix = base + '-'
+    if name.startswith(prefix) and len(name) > len(prefix) and name[len(prefix)].isdigit():
+        return base + '>=' + name[len(prefix):]
+    return base
+
+
+def absolute_directory(value, label):
+    if not value.startswith('/') or any(character.isspace() for character in value):
+        raise ExportError(label + ' is not absolute')
+    path = Path(value)
+    if not path.is_dir():
+        raise ExportError(label + ' is not a directory')
+    return path.resolve()
+
+
+def host_pkg_info_argv(command, host_db, target_db):
+    """Require the frozen PKG_INFO to be an absolute executable and the host database."""
+    try:
+        words = shlex.split(command)
+    except ValueError as error:
+        raise ExportError('invalid PKG_INFO command') from error
+    executable = Path(words[0]) if words else Path()
+    if (not words or not words[0].startswith('/') or not executable.is_file()
+            or not os.access(executable, os.X_OK)):
+        raise ExportError('PKG_INFO executable is not an absolute executable')
+    if words.count('-K') != 1:
+        raise ExportError('PKG_INFO must select one host package database')
+    index = words.index('-K')
+    if index + 1 >= len(words):
+        raise ExportError('PKG_INFO database is not absolute')
+    selected = absolute_directory(words[index + 1], 'PKG_INFO database')
+    host = absolute_directory(host_db, 'host package database')
+    target = absolute_directory(target_db, 'target package database')
+    if selected == target:
+        raise ExportError('PKG_INFO database is the target package database')
+    if selected != host:
+        raise ExportError('PKG_INFO database is not the host package database')
+    return words
+
+
 class Exporter:
     def __init__(self, args, sha256_file):
         self.sha256_file = sha256_file
         self.args = args
         self.make_variables = make_variables(args.make_variable)
         self.native_make_variables = make_variables(
-            args.native_make_variable, '--native-make-variable')
+            getattr(args, 'native_make_variable', ()), '--native-make-variable')
+        self.host_current = getattr(args, 'host_current', False)
         overlap = sorted(set(self.make_variables) & set(self.native_make_variables))
         if overlap:
             raise ExportError('conflicting --make-variable and --native-make-variable: ' + overlap[0])
@@ -102,6 +145,9 @@ class Exporter:
         self.test_requirements = []
         self.query_results = {}
         self.file_digests = {}
+        self.package_bases = {}
+        self.host_argv = None
+        self.host_names = None
 
     def run(self, command, **kwargs):
         completed = subprocess.run(command, text=True, capture_output=True,
@@ -310,8 +356,13 @@ class Exporter:
         for key in list(recursive_env):
             if key in ('MAKEFLAGS', '_PKGSRC_BARRIER', 'PKGNAME_REQD', 'MAKECONF') or key.startswith('TARGET_'):
                 recursive_env.pop(key)
+        # A current host package keeps the packages it still provides. Its own
+        # build tools are not part of this graph; cross-bulk does not schedule them.
+        current = self.host_node_is_current(package, cross, settings, environment, metadata)
         children = []
         for variable, kind in DEPENDENCIES.items():
+            if current and variable not in ('DEPENDS', 'TEST_DEPENDS'):
+                continue
             if self.args.dependency_phase == 'runtime' and kind != 'runtime':
                 continue
             for dependency in sorted(set(shlex.split(metadata[variable]))):
@@ -323,6 +374,8 @@ class Exporter:
                     self.test_requirements.append({
                         'owner': identity, 'role': 'target' if cross == 'yes' else 'host',
                         'package_path': child, 'pattern': pattern})
+                    continue
+                if current and kind == 'test':
                     continue
                 child_cross = 'no' if kind == 'tool' else cross
                 # Follow pkgformat/pkg/depends.mk, including TEST_DEPENDS.
@@ -401,7 +454,74 @@ class Exporter:
             for identity, children in plans:
                 self.merge_children(identity, children)
 
+    def frozen_show_var(self, variable, *, native=None, cross=None):
+        command = [str(self.bmake), '-C', str(self.root / 'pkgtools/pkg_install'),
+                   'MAKECONF=' + str(self.makeconf), '_MAKEVARS_MK=defined']
+        if native is not None:
+            command.append('EMBERBSD_NATIVE_TOOLSET_VERIFIED=' + native)
+        if cross is not None:
+            command.append('USE_CROSS_COMPILE=' + cross)
+        command += ['show-var', 'VARNAME=' + variable]
+        lines = self.run(command, env=self.environment).stdout.splitlines()
+        if len(lines) != 1 or lines[0] == '':
+            raise ExportError('invalid ' + variable + ' from frozen MAKECONF')
+        return lines[0]
+
+    def discover_host_pkg_info(self):
+        native = self.frozen_show_var('EMBERBSD_NATIVE_TOOLSET_VERIFIED')
+        if any(character.isspace() for character in native):
+            raise ExportError('invalid EMBERBSD_NATIVE_TOOLSET_VERIFIED from frozen MAKECONF')
+        info = self.frozen_show_var('PKG_INFO', native=native, cross='no')
+        host_db = self.frozen_show_var('_HOST_PKG_DBDIR', native=native, cross='no')
+        target_db = self.frozen_show_var('_PKG_DBDIR', native=native)
+        return host_pkg_info_argv(info, host_db, target_db)
+
+    def host_pkgnames(self):
+        completed = self.run(self.host_argv + ['-a', '-Q', 'PKGNAME'], env=self.environment)
+        names = completed.stdout.splitlines()
+        if any(not name or any(character.isspace() for character in name) for name in names):
+            raise ExportError('invalid host PKGNAME listing')
+        if len(names) != len(set(names)):
+            raise ExportError('duplicate host PKGNAME')
+        return tuple(sorted(names))
+
+    def package_base(self, package, cross, settings, environment):
+        key = (package, cross, tuple(sorted(settings.items())))
+        if key not in self.package_bases:
+            command = [str(self.bmake), '-C', str(self.root / package),
+                       'MAKECONF=' + str(self.makeconf),
+                       'USE_CROSS_COMPILE=' + cross, '_MAKEVARS_MK=defined']
+            command += [name + '=' + value for name, value in self.make_variables.items()]
+            if cross == 'no':
+                command += [name + '=' + value for name, value in self.native_make_variables.items()]
+            command += [name + '=' + value for name, value in sorted(settings.items())]
+            command += ['show-var', 'VARNAME=PKGBASE']
+            lines = self.run(command, env=environment).stdout.splitlines()
+            if len(lines) != 1 or lines[0] == '' or any(character.isspace() for character in lines[0]):
+                raise ExportError('missing PKGBASE for ' + package)
+            self.package_bases[key] = lines[0]
+        return self.package_bases[key]
+
+    def host_is_current(self, base, name):
+        pattern = native_current_pattern(base, name)
+        completed = subprocess.run(self.host_argv + ['-e', pattern], env=self.environment,
+                                   text=True, capture_output=True, timeout=self.args.timeout)
+        if completed.returncode == 0:
+            return True
+        if completed.returncode == 1:
+            return False
+        raise ExportError('pkg_info -e failed with status ' + str(completed.returncode))
+
+    def host_node_is_current(self, package, cross, settings, environment, metadata):
+        if not self.host_current or cross != 'no':
+            return False
+        return self.host_is_current(self.package_base(package, cross, settings, environment),
+                                    metadata['PKGNAME'])
+
     def export(self):
+        if self.host_current:
+            self.host_argv = self.discover_host_pkg_info()
+            self.host_names = self.host_pkgnames()
         if self.args.jobs > 1:
             self.parallel_frontier()
         else:
@@ -411,6 +531,8 @@ class Exporter:
             while self.pending:
                 parent = self.pending.pop(0)
                 self.merge_children(parent[0], self.dependency_requests(parent))
+        if self.host_argv is not None and self.host_pkgnames() != self.host_names:
+            raise ExportError('host package database changed during export')
         for identity, node in self.nodes.items():
             node['input_sha256'] = digest(canonical({
                 'inputs': node['input_sha256'], 'query_context': self.contexts[identity],
@@ -423,6 +545,10 @@ class Exporter:
                   'exporter': self.file_digest(Path(__file__))}
         if self.native_make_variables:
             shared['native-make-variables'] = digest(canonical(self.native_make_variables))
+        if self.host_argv is not None:
+            shared['host-pkg-info-argv'] = digest(canonical(self.host_argv))
+            shared['host-pkg-info-binary'] = self.file_digest(self.host_argv[0])
+            shared['host-pkg-names'] = digest(canonical(list(self.host_names)))
         for item in self.args.shared_input:
             name, sep, path = item.partition('=')
             if not sep or not re.fullmatch(r'[a-zA-Z0-9_.-]+', name) or name in shared:
@@ -435,6 +561,8 @@ class Exporter:
                   '; make variables: ' + summary(self.make_variables))
         if self.native_make_variables:
             source += '; native make variables: ' + summary(self.native_make_variables)
+        if self.host_current:
+            source += '; host current package database'
         return {'schema': 'ports-graph-v1',
                 'context': {'target': self.args.target, 'triplet': self.args.triplet,
                             'toolchain_sha256': self.file_digest(self.args.toolchain_input),
@@ -464,6 +592,8 @@ def main():
                         help='repeatable scalar bmake assignment for every query; does not accept targets or make flags')
     parser.add_argument('--native-make-variable', action='append', default=[], metavar='NAME=VALUE',
                         help='repeatable scalar assignment for native role queries only, including their native dependencies')
+    parser.add_argument('--host-current', action='store_true',
+                        help='ask the frozen MAKECONF host pkg_info which native packages are current')
     parser.add_argument('--max-nodes', type=int, default=1000)
     parser.add_argument('--jobs', type=int, default=1,
                         help='maximum concurrent bmake metadata queries (default: 1)')

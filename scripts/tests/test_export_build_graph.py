@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -59,6 +60,34 @@ root = directory.parents[1]
 settings = dict(arg.split('=', 1) for arg in args if '=' in arg and not arg.startswith('${'))
 tracked = settings.get('TEST_PARALLEL') == 'yes'
 package = directory.relative_to(root).as_posix()
+if 'show-var' in args and 'show-vars' not in args:
+    varname = settings['VARNAME']
+    with (root / 'calls.jsonl').open('a') as stream:
+        stream.write(json.dumps({'package': package, 'settings': settings,
+                                 'targets': ['show-var'], 'variable': varname}) + '\n')
+    if package == 'pkgtools/pkg_install':
+        host = json.loads((root / 'host-current.json').read_text())
+        verified = host['verified']
+        if varname == 'EMBERBSD_NATIVE_TOOLSET_VERIFIED':
+            if 'USE_CROSS_COMPILE' in settings:
+                print('toolset query must not select a cross role', file=sys.stderr)
+                sys.exit(4)
+            print(verified)
+            sys.exit(0)
+        if settings.get('EMBERBSD_NATIVE_TOOLSET_VERIFIED') != verified:
+            print('native toolset was not verified', file=sys.stderr)
+            sys.exit(3)
+        if varname in ('PKG_INFO', '_HOST_PKG_DBDIR') and settings.get('USE_CROSS_COMPILE') != 'no':
+            print('host database query must be native', file=sys.stderr)
+            sys.exit(5)
+        if varname == '_PKG_DBDIR' and 'USE_CROSS_COMPILE' in settings:
+            print('target database query must follow the cross pkgdb snapshot', file=sys.stderr)
+            sys.exit(6)
+        print(host['vars'][varname])
+        sys.exit(0)
+    values = json.loads((root / 'metadata.json').read_text())[package]
+    print(values.get(varname) or (directory.name if varname == 'PKGBASE' else ''))
+    sys.exit(0)
 if tracked:
     events = root / 'events'
     events.mkdir(exist_ok=True)
@@ -161,6 +190,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
 
     def test_cross_roles_follow_native_installer(self):
         graph = self.run_export()
+        self.assertNotIn('host-pkg-info-argv', graph['context']['shared_inputs'])
         nodes = self.nodes(graph)
         generator = next(key for key in nodes if key.startswith('host:devel/generator@'))
         bootstrap = next(key for key in nodes if key.startswith('host:devel/bootstrap@'))
@@ -682,6 +712,256 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
 
     def test_closure_limit(self):
         self.assertIn('exceeds --max-nodes', self.run_export('--max-nodes', '2', success=False))
+
+    HOST_CYCLE = (
+        'pkgtools/cwrappers', 'pkgtools/libnbcompat', 'sysutils/coreutils',
+        'devel/gettext-lib', 'devel/libtool-base', 'devel/m4', 'devel/nbpatch',
+    )
+    HOST_CYCLE_EDGES = (
+        ('host:pkgtools/cwrappers', 'build', 'host:pkgtools/libnbcompat'),
+        ('host:pkgtools/libnbcompat', 'tool', 'host:sysutils/coreutils'),
+        ('host:sysutils/coreutils', 'runtime', 'host:devel/gettext-lib'),
+        ('host:devel/gettext-lib', 'tool', 'host:devel/libtool-base'),
+        ('host:devel/libtool-base', 'runtime', 'host:devel/m4'),
+        ('host:devel/m4', 'tool', 'host:devel/nbpatch'),
+        ('host:devel/nbpatch', 'tool', 'host:pkgtools/cwrappers'),
+    )
+
+    def add_package(self, package, metadata=None):
+        directory = self.pkgsrc / package
+        directory.mkdir(parents=True, exist_ok=True)
+        makefile = directory / 'Makefile'
+        if not makefile.exists():
+            makefile.write_text('# Native metadata fixture\n')
+        self.packages[package] = metadata or {}
+
+    def install_host_cycle(self, direct_tools=False):
+        links = {
+            'pkgtools/cwrappers': ('BUILD_DEPENDS', 'libnbcompat>=1:../../pkgtools/libnbcompat'),
+            'pkgtools/libnbcompat': ('TOOL_DEPENDS', 'coreutils>=1:../../sysutils/coreutils'),
+            'sysutils/coreutils': ('DEPENDS', 'gettext-lib>=1:../../devel/gettext-lib'),
+            'devel/gettext-lib': ('TOOL_DEPENDS', 'libtool-base>=1:../../devel/libtool-base'),
+            'devel/libtool-base': ('DEPENDS', 'm4>=1:../../devel/m4'),
+            'devel/m4': ('TOOL_DEPENDS', 'nbpatch>=1:../../devel/nbpatch'),
+            'devel/nbpatch': ('TOOL_DEPENDS', 'cwrappers>=1:../../pkgtools/cwrappers'),
+        }
+        for package, (variable, value) in links.items():
+            self.add_package(package, {'PKGVERSION': '1', variable: value})
+        tools = self.HOST_CYCLE if direct_tools else ('pkgtools/cwrappers',)
+        self.packages['devel/app'] = {'TOOL_DEPENDS': ' '.join(
+            package.split('/')[1] + '>=1:../../' + package for package in tools)}
+
+    def enable_host_db(self, names, *, command=None, mutate=None):
+        host = self.path / 'host-db'
+        target = self.path / 'target-db'
+        host.mkdir()
+        target.mkdir()
+        (host / 'names').write_text(''.join(name + '\n' for name in names))
+        if mutate is not None:
+            (host / 'names-after').write_text(''.join(name + '\n' for name in mutate))
+        info = self.path / 'pkg_info'
+        info.write_text('#!' + sys.executable + '\n' + r'''
+import pathlib, sys
+args = sys.argv[1:]
+if len(args) < 2 or args[0] != '-K':
+    print('pkg_info expected -K', file=sys.stderr)
+    sys.exit(2)
+db = pathlib.Path(args[1])
+names = [line for line in (db / 'names').read_text().splitlines() if line]
+rest = args[2:]
+if rest[:3] == ['-a', '-Q', 'PKGNAME']:
+    marker = db / 'reads'
+    count = int(marker.read_text()) if marker.exists() else 0
+    marker.write_text(str(count + 1))
+    alternate = db / 'names-after'
+    if count >= 1 and alternate.exists():
+        names = [line for line in alternate.read_text().splitlines() if line]
+    sys.stdout.write(''.join(name + '\n' for name in names))
+    sys.exit(0)
+if rest[:1] == ['-e'] and len(rest) == 2:
+    pattern = rest[1]
+    if pattern.startswith('explode'):
+        print('pkg_info -e refused the pattern', file=sys.stderr)
+        sys.exit(2)
+    if '>=' in pattern:
+        base, version = pattern.split('>=', 1)
+        for name in names:
+            prefix = base + '-'
+            suffix = name[len(prefix):]
+            if name.startswith(prefix) and suffix.isdigit() and version.isdigit() and int(suffix) >= int(version):
+                print(name)
+                sys.exit(0)
+        sys.exit(1)
+    for name in names:
+        if name == pattern or name.startswith(pattern + '-'):
+            print(name)
+            sys.exit(0)
+    sys.exit(1)
+print('unsupported pkg_info invocation', file=sys.stderr)
+sys.exit(2)
+''')
+        info.chmod(0o755)
+        selected = command or (str(info) + ' -K ' + str(host))
+        (self.pkgsrc / 'host-current.json').write_text(json.dumps({
+            'verified': 'verified-native',
+            'vars': {'PKG_INFO': selected, '_HOST_PKG_DBDIR': str(host),
+                     '_PKG_DBDIR': str(target)}}))
+        return info, host, target
+
+    def assert_host_cycle(self, text):
+        self.assertIn('dependency cycle: ', text)
+        body = text.split('dependency cycle: ', 1)[1].splitlines()[0].strip()
+        parts = re.split(r' -\[(\w+)\]-> ', body)
+        nodes = [parts[0]]
+        edges = []
+        for index in range(1, len(parts), 2):
+            edges.append((nodes[-1], parts[index], parts[index + 1]))
+            nodes.append(parts[index + 1])
+        self.assertEqual(nodes[0], nodes[-1])
+        self.assertEqual(len(edges), len(self.HOST_CYCLE_EDGES))
+        for offset in range(len(self.HOST_CYCLE_EDGES)):
+            rotated = self.HOST_CYCLE_EDGES[offset:] + self.HOST_CYCLE_EDGES[:offset]
+            if edges == list(rotated):
+                return
+        self.fail('unexpected host cycle: ' + body)
+
+    def host_names(self, versions):
+        return [package.split('/')[1] + '-' + versions.get(package, '1')
+                for package in self.HOST_CYCLE]
+
+    def test_host_bootstrap_cycle_fails_without_host_current(self):
+        self.install_host_cycle()
+        self.assert_host_cycle(self.run_export('--dependency-phase', 'build', success=False))
+
+    def test_current_host_packages_keep_only_runtime_depends(self):
+        self.install_host_cycle(direct_tools=True)
+        versions = {package: '1' for package in self.HOST_CYCLE}
+        versions['pkgtools/cwrappers'] = '2'
+        info, host, _target = self.enable_host_db(self.host_names(versions))
+        graph = self.run_export('--dependency-phase', 'build', '--host-current')
+        nodes = self.nodes(graph)
+        for package in self.HOST_CYCLE:
+            self.assertTrue(any(key.startswith('host:' + package) for key in nodes), package)
+        self.assertIn('host:devel/gettext-lib', nodes)
+        self.assertIn('host:devel/m4', nodes)
+        coreutils = next(key for key in nodes if key.startswith('host:sysutils/coreutils@'))
+        libtool = next(key for key in nodes if key.startswith('host:devel/libtool-base@'))
+        self.assertIn({'id': 'host:devel/gettext-lib', 'kind': 'runtime'}, nodes[coreutils]['dependencies'])
+        self.assertIn({'id': 'host:devel/m4', 'kind': 'runtime'}, nodes[libtool]['dependencies'])
+        for key, node in nodes.items():
+            if key.startswith('host:'):
+                self.assertEqual([edge['kind'] for edge in node['dependencies'] if edge['kind'] != 'runtime'], [])
+        shared = graph['context']['shared_inputs']
+        argv = [str(info), '-K', str(host)]
+        names = sorted(self.host_names(versions))
+        canonical = lambda value: json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
+        self.assertEqual(shared['host-pkg-info-argv'], hashlib.sha256(canonical(argv)).hexdigest())
+        self.assertEqual(shared['host-pkg-info-binary'], hashlib.sha256(info.read_bytes()).hexdigest())
+        self.assertEqual(shared['host-pkg-names'], hashlib.sha256(canonical(names)).hexdigest())
+        self.assertIn('host current package database', graph['provenance']['source'])
+        calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        discovery = [call for call in calls if call.get('package') == 'pkgtools/pkg_install']
+        self.assertEqual([call['variable'] for call in discovery], [
+            'EMBERBSD_NATIVE_TOOLSET_VERIFIED', 'PKG_INFO', '_HOST_PKG_DBDIR', '_PKG_DBDIR'])
+        self.assertNotIn('USE_CROSS_COMPILE', discovery[0]['settings'])
+        self.assertEqual(discovery[1]['settings']['USE_CROSS_COMPILE'], 'no')
+        self.assertEqual(discovery[1]['settings']['EMBERBSD_NATIVE_TOOLSET_VERIFIED'], 'verified-native')
+        self.assertNotIn('USE_CROSS_COMPILE', discovery[3]['settings'])
+
+    def test_old_host_packages_keep_the_bootstrap_cycle(self):
+        self.install_host_cycle(direct_tools=True)
+        self.enable_host_db(self.host_names({package: '0' for package in self.HOST_CYCLE}))
+        self.assert_host_cycle(self.run_export('--dependency-phase', 'build', '--host-current', success=False))
+
+    def test_partial_runtime_providers_do_not_break_the_cycle(self):
+        self.install_host_cycle(direct_tools=True)
+        versions = {package: '0' for package in self.HOST_CYCLE}
+        versions['sysutils/coreutils'] = '1'
+        versions['devel/libtool-base'] = '1'
+        self.enable_host_db(self.host_names(versions))
+        self.assert_host_cycle(self.run_export('--dependency-phase', 'build', '--host-current', success=False))
+
+    def test_host_current_rejects_the_target_package_database(self):
+        self.install_host_cycle(direct_tools=True)
+        info, _host, target = self.enable_host_db(self.host_names({}))
+        payload = json.loads((self.pkgsrc / 'host-current.json').read_text())
+        payload['vars']['PKG_INFO'] = str(info) + ' -K ' + str(target)
+        (self.pkgsrc / 'host-current.json').write_text(json.dumps(payload))
+        self.assertIn('target package database', self.run_export('--host-current', success=False))
+
+    def test_host_current_does_not_change_a_target_cycle(self):
+        self.add_package('devel/marker', {'PKGVERSION': '1'})
+        self.packages['devel/app'] = {
+            'DEPENDS': 'library>=1:../../devel/library',
+            'BUILD_DEPENDS': 'marker>=1:../../devel/marker'}
+        self.packages['devel/library'] = {'DEPENDS': 'app>=1:../../devel/app'}
+        self.enable_host_db(['app-1', 'library-1', 'marker-1'])
+        text = self.run_export('--host-current', success=False)
+        self.assertIn('target:devel/app -[runtime]-> target:devel/library -[runtime]-> target:devel/app', text)
+        calls = [json.loads(line)['package'] for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertIn('devel/marker', calls)
+
+    def test_pkgbase_mismatch_uses_the_bare_pattern(self):
+        self.add_package('devel/alias', {
+            'PKGBASE': 'aliasbase', 'PKGNAME': 'alias-tool-1', 'PKGVERSION': '1',
+            'BUILD_DEPENDS': 'broken>=1:../../devel/broken'})
+        self.add_package('devel/broken', {'PKG_FAIL_REASON': 'PKGBASE was not used'})
+        self.packages['devel/app'] = {'TOOL_DEPENDS': 'alias-tool>=1:../../devel/alias'}
+        self.enable_host_db(['aliasbase-4'])
+        graph = self.run_export('--host-current')
+        nodes = self.nodes(graph)
+        alias = next(key for key in nodes if key.startswith('host:devel/alias@'))
+        self.assertEqual(nodes[alias]['dependencies'], [])
+        calls = [json.loads(line)['package'] for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertNotIn('devel/broken', calls)
+
+    def test_host_database_mutation_fails_closed(self):
+        self.install_host_cycle(direct_tools=True)
+        names = self.host_names({})
+        self.enable_host_db(names, mutate=['cwrappers-1'])
+        self.assertIn('host package database changed', self.run_export('--host-current', success=False))
+
+    def test_pkg_info_error_fails_closed(self):
+        self.add_package('devel/explode', {'PKGBASE': 'explode', 'PKGNAME': 'explode-1', 'PKGVERSION': '1'})
+        self.packages['devel/app'] = {'TOOL_DEPENDS': 'explode>=1:../../devel/explode'}
+        self.enable_host_db(['explode-1'])
+        self.assertIn('pkg_info -e failed', self.run_export('--host-current', success=False))
+
+    def test_current_host_keeps_test_inventory_without_querying_tests(self):
+        self.install_host_cycle(direct_tools=True)
+        self.add_package('lang/perl', {'PKG_FAIL_REASON': 'test dependency must not be queried'})
+        self.packages['pkgtools/cwrappers']['TEST_DEPENDS'] = 'perl>=1:../../lang/perl'
+        self.enable_host_db(self.host_names({}))
+        graph = self.run_export('--dependency-phase', 'build', '--host-current')
+        self.assertEqual(self.last_inventory['requirements'], [{
+            'owner': next(key for key in self.nodes(graph) if key.startswith('host:pkgtools/cwrappers@')),
+            'role': 'host', 'package_path': 'lang/perl', 'pattern': 'perl>=1'}])
+        calls = [json.loads(line)['package'] for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertNotIn('lang/perl', calls)
+
+    def test_current_host_does_not_query_indirect_dependencies(self):
+        self.install_host_cycle(direct_tools=True)
+        self.add_package('devel/hidden', {'PKG_FAIL_REASON': 'indirect dependency must not be queried'})
+        self.packages['sysutils/coreutils']['INDIRECT_DEPENDS'] = 'hidden>=1:../../devel/hidden'
+        self.packages['sysutils/coreutils']['INDIRECT_BUILD_DEPENDS'] = 'hidden>=1:../../devel/hidden'
+        self.enable_host_db(self.host_names({}))
+        self.run_export('--dependency-phase', 'build', '--host-current')
+        calls = [json.loads(line)['package'] for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertNotIn('devel/hidden', calls)
+
+    def test_duplicate_host_pkgname_fails_closed(self):
+        self.install_host_cycle()
+        _info, host, _target = self.enable_host_db(['cwrappers-1'])
+        (host / 'names').write_text('cwrappers-1\ncwrappers-1\n')
+        self.assertIn('duplicate host PKGNAME', self.run_export('--host-current', success=False))
+
+    def test_host_current_rejects_a_relative_database(self):
+        self.install_host_cycle()
+        info, _host, _target = self.enable_host_db(self.host_names({}))
+        payload = json.loads((self.pkgsrc / 'host-current.json').read_text())
+        payload['vars']['PKG_INFO'] = str(info) + ' -K host-db'
+        (self.pkgsrc / 'host-current.json').write_text(json.dumps(payload))
+        self.assertIn('not absolute', self.run_export('--host-current', success=False))
 
 
 if __name__ == '__main__':

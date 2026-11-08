@@ -90,6 +90,34 @@ SDK directory name, the host ABI, or `xcrun`. The frozen recipe tree,
 MAKECONF, and `--revision` stay the sources that were built. A newer exporter
 may query that frozen tree; its own file digest is the `exporter` shared input.
 
+`--host-current` checks installed host tools in the package database selected by
+that same frozen MAKECONF. It is explicit: without the flag the closure is
+unchanged. The exporter runs four `bmake -C pkgtools/pkg_install show-var`
+queries, each with `MAKECONF=` set to the selected file. The first reads
+`EMBERBSD_NATIVE_TOOLSET_VERIFIED` and does not pass `USE_CROSS_COMPILE`. The
+next two pass that verified value and `USE_CROSS_COMPILE=no` and read
+`PKG_INFO` and `_HOST_PKG_DBDIR`. The fourth passes the verified value without
+`USE_CROSS_COMPILE=no` and reads the target `_PKG_DBDIR`. This is the same
+selection `scripts/cross-bulk.sh` uses when `MAKECONF` is already exported.
+
+`PKG_INFO` must be an absolute executable with one absolute `-K` directory.
+That directory must resolve to the host database and must not resolve to the
+target database. For each host node the exporter reads bmake `PKGBASE` and the
+node's `PKGNAME`. When `PKGNAME` matches `PKGBASE-[0-9]*`, it runs
+`pkg_info -e 'PKGBASE>=suffix'`; otherwise it runs `pkg_info -e PKGBASE`. Exit
+0 means the installed package is current, exit 1 means it is not, and any
+other status fails the export. A current host node keeps only its `DEPENDS`
+edges. Build, tool, bootstrap, and indirect dependencies are not queried. In
+the build phase its `TEST_DEPENDS` remain in the test-requirements inventory
+and are not queried or turned into edges. Target nodes are not asked.
+
+The mode records `host-pkg-info-argv`, `host-pkg-info-binary`, and the sorted
+`pkg_info -a -Q PKGNAME` listing as `host-pkg-names`. The listing is hashed
+again after the walk and the export fails, without writing a graph, if the
+database changed. `pkg_info -e` is the current decision. `PKGBASE` is not
+added to the hashed metadata, so node input hashes stay independent of it.
+Provenance includes `host current package database`.
+
 The exporter asks bmake for expanded dependency variables and loaded makefiles.
 It requires native `-dg1` variable inventory output. It queries the listed
 `FILESDIR.*` variables with `-V` to resolve shared copied-source trees.

@@ -615,6 +615,9 @@ An older installed package is not current: its node is built
 again and replaces it with the pkgsrc `replace` target (`pkg_add -U`), which
 keeps the packages that depend on it registered. A newer host package, such
 as a host clang, stays current.
+`scripts/export-build-graph.py --host-current` uses this same `pkg_info -e`
+rule for a publication graph: a current host node keeps only `DEPENDS`.
+It does not apply the `sort_edges` ordering cut, and a target cycle is unchanged.
 `scripts/tests/cross-bulk-native-version.sh NEW_OUTPUT` checks this. The
 build refuses such a replace when the new package no longer provides a
 shared library of the installed one and installed packages depend on it
