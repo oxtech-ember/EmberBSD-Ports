@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import io
 import argparse
+import os
 from pathlib import Path
 import sys
 import tarfile
@@ -56,28 +57,52 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
     old_owner, new_owner = (root / 'graphics/MesaLib' for root in roots)
     archive = base / 'mesa-1.tar'
     with tarfile.open(archive, 'w') as tar:
-        item = tarfile.TarInfo('mesa-1/configure.ac')
-        item.size = 4
-        item.mode = 0o644
-        tar.addfile(item, io.BytesIO(b'A\nB\n'))
+        for path, data in [('mesa-1/configure.ac', b'A\nB\n'),
+                           ('mesa-1/extra.h', b'base\n'), ('mesa-1/keep.h', b'base\n')]:
+            item = tarfile.TarInfo(path)
+            item.size = len(data)
+            item.mode = 0o644
+            tar.addfile(item, io.BytesIO(data))
     old_patch = b'--- configure.ac\n+++ configure.ac\n@@ -1,2 +1,2 @@\n A\n-B\n+old\n'
     new_patch = b'--- configure.ac\n+++ configure.ac\n@@ -1,2 +1,2 @@\n A\n-B\n+new\n'
     patch_name = 'patch-src_configure.ac'
+    extra_patch = b'--- extra.h\n+++ extra.h\n@@ -1 +1 @@\n-base\n+patched\n'
+    extra_name = 'patch-src_extra.h'
+    keep_patch = b'--- keep.h\n+++ keep.h\n@@ -1 +1 @@\n-base\n+patched\n'
+    keep_name = 'patch-src_keep.h'
     (old_owner / 'patches' / patch_name).write_bytes(old_patch)
+    (old_owner / 'patches' / extra_name).write_bytes(extra_patch)
+    (old_owner / 'patches' / keep_name).write_bytes(keep_patch)
     (new_owner / 'patches' / patch_name).write_bytes(new_patch)
-    old_info = distinfo(archive, patch_name, old_patch)
+    (new_owner / 'patches' / extra_name).write_bytes(extra_patch)
+    (new_owner / 'patches' / keep_name).write_bytes(keep_patch)
+    old_info = distinfo(archive, patch_name, old_patch) + (
+        f'SHA1 ({extra_name}) = {hashlib.sha1(extra_patch).hexdigest()}\n'.encode() +
+        f'SHA1 ({keep_name}) = {hashlib.sha1(keep_patch).hexdigest()}\n'.encode())
     (old_owner / 'distinfo').write_bytes(old_info)
-    (new_owner / 'distinfo').write_bytes(distinfo(archive, patch_name, new_patch))
+    (new_owner / 'distinfo').write_bytes(distinfo(archive, patch_name, new_patch) +
+        f'SHA1 ({extra_name}) = {hashlib.sha1(extra_patch).hexdigest()}\n'.encode() +
+        f'SHA1 ({keep_name}) = {hashlib.sha1(keep_patch).hexdigest()}\n'.encode())
     work = base / 'work'
     source = work / 'mesa-1'
     source.mkdir(parents=True)
     (source / 'configure.ac').write_bytes(b'A\nold\n')
+    (source / 'extra.h').write_bytes(b'patched\n')
+    (source / 'keep.h').write_bytes(b'patched\n')
+    (source / 'keep.txt').write_bytes(b'untouched\n')
+    os.utime(source / 'keep.txt', ns=(1_000_000_000, 1_000_000_000))
     old_patch_path = old_recipe / '../MesaLib/patches' / patch_name
-    (work / '.patch_done').write_text(str(old_patch_path) + '\n')
+    old_extra_path = old_recipe / '../MesaLib/patches' / extra_name
+    old_keep_path = old_recipe / '../MesaLib/patches' / keep_name
+    full_cookie = ''.join(str(path) + '\n' for path in
+                          (old_patch_path, old_extra_path, old_keep_path)).encode()
+    (work / '.patch_done').write_bytes(full_cookie)
     build_version = base / 'BUILD_VERSION'
     build_version.write_text(
         'graphics/mesa-generators/Makefile: ' + hashlib.sha256((old_recipe / 'Makefile').read_bytes()).hexdigest() + '\n' +
-        'graphics/MesaLib/patches/' + patch_name + ': ' + hashlib.sha256(old_patch).hexdigest() + '\n')
+        'graphics/MesaLib/patches/' + patch_name + ': ' + hashlib.sha256(old_patch).hexdigest() + '\n' +
+        'graphics/MesaLib/patches/' + extra_name + ': ' + hashlib.sha256(extra_patch).hexdigest() + '\n' +
+        'graphics/MesaLib/patches/' + keep_name + ': ' + hashlib.sha256(keep_patch).hexdigest() + '\n')
     scratch = base / 'scratch'
     scratch.mkdir()
     result = refresh.prepare(
@@ -92,6 +117,23 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
     # The package producer records the archive recipe's patch bytes, but not
     # the whole distinfo file. Its declared archive checksums and patch
     # inventory still authenticate the old replay.
+    reversed_cookie = (str(old_owner / 'patches' / keep_name) + '\n' +
+                       str(old_owner / 'patches' / extra_name) + '\n' +
+                       str(old_owner / 'patches' / patch_name) + '\n').encode()
+    (work / '.patch_done').write_bytes(reversed_cookie)
+    expect_refusal(lambda: refresh.old_metadata(
+        paths, new_recipe, work, build_version, previous_recipe=old_recipe,
+        patchdir=new_owner / 'patches', previous_patchdir=old_owner / 'patches'),
+        'old patch cookie is not an ordered subsequence')
+    foreign_patch = base / 'foreign/patches/patch-unknown'
+    foreign_patch.parent.mkdir(parents=True)
+    foreign_patch.write_text('foreign')
+    (work / '.patch_done').write_text(str(foreign_patch) + '\n')
+    expect_refusal(lambda: refresh.old_metadata(
+        paths, new_recipe, work, build_version, previous_recipe=old_recipe,
+        patchdir=new_owner / 'patches', previous_patchdir=old_owner / 'patches'),
+        'old patch cookie contains an unsupported path')
+    (work / '.patch_done').write_bytes(full_cookie)
     bad_patch_scratch = base / 'bad-patch-scratch'
     bad_patch_scratch.mkdir()
     saved_old_patch = (old_owner / 'patches' / patch_name).read_bytes()
@@ -114,6 +156,63 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
         previous_patchdir=old_owner / 'patches', previous_distinfo=old_owner / 'distinfo'),
         'archive differs from previous distinfo')
     archive.write_bytes(saved_archive)
+    # Explicit failed-stage recovery replays exactly the applied cookie, then
+    # applies the complete current inventory to the reconstructed source.
+    (source / 'extra.h').write_bytes(b'base\n')
+    partial_cookie = ''.join(str(path) + '\n' for path in (old_patch_path, old_keep_path)).encode()
+    (work / '.patch_done').write_bytes(partial_cookie)
+    stale_scratch = base / 'stale-cookie-scratch'
+    stale_scratch.mkdir()
+    stale = refresh.prepare(
+        sdk, new_recipe, work, archive, 'mesa-1', build_version,
+        args.patch, ['-E', '-p0', '--batch', '--forward', '-V', 'simple', '-z', '.orig'], stale_scratch,
+        previous_recipe=old_recipe, patchdir=new_owner / 'patches', distinfo=new_owner / 'distinfo',
+        previous_patchdir=old_owner / 'patches', previous_distinfo=old_owner / 'distinfo')
+    expect_refusal(lambda: refresh.transaction(
+        sdk, work, source, stale[0], partial_cookie,
+        [new_owner / 'patches' / name for name in stale[2]], lambda: None),
+        'live preimage differs: extra.h')
+    assert (source / 'configure.ac').read_bytes() == b'A\nold\n'
+    assert (source / 'extra.h').read_bytes() == b'base\n'
+    assert (source / 'keep.h').read_bytes() == b'patched\n'
+    assert (work / '.patch_done').read_bytes() == partial_cookie
+    assert not (work / '.emberbsd-patch-refresh.json').exists()
+    recovery_scratch = base / 'recovery-scratch'
+    recovery_scratch.mkdir()
+    recovered = refresh.prepare(
+        sdk, new_recipe, work, archive, 'mesa-1', build_version,
+        args.patch, ['-E', '-p0', '--batch', '--forward', '-V', 'simple', '-z', '.orig'], recovery_scratch,
+        previous_recipe=old_recipe, patchdir=new_owner / 'patches', distinfo=new_owner / 'distinfo',
+        previous_patchdir=old_owner / 'patches', previous_distinfo=old_owner / 'distinfo',
+        recover_applied_patches=True)
+    assert [(name, before, after) for name, before, after, _, _ in recovered[0]] == [
+        ('configure.ac', b'A\nold\n', b'A\nnew\n'), ('extra.h', b'base\n', b'patched\n'),
+        ('keep.h', b'patched\n', b'patched\n')]
+    wrong = source / 'keep.h'
+    wrong.write_bytes(b'foreign\n')
+    os.utime(wrong, ns=(2_000_000_000, 2_000_000_000))
+    wrong_mtime = wrong.stat().st_mtime_ns
+    expect_refusal(lambda: refresh.transaction(
+        sdk, work, source, recovered[0], partial_cookie,
+        [new_owner / 'patches' / name for name in recovered[2]], lambda: None),
+        'live preimage differs: keep.h')
+    assert (source / 'configure.ac').read_bytes() == b'A\nold\n'
+    assert (source / 'extra.h').read_bytes() == b'base\n'
+    assert wrong.read_bytes() == b'foreign\n' and wrong.stat().st_mtime_ns == wrong_mtime
+    assert (work / '.patch_done').read_bytes() == partial_cookie
+    assert not (work / '.emberbsd-patch-refresh.json').exists()
+    wrong.write_bytes(b'patched\n')
+    os.utime(wrong, ns=(2_000_000_000, 2_000_000_000))
+    keep_mtime = (source / 'keep.txt').stat().st_mtime_ns
+    refresh.transaction(sdk, work, source, recovered[0], partial_cookie,
+                        [new_owner / 'patches' / name for name in recovered[2]], lambda: None)
+    assert (source / 'configure.ac').read_bytes() == b'A\nnew\n'
+    assert (source / 'extra.h').read_bytes() == b'patched\n'
+    assert (source / 'keep.h').read_bytes() == b'patched\n'
+    assert (source / 'keep.h').stat().st_mtime_ns == wrong_mtime
+    assert (source / 'keep.txt').stat().st_mtime_ns == keep_mtime
+    assert (work / '.patch_done').read_text() == ''.join(str(new_owner / 'patches' / name) + '\n'
+                                                          for name in recovered[2])
     outside = base / 'outside'
     (outside / 'patches').mkdir(parents=True)
     (outside / 'distinfo').write_text('')

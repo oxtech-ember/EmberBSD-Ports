@@ -263,6 +263,16 @@ flags. Then resume `package` or `package-install` to run normal configuration
 and incremental compilation. Without this selector, new includes remain
 restricted to revision metadata with unchanged build inputs and commands.
 
+For an explicitly failed source stage whose saved `.patch_done` cookie is an
+ordered subset of the installed package's complete patch inventory, use
+`CROSS_BULK_PATCH_REFRESH_RECOVER_APPLIED_PATCHES=yes` together with the
+previous-recipe selector. This recovery replays exactly the cookie's applied
+patches as the live preimage, verifies every installed patch hash and archive
+checksum, and applies the complete current patch set transactionally. Every
+changed live file must match that replay before any write; an unrelated or
+modified preimage is refused. Ordinary refresh keeps its full previous-recipe
+replay and stale-cookie checks.
+
 The stage-local configuration preservation path adds newly missing pkgsrc
 buildlink providers during `package` and `package-install`. The existing factory
 creates their links under the stage lock. Existing provider cookies and compiled

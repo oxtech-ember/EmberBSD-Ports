@@ -254,7 +254,7 @@ def unselected_subst_pattern(paths, roots, pattern, changed):
 
 
 def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, previous_recipe=None,
-                 patchdir=None, previous_patchdir=None):
+                 patchdir=None, previous_patchdir=None, recover_applied_patches=False):
     """Bind the old ordered cookie to installed BUILD_VERSION and current recipe."""
     cookie = stable_read(paths, work / '.patch_done') if old_cookie is None else old_cookie
     try:
@@ -287,11 +287,12 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
     pkgpath = '/'.join(recipe.parts[-2:])
     pkgsrc_root = recipe.parents[1].resolve(strict=True)
     patch_prefix = patchdir.relative_to(pkgsrc_root).as_posix() + '/'
-    if not old:
+    if not old and not recover_applied_patches:
         require(not any(key.startswith(patch_prefix + 'patch-') for key in records),
                 'empty patch cookie contradicts installed patch provenance')
     new = sorted(p.name for p in patchdir.glob('patch-*') if p.is_file())
     old_recipe = Path(previous_recipe) if previous_recipe is not None else recipe
+    old_inventory = old
     old_patchdir = (Path(previous_patchdir or old_recipe / 'patches').resolve(strict=True)
                     if previous_recipe is not None else patchdir)
     def provenance_path(path, root, fallback):
@@ -318,26 +319,28 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
         # A completed build may retain an earlier extraction/patch cookie.
         # Reconcile it only against the complete installed recipe; prepare()
         # adds mandatory live preimage checks for every omitted patch target.
-        old = complete
+        old_inventory = complete
+        if not recover_applied_patches:
+            old = complete
     else:
         recorded_prefix = patch_prefix
         recorded = sorted(key[len(recorded_prefix):] for key in records
                           if key.startswith(recorded_prefix + 'patch-'))
         require(sorted(old) == recorded,
                 'old patch cookie differs from installed patch provenance')
-    require([p for p in new if p in old] == old and
-            (previous_recipe is not None or len(new) > len(old)),
+    require([p for p in new if p in old_inventory] == old_inventory and
+            (previous_recipe is not None or len(new) > len(old_inventory)),
             'old patch list is not a proper subsequence')
-    for name in old:
+    for name in old_inventory:
         old_root = old_recipe.parents[1]
         expected = records.get(provenance_path(old_patchdir, old_root, pkgpath + '/patches') + '/' + name)
         require(expected and hashlib.sha256(stable_read(paths, old_patchdir / name)).hexdigest() == expected,
                 'old patch identity changed: ' + name)
-    additions = [p for p in new if p not in old]
+    additions = [p for p in new if p not in old_inventory]
     # pkgsrc's BUILD_VERSION records patch bytes but not distinfo itself.
     # prepare() authenticates the archive checksums and complete patch
     # inventory declared by each old/current distinfo.
-    return old, new, additions, cookie
+    return old, old_inventory, new, additions, cookie
 
 
 def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
@@ -359,22 +362,25 @@ def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
     return patchdir, distinfo
 
 
-def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None, patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None):
+def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None, patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None, recover_applied_patches=False):
     """Replay complete old and current patch order and return validated leaf changes."""
+    require(not (recover_applied_patches and allow_completed),
+            'applied-patch recovery cannot adopt a completed refresh')
     paths, sourceprep, archive_metadata = sdk['paths'], sdk['sourceprep'], sdk['archive_metadata']
     recipe, work, archive, scratch = map(Path, (recipe, work, archive, scratch))
     patchdir = Path(patchdir or recipe / 'patches')
     distinfo = Path(distinfo or recipe / 'distinfo')
-    old, new, additions, old_cookie = old_metadata(paths, recipe, work, installed_version, old_cookie,
+    old, old_inventory, new, additions, old_cookie = old_metadata(paths, recipe, work, installed_version, old_cookie,
                                                    previous_recipe=previous_recipe,
                                                    patchdir=patchdir,
-                                                   previous_patchdir=previous_patchdir)
+                                                   previous_patchdir=previous_patchdir,
+                                                   recover_applied_patches=recover_applied_patches)
     metadata, patches = archive_metadata.read_recipe(patchdir.parent, archive.name, archive_root)
     if previous_recipe is not None:
         old_recipe = Path(previous_recipe)
         old_patchdir = Path(previous_patchdir or old_recipe / 'patches')
         old_meta, old_patches = archive_metadata.read_recipe(old_patchdir.parent, archive.name, archive_root)
-        require([p.name for p in old_patches] == old, 'previous recipe patch inventory changed')
+        require([p.name for p in old_patches] == old_inventory, 'previous recipe patch inventory changed')
     else:
         old_recipe, old_meta = recipe, metadata
         old_patchdir = patchdir
@@ -390,7 +396,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
     affected = set()
     cookie_inventory = {Path(name).name for name in old_cookie.decode('utf-8').splitlines() if name}
     verify_targets = set()
-    for name in old:
+    for name in old_inventory:
         if name not in cookie_inventory:
             verify_targets.update(targets(stable_read(paths, old_patchdir / name)))
     for name in new:
@@ -400,6 +406,9 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             affected.update(targets(current))
             if prior is not None:
                 affected.update(targets(prior))
+    if recover_applied_patches:
+        for name in new:
+            affected.update(targets(stable_read(paths, patchdir / name)))
     candidates = []
     for label, series in (('old', old), ('new', new)):
         dest = scratch / label
@@ -449,7 +458,8 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             require((live_mode & 0o111) == (old_mode & 0o111), 'live executable bits differ: ' + name)
             old_mode = live_mode
             new_mode = live_mode
-        if old_data != new_data or old_mode != new_mode or name in verify_targets:
+        if (old_data != new_data or old_mode != new_mode or name in verify_targets or
+                (recover_applied_patches and name in affected)):
             if allow_completed:
                 require(old_data is not None, 'configured refresh requires existing patch targets')
                 marker = work / '.emberbsd-patch-refresh.json'
@@ -892,6 +902,8 @@ def main():
     p.add_argument('--previous-makefile', type=Path, help='installed package Makefile preimage')
     p.add_argument('--subst-class', help='one added pre-configure SUBST class')
     p.add_argument('--previous-recipe', type=Path, help='installed recipe preimage directory')
+    p.add_argument('--recover-applied-patches', action='store_true',
+                   help='replay only the locked work-tree cookie after a failed source stage')
     p.add_argument('--refresh-subst', help='one existing substitution before configure')
     p.add_argument('--reconfigure', action='store_true',
                    help='explicitly accept new recipe configuration with the previous recipe')
@@ -910,6 +922,11 @@ def main():
     cmd.extend(a.make_arg)
     require(not a.reconfigure or a.previous_recipe,
             'explicit reconfigure requires the previous recipe')
+    require(not a.recover_applied_patches or a.previous_recipe,
+            'applied-patch recovery requires the previous recipe')
+    require(not (a.recover_applied_patches and
+                 (a.subst_class or a.refresh_subst or a.previous_makefile)),
+            'applied-patch recovery cannot be combined with SUBST refresh')
     require(not a.refresh_subst or (a.previous_recipe and not a.previous_makefile and not a.subst_class),
             'existing substitution refresh requires previous recipe only')
     if a.refresh_subst:
@@ -1177,7 +1194,8 @@ def main():
                                              previous_recipe=a.previous_recipe, patchdir=patchdir,
                                              distinfo=distinfo,
                                              previous_patchdir=(previous_patchdir if a.previous_recipe else None),
-                                             previous_distinfo=(previous_distinfo if a.previous_recipe else None))
+                                             previous_distinfo=(previous_distinfo if a.previous_recipe else None),
+                                             recover_applied_patches=a.recover_applied_patches)
         if a.refresh_subst:
             for name in subst_files:
                 if subst_candidates['old'][name] == subst_candidates['new'][name]:
