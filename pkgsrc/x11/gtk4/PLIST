@@ -2,8 +2,6 @@
 bin/gtk4-builder-tool
 bin/gtk4-demo
 bin/gtk4-demo-application
-bin/gtk4-encode-symbolic-svg
-bin/gtk4-icon-editor
 bin/gtk4-image-tool
 bin/gtk4-launch
 bin/gtk4-node-editor
@@ -461,7 +459,7 @@ lib/girepository-1.0/Gsk-4.0.typelib
 lib/girepository-1.0/Gtk-4.0.typelib
 lib/libgtk-4.so
 lib/libgtk-4.so.1
-lib/libgtk-4.so.1.2200.4
+lib/libgtk-4.so.1.2400.1
 lib/pkgconfig/gtk4-atspi.pc
 ${PLIST.quartz}lib/pkgconfig/gtk4-macos.pc
 lib/pkgconfig/gtk4-unix-print.pc
