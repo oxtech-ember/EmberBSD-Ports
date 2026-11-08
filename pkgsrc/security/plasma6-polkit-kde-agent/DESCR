@@ -1,0 +1,2 @@
+KDE authentication dialog for polkit. The package is built only. The
+autostart file stays an example, and the agent is not loaded.

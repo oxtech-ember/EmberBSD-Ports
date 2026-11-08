@@ -1,0 +1,3 @@
+KDE backend for xdg-desktop-portal. The package is built only. The D-Bus
+activation file and the systemd user unit are not installed into the
+service directories, and the backend is not started.
