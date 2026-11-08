@@ -1,0 +1,20 @@
+@comment $NetBSD$
+include/dl_attributes.h
+include/dl_codes.h
+include/dl_creationadapter.h
+include/dl_creationinterface.h
+include/dl_dxf.h
+include/dl_entities.h
+include/dl_exception.h
+include/dl_extrusion.h
+include/dl_global.h
+include/dl_writer.h
+include/dl_writer_ascii.h
+lib/cmake/dxflib/dxflibConfig.cmake
+lib/cmake/dxflib/dxflibConfigVersion.cmake
+lib/cmake/dxflib/dxflibTargets-noconfig.cmake
+lib/cmake/dxflib/dxflibTargets.cmake
+lib/libdxflib.so
+lib/libdxflib.so.3
+lib/libdxflib.so.3.26.4
+share/licenses/dxflib/LICENSE

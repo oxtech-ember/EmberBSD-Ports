@@ -1,0 +1,15 @@
+$NetBSD$
+
+Preserve the shared JSON provider version in the installed interface.
+
+--- cmake/nlohmann_json_schema_validatorConfig.cmake.in.orig
++++ cmake/nlohmann_json_schema_validatorConfig.cmake.in
+@@ -1,7 +1,7 @@
+ @PACKAGE_INIT@
+ 
+ include(CMakeFindDependencyMacro)
+-find_dependency(nlohmann_json)
++find_dependency(nlohmann_json 3.12.0 CONFIG)
+ 
+ include("${CMAKE_CURRENT_LIST_DIR}/nlohmann_json_schema_validatorTargets.cmake")
+ check_required_components(

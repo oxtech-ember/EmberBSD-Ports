@@ -1,0 +1,3 @@
+Delaunator is a C++ implementation of fast Delaunay triangulation for
+2D point sets. It exposes the `delaunator::Delaunator` API and provides
+triangle and half-edge index arrays.

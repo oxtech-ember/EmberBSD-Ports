@@ -1,0 +1,10 @@
+@comment $NetBSD$
+include/delaunator-header-only.hpp
+include/delaunator.cpp
+include/delaunator.hpp
+lib/cmake/delaunator/delaunatorConfig.cmake
+lib/cmake/delaunator/delaunatorConfigVersion.cmake
+lib/cmake/delaunator/delaunatorTargets-noconfig.cmake
+lib/cmake/delaunator/delaunatorTargets.cmake
+lib/libdelaunator.so
+share/licenses/delaunator/LICENSE

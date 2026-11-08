@@ -1,19 +1,17 @@
 # $NetBSD: Makefile,v 1.16 2026/09/02 19:02:58 wiz Exp $
 
-DISTNAME=	zint-2.16.0-src
-PKGNAME=	${DISTNAME:S/-src//}
-PKGREVISION=	4
-CATEGORIES=	graphics
-MASTER_SITES=	${MASTER_SITE_SOURCEFORGE:=zint/}
+.include "Makefile.common"
 
-MAINTAINER=	pkgsrc-users@NetBSD.org
-HOMEPAGE=	https://www.zint.org.uk/
-COMMENT=	Open source barcode generating solution
-LICENSE=	gnu-gpl-v3 AND modified-bsd AND apache-2.0 AND mit AND isc AND imagemagick-license
+PKGNAME=		zint-${ZINT_VERSION}
+PKGREVISION=		5
+COMMENT=		Open source barcode generator and frontends
+LICENSE=		gnu-gpl-v3 AND modified-bsd AND apache-2.0 AND mit AND isc AND imagemagick-license
 
-USE_LANGUAGES=	c c++
+BUILDLINK_DEPMETHOD.zint-lib=	full
+.include "../../graphics/zint-lib/buildlink3.mk"
 
 CMAKE_CONFIGURE_ARGS+=	-DMAN_INSTALL_DIR=${PREFIX}/${PKGMANDIR}
+CMAKE_CONFIGURE_ARGS+=	-DZINT_USE_EXTERNAL_LIBRARY=ON
 
 post-install:
 	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/zint
@@ -27,5 +25,4 @@ post-install:
 
 .include "options.mk"
 .include "../../devel/cmake/build.mk"
-.include "../../graphics/png/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

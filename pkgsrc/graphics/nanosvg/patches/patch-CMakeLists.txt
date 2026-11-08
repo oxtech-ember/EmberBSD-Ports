@@ -1,0 +1,66 @@
+$NetBSD$
+
+Install the shared KiCad-maintained FILE* API and an explicit consumer test target.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1,10 +1,58 @@
++cmake_minimum_required(VERSION 3.16)
++project(NanoSVG LANGUAGES CXX)
++
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
++
+ set(NANOSVG_SRCS
+     nanosvg.cpp
+     )
+ 
+-add_library(nanosvg STATIC ${NANOSVG_SRCS})
++add_library(nanosvg SHARED ${NANOSVG_SRCS})
++add_library(NanoSVG::nanosvg ALIAS nanosvg)
++
++set_target_properties(nanosvg PROPERTIES
++    VERSION 20261029.0.0
++    SOVERSION 20261029
++)
+ 
+ target_include_directories( nanosvg
+     PUBLIC
+-    ${CMAKE_CURRENT_SOURCE_DIR}
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+     )
++
++install(TARGETS nanosvg EXPORT NanoSVGTargets
++    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
++    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
++)
++install(FILES nanosvg.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
++install(EXPORT NanoSVGTargets
++    NAMESPACE NanoSVG::
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NanoSVG
++)
++
++file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/NanoSVGConfig.cmake"
++    "include(\"\${CMAKE_CURRENT_LIST_DIR}/NanoSVGTargets.cmake\")\n")
++write_basic_package_version_file(
++    "${CMAKE_CURRENT_BINARY_DIR}/NanoSVGConfigVersion.cmake"
++    VERSION 20261029
++    COMPATIBILITY SameMajorVersion
++)
++install(FILES
++    "${CMAKE_CURRENT_BINARY_DIR}/NanoSVGConfig.cmake"
++    "${CMAKE_CURRENT_BINARY_DIR}/NanoSVGConfigVersion.cmake"
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NanoSVG
++)
++
++if(BUILD_TESTING)
++    add_executable(nanosvg-file-api-consumer EXCLUDE_FROM_ALL
++        nanosvg-file-api-consumer.cpp)
++    target_link_libraries(nanosvg-file-api-consumer PRIVATE NanoSVG::nanosvg)
++    add_custom_target(check
++        COMMAND $<TARGET_FILE:nanosvg-file-api-consumer>
++        DEPENDS nanosvg-file-api-consumer
++        VERBATIM)
++endif()

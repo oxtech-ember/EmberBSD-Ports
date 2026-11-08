@@ -1,0 +1,2 @@
+nlohmann/json-schema-validator provides JSON Schema validation for
+nlohmann/json values as a C++ library.

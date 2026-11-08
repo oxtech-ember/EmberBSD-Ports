@@ -1,0 +1,3 @@
+Mapbox gzip-hpp is a header-only C++ wrapper for zlib compression and decompression.
+
+The shared package applies the bounded decompression API vendored by KiCad 10.0.8, including buffer sizing and max-output controls, while retaining upstream compression and utility headers. The package source is the upstream v0.1.0 release; the compatibility patch is derived from KiCad 10.0.8's thirdparty/gzip-hpp subtree in kicad-10.0.8.tar.bz2 (SHA256 e349755a725b5dd2ae43c5bac20b2c5504fd4f788d3bc84e84712b01349e5828).

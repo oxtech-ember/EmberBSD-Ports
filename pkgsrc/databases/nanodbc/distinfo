@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (nanodbc-3.0.8.tar.gz) = 81c64b059f170949e1d37f050c7f3f7b4ed80c737dbdd8bc592604b4eb3ba694
+SHA512 (nanodbc-3.0.8.tar.gz) = c3728c30c79baaf39553b0ddc46b645ecc598baab3ea40b9544465e8d1d81aaeae27415e8be4637154ea0020f8254b76cea8394e123f51f339ef9b35f1c4e2d3
+Size (nanodbc-3.0.8.tar.gz) = 457011 bytes
+SHA1 (patch-CMakeLists.txt) = 779711f31720ee398dcb23d4034b0e56d1bb1098

@@ -1,0 +1,50 @@
+$NetBSD$
+
+Build and install dxflib as a shared library with a relocatable CMake package.
+--- /dev/null
++++ CMakeLists.txt
+@@ -0,0 +1,44 @@
++cmake_minimum_required(VERSION 3.15)
++project(dxflib VERSION 3.26.4 LANGUAGES CXX)
++
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
++
++add_library(dxflib SHARED
++    src/dl_dxf.cpp
++    src/dl_writer_ascii.cpp
++)
++add_library(dxflib::dxflib ALIAS dxflib)
++set_target_properties(dxflib PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION 3)
++target_compile_features(dxflib PUBLIC cxx_std_11)
++target_include_directories(dxflib PUBLIC
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
++    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
++)
++
++install(TARGETS dxflib EXPORT dxflibTargets
++    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
++)
++install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
++    FILES_MATCHING PATTERN "*.h"
++)
++install(EXPORT dxflibTargets FILE dxflibTargets.cmake
++    NAMESPACE dxflib::
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/dxflib
++)
++configure_package_config_file(
++    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dxflibConfig.cmake.in
++    ${CMAKE_CURRENT_BINARY_DIR}/dxflibConfig.cmake
++    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/dxflib
++)
++write_basic_package_version_file(
++    ${CMAKE_CURRENT_BINARY_DIR}/dxflibConfigVersion.cmake
++    VERSION ${PROJECT_VERSION}
++    COMPATIBILITY SameMajorVersion
++)
++install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dxflibConfig.cmake
++              ${CMAKE_CURRENT_BINARY_DIR}/dxflibConfigVersion.cmake
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/dxflib
++)

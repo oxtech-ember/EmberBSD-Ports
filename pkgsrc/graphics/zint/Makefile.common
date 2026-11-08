@@ -1,0 +1,14 @@
+# Shared source identity and full patch set for libzint and its frontends.
+.include "${PKGSRCDIR}/graphics/zint/version.mk"
+
+DISTNAME=		zint-${ZINT_VERSION}-src
+CATEGORIES=		graphics
+MASTER_SITES=		${MASTER_SITE_SOURCEFORGE:=zint/}
+
+MAINTAINER=		pkgsrc-users@NetBSD.org
+HOMEPAGE=		https://www.zint.org.uk/
+USE_LANGUAGES=		c c++
+
+DISTINFO_FILE=		${PKGSRCDIR}/graphics/zint/distinfo
+PATCHDIR=		${PKGSRCDIR}/graphics/zint/patches
+FILESDIR=		${PKGSRCDIR}/graphics/zint/files

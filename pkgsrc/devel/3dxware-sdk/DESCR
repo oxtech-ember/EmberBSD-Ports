@@ -1,0 +1,4 @@
+This package provides the GPL-licensed 3DxWare SDK v4 headers and KiCad's
+navigation library loader subset. On platforms without the proprietary
+3Dconnexion runtime, the loader reports EOPNOTSUPP. This package does not
+provide a device driver or enable hardware support.

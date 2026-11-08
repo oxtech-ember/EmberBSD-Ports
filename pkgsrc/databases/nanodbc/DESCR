@@ -1,0 +1,4 @@
+nanodbc is a small C++ library that simplifies the native ODBC API. It
+provides connections, statements, transactions, parameter bindings and
+results. This package exposes the Unicode interface using shared unixODBC
+and Boost.Locale providers.

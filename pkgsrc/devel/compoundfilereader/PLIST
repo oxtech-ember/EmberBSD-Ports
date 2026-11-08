@@ -1,0 +1,6 @@
+@comment $NetBSD$
+include/compoundfilereader.h
+include/utf.h
+lib/cmake/CompoundFileReader/CompoundFileReaderConfig.cmake
+share/licenses/compoundfilereader/LICENSE
+share/licenses/compoundfilereader/LICENSE.apache-2.0

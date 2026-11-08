@@ -1,0 +1,3 @@
+NanoSVG parses SVG shapes and paths. This package provides the maintained
+KiCad variant as a shared library with installed headers and a CMake package.
+It preserves KiCad's FILE-based parser interface and path duplication API.

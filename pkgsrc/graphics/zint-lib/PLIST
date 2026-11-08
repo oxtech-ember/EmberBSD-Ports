@@ -1,0 +1,12 @@
+@comment $NetBSD$
+include/zint.h
+lib/cmake/zint/zint-config.cmake
+lib/cmake/zint/zint-targets-relwithdebinfo.cmake
+lib/cmake/zint/zint-targets.cmake
+lib/libzint.so
+lib/libzint.so.2.16
+lib/libzint.so.${PKGVERSION}.0
+share/licenses/zint-lib/LICENSE
+share/licenses/zint-lib/LICENSE_apache-2.0
+share/licenses/zint-lib/LICENSE_imagemagick
+share/licenses/zint-lib/NOTICE

@@ -1,0 +1,10 @@
+@comment $NetBSD$
+include/nanodbc/nanodbc.h
+lib/cmake/nanodbc/nanodbc-config-version.cmake
+lib/cmake/nanodbc/nanodbc-config.cmake
+lib/cmake/nanodbc/nanodbc-targets-noconfig.cmake
+lib/cmake/nanodbc/nanodbc-targets.cmake
+lib/libnanodbc.so
+lib/libnanodbc.so.3
+lib/libnanodbc.so.3.0.8
+share/licenses/nanodbc/LICENSE

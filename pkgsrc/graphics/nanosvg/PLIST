@@ -1,0 +1,10 @@
+@comment $NetBSD$
+include/nanosvg.h
+lib/cmake/NanoSVG/NanoSVGConfig.cmake
+lib/cmake/NanoSVG/NanoSVGConfigVersion.cmake
+lib/cmake/NanoSVG/NanoSVGTargets-noconfig.cmake
+lib/cmake/NanoSVG/NanoSVGTargets.cmake
+lib/libnanosvg.so
+lib/libnanosvg.so.20261029
+lib/libnanosvg.so.20261029.0.0
+share/licenses/nanosvg/LICENSE.zlib

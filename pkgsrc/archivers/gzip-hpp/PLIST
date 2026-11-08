@@ -1,0 +1,8 @@
+@comment $NetBSD$
+include/gzip/compress.hpp
+include/gzip/config.hpp
+include/gzip/decompress.hpp
+include/gzip/utils.hpp
+include/gzip/version.hpp
+lib/cmake/gzip-hpp/gzip-hppConfig.cmake
+share/licenses/gzip-hpp/LICENSE.md
