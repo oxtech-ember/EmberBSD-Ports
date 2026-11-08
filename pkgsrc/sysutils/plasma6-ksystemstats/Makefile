@@ -1,7 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	ksystemstats-${PLASMAVER}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	sysutils
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -18,10 +18,10 @@ USE_TOOLS+=	msgmerge pkg-config
 post-extract:
 	${CP} ${FILESDIR}/netbsdcpuplugin.h ${WRKSRC}/plugins/cpu/netbsdcpuplugin.h
 	${CP} ${FILESDIR}/netbsdcpuplugin.cpp ${WRKSRC}/plugins/cpu/netbsdcpuplugin.cpp
-	${CP} ${FILESDIR}/netbsdbackend.h ${WRKSRC}/plugins/memory/netbsdbackend.h
-	${CP} ${FILESDIR}/netbsdbackend.cpp ${WRKSRC}/plugins/memory/netbsdbackend.cpp
-	${CP} ${FILESDIR}/NetBsdBackend.h ${WRKSRC}/plugins/network/NetBsdBackend.h
-	${CP} ${FILESDIR}/NetBsdBackend.cpp ${WRKSRC}/plugins/network/NetBsdBackend.cpp
+	${CP} ${FILESDIR}/memory/netbsdbackend.h ${WRKSRC}/plugins/memory/netbsdbackend.h
+	${CP} ${FILESDIR}/memory/netbsdbackend.cpp ${WRKSRC}/plugins/memory/netbsdbackend.cpp
+	${CP} ${FILESDIR}/network/NetBsdBackend.h ${WRKSRC}/plugins/network/NetBsdBackend.h
+	${CP} ${FILESDIR}/network/NetBsdBackend.cpp ${WRKSRC}/plugins/network/NetBsdBackend.cpp
 
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
 .include "../../devel/kf6-kcrash/buildlink3.mk"
