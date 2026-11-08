@@ -1,0 +1,41 @@
+# $NetBSD$
+
+DISTNAME=	kde-cli-tools-${PLASMAVER}
+CATEGORIES=	sysutils
+
+HOMEPAGE=	https://www.kde.org/workspaces/plasmadesktop/
+COMMENT=	Tools based on KDE Frameworks to better interact with the system
+LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1
+
+.include "../../meta-pkgs/kde/plasma6.mk"
+
+# kf6-kdoctools is already in the sysroot. Installing it again as a host
+# tool conflicts with kf6-kdoctools-generators. The buildlink supplies the
+# cmake package. The tools are built only and are not added to a session.
+
+USE_TOOLS+=	msgmerge pkg-config
+
+DEPENDS+=	qt6-qtdeclarative>=6.12.0:../../lang/qt6-qtdeclarative
+
+SUBST_CLASSES+=		fix-moc
+SUBST_STAGE.fix-moc=	post-configure
+SUBST_MESSAGE.fix-moc=	Cleaning up MOC includes
+SUBST_FILES.fix-moc=	_KDE_build/*/CMakeFiles/*_autogen.dir/AutogenInfo.json
+SUBST_FILES.fix-moc+=	_KDE_build/*/*/CMakeFiles/*_autogen.dir/AutogenInfo.json
+SUBST_NOOP_OK.fix-moc=	yes
+SUBST_SED.fix-moc=	-e 's;"${PREFIX}/include",;;g'
+
+.include "../../devel/kf6-kcmutils/buildlink3.mk"
+.include "../../devel/kf6-kconfig/buildlink3.mk"
+.include "../../devel/kf6-kcoreaddons/buildlink3.mk"
+.include "../../devel/kf6-kdoctools/buildlink3.mk"
+.include "../../devel/kf6-ki18n/buildlink3.mk"
+.include "../../devel/kf6-kio/buildlink3.mk"
+.include "../../devel/kf6-kparts/buildlink3.mk"
+.include "../../devel/kf6-kservice/buildlink3.mk"
+.include "../../graphics/kf6-kiconthemes/buildlink3.mk"
+.include "../../graphics/qt6-qtsvg/buildlink3.mk"
+.include "../../security/kf6-kdesu/buildlink3.mk"
+.include "../../x11/kf6-kwindowsystem/buildlink3.mk"
+.include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"
