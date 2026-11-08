@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (gtksourceview-5.22.0.tar.xz) = f7e398985888a79a2208c10249b67252b5fa5bf2a06e9210dba4c56a8ba62297
+SHA512 (gtksourceview-5.22.0.tar.xz) = e5e2401a891f6174eb06b5b2fe9bb2db08afaeb3aea99c2c3f27787ee47f2afdde1ef06350034993a9281bc1f2a38e9a6f18801077c746f652bbd11d8415b24d
+Size (gtksourceview-5.22.0.tar.xz) = 1269420 bytes
+SHA1 (patch-gtksourceview_meson.build) = 83e205ef53bb21e20950b2ebe08e21f08f82f725
+SHA1 (patch-meson.build) = 4c43e8f4dd6e62345592a95018eacde16ff01a6b
+SHA1 (patch-meson_options.txt) = 9396cdcc4f2703ce1c7f7a5280e766dd73c4b7f9

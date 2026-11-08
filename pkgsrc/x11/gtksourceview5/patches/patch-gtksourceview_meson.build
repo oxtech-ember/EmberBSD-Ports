@@ -1,0 +1,16 @@
+$NetBSD$
+
+Keep target GIR/VAPI inputs for native generators and make test builds explicit.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- gtksourceview/meson.build.orig
++++ gtksourceview/meson.build
+@@ -321,6 +321,8 @@
+ 
+   if generate_vapi
+     gtksource_vapi = gnome.generate_vapi(package_string,
++           gir_dirs: meson.get_external_property('emberbsd_gir_dirs', []),
++          vapi_dirs: meson.get_external_property('emberbsd_vapi_dirs', []),
+             sources: gtksource_gir.get(0),
+             install: true,
+         install_dir: vapidir,

@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (libspelling-0.4.11.tar.xz) = de58ff1ea49e82d2aa0fb76537b619e094f7f21c09614834780b7d5f693bc38e
+SHA512 (libspelling-0.4.11.tar.xz) = f4f00796c9db777de0fc058b21a5dd25637ffd80e38b4e855a99888f54118c7dd0b8ffb45463a685d50bdb5674b24c9fdb3dc3ee97c68a849443ad847bc3db1e
+Size (libspelling-0.4.11.tar.xz) = 74408 bytes
+SHA1 (patch-lib_meson.build) = 986a7ae3e07bdb9e00394450b18040c495ae9be8
+SHA1 (patch-meson.build) = 8d0b14f7b6eafe5e54a2142bdee1a15a2b69000f
+SHA1 (patch-meson_options.txt) = 5068f6affa20571bc80137e708e4078f36f8587d

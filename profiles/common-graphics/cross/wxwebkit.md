@@ -19,6 +19,17 @@ system codec providers supply the application stack. The GTK4 source changes
 and focused runtime contracts are documented in the
 [wxWidgets tests](../../../pkgsrc/x11/wxGTK32/tests/README.md).
 
+GTK4 spellchecking uses the shared [libspelling recipe](../../../pkgsrc/textproc/libspelling/Makefile)
+at 0.4.11 and [GtkSourceView 5](../../../pkgsrc/x11/gtksourceview5/Makefile)
+at 5.22.0, from the official GNOME release archives. Vala is a native build
+tool; these consumers do not require a target Vala compiler or its Graphviz
+dependencies. The common GI provider retains introspection, while native
+VAPI generation reads GIR and VAPI dependencies from the target sysroot.
+Package options `PKG_OPTIONS.libspelling=tests` and
+`PKG_OPTIONS.gtksourceview5=tests` explicitly enable test builds. Recipe
+metadata and release patch checks are verified; target package and GUI
+spellchecking acceptance remain separate.
+
 The AI-assisted cross recipe enables pkgsrc `USE_GNU_CONFIGURE_HOST`.
 The GNU configure framework supplies the selected `--build` and `--host`
 tuples. Upstream then selects the NetBSD GTK toolkit and cross compiler mode.

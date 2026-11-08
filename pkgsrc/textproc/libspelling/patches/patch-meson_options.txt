@@ -1,0 +1,13 @@
+$NetBSD$
+
+Keep target GIR/VAPI inputs for native generators and make test builds explicit.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- meson_options.txt.orig
++++ meson_options.txt
+@@ -4,3 +4,5 @@
+ option('sysprof', type: 'boolean', value: true, description: 'Generate profiler data using Sysprof')
+ option('vapi', type: 'boolean', value: true, description: 'Generate Vala vapi (Requires introspection)')
+ option('install-static', type: 'boolean', value: false, description: 'Install libspelling static archive')
++
++option('build-tests', type: 'boolean', value: true, description: 'Build test programs')

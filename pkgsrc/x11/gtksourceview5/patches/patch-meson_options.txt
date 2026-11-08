@@ -1,0 +1,13 @@
+$NetBSD$
+
+Keep target GIR/VAPI inputs for native generators and make test builds explicit.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- meson_options.txt.orig
++++ meson_options.txt
+@@ -21,3 +21,5 @@
+ option('sysprof',
+        type: 'boolean', value: false,
+        description: 'Build with sysprof profiler support')
++
++option('build-tests', type: 'boolean', value: true, description: 'Build test programs')

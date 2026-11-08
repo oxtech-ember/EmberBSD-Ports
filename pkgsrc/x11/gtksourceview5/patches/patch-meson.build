@@ -1,0 +1,18 @@
+$NetBSD$
+
+Keep target GIR/VAPI inputs for native generators and make test builds explicit.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- meson.build.orig
++++ meson.build
+@@ -336,7 +336,9 @@
+ subdir('data')
+ subdir('docs')
+ subdir('po')
+-subdir('tests')
++if get_option('build-tests')
++  subdir('tests')
++endif
+ 
+ if get_option('build-testsuite')
+   subdir('testsuite')
