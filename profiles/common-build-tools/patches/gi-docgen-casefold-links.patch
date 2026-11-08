@@ -1,6 +1,13 @@
 $NetBSD$
 # Origin: EmberBSD (AI-assisted); preserve distinct case-only API page names on insensitive filesystems.
 
+--- MANIFEST.in.orig
++++ MANIFEST.in
+@@ -24,3 +24,4 @@
+ recursive-include docs *.rst
+ recursive-include gidocgen/templates *
+ recursive-include tests/data *
++global-exclude *.orig
 --- gidocgen/gdgenerate.py.orig
 +++ gidocgen/gdgenerate.py
 @@ -15,6 +15,7 @@
