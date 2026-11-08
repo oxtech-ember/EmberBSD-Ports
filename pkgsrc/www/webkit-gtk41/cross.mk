@@ -7,7 +7,6 @@ EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
 CMAKE_CONFIGURE_ARGS+= -DGI_LDD_WRAPPER:FILEPATH=${EMBERBSD_GI_FILESDIR}/elf-needed.sh
 CMAKE_CONFIGURE_ARGS+= -DGI_TARGET_GIR_DIR:PATH=${CROSS_DESTDIR}${CROSS_LOCALBASE}/share/gir-1.0
-MAKE_ENV+= GI_GIR_PATH=${CROSS_DESTDIR}${CROSS_LOCALBASE}/share/gir-1.0
 
 pre-configure: emberbsd-webkit-atomic
 .PHONY: emberbsd-webkit-atomic

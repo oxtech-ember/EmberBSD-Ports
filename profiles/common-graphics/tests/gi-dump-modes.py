@@ -20,6 +20,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 ARGS = None
@@ -153,7 +154,7 @@ class DumpModes(unittest.TestCase):
     def test_install_retains_the_cross_introspection_environment(self):
         # Ninja install can regenerate CMake or Meson configuration. It needs
         # the same launcher, target identity and replay mode as the build.
-        for recipe in ('www/webkit-gtk60', 'devel/pango'):
+        for recipe in ('www/webkit-gtk60', 'devel/pango', 'textproc/libspelling'):
             with self.subTest(recipe=recipe):
                 phases = {}
                 for phase in ('MAKE_ENV', 'CONFIGURE_ENV', 'INSTALL_ENV'):
@@ -161,12 +162,31 @@ class DumpModes(unittest.TestCase):
                                          shlex.split(value(recipe, '${' + phase + '}')))
                 required = {key: val for key, val in phases['MAKE_ENV'].items()
                             if key.startswith(('GI_CROSS_', 'EMBERBSD_GI_')) or
-                            key in ('EMBERBSD_SDK_SOURCE', 'EMBERBSD_NATIVE_RUNTIME_VIEW')}
+                            key in ('EMBERBSD_SDK_SOURCE', 'EMBERBSD_NATIVE_RUNTIME_VIEW', 'GI_GIR_PATH')}
                 self.assertTrue(required['GI_CROSS_LAUNCHER'])
+                self.assertEqual(required['GI_GIR_PATH'],
+                                 value(recipe, '${CROSS_DESTDIR}${CROSS_LOCALBASE}/share/gir-1.0'))
                 self.assertEqual(required['EMBERBSD_GI_DUMP_MODE'], 'replay')
                 for phase in ('CONFIGURE_ENV', 'INSTALL_ENV'):
                     self.assertEqual({key: phases[phase].get(key) for key in required},
                                      required, phase)
+
+    def test_spelling_generators_receive_target_search_paths(self):
+        # Inspect the generated file, not only late-expanded make variables:
+        # Meson's cross-file recipe captures property names at include time.
+        for recipe in ('textproc/libspelling', 'x11/gtksourceview5'):
+            with self.subTest(recipe=recipe):
+                work = Path(self.temp.name) / recipe.replace('/', '_')
+                work.mkdir()
+                cross = work / '.meson_cross'
+                result = bmake(recipe, 'WRKDIR=' + str(work), str(cross))
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                generated = tomllib.loads(cross.read_text())
+                prefix = value(recipe, '${CROSS_DESTDIR}${CROSS_LOCALBASE}')
+                self.assertEqual(generated['properties']['emberbsd_gir_dirs'],
+                                 [prefix + '/share/gir-1.0'])
+                self.assertEqual(generated['properties']['emberbsd_vapi_dirs'],
+                                 [prefix + '/share/vala/vapi'])
 
 
 def main():

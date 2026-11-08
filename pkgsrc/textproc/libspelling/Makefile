@@ -34,7 +34,6 @@ PKGCONFIG_OVERRIDE+=		output/meson-private/libspelling-1.pc
 PKGCONFIG_OVERRIDE_STAGE=	post-configure
 
 .include "../../lang/python/pyversion.mk"
-.include "../../devel/meson/build.mk"
 BUILDLINK_DEPMETHOD.gobject-introspection= build
 .include "../../devel/gobject-introspection/buildlink3.mk"
 EMBERBSD_GI_MESON_OPTIONS= no
@@ -49,4 +48,5 @@ MESON_CROSS.emberbsd_vapi_dirs= ['${CROSS_DESTDIR}${CROSS_LOCALBASE}/share/vala/
 .include "../../textproc/icu/buildlink3.mk"
 .include "../../x11/gtk4/buildlink3.mk"
 .include "../../x11/gtksourceview5/buildlink3.mk"
+.include "../../devel/meson/build.mk"
 .include "../../mk/bsd.pkg.mk"
