@@ -1,0 +1,3 @@
+D-Bus client library used by the Plasma dialer to request call-audio changes.
+The PulseAudio and ALSA daemon is not built: this sysroot has no ALSA, and
+the package does not install a D-Bus activation service.

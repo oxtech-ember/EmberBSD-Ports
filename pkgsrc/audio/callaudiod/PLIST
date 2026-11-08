@@ -1,0 +1,8 @@
+@comment $NetBSD$
+bin/callaudiocli
+include/libcallaudio-0.1/libcallaudio-enums.h
+include/libcallaudio-0.1/libcallaudio.h
+lib/libcallaudio-0.1.so
+lib/libcallaudio-0.1.so.0
+lib/pkgconfig/libcallaudio-0.1.pc
+share/dbus-1/interfaces/org.mobian_project.CallAudio.xml

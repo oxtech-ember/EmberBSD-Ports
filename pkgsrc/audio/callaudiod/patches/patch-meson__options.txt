@@ -1,0 +1,11 @@
+$NetBSD$
+
+--- meson_options.txt.orig	2024-07-02 12:38:46.000000000 +0300
++++ meson_options.txt	2026-11-08 13:55:01.417010477 +0300
+@@ -1,3 +1,6 @@
+ option('gtk_doc',
+        type: 'boolean', value: false,
+        description: 'Whether to generate the API reference for Callaudio')
++option('daemon',
++       type: 'boolean', value: true,
++       description: 'Build the PulseAudio and ALSA call-audio daemon')

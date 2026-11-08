@@ -1,0 +1,14 @@
+$NetBSD$
+
+--- meson.build.orig	2024-07-02 12:38:46.000000000 +0300
++++ meson.build	2026-11-08 13:55:01.416922101 +0300
+@@ -108,6 +108,8 @@
+ 
+ subdir('data')
+ subdir('libcallaudio')
+-subdir('src')
++if get_option('daemon')
++  subdir('src')
++endif
+ subdir('tools')
+ subdir('doc')
