@@ -129,6 +129,18 @@ class ContextTest(unittest.TestCase):
                 producer.resolve_native_database(process=answer(str(prefix), target), **kwargs)
             with self.assertRaisesRegex(ValueError, 'another prefix'):
                 producer.resolve_native_database(process=answer(str(prefix), other), **kwargs)
+            mixed = root / 'mixed-pkgdb'
+            self._install_package(mixed, prefix)
+            (mixed / 'foreign-1.0').mkdir()
+            (mixed / 'foreign-1.0' / '+CONTENTS').write_text(
+                '@cwd ' + str(prefix) + '\n@cwd ' + str(root / 'other-prefix') + '\n')
+            with self.assertRaisesRegex(ValueError, 'another prefix'):
+                producer.resolve_native_database(process=answer(str(prefix), mixed), **kwargs)
+            spaced = root / 'spaced-pkgdb'
+            self._install_package(spaced, prefix)
+            (spaced / 'example-1.0' / '+CONTENTS').write_text('@cwd ' + str(prefix) + ' \n')
+            with self.assertRaisesRegex(ValueError, 'another prefix'):
+                producer.resolve_native_database(process=answer(str(prefix), spaced), **kwargs)
             with self.assertRaisesRegex(ValueError, 'differs from the host prefix'):
                 producer.resolve_native_database(process=answer(str(foreign_prefix), other), **kwargs)
             link = root / 'linked-pkgdb'

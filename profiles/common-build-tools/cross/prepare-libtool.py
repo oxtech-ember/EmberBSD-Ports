@@ -225,17 +225,20 @@ def native_package_database(pkg_admin, process, env):
     return _package_database_path(output)
 
 
-def _installed_prefix(contents):
+def _installed_prefixes(contents):
+    """Return every @cwd path with only the line ending removed."""
+    found = []
     with open(contents, 'r', encoding='utf-8') as stream:
-        remaining = 65536
-        while remaining > 0:
-            line = stream.readline(remaining)
-            if not line:
-                return None
-            remaining -= len(line)
-            if line.startswith('@cwd '):
-                return line[len('@cwd '):].strip()
-    return None
+        for line in stream:
+            if not line.startswith('@cwd '):
+                continue
+            path = line[len('@cwd '):]
+            if path.endswith('\n'):
+                path = path[:-1]
+            if path.endswith('\r'):
+                path = path[:-1]
+            found.append(path)
+    return found
 
 
 def selected_host_database(database, prefix, sysroot):
@@ -255,8 +258,8 @@ def selected_host_database(database, prefix, sysroot):
             contents = os.path.join(entry.path, '+CONTENTS')
             if os.path.islink(contents) or not os.path.isfile(contents):
                 raise ValueError('native package database entry has no package contents')
-            installed = _installed_prefix(contents)
-            if installed is None or os.path.normpath(installed) != prefix:
+            installed = _installed_prefixes(contents)
+            if not installed or any(os.path.normpath(path) != prefix for path in installed):
                 raise ValueError('native package database belongs to another prefix')
             found = True
     if not found:
@@ -367,15 +370,14 @@ def main():
         stage_sysroot = paths.canonical_existing(a.sysroot)
         if a.native_makeconf and not (a.pkgsrc_tree or a.pkgsrc_export):
             raise SDKError('explicit native database requires --pkgsrc-tree or --pkgsrc-export')
-        pkgdb = resolve_native_database(
-            pkg_admin=native.tool('pkg_admin'), process=process, env=query_env,
-            prefix=prefix, sysroot=stage_sysroot,
-            native_makeconf=(paths.canonical_existing(a.native_makeconf) if a.native_makeconf else None),
-            make=native.tool('make'),
-            pkgsrc=(paths.canonical_existing(a.pkgsrc_tree or a.pkgsrc_export)
-                    if a.native_makeconf else None))
-        # Same prefix-parent lock as the compiled database. Do not retarget it.
-        locks.enter_context(process.ContextLocks([pkgdb], lock_directory))
+        # The compiled answer does not need the pkgsrc tree. An explicit MAKECONF
+        # is resolved only after that tree has been verified below.
+        pkgdb = None
+        if not a.native_makeconf:
+            pkgdb = resolve_native_database(
+                pkg_admin=native.tool('pkg_admin'), process=process, env=query_env,
+                prefix=prefix, sysroot=stage_sysroot)
+            locks.enter_context(process.ContextLocks([pkgdb], lock_directory))
         tooldir = paths.canonical_existing(a.os_tools)
         output = os.path.join(paths.canonical_existing(os.path.dirname(a.output)), os.path.basename(a.output))
         if os.path.commonpath((output, tooldir)) != tooldir or output == tooldir:
@@ -396,9 +398,29 @@ def main():
         env['TMPDIR'] = work
         python = native.tool('python')
         direct_export = None
+        verified_export = None
         if a.pkgsrc_tree:
             direct_export = verify_pkgsrc_tree(paths.canonical_existing(a.pkgsrc_tree),
                                                ports, git, native.tool('gpatch'), process, env)
+        elif a.native_makeconf:
+            spec = importlib.util.spec_from_file_location(
+                'emberbsd_pkgsrc_source_identity', ports / 'scripts/pkgsrc-source-identity.py')
+            identity = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(identity)
+            try:
+                verified_export = identity.shared_export(paths.canonical_existing(a.pkgsrc_export), ports,
+                                                         git, sdk, native.tool('gpatch'))
+            except ValueError as error:
+                raise SDKError(str(error)) from error
+        if a.native_makeconf:
+            database_tree = direct_export if direct_export is not None else verified_export
+            pkgdb = resolve_native_database(
+                pkg_admin=native.tool('pkg_admin'), process=process, env=query_env,
+                prefix=prefix, sysroot=stage_sysroot,
+                native_makeconf=paths.canonical_existing(a.native_makeconf),
+                make=native.tool('make'), pkgsrc=str(database_tree))
+            # Same prefix-parent lock as the compiled database. Do not retarget it.
+            locks.enter_context(process.ContextLocks([pkgdb], lock_directory))
         try:
             sysroot = bind_sysroot(output, stage_sysroot)
         except (OSError, ValueError) as error:
@@ -411,15 +433,19 @@ def main():
             elif a.pkgsrc_export:
                 # A stage keyed by the Git fingerprint of the export inputs.
                 # It is verified against the current inputs and only read.
-                spec = importlib.util.spec_from_file_location(
-                    'emberbsd_pkgsrc_source_identity', ports / 'scripts/pkgsrc-source-identity.py')
-                identity = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(identity)
-                try:
-                    exported = identity.shared_export(paths.canonical_existing(a.pkgsrc_export), ports,
-                                                      git, sdk, native.tool('gpatch'))
-                except ValueError as error:
-                    raise SDKError(str(error)) from error
+                # --native-makeconf already resolved this to the inner pkgsrc tree.
+                if verified_export is not None:
+                    exported = verified_export
+                else:
+                    spec = importlib.util.spec_from_file_location(
+                        'emberbsd_pkgsrc_source_identity', ports / 'scripts/pkgsrc-source-identity.py')
+                    identity = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(identity)
+                    try:
+                        exported = identity.shared_export(paths.canonical_existing(a.pkgsrc_export), ports,
+                                                          git, sdk, native.tool('gpatch'))
+                    except ValueError as error:
+                        raise SDKError(str(error)) from error
             else:
                 exported = tmp / 'pkgsrc'
                 command = [python, '-B', str(ports / 'scripts/prepare-pkgsrc.py'), str(exported),

@@ -17,12 +17,16 @@ bmake -C PKGSRC/pkgtools/pkg_install USE_CROSS_COMPILE=no MAKECONF=FILE \
 ```
 
 `PREFIX` must be the selected host prefix. `PKG_DBDIR` must be a real
-directory, not a symlink, outside the target sysroot, and every installed
-`+CONTENTS` `@cwd` must be that host prefix. The target sysroot database and a
-database from another prefix are refused. This still requires `--pkgsrc-tree`
-or `--pkgsrc-export`. The dependency `pkg_add -K PKG_DBDIR -U` and the prefix
-and database locks are unchanged; the lock directory still defaults to the
-native prefix parent. A prefix can keep that database outside `var/db/pkg`.
+directory, not a symlink, outside the target sysroot. Every `@cwd` line in
+every installed `+CONTENTS` must name that host prefix; a later `@cwd` and a
+trailing space are refused. The target sysroot database and a database from
+another prefix are refused. This still requires `--pkgsrc-tree` or
+`--pkgsrc-export`. The producer verifies that input before the query.
+`--pkgsrc-export` is the stage directory; the query uses the inner `pkgsrc`
+tree from its receipt, not the stage directory itself. The dependency
+`pkg_add -K PKG_DBDIR -U` and the prefix and database locks are unchanged;
+the lock directory still defaults to the native prefix parent. A prefix can
+keep that database outside `var/db/pkg`.
 
 Select the host prefix, compiler, target sysroot, OS TOOLDIR, Git, work parent,
 and target explicitly. A Clang runtime stage must match the actual foundation;
