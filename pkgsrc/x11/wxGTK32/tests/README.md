@@ -77,14 +77,14 @@ Text geometry uses the public GtkAccessibleText interface, and style queries
 read public GtkTextTag properties in priority order. Scrollbars use the shared
 GTK4 wxWindow adjustment implementation supplied by `patch-gtk4-window`.
 
-The current stable libspelling 0.4.10 TextBufferAdapter requires GtkSourceBuffer.
+The current stable libspelling 0.4.11 TextBufferAdapter requires GtkSourceBuffer.
 Multiline controls create that buffer directly. Singleline entries synchronize
 text and cursor/selection with a short GtkSourceBuffer and reuse the same
 adapter for checking, language selection and correction actions. Its error tag
 becomes Pango error underlines on the entry. Corrections flow back through
 wxTextCtrl's normal SetValue/event contract. There is one spelling engine and
 no duplicated dictionary parser or new GTK3 dependency. The supported API comes
-from [libspelling 0.4.10](https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10),
+from [libspelling 0.4.11](https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.11),
 not the development documentation's newer API.
 
 ```sh
