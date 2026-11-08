@@ -17,10 +17,13 @@ plain texture/PNG checks remain available, and DMA-BUF cases use upstream's
 unsupported-operation result when the backend is absent. DRM format headers
 alone do not establish DMA-BUF support.
 
-The official archive checksums, cross configure, selected host Wayland
-scanner and target C compilation have been exercised. The full package,
-introspection output, installation manifest and GUI runtime are still being
-validated; source preparation is not a published GTK4 binary.
+The complete aarch64 compilation and real target GType queries have succeeded.
+The recipe includes normalized dumps for Gdk, GdkX11, GdkWayland, Gsk and Gtk
+on NetBSD-11.0-aarch64, including the chooser properties and signals below.
+Ordinary cross builds use the shared replay mechanism without a query target;
+other target platforms need their own captures. The five files total 351065
+bytes. Full package installation and GUI runtime acceptance remain separate
+from compilation and introspection.
 
 The embedded `GtkFileChooserWidget` and `GtkFileChooserDialog` expose two
 EmberBSD instance properties: `show-hidden` and `do-overwrite-confirmation`.
