@@ -1,0 +1,10 @@
+$NetBSD$
+
+BLAKE2s (freerdp-3.10.3.tar.gz) = 55697490cbf2f86e81a43c3a366f2f5e137882642d7ae1e5e671044b9fce9819
+SHA512 (freerdp-3.10.3.tar.gz) = 08298b927a065f144a71395581c4fc0c071d8fc4125e12d2ab004817d670025bc6a01a06f1c258517a1521d08dc0dfe62b66c3d067ec9177d76507f593c573ad
+Size (freerdp-3.10.3.tar.gz) = 10341200 bytes
+SHA1 (patch-libfreerdp_codec_dsp_ffmpeg.c) = ea0e748bc1bc721eaca0bddf2f40bc7154bad6c5
+SHA1 (patch-libfreerdp_codec_h264_ffmpeg.c) = c54e4c1b17aacfa89f99434d5d0828c3ec3f2450
+SHA1 (patch-libfreerdp_utils_passphrase.c) = 3e46d3428ecc23515ee52eff1c31f055899eb828
+SHA1 (patch-winpr_include_winpr_string.h) = 854ad6d34959e33436d1240835d0715455f172da
+SHA1 (patch-winpr_libwinpr_sysinfo_sysinfo.c) = 641381a9c51d22f8fac19a8941e54a181c8af8d5

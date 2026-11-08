@@ -1,0 +1,12 @@
+# $NetBSD$
+
+BUILDLINK_TREE+=	freerdp3
+
+.if !defined(FREERDP3_BUILDLINK3_MK)
+FREERDP3_BUILDLINK3_MK:=
+
+BUILDLINK_API_DEPENDS.freerdp3+=	freerdp3>=3.10.3
+BUILDLINK_PKGSRCDIR.freerdp3?=		../../net/freerdp3
+.endif	# FREERDP3_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-freerdp3
