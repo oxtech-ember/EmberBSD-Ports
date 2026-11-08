@@ -1,0 +1,15 @@
+$NetBSD: distinfo,v 1.115 2026/06/15 07:03:01 nia Exp $
+
+BLAKE2s (netpbm-11.02.31-125b3245dabc345d5327cbb62e275a268b139388.tar.gz) = 93b531f5af5238c29329686a9dadc1d77fb57d8a3afd3dd32a146ee8f36287fd
+SHA512 (netpbm-11.02.31-125b3245dabc345d5327cbb62e275a268b139388.tar.gz) = baf02d6342ee301e438e5b5cede9c4aea3ce65f7366989afbdefd7a9c2e3b7587d485ff39c130739d6e51cd5bd0a12d9ee9eaa5a4a721b0be0921bdadcbe6624
+Size (netpbm-11.02.31-125b3245dabc345d5327cbb62e275a268b139388.tar.gz) = 2980386 bytes
+BLAKE2s (netpbm-docs-r4908.tar.gz) = 009879ddcc45a0217e8ee46b78184b6583470872f3b6d9c41ada00e5ecbdc046
+SHA512 (netpbm-docs-r4908.tar.gz) = 2361be1917c0ff27dd0faefcff7780d0808be67bf09d13a094b3f22942bb3c5155cb260ce4b749d3214fa0bce7f2d15806e4d2b88c95d9d59886299de3895bd0
+Size (netpbm-docs-r4908.tar.gz) = 529814 bytes
+SHA1 (patch-buildtools_libopt.c) = 0e361618eba1bf23c324d047461885471e8f3645
+SHA1 (patch-common.mk) = f37a95014c04ad50fab09da61608590a63a06386
+SHA1 (patch-lib_Makefile) = dc9d14d911773b282d1f0169f665baccb5247337
+SHA1 (patch-lib_colorname.c) = 3075b4badb368adfede9e97fb95298dcbda9527a
+SHA1 (patch-lib_pm.h) = 363e8b35382793d5ba5301cac354f0432ea9771b
+SHA1 (patch-lib_util_nstring.c) = 9b18383f498d2c78a577553cfbbe97f18ce7ec1e
+SHA1 (patch-pm__config.in.h) = dfe51691507a2c7be2946013b1f1b6bdd9b39f49
