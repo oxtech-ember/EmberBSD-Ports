@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	kquickimageeditor-0.7.0.1
+PKGREVISION=	1
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_KDE:=kquickimageeditor/}
 EXTRACT_SUFX=	.tar.xz
@@ -21,7 +22,7 @@ CPPFLAGS+=	-DHWY_COMPILE_ONLY_EMU128
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_QMLDIR=qt6/qml
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 
-.include "../../devel/highway/buildlink3.mk"
+.include "../../graphics/libhighway/buildlink3.mk"
 .include "../../devel/kf6-kconfig/buildlink3.mk"
 .include "../../graphics/qt6-qtshadertools/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"

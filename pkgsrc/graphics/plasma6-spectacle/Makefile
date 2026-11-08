@@ -1,4 +1,5 @@
 DISTNAME=	spectacle-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	graphics
 HOMEPAGE=	https://invent.kde.org/plasma/spectacle
 COMMENT=	KDE screenshot utility

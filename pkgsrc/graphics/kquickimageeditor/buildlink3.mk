@@ -8,7 +8,7 @@ KQUICKIMAGEEDITOR_BUILDLINK3_MK:=
 BUILDLINK_API_DEPENDS.kquickimageeditor+=	kquickimageeditor>=0.7
 BUILDLINK_PKGSRCDIR.kquickimageeditor?=		../../graphics/kquickimageeditor
 
-.include "../../devel/highway/buildlink3.mk"
+.include "../../graphics/libhighway/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .endif
 

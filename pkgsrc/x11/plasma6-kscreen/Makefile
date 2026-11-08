@@ -9,7 +9,7 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/plasma6.mk"
 
-# kf6-kimageformats pulls libhighway 1.4, which conflicts with highway 1.3.
+# Image-format plugins are a separate package. They use libhighway.
 USE_TOOLS+=	msgmerge pkg-config
 
 .include "../../devel/kf6-kcmutils/buildlink3.mk"
