@@ -52,6 +52,16 @@ struct esp_uart_plat {
 	struct uart_esp *regs;
 };
 
+static u32 _esp_serial_tx_pending(struct uart_esp *regs)
+{
+	u32 status = readl(&regs->status);
+	u32 fsm = readl((void *)((uintptr_t)regs + UART_FSM_STATUS_OFF));
+	u32 fifo_count = (status & UART_TXFIFO_CNT_M) >> UART_TXFIFO_CNT_S;
+	u32 tx_state = (fsm & UART_ST_UTX_OUT_M) >> UART_ST_UTX_OUT_S;
+
+	return fifo_count + (tx_state != 0);
+}
+
 /* Set up the baud rate in gd struct */
 static void _esp_serial_setbrg(struct uart_esp *regs,
 			       unsigned long clock, unsigned long baud)
@@ -70,8 +80,8 @@ static void _esp_serial_init(struct uart_esp *regs)
 {
 	u32 sync;
 
-	// wait tx idle first
-	while ((readl(&regs->status) >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT_M)
+	// wait for FIFO and shift register to become idle
+	while (_esp_serial_tx_pending(regs))
 		;
 	// set rst fifo
 	sync = readl(&regs->sync);
@@ -183,7 +193,7 @@ static int esp_serial_pending(struct udevice *dev, bool input)
 	if (input)
 		return (readl(&regs->status) & UART_RXFIFO_CNT_M);
 	else
-		return (readl(&regs->status) & UART_TXFIFO_CNT_M);
+		return _esp_serial_tx_pending(regs);
 
 	return 0;
 }

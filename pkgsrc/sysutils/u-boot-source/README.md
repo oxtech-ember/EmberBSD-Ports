@@ -61,6 +61,28 @@ initialization, then keeps UART/YMODEM as its only image source. For persistent
 NOR-first boot, enable `CONFIG_ESP32S31_NOR_BOOT`; SPL tries NOR before its UART
 fallback. Keep these modes explicit when selecting or producing an SPL image.
 
+### SPL transfer baud rate
+
+`CONFIG_SPL_BAUDRATE` is available with SPL DM serial and console flushing
+enabled, and defaults to `CONFIG_BAUDRATE`. A configured SPL can use
+a faster console and UART image-transfer rate, then drain serial output and
+restore `CONFIG_BAUDRATE` after loading the image. TPL and VPL keep their
+existing console configuration. For example, `CONFIG_SPL_BAUDRATE=460800`
+with `CONFIG_BAUDRATE=115200` uses the faster rate during SPL and the normal
+rate for the firmware handoff. The host sender must select the SPL rate
+before SPL starts and restore the normal rate after YMODEM completes.
+
+The S31 serial driver waits for both an empty TX FIFO and an idle transmit
+state machine. This follows Espressif's `uart_ll_is_tx_idle()` criterion;
+FIFO-empty alone does not establish that the last byte has left the UART.
+
+For an S31 Clang build targeting `riscv32--netbsd` with the external target
+assembler, set the make variable `RISCV_MARCH=rv32imac_zicsr_zifencei` and
+include `-Wa,-march=rv32imac_zicsr_zifencei -Wa,-mabi=ilp32` in the selected
+`CC` command. This keeps the compiler ISA, generated assembly attributes
+and assembler ISA consistent. Native host ABI inputs belong to the host
+compiler invocation; keep `SDKROOT` and host SDK flags out of target commands.
+
 ### S31 NOR image from prepared inputs
 
 `board/espressif/esp32s31/make-nor-image.py` assembles a 16 MiB NOR image
@@ -220,7 +242,7 @@ and `HOST_PREFIX` set to those directories:
 
 ```sh
 for check in test-sha256.py test-spl-strings.py test-fit-flow.py \
-    test-fit-read.py test-fit-hash.py test-psram-layout.py test-reserve.py test-s31-mpll.py \
+    test-fit-read.py test-fit-hash.py test-psram-layout.py test-reserve.py test-s31-mpll.py test-s31-uart-idle.py \
     test-mips-endian.py test-prof-align.py test-env-awk.py \
     test-spl-nor-bounds.py test-s31-nor-map.py test-s31-nor-capacity.py \
     test-s31-nor-order.py \
@@ -234,6 +256,12 @@ done
 The S31 MPLL test uses a simulated MMIO bus to check both analog controller
 selections, register ordering and timeout propagation; it does not establish
 real analog clock or hardware behavior.
+
+`test-s31-uart-idle.py` executes the production UART init and pending helper
+against simulated MMIO. It checks that an empty FIFO with a busy transmitter
+delays FIFO reset until the transmitter becomes idle. The previous init code
+fails this case; the corrected code passes with ASan and UBSan. The fixture
+does not measure baud accuracy or physical transfer reliability.
 
 `test-env-awk.py` also needs native `nawk`. The FIT tests construct small
 synthetic host fixtures; they do not create a board firmware image. The FIT
@@ -271,6 +299,13 @@ existing FIT findings; Cppcheck reported existing MMIO-header findings in its
 selected configuration. These are not blanket clean results. The host endian
 check exercised field conversions on the available little-endian host; it did
 not test a big-endian host runtime.
+
+Analysis of the configured S31 serial translation unit reports inherited
+Clang dead stores in `linux/bitops.h` and `asm-generic/bitops/fls.h`. Cppcheck
+of that unit's compiler-preprocessed input reports null-pointer arithmetic in
+`asm-generic/io.h`, evaluation order in `dm/of.h`, and redundant `sizeof` in
+`dm/device.h`. These header findings remain; neither analysis reported a
+finding in the changed UART helper or init path.
 
 These checks do not execute target MMIO, cache, clocks, UART, PSRAM, ROM,
 OpenSBI handoff or target boot. They do not prove real FIT parsing across all
