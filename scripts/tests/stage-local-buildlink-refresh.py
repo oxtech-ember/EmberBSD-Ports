@@ -56,6 +56,14 @@ cookie.write_text(str(common)+' -> '+str(prefix/'include/common.h')+'\\n'+str(li
     assert (work/'retained.o').read_bytes()==b'object'
     assert ((live/'lib/demo.la').stat().st_ino, (live/'lib/demo.la').stat().st_mtime_ns) == (la_stat.st_ino, la_stat.st_mtime_ns)
     assert ((work/'retained.o').stat().st_ino, (work/'retained.o').stat().st_mtime_ns) == (obj_stat.st_ino, obj_stat.st_mtime_ns)
+    (live/'lib/demo.la').unlink()
+    absent_la = subprocess.run(cmd,capture_output=True)
+    assert absent_la.returncode == 0, absent_la.stderr.decode()
+    assert not (live/'lib/demo.la').exists()
+    (live/'lib/demo.la').write_text('foreign .la\n')
+    assert subprocess.run(cmd,capture_output=True).returncode
+    assert (live/'lib/demo.la').read_text()=='foreign .la\n'
+    (live/'lib/demo.la').write_text(f"libdir='{live}/lib'\n")
     (live/'include/new.h').unlink(); (live/'include/new.h').write_text('foreign')
     assert subprocess.run(cmd,capture_output=True).returncode
     assert (live/'include/new.h').read_text()=='foreign'

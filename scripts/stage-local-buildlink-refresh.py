@@ -115,7 +115,9 @@ def main():
                 require(dst.is_symlink() and os.readlink(dst) in (target, old.get(rel)), 'destination collision: ' + str(rel))
         for rel, data in files.items():
             dst = safe_path(live, rel)
-            require(regular(dst) and dst.read_bytes() == data, 'unsupported new or changed .la: ' + str(rel))
+            if dst.exists() or dst.is_symlink():
+                require(regular(dst) and dst.read_bytes() == data,
+                        'unsupported changed .la: ' + str(rel))
         with tempfile.TemporaryDirectory(prefix='.buildlink-refresh-', dir=live) as stage:
             temp_cookie = Path(stage) / cookie.name
             filtered = ('( ( ' + files_cmd + ' ) | ' + shlex.quote(grep) + r" -v '\.la$' || : )").replace('$', '$$')
@@ -129,7 +131,8 @@ def main():
                 require(dst.is_symlink() and os.readlink(dst) == target, 'generated link mismatch')
             for rel, data in files.items():
                 dst = safe_path(live, rel)
-                require(regular(dst) and dst.read_bytes() == data, 'generated .la mismatch')
+                if dst.exists() or dst.is_symlink():
+                    require(regular(dst) and dst.read_bytes() == data, 'generated .la mismatch')
             for rel in old.keys() - actual.keys():
                 dst = safe_path(live, rel)
                 if dst.exists() or dst.is_symlink():
