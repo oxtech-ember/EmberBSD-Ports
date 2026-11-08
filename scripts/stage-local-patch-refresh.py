@@ -13,6 +13,9 @@ and records a verified no-op in the live stage before the journal is cleared.
 The previous-recipe mode binds complete old patch inputs to the installed
 package, replays replacement patches and an unchanged existing SUBST class,
 and verifies omitted old-cookie targets without rewriting their source files.
+For an unfinished first build without installed metadata, an explicit previous
+recipe and the actual cookie define the old replay. All patch targets must
+match its preimages before the same transaction applies the current series.
 """
 import base64
 import hashlib
@@ -255,7 +258,10 @@ def unselected_subst_pattern(paths, roots, pattern, changed):
 
 def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, previous_recipe=None,
                  patchdir=None, previous_patchdir=None, recover_applied_patches=False):
-    """Bind the old ordered cookie to installed BUILD_VERSION and current recipe."""
+    """Validate installed provenance or an explicit unfinished-stage recipe."""
+    unfinished = installed_version is None
+    require(not unfinished or previous_recipe is not None,
+            'unfinished stage requires an explicit previous recipe')
     cookie = stable_read(paths, work / '.patch_done') if old_cookie is None else old_cookie
     try:
         old_paths = [Path(s) for s in cookie.decode('utf-8').splitlines() if s]
@@ -270,11 +276,12 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
                 Path(os.path.normpath(str(p))).parent == p.resolve(strict=True).parent and
                 p.resolve(strict=True).parent in cookie_roots for p in old_paths),
             'old patch cookie contains an unsupported path')
-    # The explicit previous directory only identifies cookie origins. Its
-    # complete recipe and patch inventory must still match installed provenance.
+    # Installed packages bind the complete old inventory to BUILD_VERSION.
+    # Before the first package exists, the explicit snapshot and actual cookie
+    # supply the old replay, checked against live preimages before any writes.
     old = [p.name for p in old_paths]
     require(len(set(old)) == len(old), 'duplicate old patch')
-    version = stable_read(paths, installed_version).decode('utf-8')
+    version = '' if unfinished else stable_read(paths, installed_version).decode('utf-8')
     records = {}
     for line in version.splitlines():
         if ': ' not in line:
@@ -304,23 +311,24 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
             return fallback
     if previous_recipe is not None:
         require(old_recipe.is_absolute(), 'previous recipe must be absolute')
-        for name in ('Makefile',):
-            require(records.get(pkgpath + '/' + name) ==
-                    hashlib.sha256(stable_read(paths, old_recipe / name)).hexdigest(),
-                    'previous recipe identity changed: ' + name)
+        if not unfinished:
+            require(records.get(pkgpath + '/Makefile') ==
+                    hashlib.sha256(stable_read(paths, old_recipe / 'Makefile')).hexdigest(),
+                    'previous recipe identity changed: Makefile')
         complete = sorted(p.name for p in old_patchdir.glob('patch-*') if p.is_file())
         old_root = old_recipe.parents[1]
         recorded_prefix = provenance_path(old_patchdir, old_root, pkgpath + '/patches') + '/'
         recorded = sorted(key[len(recorded_prefix):] for key in records
                           if key.startswith(recorded_prefix + 'patch-'))
-        require(complete == recorded, 'previous recipe patch inventory differs from installed provenance')
+        if not unfinished:
+            require(complete == recorded, 'previous recipe patch inventory differs from installed provenance')
         require([name for name in complete if name in old] == old,
                 'old patch cookie is not an ordered subsequence of previous recipe')
-        # A completed build may retain an earlier extraction/patch cookie.
-        # Reconcile it only against the complete installed recipe; prepare()
-        # adds mandatory live preimage checks for every omitted patch target.
+        # Installed provenance normally defines the complete old replay.
+        # Recovery and unfinished stages instead replay the cookie, with
+        # mandatory live preimage checks for every patch target in prepare().
         old_inventory = complete
-        if not recover_applied_patches:
+        if not (recover_applied_patches or unfinished):
             old = complete
     else:
         recorded_prefix = patch_prefix
@@ -331,7 +339,7 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
     require([p for p in new if p in old_inventory] == old_inventory and
             (previous_recipe is not None or len(new) > len(old_inventory)),
             'old patch list is not a proper subsequence')
-    for name in old_inventory:
+    for name in (() if unfinished else old_inventory):
         old_root = old_recipe.parents[1]
         expected = records.get(provenance_path(old_patchdir, old_root, pkgpath + '/patches') + '/' + name)
         require(expected and hashlib.sha256(stable_read(paths, old_patchdir / name)).hexdigest() == expected,
@@ -364,6 +372,9 @@ def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
 
 def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None, patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None, recover_applied_patches=False):
     """Replay complete old and current patch order and return validated leaf changes."""
+    unfinished = installed_version is None
+    require(not (unfinished and allow_completed),
+            'unfinished stage cannot adopt a completed refresh')
     require(not (recover_applied_patches and allow_completed),
             'applied-patch recovery cannot adopt a completed refresh')
     paths, sourceprep, archive_metadata = sdk['paths'], sdk['sourceprep'], sdk['archive_metadata']
@@ -406,7 +417,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             affected.update(targets(current))
             if prior is not None:
                 affected.update(targets(prior))
-    if recover_applied_patches:
+    if recover_applied_patches or unfinished:
         for name in new:
             affected.update(targets(stable_read(paths, patchdir / name)))
     candidates = []
@@ -443,7 +454,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
         require(not before.is_symlink() and not after.is_symlink(), 'symlink patch target')
         old_data = stable_read(paths, before) if before.is_file() else None
         new_data = stable_read(paths, after) if after.is_file() else None
-        if name in verify_targets:
+        if name in verify_targets and not unfinished:
             require(old_data is not None, 'omitted patch has no verifiable installed preimage: ' + name)
         require(new_data is not None, 'patch deletion or nonregular result is unsupported')
         old_mode = stat.S_IMODE(before.stat().st_mode) if old_data is not None else None
@@ -459,7 +470,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             old_mode = live_mode
             new_mode = live_mode
         if (old_data != new_data or old_mode != new_mode or name in verify_targets or
-                (recover_applied_patches and name in affected)):
+                ((recover_applied_patches or unfinished) and name in affected)):
             if allow_completed:
                 require(old_data is not None, 'configured refresh requires existing patch targets')
                 marker = work / '.emberbsd-patch-refresh.json'
@@ -490,7 +501,7 @@ def _sha(data):
 
 
 def journal_old_cookie(sdk, work):
-    """Return journal cookie bytes; caller must revalidate against installed provenance."""
+    """Return journal cookie bytes; caller must revalidate the old recipe inputs."""
     marker = Path(work) / '.emberbsd-patch-refresh.json'
     record = sdk['jsonio'].read_json(str(marker))
     require(isinstance(record, dict) and record.get('version') == 1 and
@@ -970,8 +981,9 @@ def main():
         dbdir = Path(v['CROSS_DESTDIR']) / str(dbdir).lstrip('/')
     candidates = list(dbdir.glob(v['PKGBASE'] + '-' + v['PKGVERSION_NOREV'] + '*'))
     candidates = [x for x in candidates if x.is_dir() and re.fullmatch(re.escape(v['PKGBASE'] + '-' + v['PKGVERSION_NOREV']) + r'(?:nb[0-9]+)?', x.name)]
-    require(len(candidates) == 1, 'expected exactly one compatible installed package owner')
-    owner = candidates[0] / '+BUILD_VERSION'
+    require(len(candidates) == 1 or (not candidates and a.previous_recipe is not None),
+            'expected exactly one compatible installed package owner or an explicit previous recipe for an unfinished stage')
+    owner = candidates[0] / '+BUILD_VERSION' if candidates else None
     if a.subst_class:
         records = {}
         for line in stable_read(paths, owner).decode('utf-8').splitlines():
@@ -1034,16 +1046,18 @@ def main():
         package = '/'.join(a.recipe.parts[-2:])
         previous_makefile = a.previous_recipe / 'Makefile'
         observed_recipe_inputs = {a.recipe / 'Makefile': stable_read(paths, a.recipe / 'Makefile')}
-        records = {}
-        for line in stable_read(paths, owner).decode('utf-8').splitlines():
+        records = {} if owner is not None else None
+        version = stable_read(paths, owner).decode('utf-8') if owner is not None else ''
+        for line in version.splitlines():
             if ': ' in line:
                 key, value = line.rsplit(': ', 1)
                 key = os.path.normpath(key)
                 require(key not in records, 'duplicate installed source record')
                 records[key] = value
         previous_data = stable_read(paths, previous_makefile)
-        require(records.get(package + '/Makefile') == _sha(previous_data),
-                'previous Makefile differs from installed provenance')
+        if records is not None:
+            require(records.get(package + '/Makefile') == _sha(previous_data),
+                    'previous Makefile differs from installed provenance')
         observed_recipe_inputs[previous_makefile] = previous_data
         oldcmd = cmd[:3] + ['-f', str(previous_makefile)] + cmd[3:]
         def selected_values(command, fields):

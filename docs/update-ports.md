@@ -279,11 +279,23 @@ For a new patch set with changed recipe configuration, use `patch-refresh`
 with `CROSS_BULK_PATCH_REFRESH_RECONFIGURE=yes` and
 `CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE=/absolute/previous/recipe`.
 This explicit mode accepts new local includes and configure hooks. It verifies
-the installed source preimages and invalidates configuration while retaining
+the source preimages and invalidates configuration while retaining
 objects. It rejects changes to the source archive, toolchain, ABI and compiler
 flags. Then resume `package` or `package-install` to run normal configuration
 and incremental compilation. Without this selector, new includes remain
 restricted to revision metadata with unchanged build inputs and commands.
+
+An unfinished first build has no installed package metadata. With the explicit
+previous-recipe selector, refresh replays the applied patches listed in the
+existing `.patch_done` cookie, including an empty cookie, against the verified
+archive. The cookie must be an ordered subset of the previous recipe's complete
+patch inventory. Both recipes' archive checksums and complete patch inventories
+are validated. All old/current patch targets, including unchanged targets and
+expected absent files, must match the old replay before any live source write.
+Then refresh applies the complete current series, preserving unchanged source
+and object timestamps. No package database entry is created. Without a previous
+recipe, or when an existing installed owner's metadata is invalid, refresh
+still refuses.
 
 For an explicitly failed source stage whose saved `.patch_done` cookie is an
 ordered subset of the installed package's complete patch inventory, use

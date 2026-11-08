@@ -118,4 +118,79 @@ with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode and 'recipe input changed during source replay' in result.stderr, result.stderr
     assert (source / 'input').read_bytes() == b'old\n' and not (root / 'clean').exists()
-print('PASS: equal old-export framework, changed framework, custom target and replay drift rejection')
+    # First/unfinished builds have no installed package metadata. The explicit
+    # old recipe plus actual cookie still reconstructs every live preimage.
+    (previous / 'Makefile').write_text(makefile)
+    old_prefs.write_bytes(framework['mk/bsd.prefs.mk'])
+    owner.unlink()
+    owner.parent.rmdir()
+    (work / '.patch_done').write_bytes(b'')
+    (source / 'input').write_bytes(b'base\n')
+    created = b'--- /dev/null\n+++ added\n@@ -0,0 +1 @@\n+created\n'
+    for directory in (previous, recipe):
+        (directory / 'patches/patch-b').write_bytes(created)
+        with (directory / 'distinfo').open('a') as stream:
+            stream.write(f'SHA1 (patch-b) = {hashlib.sha1(created).hexdigest()}\n')
+    def refused(arguments, marker):
+        before = {path: (path.read_bytes(), path.stat().st_mtime_ns)
+                  for path in (source / 'input', source / 'object.o', source / 'added', work / '.patch_done')
+                  if path.exists()}
+        result = subprocess.run(arguments, capture_output=True, text=True)
+        assert result.returncode and marker in result.stderr, result.stderr
+        assert all((path.read_bytes(), path.stat().st_mtime_ns) == value
+                   for path, value in before.items())
+        assert (source / 'added').exists() == ((source / 'added') in before)
+        assert not (root / 'clean').exists()
+    refused(command[:-2], 'installed package owner')
+    # Missing or corrupt metadata for an existing owner must not silently
+    # become an unfinished build.
+    owner.parent.mkdir()
+    refused(command, 'BUILD_VERSION')
+    owner.parent.rmdir()
+    (work / '.patch_done').write_text(''.join(str(recipe / 'patches' / name) + '\n'
+                                               for name in ('patch-b', 'patch-a')))
+    refused(command, 'not an ordered subsequence')
+    (work / '.patch_done').write_bytes(b'')
+    saved_info = (previous / 'distinfo').read_bytes()
+    (previous / 'distinfo').write_bytes(b'\n'.join(
+        line for line in saved_info.split(b'\n') if not line.startswith(b'SHA1 (patch-b)')))
+    refused(command, 'patch inventory differs from distinfo')
+    (previous / 'distinfo').write_bytes(saved_info)
+    (previous / 'distinfo').write_bytes(saved_info.replace(
+        hashlib.sha512(data).hexdigest().encode(), b'0' * 128))
+    refused(command, 'archive differs from previous distinfo')
+    (previous / 'distinfo').write_bytes(saved_info)
+    (previous / 'patches/patch-a').write_bytes(old + b'# changed\n')
+    refused(command, 'checksum')
+    (previous / 'patches/patch-a').write_bytes(old)
+    (source / 'input').write_bytes(b'local edits\n')
+    refused(command, 'live preimage differs: input')
+    (source / 'input').write_bytes(b'base\n')
+    (source / 'added').write_bytes(b'local addition\n')
+    refused(command, 'live preimage differs: added')
+    (source / 'added').unlink()
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert (source / 'input').read_bytes() == b'new\n'
+    assert (source / 'added').read_bytes() == b'created\n'
+    assert (work / '.patch_done').read_text() == ''.join(
+        str(recipe / 'patches' / name) + '\n' for name in ('patch-a', 'patch-b'))
+    assert (source / 'object.o').stat().st_mtime_ns == object_time
+    # A nonempty applied subset is equally valid, but even unchanged patch
+    # targets must match the old replay; no writes may precede that check.
+    (root / 'clean').unlink()
+    (source / 'added').unlink()
+    (recipe / 'patches/patch-a').write_bytes(old)
+    (recipe / 'distinfo').write_bytes(saved_info)
+    (work / '.patch_done').write_text(str(recipe / 'patches/patch-a') + '\n')
+    (source / 'input').write_bytes(b'local edits\n')
+    refused(command, 'live preimage differs: input')
+    (source / 'input').write_bytes(b'old\n')
+    unchanged_time = (source / 'input').stat().st_mtime_ns
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert (source / 'input').stat().st_mtime_ns == unchanged_time
+    assert (source / 'object.o').stat().st_mtime_ns == object_time
+    assert (source / 'added').read_bytes() == b'created\n'
+    assert not owner.parent.exists()
+print('PASS: framework validation and unfinished-stage empty/subset replay, refusals and mtime preservation')
