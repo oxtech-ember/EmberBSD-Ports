@@ -19,6 +19,10 @@ SUBST_STAGE.qmlpipewire=	post-patch
 SUBST_FILES.qmlpipewire=	shell/contents/configuration/AboutPlugins.qml
 SUBST_NOOP_OK.qmlpipewire=	yes
 
+# The shell links libKF6Package directly. The cross build also needs the
+# host kpackagetool, which the buildlink records only as a tool dependency.
+DEPENDS+=	kf6-kpackage>=6.31.0:../../devel/kf6-kpackage
+.include "../../devel/kf6-kpackage/buildlink3.mk"
 .include "../../security/kf6-kauth/buildlink3.mk"
 .include "../../devel/kf6-kitemmodels/buildlink3.mk"
 .include "../../net/modemmanager-qt/buildlink3.mk"

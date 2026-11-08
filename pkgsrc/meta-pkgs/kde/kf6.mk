@@ -154,7 +154,8 @@ _EMBERBSD_KF6VER_RECIPES= \
     x11/kf6-kwidgetsaddons \
     x11/kf6-kwindowsystem \
     x11/kf6-kxmlgui \
-    x11/kf6-qqc2-desktop-style
+    x11/kf6-qqc2-desktop-style \
+    net/kf6-bluez-qt
 .if empty(_EMBERBSD_KF6VER_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Frameworks 6 recipe ${PKGPATH} is not prepared in the Plasma toolkit"
 .endif

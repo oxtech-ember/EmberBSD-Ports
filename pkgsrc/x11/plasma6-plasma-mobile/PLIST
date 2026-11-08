@@ -1,7 +1,6 @@
 @comment $NetBSD$
 bin/plasma-mobile-envmanager
 bin/plasma-mobile-initial-start
-bin/plasma-mobile-notificationtest
 bin/startplasmamobile
 libexec/kf6/kauth/flashlighthelper
 libexec/kf6/kauth/waydroidhelper
@@ -198,7 +197,6 @@ share/dbus-1/system-services/org.kde.plasma.mobileshell.flashlighthelper.service
 share/dbus-1/system-services/org.kde.plasma.mobileshell.waydroidhelper.service
 share/dbus-1/system.d/org.kde.plasma.mobileshell.flashlighthelper.conf
 share/dbus-1/system.d/org.kde.plasma.mobileshell.waydroidhelper.conf
-share/knotifications6/plasma_mobile_notificationtest.notifyrc
 share/knotifications6/plasma_mobile_quicksetting_screenshot.notifyrc
 share/kwin/effects/mobiletaskswitcher/contents/ui/FlickContainer.qml
 share/kwin/effects/mobiletaskswitcher/contents/ui/Task.qml
@@ -1150,8 +1148,10 @@ share/locale/ro/LC_MESSAGES/plasma_shell_org.kde.plasma.phone.mo
 share/locale/ru/LC_MESSAGES/kcm_mobile_info.mo
 share/locale/ru/LC_MESSAGES/kcm_mobile_time.mo
 share/locale/ru/LC_MESSAGES/kcm_mobileshell.mo
+share/locale/ru/LC_MESSAGES/kcm_waydroidintegration.mo
 share/locale/ru/LC_MESSAGES/plasma_applet_org.kde.plasma.mobile.homescreen.folio.mo
 share/locale/ru/LC_MESSAGES/plasma_applet_org.kde.plasma.mobile.homescreen.halcyon.mo
+share/locale/ru/LC_MESSAGES/plasma_applet_org.kde.plasma.mobile.taskpanel.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.mobileinitialstart.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.private.mobileshell.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.airplanemode.mo
@@ -1160,10 +1160,12 @@ share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.autohidepanels.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.battery.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.bluetooth.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.caffeine.mo
+share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.darkmode.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.docked.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.donotdisturb.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.flashlight.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.keyboardtoggle.mo
+share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.kscreenosd.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.mobiledata.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.nightcolor.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.powermenu.mo
@@ -1171,6 +1173,7 @@ share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.record.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.screenrotation.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.screenshot.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.settingsapp.mo
+share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.waydroid.mo
 share/locale/ru/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.wifi.mo
 share/locale/ru/LC_MESSAGES/plasma_shell_org.kde.plasma.phone.mo
 share/locale/sa/LC_MESSAGES/kcm_mobile_info.mo
