@@ -1,0 +1,15 @@
+$NetBSD$
+
+Build the NetBSD CPU data source.
+
+--- plugins/cpu/CMakeLists.txt.orig
++++ plugins/cpu/CMakeLists.txt
+@@ -7,6 +7,8 @@
+     target_sources(ksystemstats_plugin_cpu PRIVATE linuxcpu.cpp linuxcpuplugin.cpp)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+     target_sources(ksystemstats_plugin_cpu PRIVATE freebsdcpuplugin.cpp)
++elseif(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++    target_sources(ksystemstats_plugin_cpu PRIVATE netbsdcpuplugin.cpp)
+ endif()
+ 
+ if (BUILD_TESTING)

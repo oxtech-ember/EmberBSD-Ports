@@ -5,6 +5,7 @@ lib/systemd/user/plasma-ksystemstats.service
 qt6/plugins/ksystemstats/ksystemstats_plugin_cpu.so
 qt6/plugins/ksystemstats/ksystemstats_plugin_disk.so
 qt6/plugins/ksystemstats/ksystemstats_plugin_gpu.so
+qt6/plugins/ksystemstats/ksystemstats_plugin_memory.so
 qt6/plugins/ksystemstats/ksystemstats_plugin_network.so
 qt6/plugins/ksystemstats/ksystemstats_plugin_osinfo.so
 qt6/plugins/ksystemstats/ksystemstats_plugin_power.so

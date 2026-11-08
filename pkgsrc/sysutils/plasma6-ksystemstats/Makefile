@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	ksystemstats-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	sysutils
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -9,11 +10,18 @@ LICENSE=	gnu-lgpl-v2.1 AND gnu-gpl-v2 AND gnu-gpl-v3
 
 .include "../../meta-pkgs/kde/plasma6.mk"
 
-# CPU, memory and network plugins have Linux and FreeBSD backends only.
-# The package still builds the common plugins. Those three stay without a
-# NetBSD data source.
+# NetBSD reads kern.cp_time, vm.uvmexp2 and getifaddrs. There is no iowait
+# counter and no per-core frequency or temperature node.
 
 USE_TOOLS+=	msgmerge pkg-config
+
+post-extract:
+	${CP} ${FILESDIR}/netbsdcpuplugin.h ${WRKSRC}/plugins/cpu/netbsdcpuplugin.h
+	${CP} ${FILESDIR}/netbsdcpuplugin.cpp ${WRKSRC}/plugins/cpu/netbsdcpuplugin.cpp
+	${CP} ${FILESDIR}/netbsdbackend.h ${WRKSRC}/plugins/memory/netbsdbackend.h
+	${CP} ${FILESDIR}/netbsdbackend.cpp ${WRKSRC}/plugins/memory/netbsdbackend.cpp
+	${CP} ${FILESDIR}/NetBsdBackend.h ${WRKSRC}/plugins/network/NetBsdBackend.h
+	${CP} ${FILESDIR}/NetBsdBackend.cpp ${WRKSRC}/plugins/network/NetBsdBackend.cpp
 
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
 .include "../../devel/kf6-kcrash/buildlink3.mk"
