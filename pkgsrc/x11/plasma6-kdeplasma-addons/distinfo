@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.2 2026/09/06 10:23:32 markd Exp $
+
+BLAKE2s (kdeplasma-addons-6.8.2.tar.xz) = 9f0959f5d31e6b006f9570937767a5214227f89b576c0cec2e8546145481fbe7
+SHA512 (kdeplasma-addons-6.8.2.tar.xz) = 79f179861bacbf280ccd07b526a5f6d74e5348a8439ee57f37f107419e8319ce99459e31d73cfedefcbbc68a8c882c636429eaae14eee253a3a1ffb1a996994d
+Size (kdeplasma-addons-6.8.2.tar.xz) = 1145800 bytes
+SHA1 (patch-CMakeLists.txt) = 7b8f539fa9a1b8d9e0fc7fbe9b32ca5fc9273232
+SHA1 (patch-kdeds_kameleon_CMakeLists.txt) = 89208d0d56cd6624c4bbb78b66b4e012a0f2c6e1

@@ -1,0 +1,15 @@
+$NetBSD$
+
+The QMK helper is not built on NetBSD. Do not require Corrosion.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -111,7 +111,7 @@
+     TYPE RUNTIME
+ )
+ 
+-find_package(Corrosion REQUIRED)
++find_package(Corrosion QUIET)
+ 
+ add_definitions(
+     -DQT_DEPRECATED_WARNINGS
