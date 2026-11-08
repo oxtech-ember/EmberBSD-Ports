@@ -52,7 +52,8 @@ _EMBERBSD_PLASMA6_RECIPES= audio/plasma6-plasma-pa devel/plasma6-kwayland time/p
     security/plasma6-kwallet-pam \
     x11/plasma6-bluedevil \
     sysutils/plasma6-plasma-thunderbolt \
-    sysutils/plasma6-plasma-firewall
+    sysutils/plasma6-plasma-firewall \
+    sysutils/plasma6-breeze-grub
 .if empty(_EMBERBSD_PLASMA6_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Plasma 6 recipe ${PKGPATH} is not prepared in the common toolkit"
 .endif

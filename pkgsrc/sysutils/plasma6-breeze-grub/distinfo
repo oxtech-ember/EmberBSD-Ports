@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (breeze-grub-6.8.2.tar.xz) = d946833db235b8c63d213ff89b16c77d04ce2fc6b919bbaece8d46ecc9c57721
+SHA512 (breeze-grub-6.8.2.tar.xz) = be519699fbd944dd0b1585afae579a22bed0dfda5be826b40aa80f516a529041ebe9a1822ce32a919670444026e21545a49300432f855b7d3d48ef6fc00d96ab
+Size (breeze-grub-6.8.2.tar.xz) = 1451624 bytes
