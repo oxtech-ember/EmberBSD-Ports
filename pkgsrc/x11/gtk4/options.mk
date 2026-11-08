@@ -1,7 +1,7 @@
 # $NetBSD: options.mk,v 1.4 2026/02/24 18:05:00 kikadf Exp $
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.gtk4
-PKG_SUPPORTED_OPTIONS=	cups debug
+PKG_SUPPORTED_OPTIONS=	cups debug tests
 
 PKG_OPTIONS_REQUIRED_GROUPS=	gui
 PKG_OPTIONS_GROUP.gui=		x11
@@ -25,6 +25,13 @@ PKG_SUGGESTED_OPTIONS+=	wayland
 PKG_SUGGESTED_OPTIONS+=	cups
 
 .include "../../mk/bsd.options.mk"
+
+# Tests are a developer choice; normal consumers build the shared toolkit.
+.if !empty(PKG_OPTIONS:Mtests)
+MESON_ARGS+=		-Dbuild-tests=true -Dbuild-testsuite=true
+.else
+MESON_ARGS+=		-Dbuild-tests=false -Dbuild-testsuite=false
+.endif
 
 PLIST_VARS+=		wayland
 .if !empty(PKG_OPTIONS:Mwayland)

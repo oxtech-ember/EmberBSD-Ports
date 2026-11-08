@@ -4,3 +4,4 @@ BLAKE2s (gtk-4.24.1.tar.xz) = 1e6044f5145103d4e3a6bae7e068090418f0612cf12f87290f
 SHA512 (gtk-4.24.1.tar.xz) = 0e088442279c67a8f4c29bba979efe7e68bb1885a26da292035efc86425c462d1894476ea0e8bb4a08b5ad884f3eb3980782540a1cba89af5773852109af0ceb
 Size (gtk-4.24.1.tar.xz) = 17655236 bytes
 SHA1 (patch-chooser-instance) = dce6d974c54e6b03854f036ce9021a5771cb7750
+SHA1 (patch-testsuite_gdk_meson.build) = fde78877b4232d1249cfa9e7e0030151137cbe1c

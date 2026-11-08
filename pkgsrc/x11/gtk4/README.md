@@ -10,6 +10,13 @@ host scanner is wrapped with target ELF dependency inspection and the existing
 target GType query/replay mechanism. The GTK recipe does not maintain a second
 scanner, input-header copy, or private compiler stack.
 
+The `tests` package option explicitly enables Meson's `build-tests` and
+`build-testsuite`. They are disabled for ordinary toolkit builds. With tests
+enabled, `colorstate` links the existing `udmabuf.c` helper on every platform:
+plain texture/PNG checks remain available, and DMA-BUF cases use upstream's
+unsupported-operation result when the backend is absent. DRM format headers
+alone do not establish DMA-BUF support.
+
 The official archive checksums, cross configure, selected host Wayland
 scanner and target C compilation have been exercised. The full package,
 introspection output, installation manifest and GUI runtime are still being

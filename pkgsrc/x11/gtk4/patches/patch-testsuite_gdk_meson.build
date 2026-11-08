@@ -1,0 +1,20 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), LGPL-2.1-or-later.
+Link colorstate to its existing texture helper on every platform. The helper
+already reports unsupported DMA-BUF operations when unavailable; having DRM
+fourcc headers alone does not imply a Linux DMA-BUF implementation.
+
+--- testsuite/gdk/meson.build.orig
++++ testsuite/gdk/meson.build
+@@ -46,7 +46,9 @@
+   ]
+ else
+   tests += [
+-    { 'name': 'colorstate' }
++    { 'name': 'colorstate',
++      'sources': [ 'udmabuf.c' ],
++    }
+   ]
+ endif
+ 
