@@ -146,9 +146,9 @@ def main():
             (work / name).write_bytes(data)
         run((tools['dtc'], '-I', 'dtb', '-O', 'dtb', '-S', str(DTB_SIZE), '-o', work / 'firmware.dtb', a.firmware_dtb.resolve()), env=env)
         if (work / 'firmware.dtb').stat().st_size != DTB_SIZE: raise ValueError('firmware FDT exceeds padded slot')
-        run((tools['fdtput'], '-t', 's', work/'firmware.dtb', '/chosen',
+        run((tools['fdtput'], '-t', 's', '--', work/'firmware.dtb', '/chosen',
              'emberbsd,root-mode', a.root_mode), env=env)
-        run((tools['fdtput'], '-t', 's', work/'firmware.dtb', '/chosen',
+        run((tools['fdtput'], '-t', 's', '--', work/'firmware.dtb', '/chosen',
              'bootargs', bootargs), env=env)
         padded_dtb = work / 'firmware-padded.dtb'
         run((tools['dtc'], '-I', 'dtb', '-O', 'dtb', '-S', str(DTB_SIZE),
