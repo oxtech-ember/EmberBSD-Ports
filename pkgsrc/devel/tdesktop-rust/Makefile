@@ -116,5 +116,6 @@ do-install:
 	cd ${CARGO_VENDOR_DIR} && ${FIND} . -type f \( -iname 'license*' -o -iname 'licence*' -o -iname 'copying*' -o -iname 'notice*' -o -name Cargo.toml \) -print | ${TOOLBASE}/bin/bsdtar -cf - -T - | (cd ${DESTDIR}${PREFIX}/share/licenses/tdesktop-rust/crates && ${TOOLBASE}/bin/bsdtar -xf -)
 
 .include "cargo-depends.mk"
+BUILDLINK_DEPMETHOD.libunwind= build
 .include "../../lang/rust/emberbsd-cargo.mk"
 .include "../../mk/bsd.pkg.mk"

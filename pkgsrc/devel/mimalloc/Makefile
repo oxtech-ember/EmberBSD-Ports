@@ -43,6 +43,9 @@ do-test:
 
 .include "../../devel/cmake/build.mk"
 .include "cargo-depends.mk"
+# Cargo uses libunwind only while building the optional Rust tests. The
+# installed mimalloc libraries do not require the target runtime.
+BUILDLINK_DEPMETHOD.libunwind= build
 .include "../../lang/rust/emberbsd-cargo.mk"
 .include "../../mk/atomic64.mk"
 .include "../../mk/bsd.pkg.mk"

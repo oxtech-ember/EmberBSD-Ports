@@ -1,7 +1,12 @@
 # $NetBSD$
 DISTNAME= temporal_capi-0.2.6
 PKGNAME= temporal-capi-0.2.6
+.include "../../mk/bsd.prefs.mk"
 PKGREVISION= 1
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
+PKGREVISION= 2
+.endif
 CATEGORIES= devel
 MASTER_SITES= https://static.crates.io/crates/temporal_capi/
 EXTRACT_SUFX= .crate
@@ -14,7 +19,6 @@ RUST_REQ= 1.99.1
 CARGO_WRKSRC= ${WRKSRC}
 CARGO_ARGS= build --release --locked --features zoneinfo64,compiled_data ${DEFAULT_CARGO_ARGS}
 
-.include "../../mk/bsd.prefs.mk"
 .if ${MACHINE_ARCH} == "aarch64"
 _TEMPORAL_ARCH= aarch64
 .elif ${MACHINE_ARCH} == "x86_64"

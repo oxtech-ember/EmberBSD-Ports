@@ -1,6 +1,11 @@
 # Origin: EmberBSD contributors (AI-assisted); source-built Node formatter.
 DISTNAME= dprint-node-1.0.8
+.include "../../mk/bsd.prefs.mk"
 PKGREVISION= 1
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
+PKGREVISION= 2
+.endif
 CATEGORIES= devel
 DPRINT_NODE_REV= f21bd38ae8e3239ffe07c941c938349eebdb2c5e
 DPRINT_TS_REV= 98525274ee276fb61709c77f791b212a48c59dd6
@@ -23,7 +28,6 @@ RUSTFLAGS+= --remap-path-prefix=${WRKDIR}=.
 INSTALLATION_DIRS= lib/node_modules/dprint-node share/licenses/dprint-node
 GENERATE_PLIST+= cd ${DESTDIR}${PREFIX}; ${FIND} share/licenses/dprint-node -type f -print | ${SORT};
 
-.include "../../mk/bsd.prefs.mk"
 .if ${MACHINE_ARCH} == "aarch64"
 _DPRINT_ARCH= aarch64
 .elif ${MACHINE_ARCH} == "x86_64"

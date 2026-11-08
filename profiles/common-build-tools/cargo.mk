@@ -24,6 +24,12 @@ EMBER_CARGO_CONFIGURE_ARGS?=
 EMBER_CARGO_HOST_LINKER_LAUNCHER?=
 EMBER_CARGO_TARGET_LINKER_LAUNCHER?=
 
+# Cargo uses host rustc but its target cdylibs link the selected target runtime.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
+.include "../../lang/libunwind/buildlink3.mk"
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 EMBER_CARGO_MODE=	cross
 EMBER_CARGO_PREFIX?=	${EMBERBSD_CROSS_HOST_PREFIX:U}

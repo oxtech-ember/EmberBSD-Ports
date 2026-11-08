@@ -74,13 +74,9 @@ RUST_REQ= 1.99.1
             else:
                 code='raise SystemExit("fixture must not compile")'
             path.write_text('#!'+sys.executable+'\n'+code+'\n');path.chmod(0o755)
-        base=[str(args.bmake),'-m',str(args.bmake.parent.parent/'share/mk'),'SHELL='+str(args.shell),'MAKECONF='+str(args.makeconf),'WRKOBJDIR='+str(root/'objects'),'DISTDIR='+str(cache),'EMBERBSD_DARWIN_BOOTSTRAP=yes','MAKE_JOBS=2']
-        def run(*extra, success=True, native=True):
-            command=base if native else [item for item in base if not item.startswith('EMBERBSD_DARWIN_BOOTSTRAP=')]
-            environment=os.environ.copy()
-            if not native:
-                environment.pop('EMBERBSD_DARWIN_BOOTSTRAP',None)
-            result=subprocess.run([*command,*extra],cwd=port,text=True,capture_output=True,env=environment)
+        base=[str(args.bmake),'-m',str(args.bmake.parent.parent/'share/mk'),'SHELL='+str(args.shell),'MAKECONF='+str(args.makeconf),'WRKOBJDIR='+str(root/'objects'),'DISTDIR='+str(cache),'MAKE_JOBS=2']
+        def run(*extra, success=True):
+            result=subprocess.run([*base,*extra],cwd=port,text=True,capture_output=True,env=os.environ.copy())
             if (result.returncode==0)!=success:
                 raise AssertionError('bmake fixture failed\n'+shlex.join(extra)+'\n'+result.stdout+result.stderr)
             return result.stdout
@@ -115,11 +111,10 @@ RUST_REQ= 1.99.1
                           'cwd':str(crate_source)},observed
         target='x86_64-unknown-netbsd'
         cross_config=root/'cross/config.toml'
-        # The supplied native bootstrap policy correctly refuses cross builds.
-        # A minimal fixture MAKECONF tests generic pkgsrc routing only; a real
-        # target SDK/profile is intentionally not qualified by this test.
+        # The fixture selects target runtime metadata without claiming a real
+        # target SDK or qualifying the cross profile.
         cross_makeconf=root/'cross-fixture.mk.conf'
-        cross_makeconf.write_text('LOCALBASE='+str(args.bmake.parent.parent)+'\nPYTHON_VERSION_DEFAULT=315\nPKGSRC_COMPILER=clang\n')
+        cross_makeconf.write_text('LOCALBASE='+str(args.bmake.parent.parent)+'\nPYTHON_VERSION_DEFAULT=315\nPKGSRC_COMPILER=clang\nOPSYS=NetBSD\nEMBER_LLVM_CXX_STAGE=/target/runtime\nEMBER_LLVM_CXX_SYSROOT=/target/runtime\n')
         cross=[item for item in selected if not item.startswith('EMBER_CARGO_CONFIG=')]
         cross.append('MAKECONF='+str(cross_makeconf))
         cross.extend(['USE_CROSS_COMPILE=yes','CROSS_OPSYS=NetBSD','CROSS_OS_VERSION=11.0','CROSS_MACHINE_ARCH=x86_64',
@@ -129,7 +124,18 @@ RUST_REQ= 1.99.1
                       'CC='+str(prefix/'bin/clang')+' --target=x86_64--netbsd',
                       'CXX='+str(prefix/'bin/clang++')+' --target=x86_64--netbsd','AR='+str(prefix/'bin/llvm-ar'),
                       'CFLAGS=-DTARGET_ONLY','CPPFLAGS=--sysroot=/target','LDFLAGS=-L/target'])
-        run(*cross,'ember-cargo-configure',native=False)
+        target_depends=run(*cross,'-V','${DEPENDS}').split()
+        unwind_depends=[dep for dep in target_depends
+                        if dep.startswith('libunwind') and dep.endswith(':../../lang/libunwind')]
+        assert unwind_depends,target_depends
+        unwind_api=run(*cross,'-V','${BUILDLINK_API_DEPENDS.libunwind}').split()
+        assert unwind_api, 'the selected libunwind provider declares no API floor'
+        assert any(f'{api}:../../lang/libunwind' in unwind_depends for api in unwind_api),unwind_depends
+        build_only_depends=run(*cross,'BUILDLINK_DEPMETHOD.libunwind=build','-V','${DEPENDS}').split()
+        assert not any(dep.startswith('libunwind') for dep in build_only_depends),build_only_depends
+        darwin_native_depends=run(*selected,'-V','${DEPENDS}').split()
+        assert not any(dep.startswith('libunwind') for dep in darwin_native_depends),darwin_native_depends
+        run(*cross,'ember-cargo-configure')
         result=tomllib.loads(cross_config.read_text())
         assert result['build']['target']==target
         assert result['env']['CFLAGS']['value']=='-DHOST_ONLY'
@@ -141,7 +147,7 @@ RUST_REQ= 1.99.1
         assert '-arch arm64' in host_linker and '-L/host' in host_linker and '/target' not in host_linker
         assert '--target=x86_64--netbsd' in target_linker and '-L/target' in target_linker and '-L/host' not in target_linker
         run(*selected,'RUST_TYPE=bin','ember-cargo-configure',success=False)
-        print(json.dumps({'fetch_checksum':'pass','native_tool_dependencies':'pass','native_configure':'pass','runner_after_chdir':'pass','cross_configure':'pass','wrong_rust_role_rejected':'pass','scope':'pkgsrc configure and runner execution with observed Cargo stub; no compilation'}))
+        print(json.dumps({'fetch_checksum':'pass','native_tool_dependencies':'pass','native_configure':'pass','runner_after_chdir':'pass','cross_configure':'pass','cross_libunwind_runtime_dependency':'pass','build_only_libunwind_method':'pass','darwin_libunwind_not_added':'pass','wrong_rust_role_rejected':'pass','scope':'pkgsrc configure and package dependency metadata with observed Cargo stub; no compilation'}))
 
 
 if __name__=='__main__':

@@ -36,6 +36,10 @@ CMAKE_CONFIGURE_ARGS+=	-DQSB_EXECUTABLE=${TOOLBASE}/qt6/bin/qsb
 TOOL_DEPENDS+=	telegram-desktop-codegen=${TDESKTOP_VERSION}nb${TDESKTOP_CODEGEN_REVISION}:../../chat/telegram-desktop-codegen
 CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_NATIVE_CODEGEN_DIR=${TOOLBASE}/libexec/telegram-desktop-codegen
 .include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
+PKGREVISION= 1
+.endif
 
 # Upstream installs the desktop entry and resources for its non-Apple Unix
 # desktop branch.  Its CMake LINUX selector also covers the BSD targets.

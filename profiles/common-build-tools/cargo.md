@@ -150,9 +150,11 @@ The first suite runs CLI and tool-wrapper fixtures for native/cross separation,
 quoted arguments, explicit GCC selection, missing-input refusals, build-script
 override tables and Cargo status/environment handling. The second executes the
 include in a real pkgsrc view: fetch/checksum, native TOOL_DEPENDS, both configure
-routes and refusal of the wrong Rust dependency role. Its cross case uses a
-minimal metadata fixture because a native bootstrap profile correctly refuses
-cross targets. Neither test compiles crates: Rust identity and tool execution are
+routes, refusal of the wrong Rust dependency role, and the selected NetBSD
+LLVM libunwind runtime dependency for cross-target packages. Darwin native Cargo
+tools do not receive that target runtime edge. The cross case uses a minimal
+metadata fixture and does not qualify the full cross profile. Neither test
+compiles crates: Rust identity and tool execution are
 explicit fixtures. The third test executes the selected C/C++ preprocessors for
 both tool roles using a header directory with spaces and defines supplied only
 through CPPFLAGS, with a later CFLAGS/CXXFLAGS override. Removing CPPFLAGS or its

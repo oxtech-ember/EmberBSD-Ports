@@ -1,7 +1,12 @@
 # $NetBSD$
 
 DISTNAME=	rollup-4.65.1
+.include "../../mk/bsd.prefs.mk"
 PKGREVISION=	5
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
+PKGREVISION=	6
+.endif
 CATEGORIES=	devel
 ROLLUP_REVISION=	7879c65994dd591d287b177b8d0b88d7d76c2a49
 DISTFILES=	rollup-${ROLLUP_REVISION}.tar.gz ${DISTNAME}.tgz
@@ -29,7 +34,6 @@ CARGO_ARGS=	build --release --locked --package bindings_napi ${DEFAULT_CARGO_ARG
 REPLACE_NODEJS=	npm/package/dist/bin/rollup
 MACHO_USE_LOAD_COMMANDS=	yes
 
-.include "../../mk/bsd.prefs.mk"
 
 # These defaults cover the current native Darwin and EmberBSD tool profiles.
 # Other upstream platforms can supply the matching Rust target and N-API base.

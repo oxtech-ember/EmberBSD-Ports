@@ -1,7 +1,12 @@
 # Origin: EmberBSD (AI-assisted). First port; Union from Plasma 6.8 needs it.
 
 DISTNAME=	cxx-rust-cssparser-1.1.0
+.include "../../mk/bsd.prefs.mk"
 PKGREVISION=	4
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
+PKGREVISION=	5
+.endif
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=KDE/}
 GITHUB_TAG=	v1.1.0
@@ -16,7 +21,6 @@ LICENSE=	2-clause-bsd AND cc0-1.0-universal AND gnu-lgpl-v2.1 AND \
 		(mit OR apache-2.0) AND (unlicense OR mit) AND \
 		((mit OR apache-2.0) AND unicode-v3)
 
-.include "../../mk/bsd.prefs.mk"
 
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pkg-config

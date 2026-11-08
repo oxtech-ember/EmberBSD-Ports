@@ -2,7 +2,12 @@
 # Origin: EmberBSD (AI-assisted); upstream Rolldown with a source-built N-API binding.
 
 DISTNAME=	rolldown-1.2.16
+.include "../../mk/bsd.prefs.mk"
 PKGREVISION=	1
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
+PKGREVISION=	2
+.endif
 CATEGORIES=	devel
 ROLLDOWN_REVISION=	de6facf2228279718e042b801dd6b60dd6503918
 DISTFILES=	rolldown-${ROLLDOWN_REVISION}.tar.gz ${DISTNAME}.tgz
@@ -29,7 +34,6 @@ CARGO_WRKSRC=	${WRKSRC}
 CARGO_ARGS=	build --release --locked --package rolldown_binding ${DEFAULT_CARGO_ARGS}
 MACHO_USE_LOAD_COMMANDS=	yes
 
-.include "../../mk/bsd.prefs.mk"
 
 .if ${MACHINE_ARCH} == "aarch64"
 _ROLLDOWN_RUST_ARCH=	aarch64
