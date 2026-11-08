@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import io
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -19,7 +20,7 @@ args = parser.parse_args()
 helper = Path(__file__).resolve().parents[1] / 'stage-local-patch-refresh.py'
 
 with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
-    root = Path(temporary)
+    root = Path(temporary).resolve()
     recipe = root / 'current/cat/demo'
     previous = root / 'old-export/cat/demo'
     work = root / 'work'
@@ -39,6 +40,7 @@ with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
     old = b'--- input\n+++ input\n@@ -1 +1 @@\n-base\n+old\n'
     new = old.replace(b'+old', b'+new')
     values = {'WRKDIR': work, 'WRKSRC': source, 'PATCH': args.patch,
+              '_COOKIE.configure': work / '.configure_done',
               'PATCH_ARGS': f'-d {source} -E -p0 --batch --forward -V simple -z .orig',
               'DISTDIR': root, 'DIST_SUBDIR': '', 'DISTFILES': archive.name,
               'DISTNAME': 'demo-1', 'PKG_DBDIR': root / 'pkgdb', 'CROSS_DESTDIR': '',
@@ -64,7 +66,8 @@ with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
                  'mk/extract/extract.mk': b'do-extract:\n\t@true\n'}
     for directory, patch in ((previous, old), (recipe, new)):
         (directory / 'patches').mkdir(parents=True)
-        (directory / 'Makefile').write_text(makefile)
+        (directory / 'Makefile').write_text(makefile +
+            ('# Updated recipe, not yet installed.\n' if directory == recipe else ''))
         (directory / 'Makefile.common').write_text('SHARED_SOURCE_VALUE= ' +
                                                    ('old-overlay' if directory == previous else 'current-export') + '\n')
         (directory / 'patches/patch-a').write_bytes(patch)
@@ -93,6 +96,52 @@ with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
     assert (source / 'input').read_bytes() == b'new\n'
     assert (source / 'object.o').stat().st_mtime_ns == object_time
     assert (root / 'clean').is_file()
+
+    # Iterating a failed configure must use the recipe of the prepared source,
+    # not pretend that this newer recipe has already been installed. Keep the
+    # installed package at A while refreshing A -> B -> C through the real CLI.
+    prepared = root / 'prepared-export/cat/demo'
+    shutil.copytree(recipe.parents[1], prepared.parents[1])
+    installed_before = (owner.read_bytes(), owner.stat().st_mtime_ns)
+    recipe_before = {name: (recipe / name).read_bytes()
+                     for name in ('Makefile', 'distinfo', 'patches/patch-a')}
+    corrected = new.replace(b'+new', b'+corrected')
+    (recipe / 'patches/patch-a').write_bytes(corrected)
+    (recipe / 'distinfo').write_text(
+        archive_info + f'SHA1 (patch-a) = {hashlib.sha1(corrected).hexdigest()}\n')
+    (recipe / 'Makefile').write_bytes(recipe_before['Makefile'] + b'# Correct failed configure.\n')
+    iterate = command[:-1] + [str(prepared)]
+    recover = iterate + ['--recover-applied-patches']
+    (root / 'clean').unlink()
+
+    def refused_iteration(arguments, marker):
+        checked = (source / 'input', source / 'object.o', work / '.patch_done', owner)
+        before = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in checked}
+        result = subprocess.run(arguments, capture_output=True, text=True)
+        assert result.returncode and marker in result.stderr, result.stderr
+        assert all((path.read_bytes(), path.stat().st_mtime_ns) == value
+                   for path, value in before.items())
+        assert not (root / 'clean').exists()
+        assert not (work / '.emberbsd-patch-refresh.json').exists()
+
+    # Without explicit recovery the last installed provenance remains binding.
+    refused_iteration(iterate, 'previous Makefile differs from installed provenance')
+    (source / 'input').write_bytes(b'unexpected live edit\n')
+    refused_iteration(recover, 'live preimage differs: input')
+    (source / 'input').write_bytes(b'new\n')
+    result = subprocess.run(recover, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert (source / 'input').read_bytes() == b'corrected\n'
+    assert (source / 'object.o').read_bytes() == b'keep\n'
+    assert (source / 'object.o').stat().st_mtime_ns == object_time
+    assert (work / '.patch_done').read_text() == str(recipe / 'patches/patch-a') + '\n'
+    assert (owner.read_bytes(), owner.stat().st_mtime_ns) == installed_before
+    assert sorted(path.name for path in owner.parent.parent.iterdir()) == [owner.parent.name]
+    assert (root / 'clean').is_file()
+    assert not (work / '.emberbsd-patch-refresh.json').exists()
+    for name, content in recipe_before.items():
+        (recipe / name).write_bytes(content)
+
     (root / 'clean').unlink()
     (source / 'input').write_bytes(b'old\n')
     for relative in framework:
@@ -193,4 +242,4 @@ with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
     assert (source / 'object.o').stat().st_mtime_ns == object_time
     assert (source / 'added').read_bytes() == b'created\n'
     assert not owner.parent.exists()
-print('PASS: framework validation and unfinished-stage empty/subset replay, refusals and mtime preservation')
+print('PASS: framework validation, repeated pre-install edits, unfinished-stage replay, refusals and mtime preservation')
