@@ -20,11 +20,11 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
          GUI_TK_LIBRARY="$wx_cv_libs_gtk $GUI_TK_LIBRARY"
 +
 +        if test "$WXGTK4" = 1 && $PKG_CONFIG --exists gtk4-x11; then
-+            if ! $PKG_CONFIG --exists xi; then
-+                AC_MSG_ERROR([GTK4 X11 pointer capture requires libXi])
++            if ! $PKG_CONFIG --exists xi xext; then
++                AC_MSG_ERROR([GTK4 X11 requires libXi and libXext])
 +            fi
-+            GUI_TK_LIBRARY="$GUI_TK_LIBRARY `$PKG_CONFIG --libs xi`"
-+            TOOLKIT_INCLUDE="$TOOLKIT_INCLUDE `$PKG_CONFIG --cflags xi`"
++            GUI_TK_LIBRARY="$GUI_TK_LIBRARY `$PKG_CONFIG --libs xi xext`"
++            TOOLKIT_INCLUDE="$TOOLKIT_INCLUDE `$PKG_CONFIG --cflags xi xext`"
 +        fi
          TOOLKIT=GTK
          GUIDIST=GTK_DIST
@@ -46,11 +46,11 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
          GUI_TK_LIBRARY="$wx_cv_libs_gtk $GUI_TK_LIBRARY"
 +
 +        if test "$WXGTK4" = 1 && $PKG_CONFIG --exists gtk4-x11; then
-+            if ! $PKG_CONFIG --exists xi; then
-+                as_fn_error $? "GTK4 X11 pointer capture requires libXi" "$LINENO" 5
++            if ! $PKG_CONFIG --exists xi xext; then
++                as_fn_error $? "GTK4 X11 requires libXi and libXext" "$LINENO" 5
 +            fi
-+            GUI_TK_LIBRARY="$GUI_TK_LIBRARY `$PKG_CONFIG --libs xi`"
-+            TOOLKIT_INCLUDE="$TOOLKIT_INCLUDE `$PKG_CONFIG --cflags xi`"
++            GUI_TK_LIBRARY="$GUI_TK_LIBRARY `$PKG_CONFIG --libs xi xext`"
++            TOOLKIT_INCLUDE="$TOOLKIT_INCLUDE `$PKG_CONFIG --cflags xi xext`"
 +        fi
          TOOLKIT=GTK
          GUIDIST=GTK_DIST
@@ -60,7 +60,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 @@ -452,2 +452,8 @@
      # extra dependencies
 +    if(WXGTK4 AND wxHAVE_GDK_X11)
-+        pkg_check_modules(GTK4_XINPUT REQUIRED xi)
++        pkg_check_modules(GTK4_XINPUT REQUIRED xi xext)
 +        list(APPEND wxTOOLKIT_INCLUDE_DIRS ${GTK4_XINPUT_INCLUDE_DIRS})
 +        list(APPEND wxTOOLKIT_LIBRARIES ${GTK4_XINPUT_LINK_LIBRARIES})
 +    endif()

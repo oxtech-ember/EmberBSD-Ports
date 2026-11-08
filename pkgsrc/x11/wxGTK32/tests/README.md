@@ -609,3 +609,41 @@ with `BUILD_OVERLAY_CONTRACT=ON`; run on a real GTK4 display, including a scaled
 display for window HiDPI acceptance. The modified overlay translation units and
 fixture pass target syntax checks. Linked GUI execution and pixel checks remain
 pending the shared wxGTK4 build.
+
+# GTK4 window shapes on X11
+
+`patch-gtk4-shape` keeps region and path shapes using the X11 Shape extension.
+It sets the server's visual Bounding shape and GTK's input region, including
+native widget/surface offsets and device scaling. GTK's native render and input
+translations in `gtk/gtknative.c` and `gtk/gtkwindow.c` define the coordinate
+mapping. This is visual clipping, not an input-only approximation. Path masks
+and their painted border retain the existing wxGraphicsPath implementation.
+
+The shape object survives realization and remains available for Clear,
+re-realization, allocation and scale changes. X11 Shape protocol coordinate
+limits are checked before requests. GTK4/Wayland has no public visual-shape API;
+SetShape returns false there even before the widget is realized. No second
+window or GTK renderer is introduced. GTK3 retains its existing backend.
+
+GTK4 X11 configuration requires the common libXi and libXext providers in both
+autoconf and CMake. Run the focused dependency regression with selected host
+tools:
+
+```sh
+python3 tests/x11-shape-selection.py --source /prepared/wxWidgets \
+  --shell /native/bin/mksh --work-parent /work/tmp
+```
+
+It executes the actual configure selection block and checks the complete X11
+set, missing Shape/input providers, Wayland-only GTK4 and unchanged GTK3. The
+unmodified selection fails the missing-Shape case by accepting absent libXext.
+
+Build `shape4-contract` with `BUILD_SHAPE_CONTRACT=ON` against installed wxGTK4.
+Its X11 CTest cases require a real X server, run with GDK_SCALE=1 and 2, and
+verify the actual surface scale and server-side Bounding/Input rectangles for
+interior, hole and exterior pixels. They cover pre-realize selection, Clear,
+post-realize replacement, surface re-realization, path shapes and final reset.
+Running the executable with a Wayland backend instead verifies explicit shape
+refusal. Target TU/fixture syntax and Clang Static Analyzer checks pass; the
+five-case dependency regression passes. Linked GUI execution, WM behavior and
+runtime memory checks remain pending and are not implied by these checks.

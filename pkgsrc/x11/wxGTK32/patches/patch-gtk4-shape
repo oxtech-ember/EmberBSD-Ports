@@ -1,0 +1,306 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local wxWidgets GTK4 port. Licence: wxWindows licence.
+Use X Shape visual clipping and GTK input regions; retain shapes through native lifecycle.
+
+--- src/gtk/nonownedwnd.cpp.orig
++++ src/gtk/nonownedwnd.cpp
+@@ -31,6 +31,10 @@
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ 
++#ifdef __WXGTK4__
++#include "nonownedwnd_gtk4.inc"
++#else
++
+ // ----------------------------------------------------------------------------
+ // wxNonOwnedWindowShapeImpl: base class for region and path-based classes.
+ // ----------------------------------------------------------------------------
+@@ -302,3 +306,5 @@
+ }
+ 
+ #endif // wxUSE_GRAPHICS_CONTEXT
++
++#endif // __WXGTK4__
+--- /dev/null
++++ src/gtk/nonownedwnd_gtk4.inc
+@@ -0,0 +1,279 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 shaped windows. Origin: EmberBSD (AI-assisted).
++// Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#include "wx/vector.h"
++#include "wx/log.h"
++#include <cmath>
++#include <climits>
++#ifdef GDK_WINDOWING_X11
++#include <gdk/x11/gdkx.h>
++#include <X11/extensions/shape.h>
++#endif
++
++namespace
++{
++bool wxGTKShapeSupported(GtkWidget* widget)
++{
++#ifdef GDK_WINDOWING_X11
++    GdkDisplay* const display = gtk_widget_get_display(widget);
++    if (!GDK_IS_X11_DISPLAY(display) || !gdk_display_supports_input_shapes(display))
++        return false;
++    int event, error;
++    return XShapeQueryExtension(gdk_x11_display_get_xdisplay(display), &event, &error) != 0;
++#else
++    wxUnusedVar(widget);
++    return false;
++#endif
++}
++
++// Apply a logical widget region to both the visible and interactive surface.
++// A bounding shape is essential: an input-only region would leave a rectangle
++// visible on screen. GTK4 exposes no equivalent visual shape on Wayland.
++bool wxGTKApplyShape(GtkWidget* widget, cairo_region_t* region)
++{
++    if (!wxGTKShapeSupported(widget))
++        return false;
++    GtkNative* const native = gtk_widget_get_native(widget);
++    GdkSurface* const surface = native ? gtk_native_get_surface(native) : NULL;
++    if (!surface)
++        return true; // Known supported backend; apply when realized.
++#ifdef GDK_WINDOWING_X11
++    if (!GDK_IS_X11_SURFACE(surface) || gdk_surface_is_destroyed(surface))
++        return false;
++    GdkDisplay* const display = gdk_surface_get_display(surface);
++    Display* const xdisplay = gdk_x11_display_get_xdisplay(display);
++    const Window xid = gdk_x11_surface_get_xid(surface);
++    if (!region)
++    {
++        gdk_x11_display_error_trap_push(display);
++        XShapeCombineMask(xdisplay, xid, ShapeBounding, 0, 0, None, ShapeSet);
++        gdk_surface_set_input_region(surface, NULL);
++        return gdk_x11_display_error_trap_pop(display) == 0;
++    }
++
++    graphene_point_t origin = GRAPHENE_POINT_INIT(0, 0), offset;
++    if (!gtk_widget_compute_point(widget, GTK_WIDGET(native), &origin, &offset))
++        return false;
++    double dx, dy;
++    gtk_native_get_surface_transform(native, &dx, &dy);
++    // Match GtkNative's render translation and GtkWindow's input-shape
++    // translation, including client-side shadow/margin offsets.
++    dx += offset.x;
++    dy += offset.y;
++    const double scale = gdk_surface_get_scale(surface);
++    cairo_region_t* const input = cairo_region_create();
++    wxVector<XRectangle> rectangles;
++    const int count = cairo_region_num_rectangles(region);
++    for (int i = 0; i < count; ++i)
++    {
++        cairo_rectangle_int_t rect;
++        cairo_region_get_rectangle(region, i, &rect);
++        const double left = std::floor(rect.x + dx);
++        const double top = std::floor(rect.y + dy);
++        const double right = std::ceil(double(rect.x) + rect.width + dx);
++        const double bottom = std::ceil(double(rect.y) + rect.height + dy);
++        const double x = std::floor(left * scale), y = std::floor(top * scale);
++        const double width = std::ceil(right * scale) - x;
++        const double height = std::ceil(bottom * scale) - y;
++        if (x < SHRT_MIN || x > SHRT_MAX || y < SHRT_MIN || y > SHRT_MAX ||
++            width > USHRT_MAX || height > USHRT_MAX || width < 0 || height < 0)
++        {
++            cairo_region_destroy(input);
++            return false; // X Shape protocol coordinate range.
++        }
++        rect.x = int(left); rect.y = int(top);
++        rect.width = int(right - left); rect.height = int(bottom - top);
++        cairo_region_union_rectangle(input, &rect);
++        XRectangle xr = { short(x), short(y), (unsigned short)width, (unsigned short)height };
++        rectangles.push_back(xr);
++    }
++    if (cairo_region_status(input) != CAIRO_STATUS_SUCCESS)
++    {
++        cairo_region_destroy(input);
++        return false;
++    }
++    gdk_x11_display_error_trap_push(display);
++    XShapeCombineRectangles(xdisplay, xid, ShapeBounding, 0, 0,
++                           rectangles.empty() ? NULL : &rectangles[0],
++                           int(rectangles.size()), ShapeSet, Unsorted);
++    gdk_surface_set_input_region(surface, input);
++    const bool ok = gdk_x11_display_error_trap_pop(display) == 0;
++    cairo_region_destroy(input);
++    return ok;
++#else
++    wxUnusedVar(region);
++    return false;
++#endif
++}
++} // namespace
++
++class wxNonOwnedWindowShapeImpl : public wxEvtHandler
++{
++public:
++    wxNonOwnedWindowShapeImpl(wxWindow* win, cairo_region_t* region) :
++        m_win(win), m_region(region), m_surface(NULL), m_content(win->m_wxwindow)
++    {
++        g_signal_connect_after(win->m_widget, "map", G_CALLBACK(Mapped), this);
++        g_signal_connect(win->m_widget, "unrealize", G_CALLBACK(Unrealized), this);
++        if (m_content)
++        {
++            g_object_ref(m_content);
++            // GtkWindow updates its default input region before allocating
++            // content. Restore the explicit shape after this allocation.
++            if (g_signal_lookup("wx-size-allocate", G_OBJECT_TYPE(m_content)))
++                g_signal_connect_after(m_content, "wx-size-allocate", G_CALLBACK(Allocated), this);
++        }
++    }
++    ~wxNonOwnedWindowShapeImpl()
++    {
++        g_signal_handlers_disconnect_by_data(m_win->m_widget, this);
++        if (m_content)
++        {
++            g_signal_handlers_disconnect_by_data(m_content, this);
++            g_object_unref(m_content);
++        }
++        DisconnectSurface();
++#if wxUSE_GRAPHICS_CONTEXT
++        if (!m_path.IsNull())
++            m_win->Unbind(wxEVT_PAINT, &wxNonOwnedWindowShapeImpl::OnPaint, this);
++#endif
++        cairo_region_destroy(m_region);
++    }
++    bool SetShape()
++    {
++        if (cairo_region_status(m_region) != CAIRO_STATUS_SUCCESS)
++            return false;
++        GtkNative* const native = gtk_widget_get_native(m_win->m_widget);
++        GdkSurface* const surface = native ? gtk_native_get_surface(native) : NULL;
++        if (surface != m_surface)
++        {
++            DisconnectSurface();
++            if (surface)
++            {
++                m_surface = GDK_SURFACE(g_object_ref(surface));
++                g_signal_connect_after(surface, "layout", G_CALLBACK(Layout), this);
++                g_signal_connect_after(surface, "notify::scale", G_CALLBACK(Scale), this);
++            }
++        }
++        return wxGTKApplyShape(m_win->m_widget, m_region);
++    }
++#if wxUSE_GRAPHICS_CONTEXT
++    void SetPath(const wxGraphicsPath& path)
++    {
++        m_path = path;
++        m_win->Bind(wxEVT_PAINT, &wxNonOwnedWindowShapeImpl::OnPaint, this);
++    }
++#endif
++private:
++    void DisconnectSurface()
++    {
++        if (m_surface)
++        {
++            g_signal_handlers_disconnect_by_data(m_surface, this);
++            g_object_unref(m_surface);
++            m_surface = NULL;
++        }
++    }
++    static void Mapped(GtkWidget*, wxNonOwnedWindowShapeImpl* self) { self->SetShape(); }
++    static void Unrealized(GtkWidget*, wxNonOwnedWindowShapeImpl* self) { self->DisconnectSurface(); }
++    static void Allocated(GtkWidget*, int, int, wxNonOwnedWindowShapeImpl* self) { self->SetShape(); }
++    static void Layout(GdkSurface*, int, int, wxNonOwnedWindowShapeImpl* self) { self->SetShape(); }
++    static void Scale(GObject* surface, GParamSpec*, wxNonOwnedWindowShapeImpl* self)
++    {
++        // GDK caches logical input regions and skips an equal region, while
++        // X11 scale changes do not reissue its device-pixel ShapeInput request.
++        // Invalidate this cache before applying the same region at the new scale.
++        gdk_surface_set_input_region(GDK_SURFACE(surface), NULL);
++        self->SetShape();
++    }
++#if wxUSE_GRAPHICS_CONTEXT
++    void OnPaint(wxPaintEvent& event)
++    {
++        event.Skip();
++        wxPaintDC dc(m_win);
++        wxGraphicsContext* const context = dc.GetGraphicsContext();
++        if (context)
++        {
++            context->SetPen(wxPen(*wxLIGHT_GREY, 2));
++            context->StrokePath(m_path);
++        }
++    }
++    wxGraphicsPath m_path;
++#endif
++    wxWindow* const m_win;
++    cairo_region_t* const m_region;
++    GdkSurface* m_surface;
++    GtkWidget* const m_content;
++};
++
++wxNonOwnedWindow::~wxNonOwnedWindow() { delete m_shapeImpl; }
++
++void wxNonOwnedWindow::GTKHandleRealized()
++{
++    wxNonOwnedWindowBase::GTKHandleRealized();
++    if (m_shapeImpl && !m_shapeImpl->SetShape())
++        wxLogWarning("Could not apply the native window shape");
++}
++
++bool wxNonOwnedWindow::DoClearShape()
++{
++    if (!m_shapeImpl)
++        return true;
++    if (!wxGTKApplyShape(m_widget, NULL))
++        return false;
++    delete m_shapeImpl;
++    m_shapeImpl = NULL;
++    // Let GtkWindow restore its ordinary CSD/shadow input clipping during
++    // allocation now that our explicit-shape allocation handler is gone.
++    gtk_widget_queue_allocate(m_widget);
++    Refresh();
++    return true;
++}
++
++bool wxNonOwnedWindow::DoSetRegionShape(const wxRegion& region)
++{
++    if (!wxGTKShapeSupported(m_widget))
++        return false;
++    wxScopedPtr<wxNonOwnedWindowShapeImpl> shape(
++        new wxNonOwnedWindowShapeImpl(this, cairo_region_copy(region.GetRegion())));
++    if (!shape->SetShape())
++        return false;
++    delete m_shapeImpl;
++    m_shapeImpl = shape.release();
++    Refresh();
++    return true;
++}
++
++#if wxUSE_GRAPHICS_CONTEXT
++bool wxNonOwnedWindow::DoSetPathShape(const wxGraphicsPath& path)
++{
++    if (!wxGTKShapeSupported(m_widget))
++        return false;
++    wxBitmap bitmap(GetSize());
++    if (!bitmap.IsOk())
++        return false;
++    {
++        wxMemoryDC dc(bitmap);
++        dc.SetBackground(*wxBLACK);
++        dc.Clear();
++        wxGraphicsContext* const context = dc.GetGraphicsContext();
++        if (!context)
++            return false;
++        context->SetBrush(*wxWHITE);
++        context->FillPath(path);
++    }
++    wxMask mask(bitmap, *wxBLACK);
++    if (!mask)
++        return false;
++    wxScopedPtr<wxNonOwnedWindowShapeImpl> shape(new wxNonOwnedWindowShapeImpl(
++        this, gdk_cairo_region_create_from_surface(mask)));
++    if (!shape->SetShape())
++        return false;
++    shape->SetPath(path);
++    delete m_shapeImpl;
++    m_shapeImpl = shape.release();
++    Refresh();
++    return true;
++}
++#endif
