@@ -32,4 +32,4 @@ SHA1 (patch-Source_WebKit_WebProcess_WebPage_CoordinatedGraphics_ThreadedComposi
 SHA1 (patch-Source_cmake_FindFlite.cmake) = 83925123ffbac5620865df0fcf2f8e8dfbd3aa57
 SHA1 (patch-Source_cmake_FindGI.cmake) = 6991d925036563a31a0f120c48a2ac0071038aa5
 SHA1 (patch-Source_cmake_WebKitFeatures.cmake) = 1e21dc087015f2256e84467faf62f4d4de5d162f
-SHA1 (patch-Source_WebInspectorUI_Scripts_copy-user-interface-resources.pl) = 65f8e4915deafd2488036f486f3605df70ae979a
+SHA1 (patch-Source_WebInspectorUI_Scripts_copy-user-interface-resources.pl) = c6784b4db2041e4dbc7c7d7f4a63140db3ac0625
