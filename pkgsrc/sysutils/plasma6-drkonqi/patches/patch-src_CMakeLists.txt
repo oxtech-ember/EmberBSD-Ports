@@ -1,0 +1,33 @@
+$NetBSD$
+
+Build the GDB dialog without the systemd coredump helper.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -152,13 +152,19 @@
+         Qt::Qml
+ )
+ 
+-add_subdirectory(systemd)
+-add_subdirectory(coredump)
+-
+-target_sources(DrKonqiInternal PRIVATE coredumpbackend.cpp coredumpbackend.h)
+-target_link_libraries(DrKonqiInternal PRIVATE drkonqi-coredump) # needed for logs extraction
+-target_link_libraries(DrKonqiInternal PRIVATE drkonqi-coredumpexcavator)
+-target_compile_definitions(DrKonqiInternal PRIVATE SYSTEMD_AVAILABLE)
++if (Systemd_FOUND)
++    add_subdirectory(systemd)
++    add_subdirectory(coredump)
++    target_sources(DrKonqiInternal PRIVATE coredumpbackend.cpp coredumpbackend.h)
++    target_link_libraries(DrKonqiInternal PRIVATE drkonqi-coredump)
++    target_link_libraries(DrKonqiInternal PRIVATE drkonqi-coredumpexcavator)
++    target_compile_definitions(DrKonqiInternal PRIVATE SYSTEMD_AVAILABLE)
++else()
++    target_sources(DrKonqiInternal PRIVATE
++        systemd/memoryfence_portable.cpp
++        systemd/memorypressure_portable.cpp
++    )
++endif()
+ 
+ add_executable(drkonqi main.cpp)
+ ecm_mark_nongui_executable(drkonqi)

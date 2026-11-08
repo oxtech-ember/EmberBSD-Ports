@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (drkonqi-6.8.2.tar.xz) = c92874efbe3a79c40efebf1bc8e1e45a70df0d8d6e12b23db7e34b4134850627
+SHA512 (drkonqi-6.8.2.tar.xz) = 9d7e3fb2762f9c579f54456d64338f6e2e0d33105bfe1caf3a122f3d802ff91765582b8b1839684e1d06e70e2f9660839278e6bfe3aa2fdadc2d24273ba9878c
+Size (drkonqi-6.8.2.tar.xz) = 902616 bytes
+SHA1 (patch-CMakeLists.txt) = e3a6c9f6df28437ee9d92e00f5bf51e8e4b471aa
+SHA1 (patch-src_CMakeLists.txt) = f3c30ed13d630f83cb8acefb51b7e537e4654fc3
+SHA1 (patch-src_sentry_postman_CMakeLists.txt) = 43c6c056c26343b81d7105bf681820e1a4c7020d
