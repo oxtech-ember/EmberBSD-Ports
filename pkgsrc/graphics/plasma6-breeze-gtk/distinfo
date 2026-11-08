@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.2 2026/09/06 10:23:29 markd Exp $
+
+BLAKE2s (breeze-gtk-6.8.2.tar.xz) = 57790007bbae1e47e6222e1a4ccc48c22d6eec513a3ba307336ab2d691f3581e
+SHA512 (breeze-gtk-6.8.2.tar.xz) = d9cb6c868851b3125be487b4696355b9321dfcf6faab7bf87862e0c58e6badac5b2701235b5b27910c00f8c3047b62aaa92044cd322e38302c5f17fbbd1bcc9e
+Size (breeze-gtk-6.8.2.tar.xz) = 40804 bytes
