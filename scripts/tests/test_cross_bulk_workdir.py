@@ -83,21 +83,43 @@ with tempfile.TemporaryDirectory() as temp:
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     assert (rundir / 'bmk-args').read_text().split()[-1].endswith('.rdepends')
     assert sorted(p.name for p in rundir.iterdir()) == ['bmk-args']
-    def retired_by(**change):
+    def stopped_by(**change):
+        saved = {p: (p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns)
+                 for p in (obj, patch_cookie, work / '.build_done',
+                           work / '.depends', work / '.rdepends')}
         resolved.update(change)
         result = run('fixture-1.0nb2', 'fixture-1.0nb2', '1.0')
-        assert result.returncode == 0 and not work.exists(), result.stderr
-        assert 'kept WRKDIR resolved other dependencies' in result.stderr
-        retired = root / 'work.retired'
-        assert (retired / 'kept.o').read_bytes() == b'object'
-        retired.rename(work)
+        assert result.returncode != 0 and work.is_dir(), result.stderr
+        assert 'dependency metadata changed; WRKDIR preserved' in result.stderr
+        assert 'scoped' in result.stderr
+        assert not (root / 'work.retired').exists()
+        assert {p: (p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns)
+                for p in saved} == saved
         assert sorted(p.name for p in rundir.iterdir()) == ['bmk-args']
         resolved.update(FIXTURE_RESOLVE='ok', FIXTURE_DEPENDS=(work / '.depends').read_text().rstrip('\n'),
                         FIXTURE_RDEPENDS=(work / '.rdepends').read_text().rstrip('\n'))
+        return result
     # The dependency was replaced by a newer revision since the resolution.
-    retired_by(FIXTURE_RDEPENDS='full\texpat>=2.10.0\texpat-2.10.0nb1')
+    stopped_by(FIXTURE_RDEPENDS='full\texpat>=2.10.0\texpat-2.10.0nb1')
     # The recipe lists another dependency now.
-    retired_by(FIXTURE_DEPENDS='full\texpat>=2.10.0nb1\t../../textproc/expat')
+    stopped_by(FIXTURE_DEPENDS='full\texpat>=2.10.0nb1\t../../textproc/expat')
+    # A docs tool revision is not evidence that compiled objects are incompatible.
+    old_tool = 'tool\tpy315-gi-docgen-[0-9]*\t../../devel/py-gi-docgen'
+    old_resolved_tool = 'tool\tpy315-gi-docgen-[0-9]*\tpy315-gi-docgen-2026.1'
+    for leaf, row in (('.depends', old_tool), ('.rdepends', old_resolved_tool)):
+        with (work / leaf).open('a') as stream:
+            stream.write(row + '\n')
+    resolved.update(FIXTURE_DEPENDS=(work / '.depends').read_text().rstrip('\n'),
+                    FIXTURE_RDEPENDS=(work / '.rdepends').read_text().rstrip('\n'))
+    result = stopped_by(FIXTURE_DEPENDS=resolved['FIXTURE_DEPENDS'].replace(
+                   'py315-gi-docgen-[0-9]*', 'py315-gi-docgen>=2026.1nb1'),
+               FIXTURE_RDEPENDS=resolved['FIXTURE_RDEPENDS'].replace(
+                   'py315-gi-docgen-[0-9]*', 'py315-gi-docgen>=2026.1nb1').replace(
+                   '\tpy315-gi-docgen-2026.1', '\tpy315-gi-docgen-2026.1nb1'))
+    assert '-' + old_tool in result.stderr
+    assert '+' + old_tool.replace('py315-gi-docgen-[0-9]*', 'py315-gi-docgen>=2026.1nb1') in result.stderr
+    assert '-' + old_resolved_tool in result.stderr
+    assert ('+tool\tpy315-gi-docgen>=2026.1nb1\tpy315-gi-docgen-2026.1nb1') in result.stderr
     # Resolver error: keep WRKDIR, surface the cause, and stop (do not rebuild).
     resolved.update(FIXTURE_RESOLVE='no')
     result = run('fixture-1.0nb2', 'fixture-1.0nb2', '1.0')
@@ -105,7 +127,7 @@ with tempfile.TemporaryDirectory() as temp:
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     assert 'kept WRKDIR dependency check failed' in result.stderr
     assert 'fixture: dependency resolve failed' in result.stderr
-    assert 'kept WRKDIR resolved other dependencies' not in result.stderr
+    assert 'dependency metadata changed' not in result.stderr
     assert not (root / 'work.retired').exists()
     resolved.update(FIXTURE_RESOLVE='ok')
     # cmp status 2 is a comparison error: keep WRKDIR and stop (do not treat as change).
@@ -114,9 +136,9 @@ with tempfile.TemporaryDirectory() as temp:
     assert result.returncode != 0 and work.exists(), result.stderr
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     assert 'kept WRKDIR dependency check failed: cmp status 2' in result.stderr
-    assert 'kept WRKDIR resolved other dependencies' not in result.stderr
+    assert 'dependency metadata changed' not in result.stderr
     assert not (root / 'work.retired').exists()
     resolved.pop('FIXTURE_CMP', None)
     assert run('fixture-1.0nb2', 'fixture-2.0', '2.0').returncode == 0
     assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
-print('PASS: retry preserves objects, unknown fails closed, dependency change retires, resolver/cmp error keeps and stops')
+print('PASS: retry preserves objects, unknown fails closed, dependency changes preserve and stop, incompatible version retires')

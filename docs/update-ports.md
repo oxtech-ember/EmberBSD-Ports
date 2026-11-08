@@ -290,6 +290,16 @@ pkgsrc parse-time probes; use a trusted prepared tree. No build target is invoke
 
 ## Refresh configuration metadata
 
+When a retained package has the same identity but its resolved dependency
+metadata changes, ordinary bulk builds stop that job and preserve its WRKDIR,
+objects, phase cookies and previous dependency metadata. The worker log records
+the old/new dependency diff before temporary query outputs are removed.
+Dependency names and roles alone do not establish object compatibility. For a known compatible
+tool, documentation or packaging change, use the existing scoped `package` /
+`package-install` or reconfigure path described below. Incompatible ABI or
+compiler changes require rebuilding the affected objects; the dependency
+check does not silently accept them or clean the whole stage.
+
 When a selected package's provider configuration changes, `invalidate-makevars`
 removes that work directory's cached phase variables, without removing source,
 objects or phase cookies. It does not itself reconfigure or rebuild. For a

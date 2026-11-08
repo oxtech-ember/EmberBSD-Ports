@@ -995,11 +995,17 @@ prepare_wrkdir()
         work_identity=$("$host_python" -B -E -S "$(dirname "$0")/cross-bulk-workdir.py" "$1" "$base" "$version" "$name") || return 1
         case "$work_identity" in
         same)
-            # 0 unchanged (keep), 1 changed (rebuild), other resolver error (keep, stop).
+            # Dependency names alone cannot establish object compatibility.
+            # Keep the stage and stop on changes or resolver errors.
             work_dependencies_current "$@"
             case $? in
             0) clean=; return 0 ;;
-            1) echo "$3: kept WRKDIR resolved other dependencies; building it again" >&2 ;;
+            1)
+                echo "$3: dependency metadata changed; WRKDIR preserved: $1" >&2
+                echo "$3: inspect the dependency change, then use scoped package/package-install or reconfigure recovery for compatible inputs; rebuild incompatible objects explicitly" >&2
+                prepare_wrkdir_error=workdir-dependency-change
+                return 1
+                ;;
             *) prepare_wrkdir_error=workdir-dependency-check; return 1 ;;
             esac
             ;;
@@ -1023,8 +1029,8 @@ prepare_wrkdir()
 # the newer package as no runtime dependency. List and resolve them again
 # with the same bmake arguments ($1 WRKDIR, $2 job, $3 PKGPATH, then the
 # arguments). Return 0 when both lists are unchanged, 1 when they changed
-# (caller rebuilds), and 2 when the resolver fails (caller keeps WRKDIR,
-# reports the cause, and stops the job).
+# (caller preserves WRKDIR and stops for scoped recovery), and 2 when the
+# resolver fails (caller keeps WRKDIR, reports the cause, and stops the job).
 work_dependencies_current()
 {
     wdc_work=$1 wdc_check=$run/$2.dependencies wdc_path=$3
@@ -1051,7 +1057,21 @@ work_dependencies_current()
         wdc_cmp=$?
         case $wdc_cmp in
         0) ;;
-        1) wdc_status=1 ;;
+        1)
+            wdc_status=1
+            # Worker stderr is retained in its log; keep the exact changed
+            # edges there before removing the temporary dependency lists.
+            if diff -u "$wdc_work/.$wdc_file" "$wdc_check.$wdc_file" >&2; then
+                :
+            else
+                wdc_diff=$?
+                if [ "$wdc_diff" -ne 1 ]; then
+                    echo "$wdc_path: kept WRKDIR dependency check failed: diff status $wdc_diff" >&2
+                    rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
+                    return 2
+                fi
+            fi
+            ;;
         *)
             echo "$wdc_path: kept WRKDIR dependency check failed: cmp status $wdc_cmp" >&2
             rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
