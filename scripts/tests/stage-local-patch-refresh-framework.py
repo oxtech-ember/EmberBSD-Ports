@@ -54,6 +54,7 @@ with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
     makefile += ('.include "${.PARSEDIR}/../../mk/bsd.prefs.mk"\n'
                  '.include "${.PARSEDIR}/../../mk/patch/patch.mk"\n'
                  '.include "${.PARSEDIR}/../../mk/extract/extract.mk"\n'
+                 '.include "Makefile.common"\n'
                  'show-vars:\n.for name in ${VARNAMES}\n'
                  '\t@printf "%s\\n" \'${${name}}\'\n.endfor\n'
                  'pre-patch post-patch pre-extract post-extract:\n'
@@ -64,6 +65,8 @@ with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
     for directory, patch in ((previous, old), (recipe, new)):
         (directory / 'patches').mkdir(parents=True)
         (directory / 'Makefile').write_text(makefile)
+        (directory / 'Makefile.common').write_text('SHARED_SOURCE_VALUE= ' +
+                                                   ('old-overlay' if directory == previous else 'current-export') + '\n')
         (directory / 'patches/patch-a').write_bytes(patch)
         (directory / 'distinfo').write_text(
             archive_info + f'SHA1 (patch-a) = {hashlib.sha1(patch).hexdigest()}\n')
@@ -75,7 +78,7 @@ with tempfile.TemporaryDirectory(prefix='refresh-framework-test-') as temporary:
     owner.parent.mkdir(parents=True)
     def provenance():
         owner.write_text(''.join(f'cat/demo/{name}: {hashlib.sha256((previous / name).read_bytes()).hexdigest()}\n'
-                                for name in ('Makefile', 'distinfo', 'patches/patch-a')))
+                                for name in ('Makefile', 'Makefile.common', 'distinfo', 'patches/patch-a')))
     provenance()
     (work / '.patch_done').write_text(str(recipe / 'patches/patch-a') + '\n')
     (source / 'input').write_bytes(b'old\n')

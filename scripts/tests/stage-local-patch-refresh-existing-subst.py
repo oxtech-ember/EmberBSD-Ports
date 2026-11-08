@@ -148,7 +148,7 @@ sys.exit(3)
     base, work, source, command, previous = setup('foreign-old-include')
     (previous / 'Makefile.common').write_text('foreign\n')
     result = subprocess.run(command, capture_output=True, text=True)
-    assert result.returncode and 'included recipe input differs' in result.stderr
+    assert result.returncode and 'included recipe input differs' in result.stderr, result.stderr
     base, work, source, command, previous = setup('current-include-config-only')
     (base / 'pkgsrc/cat/demo/Makefile.common').write_text('# changed configure dependency only\n')
     subprocess.run(command, check=True, capture_output=True, text=True)
@@ -159,7 +159,7 @@ sys.exit(3)
     fake = base / 'bmake'
     fake.write_text(fake.read_text().replace(str(previous / 'Makefile.common'), str(current)))
     result = subprocess.run(command, capture_output=True, text=True)
-    assert result.returncode and 'included recipe input differs' in result.stderr
+    assert result.returncode and 'included recipe input differs' in result.stderr, result.stderr
     assert (source / 'input').read_bytes() == b'old /prefix\n'
     base, work, source, command, previous = setup('changed-source-var')
     fake = base / 'bmake'

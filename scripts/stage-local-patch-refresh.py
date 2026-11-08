@@ -253,23 +253,23 @@ def unselected_subst_pattern(paths, roots, pattern, changed):
             os.close(fd)
 
 
-def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, previous_recipe=None):
+def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, previous_recipe=None,
+                 patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None):
     """Bind the old ordered cookie to installed BUILD_VERSION and current recipe."""
     cookie = stable_read(paths, work / '.patch_done') if old_cookie is None else old_cookie
     try:
         old_paths = [Path(s) for s in cookie.decode('utf-8').splitlines() if s]
     except UnicodeError as exc:
         raise ValueError('invalid old patch cookie') from exc
-    patchdir = (recipe / 'patches').resolve(strict=True)
+    patchdir = Path(patchdir or recipe / 'patches').resolve(strict=True)
+    distinfo = Path(distinfo or recipe / 'distinfo').resolve(strict=True)
     cookie_roots = {patchdir}
     if previous_recipe is not None:
-        previous_patches = Path(previous_recipe) / 'patches'
-        require(previous_patches.is_absolute() and
-                previous_patches.resolve(strict=True) == previous_patches,
-                'previous patch directory is not canonical')
+        previous_patches = Path(previous_patchdir or Path(previous_recipe) / 'patches').resolve(strict=True)
         cookie_roots.add(previous_patches)
-    require(all(p.is_absolute() and p.resolve(strict=True) == p and
-                p.parent in cookie_roots for p in old_paths),
+    require(all(p.is_absolute() and not p.is_symlink() and p.resolve(strict=True).name == p.name and
+                Path(os.path.normpath(str(p))).parent == p.resolve(strict=True).parent and
+                p.resolve(strict=True).parent in cookie_roots for p in old_paths),
             'old patch cookie contains an unsupported path')
     # The explicit previous directory only identifies cookie origins. Its
     # complete recipe and patch inventory must still match installed provenance.
@@ -286,19 +286,34 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
         require(normalized not in records, 'duplicate BUILD_VERSION entry')
         records[normalized] = value
     pkgpath = '/'.join(recipe.parts[-2:])
+    pkgsrc_root = recipe.parents[1].resolve(strict=True)
+    patch_prefix = patchdir.relative_to(pkgsrc_root).as_posix() + '/'
+    distinfo_key = distinfo.relative_to(pkgsrc_root).as_posix()
     if not old:
-        require(not any(key.startswith(pkgpath + '/patches/patch-') for key in records),
+        require(not any(key.startswith(patch_prefix + 'patch-') for key in records),
                 'empty patch cookie contradicts installed patch provenance')
     new = sorted(p.name for p in patchdir.glob('patch-*') if p.is_file())
     old_recipe = Path(previous_recipe) if previous_recipe is not None else recipe
+    old_patchdir = (Path(previous_patchdir or old_recipe / 'patches').resolve(strict=True)
+                    if previous_recipe is not None else patchdir)
+    old_distinfo_path = (Path(previous_distinfo or old_recipe / 'distinfo').resolve(strict=True)
+                         if previous_recipe is not None else distinfo)
+    def provenance_path(path, root, fallback):
+        if old_recipe.parts[-2:] != recipe.parts[-2:]:
+            return fallback
+        try:
+            return path.resolve(strict=True).relative_to(root.resolve(strict=True)).as_posix()
+        except ValueError:
+            return fallback
     if previous_recipe is not None:
         require(old_recipe.is_absolute(), 'previous recipe must be absolute')
-        for name in ('Makefile', 'distinfo'):
+        for name in ('Makefile',):
             require(records.get(pkgpath + '/' + name) ==
                     hashlib.sha256(stable_read(paths, old_recipe / name)).hexdigest(),
                     'previous recipe identity changed: ' + name)
-        complete = sorted(p.name for p in (old_recipe / 'patches').glob('patch-*') if p.is_file())
-        recorded_prefix = pkgpath + '/patches/'
+        complete = sorted(p.name for p in old_patchdir.glob('patch-*') if p.is_file())
+        old_root = old_recipe.parents[1]
+        recorded_prefix = provenance_path(old_patchdir, old_root, pkgpath + '/patches') + '/'
         recorded = sorted(key[len(recorded_prefix):] for key in records
                           if key.startswith(recorded_prefix + 'patch-'))
         require(complete == recorded, 'previous recipe patch inventory differs from installed provenance')
@@ -312,32 +327,61 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
             (previous_recipe is not None or len(new) > len(old)),
             'old patch list is not a proper subsequence')
     for name in old:
-        expected = records.get(pkgpath + '/patches/' + name)
-        require(expected and hashlib.sha256(stable_read(paths, old_recipe / 'patches' / name)).hexdigest() == expected,
+        old_root = old_recipe.parents[1]
+        expected = records.get(provenance_path(old_patchdir, old_root, pkgpath + '/patches') + '/' + name)
+        require(expected and hashlib.sha256(stable_read(paths, old_patchdir / name)).hexdigest() == expected,
                 'old patch identity changed: ' + name)
     additions = [p for p in new if p not in old]
-    distinfo = stable_read(paths, recipe / 'distinfo')
-    old_distinfo = (stable_read(paths, old_recipe / 'distinfo') if previous_recipe is not None else
-                    b''.join(line for line in distinfo.splitlines(keepends=True)
+    distinfo_data = stable_read(paths, distinfo)
+    old_distinfo_data = (stable_read(paths, old_distinfo_path) if previous_recipe is not None else
+                    b''.join(line for line in distinfo_data.splitlines(keepends=True)
                              if not any(line.startswith(b'SHA1 (' + name.encode() + b') = ') for name in additions)))
-    expected = records.get(pkgpath + '/distinfo')
-    require(expected and hashlib.sha256(old_distinfo).hexdigest() == expected,
+    old_distinfo_key = (provenance_path(old_distinfo_path, old_recipe.parents[1], pkgpath + '/distinfo')
+                        if previous_recipe is not None else distinfo_key)
+    expected = records.get(old_distinfo_key)
+    require(expected and hashlib.sha256(old_distinfo_data).hexdigest() == expected,
             'old distinfo cannot be reconstructed exactly')
     return old, new, additions, cookie
 
 
-def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None):
+def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
+    """Resolve pkgsrc's declared shared patch owner within its exported tree."""
+    root = Path(pkgsrc_root).resolve(strict=True)
+    patchdir_input, distinfo_input = Path(patchdir), Path(distinfo)
+    require(patchdir_input.is_absolute() and distinfo_input.is_absolute(),
+            'selected patch paths must be absolute')
+    patchdir = patchdir_input.resolve(strict=True)
+    distinfo = distinfo_input.resolve(strict=True)
+    require(Path(os.path.abspath(os.path.normpath(str(patchdir_input)))) == patchdir and
+            Path(os.path.abspath(os.path.normpath(str(distinfo_input)))) == distinfo,
+            'selected patch paths use a symlink alias')
+    require(patchdir.is_relative_to(root) and distinfo.is_relative_to(root),
+            'selected patch inventory escapes exported pkgsrc tree')
+    require(patchdir.name == 'patches' and distinfo.name == 'distinfo' and
+            patchdir.parent == distinfo.parent,
+            'selected patch directory and distinfo do not share a standard owner')
+    return patchdir, distinfo
+
+
+def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None, patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None):
     """Replay complete old and current patch order and return validated leaf changes."""
     paths, sourceprep, archive_metadata = sdk['paths'], sdk['sourceprep'], sdk['archive_metadata']
     recipe, work, archive, scratch = map(Path, (recipe, work, archive, scratch))
-    old, new, additions, old_cookie = old_metadata(paths, recipe, work, installed_version, old_cookie, previous_recipe=previous_recipe)
-    metadata, patches = archive_metadata.read_recipe(recipe, archive.name, archive_root)
+    patchdir = Path(patchdir or recipe / 'patches')
+    distinfo = Path(distinfo or recipe / 'distinfo')
+    old, new, additions, old_cookie = old_metadata(paths, recipe, work, installed_version, old_cookie, previous_recipe=previous_recipe,
+                                                   patchdir=patchdir, distinfo=distinfo,
+                                                   previous_patchdir=previous_patchdir,
+                                                   previous_distinfo=previous_distinfo)
+    metadata, patches = archive_metadata.read_recipe(patchdir.parent, archive.name, archive_root)
     if previous_recipe is not None:
         old_recipe = Path(previous_recipe)
-        old_meta, old_patches = archive_metadata.read_recipe(old_recipe, archive.name, archive_root)
+        old_patchdir = Path(previous_patchdir or old_recipe / 'patches')
+        old_meta, old_patches = archive_metadata.read_recipe(old_patchdir.parent, archive.name, archive_root)
         require([p.name for p in old_patches] == old, 'previous recipe patch inventory changed')
     else:
         old_recipe, old_meta = recipe, metadata
+        old_patchdir = patchdir
     data = stable_read(paths, archive)
     measured = sourceprep.archive_hashes(data)
     require(all(measured[k] == old_meta[k] for k in ('sha512', 'blake2s', 'size')),
@@ -352,10 +396,10 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
     verify_targets = set()
     for name in old:
         if name not in cookie_inventory:
-            verify_targets.update(targets(stable_read(paths, old_recipe / 'patches' / name)))
+            verify_targets.update(targets(stable_read(paths, old_patchdir / name)))
     for name in new:
-        current = stable_read(paths, recipe / 'patches' / name)
-        prior = stable_read(paths, old_recipe / 'patches' / name) if name in old else None
+        current = stable_read(paths, patchdir / name)
+        prior = stable_read(paths, old_patchdir / name) if name in old else None
         if prior != current:
             affected.update(targets(current))
             if prior is not None:
@@ -371,7 +415,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
                                    max_bytes=MAX_STAGE_ARCHIVE_BYTES)
         tree = dest / archive_root
         for name in series:
-            path = (old_recipe if label == 'old' else recipe) / 'patches' / name
+            path = (old_patchdir if label == 'old' else patchdir) / name
             contents = stable_read(paths, path)
             patch_meta = old_meta if label == 'old' else metadata
             require(hashlib.sha256(contents).hexdigest() == patch_meta['recipe']['patches/' + name],
@@ -753,7 +797,8 @@ def validate_recipe_includes(paths, recipe, makefiles, records, *, package=None,
         if not path.is_absolute():
             path = base / path
         path = path.resolve(strict=True)
-        if path.is_relative_to(root) and path != root / 'Makefile':
+        if (path.is_relative_to(root) and
+                not (path.parent == root and path.name.lower() == 'makefile')):
             name = str(path.relative_to(root))
             require(not name.startswith('patches/') and name != 'distinfo',
                     'unsupported recipe-local makefile')
@@ -768,6 +813,41 @@ def validate_recipe_includes(paths, recipe, makefiles, records, *, package=None,
                 observed[path] = data
             result.add(name)
     return result
+
+
+def previous_makefiles(paths, previous_recipe, current_recipe, makefiles):
+    """Resolve old package-relative includes from its overlay, framework from current pkgsrc."""
+    import shlex
+    result = []
+    for item in shlex.split(makefiles):
+        path = Path(item)
+        if path.is_absolute():
+            current_root = Path(current_recipe).parents[1].resolve(strict=True)
+            previous_root = Path(previous_recipe).parents[1].resolve(strict=True)
+            roots = ((Path(current_recipe).resolve(strict=True), Path(previous_recipe).resolve(strict=True)),
+                     (current_root, previous_root))
+            for current_base, previous_base in roots:
+                try:
+                    relative = path.resolve(strict=True).relative_to(current_base)
+                except ValueError:
+                    continue
+                candidate = previous_base / relative
+                if paths.entry(str(candidate)) is not None:
+                    if stable_read(paths, path) != stable_read(paths, candidate):
+                        raise ValueError('included recipe input differs: ' + relative.as_posix())
+                    path = candidate
+                break
+            result.append(str(path))
+            continue
+        old_path = Path(previous_recipe) / path
+        current_path = Path(current_recipe) / path
+        if paths.entry(str(old_path)) is not None:
+            result.append(str(old_path))
+        elif paths.entry(str(current_path)) is not None:
+            result.append(str(current_path))
+        else:
+            raise ValueError('previous makefile input is missing: ' + item)
+    return ' '.join(shlex.quote(item) for item in result)
 
 
 def validate_timestamp_hooks(output, source, touch, find):
@@ -855,9 +935,7 @@ def main():
     require(len(values) == len(names), 'unexpected selected bmake metadata')
     v = dict(zip(names, values))
     require(not v['PATCHFILES'], 'downloaded patchfiles are unsupported')
-    require(Path(v['PATCHDIR']).resolve() == (a.recipe / 'patches').resolve() and
-            Path(v['DISTINFO_FILE']).resolve() == (a.recipe / 'distinfo').resolve(),
-            'nonstandard patch inventory is unsupported')
+    patchdir, distinfo = selected_patch_inputs(a.recipe.parents[1], v['PATCHDIR'], v['DISTINFO_FILE'])
     require(not v['META_PACKAGE'], 'meta packages are unsupported')
     if v['LOCALPATCHES']:
         require(not (Path(v['LOCALPATCHES']) / '/'.join(a.recipe.parts[-2:])).exists(),
@@ -955,23 +1033,33 @@ def main():
                 'previous Makefile differs from installed provenance')
         observed_recipe_inputs[previous_makefile] = previous_data
         oldcmd = cmd[:3] + ['-f', str(previous_makefile)] + cmd[3:]
-        old_hooks = subprocess.run(oldcmd + ['-n', 'pre-patch', 'post-patch'], check=True,
-                                   stdout=subprocess.PIPE, text=True)
-        require(not hooks.stdout.strip() and old_hooks.stdout == hooks.stdout,
-                'custom or changed patch hooks are unsupported')
         def selected_values(command, fields):
             result = subprocess.run(command + ['show-vars', 'VARNAMES=' + ' '.join(fields)],
                                     check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
             require(len(result) == len(fields), 'unexpected previous recipe metadata')
             return result
+        old_pkgsrc_root = a.previous_recipe.parents[1]
+        if a.previous_recipe.parts[-2:] == a.recipe.parts[-2:]:
+            previous_patchdir = old_pkgsrc_root / patchdir.relative_to(a.recipe.parents[1].resolve())
+            previous_distinfo = old_pkgsrc_root / distinfo.relative_to(a.recipe.parents[1].resolve())
+            previous_patchdir, previous_distinfo = selected_patch_inputs(
+                old_pkgsrc_root, previous_patchdir, previous_distinfo)
+        else:
+            previous_patchdir, previous_distinfo = selected_patch_inputs(
+                a.previous_recipe, a.previous_recipe / 'patches', a.previous_recipe / 'distinfo')
+        old_pkgsrc_root = a.previous_recipe.parents[1].resolve()
+        old_hooks = subprocess.run(oldcmd + ['-n', 'pre-patch', 'post-patch'], check=True,
+                                   stdout=subprocess.PIPE, text=True)
+        require(not hooks.stdout.strip() and old_hooks.stdout == hooks.stdout,
+                'custom or changed patch hooks are unsupported')
         old_classes, old_makefiles = selected_values(oldcmd, ['SUBST_CLASSES', '.MAKE.MAKEFILES'])
+        old_makefiles = previous_makefiles(paths, a.previous_recipe, a.recipe, old_makefiles)
         validate_active_target(paths, oldcmd, a.recipe, old_makefiles, framework_files, 'do-patch',
                                previous_recipe=a.previous_recipe, observed=observed_recipe_inputs)
         require(old_classes == v['SUBST_CLASSES'], 'previous SUBST classes changed')
         old_includes = validate_recipe_includes(paths, a.previous_recipe, old_makefiles, records,
-                                               package=package, cwd=a.recipe, observed=observed_recipe_inputs)
-        old_includes |= validate_recipe_includes(paths, a.recipe, old_makefiles, records,
-                                                observed=observed_recipe_inputs)
+                                               package=package, cwd=a.previous_recipe,
+                                               observed=observed_recipe_inputs)
         new_includes = validate_recipe_includes(paths, a.recipe, v['.MAKE.MAKEFILES'], None,
                                                observed=observed_recipe_inputs)
         require(old_includes <= new_includes, 'included recipe inputs removed')
@@ -988,7 +1076,21 @@ def main():
                          'EXTRACT_CMD', 'EXTRACT_ENV', 'EXTRACT_BEFORE_ARGS', 'EXTRACT_AFTER_ARGS',
                          'PATCH', 'PATCH_ARGS', 'PATCHFILES', 'PATCHDIR', 'DISTINFO_FILE', 'LOCALPATCHES']
         old_source, new_source = selected_values(oldcmd, source_fields), selected_values(cmd, source_fields)
-        require(all(same_source_input(name, old, new)
+        current_pkgsrc_root = a.recipe.parents[1].resolve()
+        def same_selected_source(name, old, new):
+            if name not in ('PATCHDIR', 'DISTINFO_FILE'):
+                return same_source_input(name, old, new)
+            if a.previous_recipe.parts[-2:] != a.recipe.parts[-2:]:
+                return same_source_input(name, old, new)
+            new_path = Path(new).resolve(strict=True).relative_to(current_pkgsrc_root).as_posix()
+            old_path = Path(old).resolve(strict=True)
+            try:
+                old_relative = old_path.relative_to(old_pkgsrc_root).as_posix()
+            except ValueError:
+                old_relative = old_path.relative_to(current_pkgsrc_root).as_posix()
+            expected_path = previous_patchdir if name == 'PATCHDIR' else previous_distinfo
+            return old_relative == new_path == expected_path.relative_to(old_pkgsrc_root).as_posix()
+        require(all(same_selected_source(name, old, new)
                     for name, old, new in zip(source_fields, old_source, new_source)),
                 'previous source preparation inputs changed')
         require(all(name not in v or same_source_input(name, value, v[name])
@@ -1076,7 +1178,10 @@ def main():
                                              old_transform=(lambda candidate, affected: existing_transform('old', oldcmd, candidate, affected))
                                                            if a.refresh_subst else None,
                                              allow_completed=bool(a.subst_class),
-                                             previous_recipe=a.previous_recipe)
+                                             previous_recipe=a.previous_recipe, patchdir=patchdir,
+                                             distinfo=distinfo,
+                                             previous_patchdir=(previous_patchdir if a.previous_recipe else None),
+                                             previous_distinfo=(previous_distinfo if a.previous_recipe else None))
         if a.refresh_subst:
             for name in subst_files:
                 if subst_candidates['old'][name] == subst_candidates['new'][name]:
@@ -1137,7 +1242,7 @@ def main():
                 require(stable_read(paths, path) == contents,
                         'recipe input changed during source replay: ' + str(path))
         transaction(sdk, work, source, changes, cookie,
-                    [a.recipe / 'patches' / name for name in inventory], clean)
+                    [patchdir / name for name in inventory], clean)
     print('Refreshed verified patch inputs; compatible build objects retained.')
 
 
