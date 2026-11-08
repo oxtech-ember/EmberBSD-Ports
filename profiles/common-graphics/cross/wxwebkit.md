@@ -88,13 +88,17 @@ It does not replace an unsupported-platform error with a warning.
 GTK API 4.1 and API 6.0 keep their shared source version and separate libraries.
 The actual API 6.0 install output for 2.54.2 contains
 `libwebkitgtk-6.0.so.4.19.5` and `libjavascriptcoregtk-6.0.so.1.8.9`.
-Complete installed PLIST validation remains pending.
+The complete AArch64 package passed installed PLIST and package checks and
+was installed into the target sysroot.
 
 API 6.0 C/C++ compilation has completed for AArch64 with the selected Clang
 SDK. The real JavaScriptCore, WebKit and WebKitWebProcessExtension scanner
 queries ran on EmberBSD; all three commands then passed replay without a VM
 using the checked-in [GI dumps](../../../pkgsrc/www/webkit-gtk60/files/gi-dump/NetBSD-11.0-aarch64).
-These results do not establish a finished binary package or WebView runtime.
+The package and its runtime dependencies are available in the signed current
+repository. The final packaging retry reused the compiled payload and refreshed
+dependency metadata without C++ compilation. WebView runtime acceptance remains
+separate.
 The GCC16 and Skia locale results below retain their narrower 2.54.1 scope.
 
 The recipes require C++23 and Ninja and use the compiler family selected by
