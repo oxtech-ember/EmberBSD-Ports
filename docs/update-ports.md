@@ -302,6 +302,13 @@ compatible objects while resetting the build phase. Packages with `NO_CONFIGURE`
 keep their existing configure behavior. Meson setup reconfigures an existing
 valid build directory in place.
 
+For generated documentation or assets, rerun the generator or its incremental
+build target, retaining the compiled inputs. Ninja's `-t clean <target>`
+recursively removes outputs of that target's dependencies: cleaning a
+documentation target can also delete library objects and linked binaries.
+When an output must be regenerated explicitly, remove only the identified
+generated output, not its dependency closure.
+
 For a new patch set with changed recipe configuration, use `patch-refresh`
 with `CROSS_BULK_PATCH_REFRESH_RECONFIGURE=yes` and
 `CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE=/absolute/previous/recipe`.
