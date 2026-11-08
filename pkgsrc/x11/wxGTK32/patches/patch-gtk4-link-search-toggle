@@ -1,0 +1,423 @@
+$NetBSD$
+
+Implement remaining GTK4 hyperlink, collapsible pane, search, and toggle controls.
+--- include/wx/gtk/hyperlink.h.orig
++++ include/wx/gtk/hyperlink.h
+@@ -64,7 +64,9 @@
+     virtual wxSize DoGetBestSize() const wxOVERRIDE;
+     virtual wxSize DoGetBestClientSize() const wxOVERRIDE;
+ 
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     wxDECLARE_DYNAMIC_CLASS(wxHyperlinkCtrl);
+ };
+--- include/wx/gtk/collpane.h.orig
++++ include/wx/gtk/collpane.h
+@@ -70,7 +70,9 @@
+ 
+     void OnSize(wxSizeEvent&);
+     virtual void AddChildGTK(wxWindowGTK* child) wxOVERRIDE;
++#ifndef __WXGTK4__
+     GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     wxDECLARE_DYNAMIC_CLASS(wxCollapsiblePane);
+     wxDECLARE_EVENT_TABLE();
+--- src/gtk/hyperlink.cpp.orig
++++ src/gtk/hyperlink.cpp
+@@ -47,7 +47,7 @@
+ // "clicked"
+ // ----------------------------------------------------------------------------
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) || defined(__WXGTK4__)
+ extern "C" {
+ static gboolean activate_link(GtkWidget*, wxHyperlinkCtrl* win)
+ {
+@@ -100,7 +100,7 @@
+ 
+ wxHyperlinkCtrl::~wxHyperlinkCtrl()
+ {
+-#ifndef __WXGTK3__
++#if !defined(__WXGTK3__) && !defined(__WXGTK4__)
+     gs_hyperlinkctrl_list = g_slist_remove(gs_hyperlinkctrl_list, this);
+ #endif
+ }
+@@ -131,16 +131,27 @@
+         else if (HasFlag(wxHL_ALIGN_RIGHT))
+             x_alignment = 1;
+ 
++#ifdef __WXGTK4__
++        GtkWidget* labelWidget = gtk_button_get_child(GTK_BUTTON(m_widget));
++        if (labelWidget)
++        {
++            gtk_widget_set_halign(labelWidget,
++                x_alignment == 0 ? GTK_ALIGN_START :
++                x_alignment == 1 ? GTK_ALIGN_END : GTK_ALIGN_CENTER);
++            gtk_widget_set_valign(labelWidget, GTK_ALIGN_CENTER);
++        }
++#else
+         wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+         gtk_button_set_alignment(GTK_BUTTON(m_widget), x_alignment, 0.5f);
+         wxGCC_WARNING_RESTORE()
++#endif
+ 
+         // set to non empty strings both the url and the label
+         SetURL(url.empty() ? label : url);
+         SetLabel(label.empty() ? url : label);
+ 
+-#ifdef __WXGTK3__
+-        g_signal_connect(m_widget, "activate_link", G_CALLBACK(activate_link), this);
++#if defined(__WXGTK3__) || defined(__WXGTK4__)
++        g_signal_connect(m_widget, "activate-link", G_CALLBACK(activate_link), this);
+ #else
+         gs_hyperlinkctrl_list = g_slist_prepend(gs_hyperlinkctrl_list, this);
+         gtk_link_button_set_uri_hook(clicked_hook, NULL, NULL);
+@@ -238,6 +249,19 @@
+     wxColour ret;
+     if ( UseNative() )
+     {
++#ifdef __WXGTK4__
++        wxGCC_WARNING_SUPPRESS(deprecated-declarations)
++        GtkStyleContext* const context = gtk_widget_get_style_context(m_widget);
++        const GtkStateFlags state = gtk_style_context_get_state(context);
++        GdkRGBA color;
++        gtk_style_context_save(context);
++        gtk_style_context_set_state(context, GtkStateFlags(
++            (state & ~GTK_STATE_FLAG_LINK) | GTK_STATE_FLAG_VISITED));
++        gtk_style_context_get_color(context, &color);
++        gtk_style_context_restore(context);
++        wxGCC_WARNING_RESTORE()
++        ret = wxColour(color);
++#else
+         GdkColor* link_color;
+         GdkColor color = { 0, 0x5555, 0x1a1a, 0x8b8b };
+ 
+@@ -252,6 +276,7 @@
+         }
+         wxGCC_WARNING_RESTORE()
+         ret = wxColour(color);
++#endif
+     }
+     else
+         ret = base_type::GetVisitedColour();
+@@ -302,10 +327,12 @@
+     return wxGenericHyperlinkCtrl::GetHoverColour();
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxHyperlinkCtrl::GTKGetWindow(wxArrayGdkWindows& windows) const
+ {
+     return UseNative() ? gtk_button_get_event_window(GTK_BUTTON(m_widget))
+                        : wxGenericHyperlinkCtrl::GTKGetWindow(windows);
+ }
++#endif
+ 
+ #endif // wxUSE_HYPERLINKCTRL && GTK+ 2.10+
+--- src/gtk/collpane.cpp.orig
++++ src/gtk/collpane.cpp
+@@ -49,9 +49,13 @@
+                                       GParamSpec * WXUNUSED(param_spec),
+                                       wxCollapsiblePane *p)
+ {
++    wxWeakRef<wxCollapsiblePane> alive(p);
++
+     // When the pane is expanded or collapsed, its best size changes, so it
+     // needs to be invalidated in any case.
+     p->InvalidateBestSize();
++    if (!alive)
++        return;
+ 
+     if (!p->HasFlag(wxCP_NO_TLW_RESIZE))
+     {
+@@ -67,6 +71,7 @@
+             w->InvalidateBestSize();
+         }
+ 
++        wxWeakRef<wxTopLevelWindow> topLife(top);
+         if ( top && top->GetSizer() )
+         {
+             // 2) recalculate minimal size of the top window
+@@ -86,9 +91,13 @@
+ 
+                 // 4) set size hints
+                 top->SetMinClientSize(sz);
++                if (!alive || !topLife)
++                    return;
+ 
+                 // 5) set size
+                 top->SetClientSize(sz);
++                if (!alive)
++                    return;
+             }
+         }
+     }
+@@ -108,12 +117,12 @@
+ 
+ void wxCollapsiblePane::AddChildGTK(wxWindowGTK* child)
+ {
+-    // should be used only once to insert the "pane" into the
+-    // GtkExpander widget. wxGenericCollapsiblePane::DoAddChild() will check if
+-    // it has been called only once (and in any case we would get a warning
+-    // from the following call as GtkExpander is a GtkBin and can contain only
+-    // a single child!).
++    // GtkExpander accepts one child in both GTK3 and GTK4.
++#ifdef __WXGTK4__
++    gtk_expander_set_child(GTK_EXPANDER(m_widget), child->m_widget);
++#else
+     gtk_container_add(GTK_CONTAINER(m_widget), child->m_widget);
++#endif
+ }
+ 
+ //-----------------------------------------------------------------------------
+@@ -178,7 +187,26 @@
+ {
+     wxASSERT_MSG( m_widget, wxT("DoGetBestSize called before creation") );
+ 
++#ifdef __WXGTK4__
+     wxSize sz = m_szCollapsed;
++    if (IsExpanded())
++    {
++        // GTK's expander contains a wxPizza whose native measure is only its
++        // virtual extent. Preserve the wx sizer's best size, while deriving
++        // the theme's actual header-to-child spacing from GTK's measurements.
++        int minimum, natural, paneMinimum, paneNatural;
++        gtk_widget_measure(m_widget, GTK_ORIENTATION_VERTICAL, -1,
++                           &minimum, &natural, NULL, NULL);
++        gtk_widget_measure(m_pPane->m_widget, GTK_ORIENTATION_VERTICAL, -1,
++                           &paneMinimum, &paneNatural, NULL, NULL);
++        const int spacing = wxMax(0, natural - m_szCollapsed.y - paneNatural);
++        const wxSize panesz = m_pPane->GetBestSize();
++        sz.x = wxMax(sz.x, panesz.x);
++        sz.y += spacing + panesz.y;
++    }
++    return sz;
++#else
++    wxSize sz = m_szCollapsed;
+ 
+     if ( IsExpanded() )
+     {
+@@ -188,6 +216,7 @@
+     }
+ 
+     return sz;
++#endif
+ }
+ 
+ void wxCollapsiblePane::Collapse(bool collapse)
+@@ -239,6 +268,7 @@
+ }
+ 
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxCollapsiblePane::GTKGetWindow(wxArrayGdkWindows& windows) const
+ {
+     GtkWidget *label = gtk_expander_get_label_widget( GTK_EXPANDER(m_widget) );
+@@ -247,6 +277,7 @@
+ 
+     return NULL;
+ }
++#endif
+ 
+ #endif // wxUSE_COLLPANE && !defined(__WXUNIVERSAL__)
+ 
+--- src/gtk/srchctrl.cpp.orig
++++ src/gtk/srchctrl.cpp
+@@ -35,7 +35,7 @@
+ // A more readable way to check for GtkSearchEntry availability.
+ inline bool HasGtkSearchEntry()
+ {
+-#ifdef wxHAS_GTK_SEARCH_ENTRY
++#if defined(wxHAS_GTK_SEARCH_ENTRY) && !defined(__WXGTK4__)
+     return wx_is_at_least_gtk3(6);
+ #else
+     return false;
+@@ -44,7 +44,7 @@
+ 
+ inline GtkWidget* CreateGtkSearchEntryIfAvailable()
+ {
+-#ifdef wxHAS_GTK_SEARCH_ENTRY
++#if defined(wxHAS_GTK_SEARCH_ENTRY) && !defined(__WXGTK4__)
+     if ( wx_is_at_least_gtk3(6) )
+     {
+         return gtk_search_entry_new();
+@@ -64,10 +64,14 @@
+ extern "C" {
+ 
+ static void
++#ifdef __WXGTK4__
++wx_gtk_icon_press(GtkEntry* WXUNUSED(entry), gint position, wxSearchCtrl* ctrl)
++#else
+ wx_gtk_icon_press(GtkEntry* WXUNUSED(entry),
+                   gint position,
+                   GdkEventButton* WXUNUSED(event),
+                   wxSearchCtrl* ctrl)
++#endif
+ {
+     if ( position == GTK_ENTRY_ICON_PRIMARY )
+     {
+@@ -82,10 +86,13 @@
+     }
+     else // position == GTK_ENTRY_ICON_SECONDARY
+     {
++        wxWeakRef<wxSearchCtrl> alive(ctrl);
+         if ( !HasGtkSearchEntry() )
+         {
+             // No need to call this for a GtkSearchEntry.
+             ctrl->Clear();
++            if (!alive)
++                return;
+         }
+ 
+         wxCommandEvent event(wxEVT_SEARCH_CANCEL, ctrl->GetId());
+@@ -94,27 +101,45 @@
+     }
+ }
+ 
++#ifdef __WXGTK4__
++static void
++wx_gtk_entry_motion(GtkEventControllerMotion* controller, double x, double y,
++                    wxSearchCtrl* ctrl)
++{
++    // GtkEntry's icon interaction no longer emits a widget event. Observe
++    // motion on the whole widget so hovering over either icon still enters wx.
++    if (!wxGTKImpl::SetWindowUnderMouse(ctrl))
++        return;
++
++    wxMouseEvent mouseEvent(wxEVT_ENTER_WINDOW);
++    GdkEvent* event = gtk_event_controller_get_current_event(
++        GTK_EVENT_CONTROLLER(controller));
++    if (event)
++        wxGTKImpl::InitMouseEvent(ctrl, mouseEvent, event);
++    else
++    {
++        mouseEvent.SetEventObject(ctrl);
++        mouseEvent.SetId(ctrl->GetId());
++        mouseEvent.SetPosition(wxPoint(wxRound(x), wxRound(y)));
++    }
++    ctrl->GTKProcessEvent(mouseEvent);
++}
++#else
+ static gboolean
+-wx_gtk_entry_event(GtkEntry* WXUNUSED(entry),
+-                   GdkEvent* event,
++wx_gtk_entry_event(GtkEntry* WXUNUSED(entry), GdkEvent* event,
+                    wxSearchCtrl* ctrl)
+ {
+-    if ( event->type == GDK_MOTION_NOTIFY )
++    if ( event->type == GDK_MOTION_NOTIFY &&
++         wxGTKImpl::SetWindowUnderMouse(ctrl) )
+     {
+-        // GtkEntry "event" signal handler ignores motion events happening over
+-        // inactive icons, but we want to notify the window about the mouse
+-        // entering it when they happen.
+-        if ( wxGTKImpl::SetWindowUnderMouse(ctrl) )
+-        {
+-            wxMouseEvent mouseEvent(wxEVT_ENTER_WINDOW);
+-            wxGTKImpl::InitMouseEvent(ctrl, mouseEvent, (GdkEventMotion*)event);
+-
+-            ctrl->GTKProcessEvent(mouseEvent);
+-        }
++        wxMouseEvent mouseEvent(wxEVT_ENTER_WINDOW);
++        wxGTKImpl::InitMouseEvent(ctrl, mouseEvent, (GdkEventMotion*)event);
++        ctrl->GTKProcessEvent(mouseEvent);
+     }
+ 
+     return FALSE;
+ }
++#endif
+ 
+ }
+ 
+@@ -190,7 +215,9 @@
+     gtk_entry_set_activates_default(entry, !HasFlag(wxTE_PROCESS_ENTER));
+ 
+     gtk_editable_set_editable(GTK_EDITABLE(entry), true);
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++    gtk_editable_set_width_chars(GTK_EDITABLE(entry), 1);
++#elif defined(__WXGTK3__)
+     gtk_entry_set_width_chars(entry, 1);
+ #endif
+ 
+@@ -200,7 +227,11 @@
+ 
+     PostCreation(size);
+ 
++#ifdef __WXGTK4__
++    gtk_editable_set_text(GTK_EDITABLE(entry), wxGTK_CONV(value));
++#else
+     gtk_entry_set_text(entry, wxGTK_CONV(value));
++#endif
+ 
+     SetHint(_("Search"));
+ 
+@@ -233,7 +264,13 @@
+ 
+     g_signal_connect(m_entry, "icon-press", G_CALLBACK(wx_gtk_icon_press), this);
+ 
++#ifdef __WXGTK4__
++    GtkEventController* motion = gtk_event_controller_motion_new();
++    gtk_widget_add_controller(m_widget, motion);
++    g_signal_connect(motion, "motion", G_CALLBACK(wx_gtk_entry_motion), this);
++#else
+     g_signal_connect(m_entry, "event", G_CALLBACK(wx_gtk_entry_event), this);
++#endif
+ }
+ 
+ GtkEditable *wxSearchCtrl::GetEditable() const
+@@ -243,7 +280,10 @@
+ 
+ void wxSearchCtrl::Clear()
+ {
++    wxWeakRef<wxSearchCtrl> alive(this);
+     wxTextEntry::Clear();
++    if (!alive)
++        return;
+     ShowCancelButton(false);
+ }
+ 
+--- src/gtk/tglbtn.cpp.orig
++++ src/gtk/tglbtn.cpp
+@@ -105,8 +105,12 @@
+         m_widget = gtk_toggle_button_new();
+ 
+         GtkWidget* image = wxGtkImage::New(this);
++#ifdef __WXGTK4__
++        gtk_button_set_child(GTK_BUTTON(m_widget), image);
++#else
+         gtk_widget_show(image);
+         gtk_container_add(GTK_CONTAINER(m_widget), image);
++#endif
+     }
+ 
+     g_object_ref(m_widget);
+@@ -207,15 +211,24 @@
+ 
+ GtkLabel *wxToggleButton::GTKGetLabel() const
+ {
++#ifdef __WXGTK4__
++    GtkWidget* child = gtk_button_get_child(GTK_BUTTON(m_widget));
++#else
+     GtkWidget* child = gtk_bin_get_child(GTK_BIN(m_widget));
+-    return GTK_LABEL(child);
++#endif
++    return GTK_IS_LABEL(child) ? GTK_LABEL(child) : NULL;
+ }
+ 
+ void wxToggleButton::DoApplyWidgetStyle(GtkRcStyle *style)
+ {
+     GTKApplyStyle(m_widget, style);
++#ifdef __WXGTK4__
++    GtkWidget* child = gtk_button_get_child(GTK_BUTTON(m_widget));
++#else
+     GtkWidget* child = gtk_bin_get_child(GTK_BIN(m_widget));
+-    GTKApplyStyle(child, style);
++#endif
++    if (child)
++        GTKApplyStyle(child, style);
+ 
+ #ifndef __WXGTK4__
+     wxGCC_WARNING_SUPPRESS(deprecated-declarations)

@@ -19,6 +19,7 @@ SHA1 (patch-gtk4-filechooser) = 72b7daaf1fa6a298c09e38a4533eb50333aac581
 SHA1 (patch-gtk4-fonts) = c5cc543a0f2163473b865aab1491a6683c96d4cc
 SHA1 (patch-gtk4-frame-dialog) = 226da4762d0daf66beca5800561ddc284ad262ed
 SHA1 (patch-gtk4-glcanvas) = e69ec1be1b8d2c163db6ea67d0df08b2ae2b06b8
+SHA1 (patch-gtk4-link-search-toggle) = a02649c965a6ea7d08ac69691c5e23316e722280
 SHA1 (patch-gtk4-menus) = 1bbbaf58706c2fc175c6fa7a0f0625d355eac3ec
 SHA1 (patch-gtk4-native-dialogs) = 0d2a277e21cd724d09b8b5c0a005443ae313be54
 SHA1 (patch-gtk4-notebook-statbox) = 6d058093b50a8ff461797621be8f2829b1399ab1
