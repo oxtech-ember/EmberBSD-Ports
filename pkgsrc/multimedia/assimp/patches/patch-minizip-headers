@@ -13,7 +13,7 @@ Use namespaced minizip headers without shadowing libzip zip.h.
 -#else
 -#    include <unzip.h>
 -#endif
-+#include <minizip/unzip.h>
++#include <minizip-ng/unzip.h>
  
  namespace Assimp {
  
@@ -24,7 +24,7 @@ Use namespaced minizip headers without shadowing libzip zip.h.
  
  #ifndef ASSIMP_BUILD_NO_COMPRESSED_IFC
 -#ifdef ASSIMP_USE_HUNTER
- #include <minizip/unzip.h>
+ #include <minizip-ng/unzip.h>
 -#else
 -#include <unzip.h>
 -#endif
