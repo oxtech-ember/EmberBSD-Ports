@@ -81,15 +81,18 @@ SUBST_SED.paths+=	-e 's,/usr/pkg/include,${PREFIX}/include,g'
 .include "../../textproc/libfyaml/buildlink3.mk"
 .include "../../textproc/libstemmer/buildlink3.mk"
 .include "../../textproc/libxmlb/buildlink3.mk"
+.include "../../www/curl/buildlink3.mk"
+.include "options.mk"
+
 # Meson emits one extra ../ for lib/cmake/AppStreamQt, so the imported
-# include path points above the prefix.
+# include path points above the prefix. The file exists only with the qt option.
+.if !empty(PKG_OPTIONS:Mqt)
 post-install:
 	${SED} -e 's|CMAKE_CURRENT_LIST_DIR}/../../../../|CMAKE_CURRENT_LIST_DIR}/../../../|' \
 	    ${DESTDIR}${PREFIX}/lib/cmake/AppStreamQt/AppStreamQtConfig.cmake \
 	    > ${WRKDIR}/AppStreamQtConfig.cmake
 	${MV} ${WRKDIR}/AppStreamQtConfig.cmake \
 	    ${DESTDIR}${PREFIX}/lib/cmake/AppStreamQt/AppStreamQtConfig.cmake
+.endif
 
-.include "../../www/curl/buildlink3.mk"
-.include "options.mk"
 .include "../../mk/bsd.pkg.mk"
