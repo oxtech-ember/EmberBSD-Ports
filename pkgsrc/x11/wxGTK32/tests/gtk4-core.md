@@ -118,3 +118,11 @@ pass syntax compilation, and Clang Static Analyzer reports no diagnostics.
 Cppcheck cannot parse the target system headers in either the upstream or
 modified translation unit; this is not a successful Cppcheck check. Executable
 GUI and memory checks require the completed GTK4 wxWidgets library.
+
+GTK4 uses the existing `wxGenericCalendarCtrl` on the common wx GTK4 window and
+drawing implementation. It keeps date ranges, month locking, week styles and
+activation without relying on removed GtkCalendar properties or signals.
+`calendar4-contract` checks leap-day/range handling, silent programmatic updates,
+keyboard month locking/navigation, marks and double-click dispatch after mapping.
+This fixture does not replace real pointer-input, theme or accessibility checks;
+linked GUI execution remains pending the complete wxWidgets package.

@@ -7,6 +7,7 @@ SHA1 (patch-configure) = 256efcd0a7a82d407527964402960474f2906d76
 SHA1 (patch-configure.in) = c8d2aa4596b575e2b704a7fe7a1728c5c1a98377
 SHA1 (patch-gtk4-about) = f359166a9852b6f755328715fc27fbcb5cbe3655
 SHA1 (patch-gtk4-art) = b2f4f062548be201f88aeb0bb43f646a7c8d9ba3
+SHA1 (patch-gtk4-calendar) = a8447e80e92e1a9be5646dc853afd6500ca42e05
 SHA1 (patch-gtk4-controls) = d0a0871c136b93cc24381315d5dc545f7c691ac5
 SHA1 (patch-gtk4-core-controls) = e728ef5b15a3c6840f1a3963684b7d2b99080e1f
 SHA1 (patch-gtk4-cursor-display) = 9fdccca11c542efec7bc7ffe077ecdbd563be8be

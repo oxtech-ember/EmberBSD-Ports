@@ -1,0 +1,28 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), wxWindows licence.
+Use the existing common calendar on GTK4: it preserves month locking, date
+ranges and activation without GTK3-only calendar properties and signals.
+
+--- include/wx/calctrl.h.orig
++++ include/wx/calctrl.h
+@@ -344,7 +344,7 @@
+ #define wxCalendarNameStr "CalendarCtrl"
+ 
+ #ifndef __WXUNIVERSAL__
+-    #if defined(__WXGTK20__)
++    #if defined(__WXGTK20__) && !defined(__WXGTK4__)
+         #define wxHAS_NATIVE_CALENDARCTRL
+         #include "wx/gtk/calctrl.h"
+         #define wxCalendarCtrl wxGtkCalendarCtrl
+--- src/gtk/calctrl.cpp.orig
++++ src/gtk/calctrl.cpp
+@@ -9,7 +9,7 @@
+ #include "wx/wxprec.h"
+ 
+ 
+-#if wxUSE_CALENDARCTRL
++#if wxUSE_CALENDARCTRL && !defined(__WXGTK4__)
+ 
+ #ifndef WX_PRECOMP
+ #endif //WX_PRECOMP
