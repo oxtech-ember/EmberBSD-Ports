@@ -1,0 +1,155 @@
+# $NetBSD$
+# Set the TIME CSR frequency without requiring a machine-mode event device.
+
+--- a/include/sbi/sbi_timer.h
++++ b/include/sbi/sbi_timer.h
+@@ -88,7 +88,7 @@
+ 
+ struct sbi_scratch;
+ 
+-/** Compute timer value delta based on arbitary units */
++/** Compute timer value delta, or zero if the counter frequency is unknown. */
+ u64 sbi_timer_compute_delta(ulong units, u64 unit_freq);
+ 
+ /** Compute timer value delta from milliseconds */
+@@ -181,6 +181,12 @@
+ /** Get current timer device */
+ const struct sbi_timer_device *sbi_timer_get_device(void);
+ 
++/** Get the time counter frequency, or zero if it is unknown. */
++unsigned long sbi_timer_get_frequency(void);
++
++/** Set a nonzero time counter frequency independently of an event device. */
++int sbi_timer_set_frequency(unsigned long freq);
++
+ /** Register timer device */
+ void sbi_timer_set_device(const struct sbi_timer_device *dev);
+ 
+
+--- a/lib/sbi/sbi_init.c
++++ b/lib/sbi/sbi_init.c
+@@ -102,7 +102,7 @@
+ 	tdev = sbi_timer_get_device();
+ 	sbi_printf("Platform Timer Device       : %s @ %luHz\n",
+ 		   (tdev) ? tdev->name : "---",
+-		   (tdev) ? tdev->timer_freq : 0);
++		   sbi_timer_get_frequency());
+ 	cdev = sbi_console_get_device();
+ 	sbi_printf("Platform Console Device     : %s\n",
+ 		   (cdev) ? cdev->name : "---");
+
+--- a/lib/sbi/sbi_timer.c
++++ b/lib/sbi/sbi_timer.c
+@@ -29,6 +29,7 @@
+ 
+ static unsigned long timer_state_off;
+ static u64 (*get_time_val)(void);
++static unsigned long timer_freq;
+ static const struct sbi_timer_device *timer_dev = NULL;
+ 
+ #if __riscv_xlen == 32
+@@ -62,7 +63,7 @@
+ {
+ 	u64 delta;
+ 
+-	delta = ((u64)timer_dev->timer_freq * (u64)units);
++	delta = ((u64)timer_freq * (u64)units);
+ 	delta = delta / unit_freq;
+ 	return delta;
+ }
+@@ -72,9 +73,9 @@
+ {
+ 	u64 start_val, delta;
+ 
+-	/* Do nothing if we don't have timer device */
+-	if (!timer_dev || !get_time_val) {
+-		sbi_printf("%s: called without timer device\n", __func__);
++	/* A time counter need not have a machine-mode event device. */
++	if (!timer_freq || !get_time_val) {
++		sbi_printf("%s: called without timer source\n", __func__);
+ 		return;
+ 	}
+ 
+@@ -94,10 +95,12 @@
+ bool sbi_timer_waitms_until(bool (*predicate)(void *), void *arg,
+ 			    uint64_t timeout_ms)
+ {
+-	uint64_t start_time = sbi_timer_value();
+-	uint64_t ticks =
+-		(sbi_timer_get_device()->timer_freq / 1000) *
+-		timeout_ms;
++	uint64_t start_time, ticks;
++
++	if (!timer_freq || !get_time_val)
++		return predicate(arg);
++	start_time = sbi_timer_value();
++	ticks = (timer_freq / 1000) * timeout_ms;
+ 	while(!predicate(arg))
+ 		if (sbi_timer_value() - start_time  >= ticks)
+ 			return false;
+@@ -327,12 +330,26 @@
+ 	return timer_dev;
+ }
+ 
++unsigned long sbi_timer_get_frequency(void)
++{
++	return timer_freq;
++}
++
++int sbi_timer_set_frequency(unsigned long freq)
++{
++	if (!freq)
++		return SBI_EINVAL;
++	timer_freq = freq;
++	return 0;
++}
++
+ void sbi_timer_set_device(const struct sbi_timer_device *dev)
+ {
+ 	if (!dev || timer_dev)
+ 		return;
+ 
+ 	timer_dev = dev;
++	timer_freq = dev->timer_freq;
+ 	if (!get_time_val && timer_dev->timer_value)
+ 		get_time_val = timer_dev->timer_value;
+ }
+
+--- a/lib/utils/timer/fdt_timer.c
++++ b/lib/utils/timer/fdt_timer.c
+@@ -8,7 +8,9 @@
+  */
+ 
+ #include <sbi/sbi_error.h>
++#include <sbi/sbi_hart.h>
+ #include <sbi/sbi_scratch.h>
++#include <sbi/sbi_timer.h>
+ #include <sbi_utils/fdt/fdt_helper.h>
+ #include <sbi_utils/timer/fdt_timer.h>
+ 
+@@ -17,9 +19,23 @@
+ 
+ int fdt_timer_init(void)
+ {
++	struct sbi_scratch *scratch = sbi_scratch_thishart_ptr();
++	const void *fdt = fdt_get_address();
++	unsigned long freq;
++	int rc;
++
+ 	/*
+ 	 * Systems with Sstc might not provide any node in the FDT,
+ 	 * so do not return a failure if no device is found.
+ 	 */
+-	return fdt_driver_init_all(fdt_get_address(), fdt_timer_drivers);
++	rc = fdt_driver_init_all(fdt, fdt_timer_drivers);
++	if (rc || sbi_timer_get_device() ||
++	    !sbi_hart_has_csr(scratch, SBI_HART_CSR_TIME))
++		return rc;
++
++	/* TIME CSR plus Sstc does not require an MMIO timer device. */
++	rc = fdt_parse_timebase_frequency(fdt, &freq);
++	if (rc)
++		return rc;
++	return sbi_timer_set_frequency(freq);
+ }
+

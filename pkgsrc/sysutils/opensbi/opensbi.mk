@@ -4,6 +4,7 @@
 .include "../../sysutils/dtc/Makefile.common"
 
 PKGNAME?=		opensbi-${OPENSBI_BOARD}-${OPENSBI_VERSION:S/-/./}
+PKGREVISION=		3
 DISTNAME?=		opensbi-${OPENSBI_VERSION}
 DISTINFO_FILE?=		${.CURDIR}/../../sysutils/opensbi/distinfo
 CATEGORIES=		sysutils

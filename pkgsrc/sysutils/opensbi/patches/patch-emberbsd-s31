@@ -160,33 +160,6 @@ index 0000000..4bae594
 +}
 +
 +#endif
-diff --git a/include/sbi_utils/serial/esp_uart.h b/include/sbi_utils/serial/esp_uart.h
-new file mode 100644
-index 0000000..4e61b65
---- /dev/null
-+++ b/include/sbi_utils/serial/esp_uart.h
-@@ -0,0 +1,21 @@
-+// SPDX-License-Identifier: BSD-2-Clause
-+
-+#ifndef __SERIAL_ESPRESSIF_H__
-+#define __SERIAL_ESPRESSIF_H__
-+
-+#define UART_FIFO_OFF     0
-+#define UART_STATUS_OFF   0x1C
-+#define UART_STATUS_RX_CNT_M 0xFF
-+#define UART_STATUS_RX_CNT_S 0
-+#define UART_STATUS_TX_CNT_M 0xFF
-+#define UART_STATUS_TX_CNT_S 16
-+
-+#define UART_FIFO_FULL_CNT 128
-+
-+void esp_uart_putc(char ch);
-+
-+int esp_uart_getc(void);
-+
-+int esp_uart_init(unsigned long base);
-+
-+#endif
 diff --git a/lib/sbi/Kconfig b/lib/sbi/Kconfig
 index e76aecc..36ee284 100644
 --- a/lib/sbi/Kconfig
@@ -732,49 +705,6 @@ index 30fbb95..80dc429 100644
  
  	/* Disable interrupts */
  	set_reg(UART_REG_IDR, 0xFFFFFFFF);
-diff --git a/lib/utils/serial/esp_uart.c b/lib/utils/serial/esp_uart.c
-new file mode 100644
-index 0000000..a3c17f5
---- /dev/null
-+++ b/lib/utils/serial/esp_uart.c
-@@ -0,0 +1,37 @@
-+// SPDX-License-Identifier: BSD-2-Clause
-+#include <sbi/riscv_io.h>
-+#include <sbi/sbi_console.h>
-+#include <sbi_utils/serial/esp_uart.h>
-+
-+static unsigned long esp_uart_base;
-+
-+void esp_uart_putc(char ch)
-+{
-+    while (((readl((unsigned int *)(esp_uart_base + UART_STATUS_OFF)) >> UART_STATUS_TX_CNT_S) & UART_STATUS_TX_CNT_M) >= UART_FIFO_FULL_CNT) {}
-+    writel(ch, (unsigned int *)(esp_uart_base + UART_FIFO_OFF));
-+}
-+
-+int esp_uart_getc(void)
-+{
-+    /* Check the RX FIFO count first: reading the FIFO when it is empty
-+     * returns undefined data, indistinguishable from a real received NUL. */
-+    unsigned int status = readl((unsigned int *)(esp_uart_base + UART_STATUS_OFF));
-+
-+    if (((status >> UART_STATUS_RX_CNT_S) & UART_STATUS_RX_CNT_M) == 0)
-+        return -1;
-+
-+    return readl((unsigned int *)(esp_uart_base + UART_FIFO_OFF)) & 0xFF;
-+}
-+
-+static struct sbi_console_device esp_console = {
-+    .name = "espressif uart",
-+    .console_putc = esp_uart_putc,
-+    .console_getc = esp_uart_getc
-+};
-+
-+int esp_uart_init(unsigned long base)
-+{
-+    esp_uart_base = base;
-+    sbi_console_set_device(&esp_console);
-+    return 0;
-+}
 diff --git a/lib/utils/serial/fdt_serial_espressif.c b/lib/utils/serial/fdt_serial_espressif.c
 new file mode 100644
 index 0000000..6e2ca8f
@@ -880,33 +810,6 @@ index d594b14..877d956 100644
  config PLATFORM_ESWIN_EIC770X
  	bool "ESWIN EIC770X support"
  	default n
-diff --git a/platform/generic/configs/esp32s31_defconfig b/platform/generic/configs/esp32s31_defconfig
-new file mode 100644
-index 0000000..3ceb075
---- /dev/null
-+++ b/platform/generic/configs/esp32s31_defconfig
-@@ -0,0 +1,21 @@
-+# SPDX-License-Identifier: BSD-2-Clause
-+
-+CONFIG_PLATFORM_ESPRESSIF_ESP32S31=y
-+CONFIG_SMCLIC=y
-+# Harts without the mstatush CSR trap on the MDT clear
-+# CONFIG_SMDBLTRP is not set
-+
-+CONFIG_FDT_IRQCHIP=y
-+CONFIG_FDT_IRQCHIP_CLIC=y
-+
-+CONFIG_FDT_SERIAL=y
-+CONFIG_FDT_SERIAL_ESPRESSIF=y
-+
-+# Experimental SBI extensions disabled — not exercised by RV32 Linux boot.
-+# CONFIG_SBI_ECALL_FWFT is not set
-+# CONFIG_SBI_ECALL_DBTR is not set
-+# CONFIG_SBI_ECALL_SSE is not set
-+
-+# This platform registers no CPPC device or MPXY channel.
-+# CONFIG_SBI_ECALL_CPPC is not set
-+# CONFIG_SBI_ECALL_MPXY is not set
 diff --git a/platform/generic/espressif/esp32s31/apm.c b/platform/generic/espressif/esp32s31/apm.c
 new file mode 100644
 index 0000000..c14eb9f
@@ -1520,31 +1423,6 @@ index 0000000..5e364d3
 +{
 +	sbi_hsm_set_device(&s31_hsm);
 +}
-diff --git a/platform/generic/espressif/esp32s31/objects.mk b/platform/generic/espressif/esp32s31/objects.mk
-new file mode 100644
-index 0000000..80d81cc
---- /dev/null
-+++ b/platform/generic/espressif/esp32s31/objects.mk
-@@ -0,0 +1,19 @@
-+#
-+# SPDX-License-Identifier: BSD-2-Clause
-+#
-+# ESP32-S31 (RV32 CLIC) generic platform_override module + boot layout.
-+# Everything here is gated on CONFIG_PLATFORM_ESPRESSIF_ESP32S31 because
-+# the generic build discovers every objects.mk unconditionally.
-+#
-+
-+ifeq ($(CONFIG_PLATFORM_ESPRESSIF_ESP32S31),y)
-+
-+carray-platform_override_modules-y += esp32s31
-+platform-objs-y += espressif/esp32s31/esp32s31.o
-+platform-objs-y += espressif/esp32s31/cache_mmu.o
-+platform-objs-y += espressif/esp32s31/apm.o
-+platform-objs-y += espressif/esp32s31/hsm.o
-+
-+FW_TEXT_START    = 0x2F000000
-+
-+endif
 diff --git a/platform/generic/espressif/esp32s31/platform.h b/platform/generic/espressif/esp32s31/platform.h
 new file mode 100644
 index 0000000..bc0ee1f
@@ -1676,16 +1554,6 @@ index 1df0280..e501c12 100644
  	u32 vaddr = (u32)regs->a0;
  	u32 size  = (u32)regs->a1;
  
---- a/platform/generic/espressif/esp32s31/objects.mk
-+++ b/platform/generic/espressif/esp32s31/objects.mk
-@@ -13,6 +13,7 @@
- platform-objs-y += espressif/esp32s31/cache_mmu.o
- platform-objs-y += espressif/esp32s31/apm.o
- platform-objs-y += espressif/esp32s31/hsm.o
-+platform-objs-y += espressif/esp32s31/flash.o
- 
- FW_TEXT_START    = 0x2F000000
- 
 --- a/platform/generic/espressif/esp32s31/platform.h
 +++ b/platform/generic/espressif/esp32s31/platform.h
 @@ -7,8 +7,18 @@
@@ -1708,8 +1576,109 @@ index 1df0280..e501c12 100644
  /* hsm.c -- hart 1 (CPU1) start and stop for SMP. */
  void s31_hsm_register(void);
 --- /dev/null
++++ b/include/sbi_utils/serial/esp_uart.h
+@@ -0,0 +1,22 @@
++// SPDX-License-Identifier: BSD-2-Clause
++
++#ifndef __SERIAL_ESPRESSIF_H__
++#define __SERIAL_ESPRESSIF_H__
++
++#define UART_FIFO_OFF     0
++#define UART_STATUS_OFF   0x1C
++#define UART_STATUS_RX_CNT_M 0xFF
++#define UART_STATUS_RX_CNT_S 0
++#define UART_STATUS_TX_CNT_M 0xFF
++#define UART_STATUS_TX_CNT_S 16
++
++#define UART_FIFO_FULL_CNT 128
++
++void esp_uart_putc(char ch);
++void esp_uart_putc_nowait(char ch);
++
++int esp_uart_getc(void);
++
++int esp_uart_init(unsigned long base);
++
++#endif
+
+--- /dev/null
++++ b/lib/utils/serial/esp_uart.c
+@@ -0,0 +1,43 @@
++// SPDX-License-Identifier: BSD-2-Clause
++#include <sbi/riscv_io.h>
++#include <sbi/sbi_console.h>
++#include <sbi_utils/serial/esp_uart.h>
++
++static unsigned long esp_uart_base;
++
++void esp_uart_putc(char ch)
++{
++    while (((readl((unsigned int *)(esp_uart_base + UART_STATUS_OFF)) >> UART_STATUS_TX_CNT_S) & UART_STATUS_TX_CNT_M) >= UART_FIFO_FULL_CNT) {}
++    writel(ch, (unsigned int *)(esp_uart_base + UART_FIFO_OFF));
++}
++
++void esp_uart_putc_nowait(char ch)
++{
++    if (esp_uart_base != 0)
++        writel(ch, (unsigned int *)(esp_uart_base + UART_FIFO_OFF));
++}
++
++int esp_uart_getc(void)
++{
++    /* Check the RX FIFO count first: reading the FIFO when it is empty
++     * returns undefined data, indistinguishable from a real received NUL. */
++    unsigned int status = readl((unsigned int *)(esp_uart_base + UART_STATUS_OFF));
++
++    if (((status >> UART_STATUS_RX_CNT_S) & UART_STATUS_RX_CNT_M) == 0)
++        return -1;
++
++    return readl((unsigned int *)(esp_uart_base + UART_FIFO_OFF)) & 0xFF;
++}
++
++static struct sbi_console_device esp_console = {
++    .name = "espressif uart",
++    .console_putc = esp_uart_putc,
++    .console_getc = esp_uart_getc
++};
++
++int esp_uart_init(unsigned long base)
++{
++    esp_uart_base = base;
++    sbi_console_set_device(&esp_console);
++    return 0;
++}
+
+--- /dev/null
++++ b/platform/generic/configs/esp32s31_defconfig
+@@ -0,0 +1,24 @@
++# SPDX-License-Identifier: BSD-2-Clause
++
++CONFIG_PLATFORM_ESPRESSIF_ESP32S31=y
++CONFIG_SMCLIC=y
++# Harts without the mstatush CSR trap on the MDT clear
++# CONFIG_SMDBLTRP is not set
++
++CONFIG_FDT_IRQCHIP=y
++CONFIG_FDT_IRQCHIP_CLIC=y
++
++CONFIG_FDT_SERIAL=y
++CONFIG_FDT_SERIAL_ESPRESSIF=y
++
++# Initialize the TIME CSR frequency even without an MMIO timer device.
++CONFIG_FDT_TIMER=y
++
++# Experimental SBI extensions disabled — not exercised by RV32 Linux boot.
++# CONFIG_SBI_ECALL_FWFT is not set
++# CONFIG_SBI_ECALL_DBTR is not set
++# CONFIG_SBI_ECALL_SSE is not set
++
++# This platform registers no CPPC device or MPXY channel.
++# CONFIG_SBI_ECALL_CPPC is not set
++# CONFIG_SBI_ECALL_MPXY is not set
+
+--- /dev/null
 +++ b/platform/generic/espressif/esp32s31/flash.c
-@@ -0,0 +1,503 @@
+@@ -0,0 +1,574 @@
 +/*
 + * SPDX-License-Identifier: BSD-2-Clause
 + *
@@ -1732,6 +1701,7 @@ index 1df0280..e501c12 100644
 +#include <sbi/sbi_string.h>
 +#include <sbi/sbi_timer.h>
 +#include <sbi/sbi_trap.h>
++#include <sbi_utils/serial/esp_uart.h>
 +
 +#include "config.h"
 +#include "platform.h"
@@ -1818,11 +1788,49 @@ index 1df0280..e501c12 100644
 +static u32 s31_flash_park_event = SBI_IPI_EVENT_MAX;
 +static u32 s31_flash_next_generation;
 +static bool s31_flash_ready;
++#ifdef S31_FLASH_DIAG
++static bool s31_flash_diag_done;
++static bool s31_flash_diag_active;
++
++static void
++s31_flash_diag_mark(char marker)
++{
++	if (s31_flash_diag_active)
++		esp_uart_putc_nowait(marker);
++}
++
++static void
++s31_flash_diag_begin(void)
++{
++	if (s31_flash_diag_done)
++		return;
++	s31_flash_diag_done = true;
++	s31_flash_diag_active = true;
++	esp_uart_putc_nowait('A');
++}
++#define S31_FLASH_DIAG_MARK(c) s31_flash_diag_mark(c)
++#else
++#define S31_FLASH_DIAG_MARK(c) ((void)0)
++#define s31_flash_diag_begin() ((void)0)
++#endif
 +
 +static bool
 +s31_flash_park_ack_matches(u32 ack, u32 generation)
 +{
 +	return generation != 0 && ack == generation;
++}
++
++static void
++s31_flash_park_cleanup(volatile u32 *pending_slot,
++	    volatile u32 *ack_slot, u32 generation)
++{
++	u32 expected = generation;
++
++	(void)__atomic_compare_exchange_n(pending_slot, &expected, 0, false,
++	    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++	expected = generation;
++	(void)__atomic_compare_exchange_n(ack_slot, &expected, 0, false,
++	    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
 +}
 +
 +static struct s31_rom_flash_legacy_data *
@@ -1902,9 +1910,8 @@ index 1df0280..e501c12 100644
 +	while (__atomic_load_n(&s31_flash_active_generation,
 +	    __ATOMIC_ACQUIRE) == generation)
 +		__asm__ __volatile__("nop");
-+	__atomic_store_n(&s31_flash_generation[index], 0, __ATOMIC_RELEASE);
-+	(void)__atomic_compare_exchange_n(&s31_flash_parked_generation[index],
-+	    &generation, 0, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++	s31_flash_park_cleanup(&s31_flash_generation[index],
++	    &s31_flash_parked_generation[index], generation);
 +}
 +
 +static const struct sbi_ipi_event_ops s31_flash_park_ops = {
@@ -1963,10 +1970,21 @@ index 1df0280..e501c12 100644
 +	ulong hmask = 0;
 +	u32 i;
 +	int error;
-+	const u64 start = sbi_timer_value();
-+	const u64 timeout = sbi_timer_compute_mdelta(S31_FLASH_PARK_TIMEOUT_MS);
++	u64 start, timeout;
++
++#ifdef S31_FLASH_DIAG
++	S31_FLASH_DIAG_MARK('1');
++	start = sbi_timer_value();
++	timeout = sbi_timer_compute_mdelta(S31_FLASH_PARK_TIMEOUT_MS);
++	S31_FLASH_DIAG_MARK('2');
++#else
++	start = sbi_timer_value();
++	timeout = sbi_timer_compute_mdelta(S31_FLASH_PARK_TIMEOUT_MS);
++#endif
 +
 +	*expected = 0;
++	if (current_hartid() > 1)
++		return SBI_ENOTSUPP;
 +	error = sbi_hsm_hart_interruptible_mask(sbi_domain_thishart_ptr(),
 +	    &harts);
 +	if (error)
@@ -1976,17 +1994,23 @@ index 1df0280..e501c12 100644
 +		if (i == self_index || !sbi_hartmask_test_hartindex(i, &harts))
 +			continue;
 +		hartid = sbi_hartindex_to_hartid(i);
-+		if (hartid >= sizeof(ulong) * 8 || i >= sizeof(ulong) * 8)
++		if (hartid > 1 || hartid >= sizeof(ulong) * 8 ||
++		    i >= sizeof(ulong) * 8)
 +			return SBI_ENOTSUPP;
 +		hmask |= 1UL << hartid;
 +		*expected |= 1UL << i;
 +	}
-+	if (*expected == 0)
++	S31_FLASH_DIAG_MARK('3');
++	if (*expected == 0) {
++		S31_FLASH_DIAG_MARK('6');
 +		return 0;
++	}
++	S31_FLASH_DIAG_MARK('4');
 +	__atomic_store_n(&s31_flash_active_generation, generation,
 +	    __ATOMIC_RELEASE);
 +	error = sbi_ipi_send_many(hmask, 0, s31_flash_park_event,
 +	    (void *)(uintptr_t)generation);
++	S31_FLASH_DIAG_MARK('5');
 +	if (error)
 +		goto release;
 +	for (;;) {
@@ -2002,8 +2026,10 @@ index 1df0280..e501c12 100644
 +				break;
 +			}
 +		}
-+		if (parked)
++		if (parked) {
++			S31_FLASH_DIAG_MARK('6');
 +			return 0;
++		}
 +		if (sbi_timer_value() - start >= timeout) {
 +			error = SBI_ERR_ALREADY_STARTED;
 +			goto release;
@@ -2021,7 +2047,9 @@ index 1df0280..e501c12 100644
 +	u32 hartid = current_hartid();
 +	if (S31_ROM_CACHE_WRITEBACK_ALL(S31_CACHE_MAP_L1_DCACHE) != 0)
 +		return SBI_EFAIL;
++	S31_FLASH_DIAG_MARK('W');
 +	*dcache_state = S31_ROM_CACHE_DISABLE_DCACHE();
++	S31_FLASH_DIAG_MARK('D');
 +	if (hartid == 0)
 +		*icache_state = S31_ROM_CACHE_DISABLE_ICACHE0();
 +	else if (hartid == 1)
@@ -2030,6 +2058,7 @@ index 1df0280..e501c12 100644
 +		S31_ROM_CACHE_ENABLE_DCACHE(*dcache_state);
 +		return SBI_ENOTSUPP;
 +	}
++	S31_FLASH_DIAG_MARK('I');
 +	return 0;
 +}
 +
@@ -2154,6 +2183,7 @@ index 1df0280..e501c12 100644
 +		error = 0;
 +		goto done;
 +	}
++	s31_flash_diag_begin();
 +
 +	generation = ++s31_flash_next_generation;
 +	if (generation == 0)
@@ -2161,10 +2191,12 @@ index 1df0280..e501c12 100644
 +	error = s31_flash_park_harts(generation, &expected);
 +	if (error)
 +		goto done;
++	S31_FLASH_DIAG_MARK('P');
 +	error = s31_flash_cache_disable(&icache_state, &dcache_state);
 +	if (error)
 +		goto release_harts;
 +	caches_disabled = true;
++	S31_FLASH_DIAG_MARK('B');
 +	switch (funcid) {
 +	case S31_SBI_FLASH_READ:
 +		rom_error = S31_ROM_FLASH_READ(address, s31_flash_bounce,
@@ -2181,21 +2213,29 @@ index 1df0280..e501c12 100644
 +		rom_error = S31_ROM_FLASH_WAIT_IDLE(chip);
 +		break;
 +	}
++	S31_FLASH_DIAG_MARK('R');
 +	s31_flash_cache_restore(icache_state, dcache_state);
 +	caches_disabled = false;
++	S31_FLASH_DIAG_MARK('E');
 +	if (changes)
 +		cache_error = s31_flash_invalidate(address, length);
 +	if (funcid == S31_SBI_FLASH_READ && rom_error == 0 && length)
 +		sbi_memcpy((void *)(uintptr_t)buffer, s31_flash_bounce, length);
++	if (funcid == S31_SBI_FLASH_READ && rom_error == 0 && length)
++		S31_FLASH_DIAG_MARK('C');
 +	error = s31_flash_result(rom_error, cache_error);
 +
 +release_harts:
 +	if (caches_disabled)
 +		s31_flash_cache_restore(icache_state, dcache_state);
 +	release_error = s31_flash_release_harts(generation, expected);
++	S31_FLASH_DIAG_MARK('L');
 +	if (error == 0 && release_error)
 +		error = release_error;
 +done:
++#ifdef S31_FLASH_DIAG
++	s31_flash_diag_active = false;
++#endif
 +	spin_unlock(&s31_flash_lock);
 +	return error;
 +}
@@ -2213,56 +2253,32 @@ index 1df0280..e501c12 100644
 +	return s31_flash_operation(funcid, (u32)regs->a0, (u32)regs->a1,
 +	    (u32)regs->a2);
 +}
---- a/platform/generic/espressif/esp32s31/flash.c
-+++ b/platform/generic/espressif/esp32s31/flash.c
-@@ -113,6 +113,19 @@
- 	return generation != 0 && ack == generation;
- }
- 
-+static void
-+s31_flash_park_cleanup(volatile u32 *pending_slot,
-+	    volatile u32 *ack_slot, u32 generation)
-+{
-+	u32 expected = generation;
+
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/objects.mk
+@@ -0,0 +1,24 @@
++#
++# SPDX-License-Identifier: BSD-2-Clause
++#
++# ESP32-S31 (RV32 CLIC) generic platform_override module + boot layout.
++# Everything here is gated on CONFIG_PLATFORM_ESPRESSIF_ESP32S31 because
++# the generic build discovers every objects.mk unconditionally.
++#
 +
-+	(void)__atomic_compare_exchange_n(pending_slot, &expected, 0, false,
-+	    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
-+	expected = generation;
-+	(void)__atomic_compare_exchange_n(ack_slot, &expected, 0, false,
-+	    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
-+}
++ifeq ($(CONFIG_PLATFORM_ESPRESSIF_ESP32S31),y)
 +
- static struct s31_rom_flash_legacy_data *
- s31_flash_legacy_data(void)
- {
-@@ -190,9 +203,8 @@
- 	while (__atomic_load_n(&s31_flash_active_generation,
- 	    __ATOMIC_ACQUIRE) == generation)
- 		__asm__ __volatile__("nop");
--	__atomic_store_n(&s31_flash_generation[index], 0, __ATOMIC_RELEASE);
--	(void)__atomic_compare_exchange_n(&s31_flash_parked_generation[index],
--	    &generation, 0, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
-+	s31_flash_park_cleanup(&s31_flash_generation[index],
-+	    &s31_flash_parked_generation[index], generation);
- }
- 
- static const struct sbi_ipi_event_ops s31_flash_park_ops = {
-@@ -255,6 +267,8 @@
- 	const u64 timeout = sbi_timer_compute_mdelta(S31_FLASH_PARK_TIMEOUT_MS);
- 
- 	*expected = 0;
-+	if (current_hartid() > 1)
-+		return SBI_ENOTSUPP;
- 	error = sbi_hsm_hart_interruptible_mask(sbi_domain_thishart_ptr(),
- 	    &harts);
- 	if (error)
-@@ -264,7 +278,8 @@
- 		if (i == self_index || !sbi_hartmask_test_hartindex(i, &harts))
- 			continue;
- 		hartid = sbi_hartindex_to_hartid(i);
--		if (hartid >= sizeof(ulong) * 8 || i >= sizeof(ulong) * 8)
-+		if (hartid > 1 || hartid >= sizeof(ulong) * 8 ||
-+		    i >= sizeof(ulong) * 8)
- 			return SBI_ENOTSUPP;
- 		hmask |= 1UL << hartid;
- 		*expected |= 1UL << i;
++carray-platform_override_modules-y += esp32s31
++platform-objs-y += espressif/esp32s31/esp32s31.o
++platform-objs-y += espressif/esp32s31/cache_mmu.o
++platform-objs-y += espressif/esp32s31/apm.o
++platform-objs-y += espressif/esp32s31/hsm.o
++platform-objs-y += espressif/esp32s31/flash.o
++
++ifeq ($(S31_FLASH_DIAG),y)
++$(platform_build_dir)/espressif/esp32s31/flash.o: CFLAGS += -DS31_FLASH_DIAG
++endif
++
++FW_TEXT_START    = 0x2F000000
++
++endif
+
