@@ -7,6 +7,7 @@ SHA1 (patch-discover_FeaturedModel.cpp) = be0411bcc6142514afcbcd0403c6faa096f740
 SHA1 (patch-discover_FeaturedModel.h) = e1f11346ffe277fb71f2fed25d8b16c306ea2539
 SHA1 (patch-discover_main.cpp) = db01630f6400aa8b0940f25efb0789f0bcccfd58
 SHA1 (patch-discover_qml_BrowsingPage.qml) = ee3a01197d14389771643b6f194c22d242684c95
+SHA1 (patch-discover_qml_DiscoverWindow.qml) = 7fc1971118a393e6a19b364c826cd9ad1145fa66
 SHA1 (patch-discover_qml_InstallApplicationButton.qml) = 789b869a63d56d2b16407a247ab55659a2efad61
 SHA1 (patch-libdiscover_backends_CMakeLists.txt) = bc751e468a0910c743cf47b22e872e6aa28b0c7e
 SHA1 (patch-po_ru_libdiscover.po) = 602ebe70a43ae99e12723f93e40fe29cd3809f33
