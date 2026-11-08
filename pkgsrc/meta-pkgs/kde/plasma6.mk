@@ -25,7 +25,8 @@ _EMBERBSD_PLASMA6_RECIPES= audio/plasma6-plasma-pa devel/plasma6-kwayland time/p
     sysutils/plasma6-kmenuedit \
     x11/plasma6-kscreen \
     sysutils/plasma6-powerdevil \
-    x11/plasma6-kdeplasma-addons
+    x11/plasma6-kdeplasma-addons \
+    sysutils/plasma6-ksystemstats
 .if empty(_EMBERBSD_PLASMA6_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Plasma 6 recipe ${PKGPATH} is not prepared in the common toolkit"
 .endif
