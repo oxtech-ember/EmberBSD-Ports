@@ -1,0 +1,440 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), wxWindows licence.
+Use GTK4 native popovers and common transient-popup dismissal without Gdk grabs.
+Preserve lifetime across application callbacks and compositor-adjusted placement.
+
+--- include/wx/gtk/popupwin.h.orig
++++ include/wx/gtk/popupwin.h
+@@ -31,10 +31,18 @@
+     // implementation
+     // --------------
+ 
++#ifdef __WXGTK4__
++    virtual void Position(const wxPoint& origin, const wxSize& size) wxOVERRIDE;
++#else
+     // GTK time when connecting to button_press signal
+     wxUint32  m_time;
++#endif
+ 
+ protected:
++#ifdef __WXGTK4__
++    virtual void DoGetPosition(int* x, int* y) const wxOVERRIDE;
++    bool GTKUpdatePopupPosition();
++#endif
+     virtual void DoSetSize(int x, int y,
+                            int width, int height,
+                            int sizeFlags = wxSIZE_AUTO) wxOVERRIDE;
+--- include/wx/popupwin.h.orig
++++ include/wx/popupwin.h
+@@ -25,6 +25,7 @@
+ 
+ 
+ #include "wx/nonownedwnd.h"
++#include "wx/weakref.h"
+ 
+ // ----------------------------------------------------------------------------
+ // wxPopupWindow: a special kind of top level window used for popup menus,
+@@ -119,8 +120,10 @@
+     // dismiss and notify the derived class
+     void DismissAndNotify()
+     {
++        wxWeakRef<wxPopupTransientWindowBase> alive(this);
+         Dismiss();
+-        OnDismiss();
++        if (alive && !alive->IsBeingDeleted())
++            alive->OnDismiss();
+     }
+ };
+ 
+--- src/gtk/popupwin.cpp.orig
++++ src/gtk/popupwin.cpp
+@@ -19,6 +19,10 @@
+ #include "wx/gtk/private/wrapgtk.h"
+ 
+ #include "wx/gtk/private/win_gtk.h"
++
++#ifdef __WXGTK4__
++#include "popupwin_gtk4.inc"
++#else
+ 
+ //-----------------------------------------------------------------------------
+ // "button_press"
+@@ -221,4 +225,6 @@
+     return ret;
+ }
+ 
++#endif // __WXGTK4__
++
+ #endif // wxUSE_POPUPWIN
+--- src/common/popupcmn.cpp.orig
++++ src/common/popupcmn.cpp
+@@ -289,42 +289,50 @@
+ 
+ void wxPopupTransientWindow::Popup(wxWindow *winFocus)
+ {
+-    // If we have a single child, we suppose that it must cover the entire
+-    // popup window and hence we give the mouse capture to it instead of
+-    // keeping it for ourselves.
+-    //
+-    // Notice that this works best for combobox-like popups which have a single
+-    // control inside them and not so well for popups containing a single
+-    // wxPanel with multiple children inside it but OTOH it does no harm in
+-    // this case either and we can't reliably distinguish between them.
++    wxWeakRef<wxPopupTransientWindow> alive(this);
++    wxWeakRef<wxWindow> focus(winFocus);
++#ifndef __WXGTK4__
++    // Other ports may use m_child for native capture inside Show().
+     const wxWindowList& children = GetChildren();
+-    if ( children.GetCount() == 1 )
+-    {
+-        m_child = children.GetFirst()->GetData();
+-    }
+-    else
+-    {
+-        m_child = this;
+-    }
+-
++    m_child = children.GetCount() == 1 ? children.GetFirst()->GetData() : this;
++#endif
+     Show();
++    if (!alive || alive->IsBeingDeleted() || !alive->IsShown())
++        return;
+ 
+     // There is a problem if these are still in use
+     wxASSERT(!m_handlerFocus || !m_handlerFocus->GetNextHandler());
+     wxASSERT(!m_handlerPopup || !m_handlerPopup->GetNextHandler());
+ 
++#ifndef __WXGTK4__
+     if (!m_handlerPopup)
+         m_handlerPopup = new wxPopupWindowHandler(this);
+-
+     m_child->PushEventHandler(m_handlerPopup);
+-
+-    m_focus = winFocus ? winFocus : this;
+-    m_focus->SetFocus();
++#endif
++
++    wxWeakRef<wxWindow> focusTarget(focus && !focus->IsBeingDeleted() ? focus.get() : this);
++    // m_focus names the owner of an installed handler. SetFocus can call
++    // Dismiss(), so do not publish that owner until focus callbacks finish.
++    focusTarget->SetFocus();
++    if (!alive || alive->IsBeingDeleted() || !alive->IsShown())
++        return;
++
++#ifdef __WXGTK4__
++    // GTK4 owns native capture. Show/SetFocus callbacks may remove controls,
++    // so choose and attach the common handler only after they finish.
++    const wxWindowList& children = GetChildren();
++    m_child = children.GetCount() == 1 ? children.GetFirst()->GetData() : this;
++    if (!m_handlerPopup)
++        m_handlerPopup = new wxPopupWindowHandler(this);
++    m_child->PushEventHandler(m_handlerPopup);
++#endif
+ 
+ #if defined(__WXGTK__)
+     // GTK+ catches the activate events from the popup
+     // window, not the focus events from the child window
+     m_focus = this;
++#else
++    m_focus = focusTarget && !focusTarget->IsBeingDeleted() ? focusTarget.get() : this;
+ #endif
+ 
+     if ( m_focus )
+@@ -338,20 +346,16 @@
+ 
+ bool wxPopupTransientWindow::Show( bool show )
+ {
+-#ifdef __WXGTK__
++#if defined(__WXGTK__) && !defined(__WXGTK4__)
+     if (!show)
+     {
+ #ifdef __WXGTK3__
+         GdkDisplay* display = gtk_widget_get_display(m_widget);
+-#ifdef __WXGTK4__
+-        gdk_seat_ungrab(gdk_display_get_default_seat(display));
+-#else
+         wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+         GdkDeviceManager* manager = gdk_display_get_device_manager(display);
+         GdkDevice* device = gdk_device_manager_get_client_pointer(manager);
+         gdk_device_ungrab(device, unsigned(GDK_CURRENT_TIME));
+         wxGCC_WARNING_RESTORE()
+-#endif
+ #else
+         gdk_pointer_ungrab( (guint32)GDK_CURRENT_TIME );
+ #endif
+@@ -376,17 +380,12 @@
+ 
+     bool ret = wxPopupWindow::Show( show );
+ 
+-#ifdef __WXGTK__
++#if defined(__WXGTK__) && !defined(__WXGTK4__)
+     if (show)
+     {
+         gtk_grab_add( m_widget );
+ 
+         GdkWindow* window = gtk_widget_get_window(m_widget);
+-#ifdef __WXGTK4__
+-        GdkDisplay* display = gdk_window_get_display(window);
+-        GdkSeat* seat = gdk_display_get_default_seat(display);
+-        gdk_seat_grab(seat, window, GDK_SEAT_CAPABILITY_POINTER, false, NULL, NULL, NULL, 0);
+-#else
+         const GdkEventMask mask = GdkEventMask(
+             GDK_BUTTON_PRESS_MASK |
+             GDK_BUTTON_RELEASE_MASK |
+@@ -407,7 +406,6 @@
+                           NULL,
+                           (guint32)GDK_CURRENT_TIME );
+ #endif
+-#endif // !__WXGTK4__
+     }
+ #endif
+ 
+@@ -440,8 +438,10 @@
+ 
+ void wxPopupTransientWindow::Dismiss()
+ {
++    wxWeakRef<wxPopupTransientWindow> alive(this);
+     Hide();
+-    PopHandlers();
++    if (alive && !alive->IsBeingDeleted())
++        alive->PopHandlers();
+ }
+ 
+ #if defined(__WXMAC__) && wxOSX_USE_COCOA_OR_CARBON
+@@ -648,6 +648,13 @@
+ 
+ void wxPopupFocusHandler::OnKillFocus(wxFocusEvent& event)
+ {
++    // Explicit Dismiss() can synchronously release native focus during Hide.
++    // Do not turn that into an extra OnDismiss() notification.
++    if (!m_popup->IsShown())
++    {
++        event.Skip();
++        return;
++    }
+     // when we lose focus we always disappear - unless it goes to the popup (in
+     // which case we don't really lose it)
+     wxWindow *win = event.GetWindow();
+--- src/gtk/popupwin_gtk4.inc.orig
++++ src/gtk/popupwin_gtk4.inc
+@@ -0,0 +1,219 @@
++/////////////////////////////////////////////////////////////////////////////
++// GTK4 native popovers. Origin: EmberBSD (AI-assisted).
++// Licence: wxWindows licence.
++/////////////////////////////////////////////////////////////////////////////
++
++#include "wx/app.h"
++#include "wx/weakref.h"
++#include "wx/gtk/private/surface4.h"
++
++namespace
++{
++void wxGTKPopupClosed(GtkPopover*, wxPopupWindow* win)
++{
++    // Explicit Hide has already cleared wx visibility. Only native dismissal
++    // delivers focus loss to the common transient popup handler.
++    if (!win->IsShown())
++        return;
++    wxWeakRef<wxPopupWindow> alive(win);
++    wxFocusEvent event(wxEVT_KILL_FOCUS, win->GetId());
++    event.SetEventObject(win);
++    win->HandleWindowEvent(event);
++    if (alive && !alive->IsBeingDeleted() && alive->IsShown())
++        alive->Show(false);
++}
++
++void wxGTKPopupStyle(GdkDisplay* display)
++{
++    if (g_object_get_data(G_OBJECT(display), "wx-popup-style"))
++        return;
++    GtkCssProvider* provider = gtk_css_provider_new();
++    // wxPizza owns the requested wx border and client background. Native
++    // popover padding/shadows must not add another frame or alter its size.
++    gtk_css_provider_load_from_string(provider,
++        "popover.wx-popup { background: transparent; padding: 0; margin: 0; }"
++        "popover.wx-popup > contents { background: transparent; padding: 0; margin: 0; border: none;"
++        " border-radius: 0; box-shadow: none; }");
++    gtk_style_context_add_provider_for_display(display, GTK_STYLE_PROVIDER(provider),
++                                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
++    g_object_set_data_full(G_OBJECT(display), "wx-popup-style", provider, g_object_unref);
++}
++}
++
++wxPopupWindow::~wxPopupWindow()
++{
++    // Disconnect before the base destructor destroys child controls/unparents
++    // the popover, either of which can emit GtkPopover::closed.
++    if (m_widget)
++        g_signal_handlers_disconnect_by_data(m_widget, this);
++}
++
++bool wxPopupWindow::Create(wxWindow* parent, int style)
++{
++    // A GTK4 popup surface always has an owner. A parentless wx popup can use
++    // the application's existing top window, without creating a hidden one.
++    wxWindow* anchor = parent ? parent : (wxTheApp ? wxTheApp->GetTopWindow() : NULL);
++    while (anchor && (!anchor->m_wxwindow || !WX_IS_PIZZA(anchor->m_wxwindow)))
++        anchor = anchor->GetParent();
++    wxCHECK_MSG(anchor, false, "GTK4 popup requires a parent or application top window");
++
++    if (!PreCreation(parent, wxDefaultPosition, wxDefaultSize) ||
++        !CreateBase(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
++                    style, wxDefaultValidator, "popup") ||
++        !wxPopupWindowBase::Create(parent, style))
++        return false;
++
++    m_isShown = false;
++    m_windowStyle |= wxTAB_TRAVERSAL;
++    m_widget = gtk_popover_new();
++    g_object_ref_sink(m_widget);
++    gtk_widget_set_name(m_widget, "wxPopupWindow");
++    gtk_widget_add_css_class(m_widget, "wx-popup");
++    wxGTKPopupStyle(gtk_widget_get_display(m_widget));
++    gtk_popover_set_has_arrow(GTK_POPOVER(m_widget), FALSE);
++    gtk_popover_set_autohide(GTK_POPOVER(m_widget), FALSE);
++    gtk_popover_set_cascade_popdown(GTK_POPOVER(m_widget), FALSE);
++    gtk_popover_set_position(GTK_POPOVER(m_widget), GTK_POS_BOTTOM);
++
++    m_wxwindow = wxPizza::New(style);
++    gtk_popover_set_child(GTK_POPOVER(m_widget), m_wxwindow);
++    gtk_widget_set_parent(m_widget, anchor->m_wxwindow);
++    m_focusWidget = m_wxwindow;
++    if (m_parent)
++        m_parent->AddChild(this);
++    PostCreation();
++    g_signal_connect(m_widget, "closed", G_CALLBACK(wxGTKPopupClosed), this);
++    return true;
++}
++
++bool wxPopupWindow::GTKUpdatePopupPosition()
++{
++    GtkWidget* anchor = gtk_widget_get_parent(m_widget);
++    if (!anchor || !gtk_widget_get_mapped(anchor))
++        return false;
++    double x = m_x, y = m_y;
++    if (!wxGTKScreenToWidget(anchor, &x, &y))
++        return false;
++    // A rectangle as wide as the popup makes GTK's centred bottom anchor
++    // start at the requested x. GDK handles compositor constraint/flip rules.
++    const GdkRectangle rect = { wxRound(x), wxRound(y), wxMax(1, m_width), 0 };
++    GtkPopover* popover = GTK_POPOVER(g_object_ref(m_widget));
++    gtk_popover_set_pointing_to(popover, &rect);
++    g_object_unref(popover);
++    return true;
++}
++
++void wxPopupWindow::Position(const wxPoint& origin, const wxSize& size)
++{
++    int x = origin.x + size.x;
++    if (GetLayoutDirection() == wxLayout_RightToLeft)
++        x = origin.x - size.x - m_width;
++    Move(x, origin.y + size.y, wxSIZE_NO_ADJUSTMENTS);
++}
++
++void wxPopupWindow::DoGetPosition(int* x, int* y) const
++{
++    double px = m_x, py = m_y;
++    if (m_widget && gtk_widget_get_mapped(m_widget))
++    {
++        double nativeX = 0, nativeY = 0;
++        if (wxGTKWidgetToScreen(m_widget, &nativeX, &nativeY))
++        {
++            px = nativeX;
++            py = nativeY;
++        }
++    }
++    if (x) *x = wxRound(px);
++    if (y) *y = wxRound(py);
++}
++
++void wxPopupWindow::DoMoveWindow(int, int, int, int)
++{
++    wxFAIL_MSG("DoMoveWindow called for wxPopupWindow");
++}
++
++void wxPopupWindow::DoSetSize(int x, int y, int width, int height, int sizeFlags)
++{
++    wxCHECK_RET(m_widget && m_wxwindow, "invalid popup");
++    const wxPoint oldPos = GetPosition();
++    const wxSize oldSize(m_width, m_height);
++    m_x = x != -1 || (sizeFlags & wxSIZE_ALLOW_MINUS_ONE) ? x : oldPos.x;
++    m_y = y != -1 || (sizeFlags & wxSIZE_ALLOW_MINUS_ONE) ? y : oldPos.y;
++    if (width != -1) m_width = width;
++    if (height != -1) m_height = height;
++    ConstrainSize();
++    wxWeakRef<wxPopupWindow> alive(this);
++    GtkWidget* client = GTK_WIDGET(g_object_ref(m_wxwindow));
++    gtk_widget_set_size_request(client, m_width, m_height);
++    g_object_unref(client);
++    if (!alive || alive->IsBeingDeleted()) return;
++    GTKUpdatePopupPosition();
++    if (!alive || alive->IsBeingDeleted()) return;
++    if (m_x != oldPos.x || m_y != oldPos.y)
++    {
++        wxMoveEvent event(wxPoint(m_x, m_y), GetId());
++        event.SetEventObject(this);
++        HandleWindowEvent(event);
++        if (!alive || alive->IsBeingDeleted()) return;
++    }
++    if (m_width != oldSize.x || m_height != oldSize.y)
++    {
++        wxSizeEvent event(GetSize(), GetId());
++        event.SetEventObject(this);
++        HandleWindowEvent(event);
++    }
++}
++
++void wxPopupWindow::SetFocus()
++{
++    for (wxWindowList::compatibility_iterator node = GetChildren().GetFirst();
++         node; node = node->GetNext())
++    {
++        wxWindow* child = node->GetData();
++        if (child->CanAcceptFocus() && !child->IsTopLevel())
++        {
++            child->SetFocus();
++            return;
++        }
++    }
++    wxPopupWindowBase::SetFocus();
++}
++
++bool wxPopupWindow::Show(bool show)
++{
++    if (show == IsShown()) return false;
++    wxWeakRef<wxPopupWindow> alive(this);
++    if (show)
++    {
++        wxCHECK_MSG(m_widget && GTKUpdatePopupPosition(), false,
++                    "GTK4 popup requires a mapped owner");
++        if (!alive || alive->IsBeingDeleted()) return false;
++        wxSizeEvent event(GetSize(), GetId());
++        event.SetEventObject(this);
++        HandleWindowEvent(event);
++        if (!alive || alive->IsBeingDeleted()) return false;
++        GtkPopover* popover = GTK_POPOVER(g_object_ref(m_widget));
++        gtk_popover_set_autohide(popover, IsKindOf(CLASSINFO(wxPopupTransientWindow)));
++        g_object_unref(popover);
++        if (!alive || alive->IsBeingDeleted()) return false;
++    }
++    if (!wxWindowBase::Show(show)) return false;
++    if (m_widget)
++    {
++        GtkWidget* widget = GTK_WIDGET(g_object_ref(m_widget));
++        // popup() is set_visible(TRUE). Hide avoids cascading into an owner
++        // popup: common Dismiss() controls wx popup lifetime independently.
++        gtk_widget_set_visible(widget, show);
++        g_object_unref(widget);
++        if (!alive || alive->IsBeingDeleted()) return false;
++        if (show && (!IsShown() || !gtk_widget_get_visible(m_widget)))
++        {
++            wxWindowBase::Show(false);
++            return false;
++        }
++    }
++    wxShowEvent event(GetId(), show);
++    event.SetEventObject(this);
++    HandleWindowEvent(event);
++    return true;
++}

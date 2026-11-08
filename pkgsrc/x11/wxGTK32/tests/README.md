@@ -647,3 +647,32 @@ Running the executable with a Wayland backend instead verifies explicit shape
 refusal. Target TU/fixture syntax and Clang Static Analyzer checks pass; the
 five-case dependency regression passes. Linked GUI execution, WM behavior and
 runtime memory checks remain pending and are not implied by these checks.
+
+# GTK4 popup windows
+
+`patch-gtk4-popup` implements ordinary and transient wx popup windows with
+GtkPopover and a real GdkPopup surface. The nearest wxPizza ancestor owns the
+native popup. A null wx parent uses the application's existing top window;
+creation fails explicitly if no suitable owner exists. Showing requires that
+owner to be mapped. No hidden owner window is created.
+
+Ordinary popups do not grab input. Transient popups use GTK's native autohide
+and input handling; the GTK3 GdkWindow/seat-grab path is not compiled on GTK4.
+Native dismissal flows into the common wx focus/dismiss handlers. Explicit
+Dismiss does not call OnDismiss, and weak references protect continuation after
+application callbacks destroy a popup. Positioning reuses the shared surface
+coordinate helpers and compositor constraints. X11 coordinates are global;
+Wayland coordinates remain relative to the owning toplevel. Mapped GetPosition
+reports the actual popup surface position after compositor adjustments.
+
+`popup4-contract` covers native parent surfaces, null-parent ownership, ordinary
+versus transient grabs, child controls, dismissal/reopening, and destruction
+from show/hide callbacks. Build it with `BUILD_POPUP_CONTRACT=ON`, then run with
+a real GTK4 display and `G_DEBUG=fatal-warnings`. Both modified translation
+units pass target syntax and Clang Static Analyzer checks; the fixture passes
+target syntax checking. Linked execution, real outside-click/Escape delivery,
+focus interaction, multi-monitor/HiDPI positioning and runtime memory checks
+remain pending the shared wxGTK4 build.
+
+Primary references: [GtkPopover](https://docs.gtk.org/gtk4/class.Popover.html),
+[GTK4 migration](https://docs.gtk.org/gtk4/migrating-3to4.html).
