@@ -1,0 +1,1392 @@
+$NetBSD$
+
+Implement remaining GTK4 list, radio, bitmap combo, slider, and spin controls
+using native GTK4 widgets and controllers.
+
+--- include/wx/gtk/bmpcbox.h.orig
++++ include/wx/gtk/bmpcbox.h
+@@ -127,7 +127,9 @@
+     virtual GtkWidget* GetConnectWidget() wxOVERRIDE;
+ 
+ protected:
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void GTKCreateComboBoxWidget() wxOVERRIDE;
+     virtual void GTKInsertComboBoxTextItem( unsigned int n, const wxString& text ) wxOVERRIDE;
+--- include/wx/gtk/combobox.h.orig
++++ include/wx/gtk/combobox.h
+@@ -149,7 +149,11 @@
+     virtual GtkEntry *GetEntry() const wxOVERRIDE
+         { return m_entry; }
+ 
++#ifdef __WXGTK4__
++    virtual int GTKIMFilterKeypress(GdkEvent* event) const wxOVERRIDE
++#else
+     virtual int GTKIMFilterKeypress(GdkEventKey* event) const wxOVERRIDE
++#endif
+         { return GTKEntryIMFilterKeypress(event); }
+ 
+ 
+--- include/wx/gtk/listbox.h.orig
++++ include/wx/gtk/listbox.h
+@@ -106,7 +106,9 @@
+     virtual void DoDeleteOneItem(unsigned int n) wxOVERRIDE;
+     virtual wxSize DoGetBestSize() const wxOVERRIDE;
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void DoSetSelection(int n, bool select) wxOVERRIDE;
+ 
+--- include/wx/gtk/radiobox.h.orig
++++ include/wx/gtk/radiobox.h
+@@ -139,7 +139,9 @@
+ #endif
+ 
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void DoEnable(bool enable) wxOVERRIDE;
+ 
+--- include/wx/gtk/slider.h.orig
++++ include/wx/gtk/slider.h
+@@ -82,7 +82,9 @@
+     // Note the following member is not used in GTK+2 < 2.16.
+     int m_tickFreq;
+ 
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     // set the slider value unconditionally
+     void GTKSetValue(int value);
+--- include/wx/gtk/spinbutt.h.orig
++++ include/wx/gtk/spinbutt.h
+@@ -52,7 +52,9 @@
+     void GtkEnableEvents() const;
+ 
+     virtual wxSize DoGetBestSize() const wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void DoEnable(bool enable) wxOVERRIDE;
+ 
+--- include/wx/gtk/spinctrl.h.orig
++++ include/wx/gtk/spinctrl.h
+@@ -96,7 +96,9 @@
+     virtual void GtkSetEntryWidth() = 0;
+ 
+     virtual wxSize DoGetSizeFromTextSize(int xlen, int ylen = -1) const wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     // Widgets that use the style->base colour for the BG colour should
+     // override this and return true.
+--- src/gtk/bmpcbox.cpp.orig
++++ src/gtk/bmpcbox.cpp
+@@ -116,6 +116,10 @@
+ 
+     GType imageType;
+     const char* imageAttr;
++#ifdef __WXGTK4__
++    imageType = G_TYPE_OBJECT;
++    imageAttr = "pixbuf";
++#else
+ #if GTK_CHECK_VERSION(3,10,0)
+     if (wx_is_at_least_gtk3(10))
+     {
+@@ -128,7 +132,12 @@
+         imageType = G_TYPE_OBJECT;
+         imageAttr = "pixbuf";
+     }
++#endif
++#ifdef __WXGTK4__
++    store = gtk_list_store_new(4, imageType, G_TYPE_STRING, G_TYPE_OBJECT, G_TYPE_DOUBLE);
++#else
+     store = gtk_list_store_new(2, imageType, G_TYPE_STRING);
++#endif
+ 
+     if ( HasFlag(wxCB_READONLY) )
+     {
+@@ -142,7 +151,11 @@
+ #else
+         m_widget = gtk_combo_box_entry_new_with_model( GTK_TREE_MODEL(store), m_stringCellIndex );
+ #endif
++#ifdef __WXGTK4__
++        m_entry = GTK_ENTRY(gtk_combo_box_get_child(GTK_COMBO_BOX(m_widget)));
++#else
+         m_entry = GTK_ENTRY(gtk_bin_get_child(GTK_BIN(m_widget)));
++#endif
+         g_object_add_weak_pointer(G_OBJECT(m_entry), (void**)&m_entry);
+         gtk_editable_set_editable(GTK_EDITABLE(m_entry), true);
+     }
+@@ -177,6 +190,7 @@
+     return wxChoice::GetConnectWidget();
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxBitmapComboBox::GTKGetWindow(wxArrayGdkWindows& windows) const
+ {
+     if ( GetEntry() )
+@@ -184,6 +198,7 @@
+ 
+     return wxChoice::GTKGetWindow(windows);
+ }
++#endif
+ 
+ wxSize wxBitmapComboBox::DoGetBestSize() const
+ {
+@@ -218,6 +233,24 @@
+         if ( gtk_tree_model_iter_nth_child( model, &iter, NULL, n ) )
+         {
+             wxGtkValue value0;
++#ifdef __WXGTK4__
++            GdkPixbuf* sourcePixbuf = bmp.GetPixbuf();
++            const int logicalWidth = bmp.GetLogicalWidth();
++            const int logicalHeight = bmp.GetLogicalHeight();
++            GdkPixbuf* displayPixbuf = sourcePixbuf;
++            if (gdk_pixbuf_get_width(sourcePixbuf) != logicalWidth ||
++                gdk_pixbuf_get_height(sourcePixbuf) != logicalHeight)
++            {
++                GdkPixbuf* scaled = gdk_pixbuf_scale_simple(sourcePixbuf,
++                    logicalWidth, logicalHeight, GDK_INTERP_BILINEAR);
++                if (scaled)
++                    displayPixbuf = scaled;
++            }
++            g_value_init(value0, G_TYPE_OBJECT);
++            g_value_set_object(value0, displayPixbuf);
++            if (displayPixbuf != sourcePixbuf)
++                g_object_unref(displayPixbuf);
++#else
+ #if GTK_CHECK_VERSION(3,10,0)
+             if (wx_is_at_least_gtk3(10))
+             {
+@@ -235,8 +268,14 @@
+                 g_value_init(value0, G_TYPE_OBJECT);
+                 g_value_set_object( value0, bmp.GetPixbuf() );
+             }
++#endif
+             gtk_list_store_set_value( GTK_LIST_STORE(model), &iter,
+                                       m_bitmapCellIndex, value0 );
++#ifdef __WXGTK4__
++            gtk_list_store_set(GTK_LIST_STORE(model), &iter,
++                               2, bmp.GetPixbuf(),
++                               3, bmp.GetScaleFactor(), -1);
++#endif
+         }
+     }
+ }
+@@ -254,7 +293,16 @@
+         wxGtkValue value;
+         gtk_tree_model_get_value( model, &iter,
+                                   m_bitmapCellIndex, value );
+-#if GTK_CHECK_VERSION(3,10,0)
++#if defined(__WXGTK4__)
++        GdkPixbuf* pixbuf = NULL;
++        double scaleFactor = 1.0;
++        gtk_tree_model_get(model, &iter, 2, &pixbuf, 3, &scaleFactor, -1);
++        if (pixbuf)
++        {
++            bitmap = wxBitmap(pixbuf);
++            bitmap.SetScaleFactor(scaleFactor);
++        }
++#elif GTK_CHECK_VERSION(3,10,0)
+         if (wx_is_at_least_gtk3(10))
+         {
+             cairo_surface_t* surface = static_cast<cairo_surface_t*>(g_value_get_boxed(value));
+--- src/gtk/listbox.cpp.orig
++++ src/gtk/listbox.cpp
+@@ -29,6 +29,7 @@
+ #endif
+ 
+ #include "wx/gtk/private.h"
++#include "wx/weakref.h"
+ #include "wx/gtk/private/eventsdisabler.h"
+ #include "wx/gtk/private/object.h"
+ #include "wx/gtk/private/treeentry_gtk.h"
+@@ -120,6 +121,7 @@
+ // "key_press_event"
+ //-----------------------------------------------------------------------------
+ 
++#ifndef __WXGTK4__
+ extern "C" {
+ static gboolean
+ gtk_listbox_key_press_callback( GtkWidget *WXUNUSED(widget),
+@@ -143,7 +145,11 @@
+ 
+         if (index != wxNOT_FOUND)
+         {
++            wxWeakRef<wxWindow> alive(listbox);
+             listbox->GTKOnActivated(index);
++            if (!alive)
++                return TRUE;
++            listbox = static_cast<wxListBox*>(alive.get());
+ 
+ //          wxMac and wxMSW always invoke default action
+ //          if (!ret)
+@@ -167,6 +173,49 @@
+     return FALSE;
+ }
+ }
++#endif // !__WXGTK4__
++
++#ifdef __WXGTK4__
++extern "C" {
++static gboolean
++gtk_listbox_key_pressed_callback(GtkEventControllerKey* WXUNUSED(controller),
++                                 guint keyval,
++                                 guint WXUNUSED(keycode),
++                                 GdkModifierType WXUNUSED(state),
++                                 wxListBox* listbox)
++{
++    if ((keyval == GDK_KEY_Return) ||
++        (keyval == GDK_KEY_ISO_Enter) ||
++        (keyval == GDK_KEY_KP_Enter))
++    {
++        int index = -1;
++        if (!listbox->HasMultipleSelection())
++            index = listbox->GetSelection();
++        else
++        {
++            wxArrayInt sels;
++            if (listbox->GetSelections(sels) < 1)
++                return FALSE;
++            index = sels[0];
++        }
++
++        if (index != wxNOT_FOUND)
++        {
++            wxWeakRef<wxWindow> alive(listbox);
++            listbox->GTKOnActivated(index);
++            if (!alive)
++                return TRUE;
++            listbox = static_cast<wxListBox*>(alive.get());
++            if (wxWindow* tlw = wxGetTopLevelParent(listbox))
++                gtk_widget_activate_default(GTK_WIDGET(tlw->GetHandle()));
++            return TRUE;
++        }
++    }
++
++    return FALSE;
++}
++}
++#endif // __WXGTK4__
+ 
+ //-----------------------------------------------------------------------------
+ // GtkTreeEntry destruction (to destroy client data)
+@@ -266,7 +315,11 @@
+         return false;
+     }
+ 
++#ifdef __WXGTK4__
++    m_widget = gtk_scrolled_window_new();
++#else
+     m_widget = gtk_scrolled_window_new( NULL, NULL );
++#endif
+     g_object_ref(m_widget);
+ 
+     GtkPolicyType vPolicy = GTK_POLICY_AUTOMATIC;
+@@ -360,7 +413,11 @@
+     }
+ 
+ 
+-    gtk_container_add (GTK_CONTAINER (m_widget), GTK_WIDGET(m_treeview) );
++#ifdef __WXGTK4__
++    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(m_widget), GTK_WIDGET(m_treeview));
++#else
++    gtk_container_add(GTK_CONTAINER(m_widget), GTK_WIDGET(m_treeview));
++#endif
+ 
+     gtk_widget_show( GTK_WIDGET(m_treeview) );
+     m_focusWidget = GTK_WIDGET(m_treeview);
+@@ -372,9 +429,15 @@
+                      G_CALLBACK(gtk_listbox_row_activated_callback), this);
+ 
+     // for intercepting dclick generation by <ENTER>
+-    g_signal_connect (m_treeview, "key_press_event",
+-                      G_CALLBACK (gtk_listbox_key_press_callback),
+-                           this);
++#ifdef __WXGTK4__
++    GtkEventController* keyController = gtk_event_controller_key_new();
++    g_signal_connect(keyController, "key-pressed",
++                     G_CALLBACK(gtk_listbox_key_pressed_callback), this);
++    gtk_widget_add_controller(GTK_WIDGET(m_treeview), keyController);
++#else
++    g_signal_connect(m_treeview, "key_press_event",
++                     G_CALLBACK(gtk_listbox_key_press_callback), this);
++#endif
+     m_parent->DoAddChild( this );
+ 
+     PostCreation(size);
+@@ -421,8 +484,10 @@
+ {
+     wxWindow::Update();
+ 
++#ifndef __WXGTK4__
+     if (m_treeview)
+         gdk_window_process_updates(gtk_widget_get_window(GTK_WIDGET(m_treeview)), true);
++#endif
+ }
+ 
+ // ----------------------------------------------------------------------------
+@@ -744,8 +809,10 @@
+     wxCHECK_RET( IsValid(n), wxT("invalid index"));
+ 
+     //RN: I have no idea why this line is needed...
++#ifndef __WXGTK4__
+     if (gtk_widget_has_grab(GTK_WIDGET(m_treeview)))
+         return;
++#endif
+ 
+     GtkTreeIter iter;
+     if ( !GTKGetIteratorFor(n, &iter) )
+@@ -832,16 +899,28 @@
+         return wxNOT_FOUND;
+ 
+     // need to translate from master window since it is in client coords
++    wxGtkTreePath path;
++#ifdef __WXGTK4__
++    graphene_point_t widgetPoint = GRAPHENE_POINT_INIT(static_cast<float>(point.x),
++                                                        static_cast<float>(point.y));
++    graphene_point_t treePoint;
++    if (!gtk_widget_compute_point(m_widget, GTK_WIDGET(m_treeview),
++                                  &widgetPoint, &treePoint))
++        return wxNOT_FOUND;
++    const int x = static_cast<int>(treePoint.x);
++    const int y = static_cast<int>(treePoint.y);
++#else
+     gint binx, biny;
+     gdk_window_get_geometry(gtk_tree_view_get_bin_window(m_treeview),
+                             &binx, &biny, NULL, NULL);
+-
+-    wxGtkTreePath path;
++    const int x = point.x - binx;
++    const int y = point.y - biny;
++#endif
+     if ( !gtk_tree_view_get_path_at_pos
+           (
+             m_treeview,
+-            point.x - binx,
+-            point.y - biny,
++            x,
++            y,
+             path.ByRef(),
+             NULL,   // [out] column (always 0 here)
+             NULL,   // [out] x-coord relative to the cell (not interested)
+@@ -865,16 +944,17 @@
+     return GTK_WIDGET(m_treeview);
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxListBox::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+     return gtk_tree_view_get_bin_window(m_treeview);
+ }
++#endif
+ 
+ void wxListBox::DoApplyWidgetStyle(GtkRcStyle *style)
+ {
+-#ifdef __WXGTK3__
++#if !defined(__WXGTK3__) && !defined(__WXGTK4__)
+     // don't know if this is even necessary, or how to do it
+-#else
+     if (m_hasBgCol && m_backgroundColour.IsOk())
+     {
+         GdkWindow *window = gtk_tree_view_get_bin_window(m_treeview);
+@@ -932,7 +1012,7 @@
+     lbHeight = (cy+4) * wxMin(wxMax(count, 3), 10);
+ 
+     wxSize size(lbWidth, lbHeight);
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     // Ensure size is at least the required minimum
+     int w, h;
+     gtk_widget_get_size_request(m_widget, &w, &h);
+@@ -942,6 +1022,20 @@
+     gtk_widget_get_preferred_height_for_width(m_widget, min.x, &min.y, NULL);
+     gtk_widget_set_size_request(m_widget, w, h);
+     size.IncTo(min);
++#elif defined(__WXGTK4__)
++    int requestedWidth = 0;
++    int requestedHeight = 0;
++    int natural = 0;
++    gtk_widget_get_size_request(m_widget, &requestedWidth, &requestedHeight);
++    gtk_widget_set_size_request(m_widget, -1, -1);
++    int minWidth = 0;
++    int minHeight = 0;
++    gtk_widget_measure(m_widget, GTK_ORIENTATION_HORIZONTAL, -1,
++                       &minWidth, &natural, NULL, NULL);
++    gtk_widget_measure(m_widget, GTK_ORIENTATION_VERTICAL, minWidth,
++                       &minHeight, &natural, NULL, NULL);
++    gtk_widget_set_size_request(m_widget, requestedWidth, requestedHeight);
++    size.IncTo(wxSize(minWidth, minHeight));
+ #endif
+     return size;
+ }
+--- src/gtk/radiobox.cpp.orig
++++ src/gtk/radiobox.cpp
+@@ -18,6 +18,7 @@
+ #endif
+ 
+ #include "wx/gtk/private.h"
++#include "wx/weakref.h"
+ 
+ //-----------------------------------------------------------------------------
+ // wxGTKRadioButtonInfo
+@@ -27,10 +28,10 @@
+ class wxGTKRadioButtonInfo : public wxObject
+ {
+ public:
+-    wxGTKRadioButtonInfo( GtkRadioButton * abutton, const wxRect & arect )
++    wxGTKRadioButtonInfo( GtkWidget * abutton, const wxRect & arect )
+     : button( abutton ), rect( arect ) {}
+ 
+-    GtkRadioButton * button;
++    GtkWidget * button;
+     wxRect           rect;
+ };
+ 
+@@ -43,16 +44,34 @@
+ 
+ extern bool          g_blockEventsOnDrag;
+ 
++static bool wxGTKRadioButtonIsActive(GtkWidget* button)
++{
++#ifdef __WXGTK4__
++    return gtk_check_button_get_active(GTK_CHECK_BUTTON(button));
++#else
++    return gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button));
++#endif
++}
++
++static void wxGTKRadioButtonSetActive(GtkWidget* button, bool active)
++{
++#ifdef __WXGTK4__
++    gtk_check_button_set_active(GTK_CHECK_BUTTON(button), active);
++#else
++    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), active);
++#endif
++}
++
+ //-----------------------------------------------------------------------------
+ // "clicked"
+ //-----------------------------------------------------------------------------
+ 
+ extern "C" {
+-static void gtk_radiobutton_clicked_callback( GtkToggleButton *button, wxRadioBox *rb )
++static void gtk_radiobutton_clicked_callback( GtkWidget *button, wxRadioBox *rb )
+ {
+     if (g_blockEventsOnDrag) return;
+ 
+-    if (!gtk_toggle_button_get_active(button)) return;
++    if (!wxGTKRadioButtonIsActive(GTK_WIDGET(button))) return;
+ 
+     wxCommandEvent event( wxEVT_RADIOBOX, rb->GetId() );
+     event.SetInt( rb->GetSelection() );
+@@ -67,6 +86,43 @@
+ //-----------------------------------------------------------------------------
+ 
+ extern "C" {
++#ifdef __WXGTK4__
++static gboolean gtk_radiobox_keypress_callback(GtkEventControllerKey* controller,
++                                                guint keyval, guint,
++                                                GdkModifierType state,
++                                                wxRadioBox* rb)
++{
++    GtkWidget* widget = gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
++    if (g_blockEventsOnDrag) return FALSE;
++    if ((keyval == GDK_KEY_Tab || keyval == GDK_KEY_ISO_Left_Tab) &&
++        rb->GetParent() && rb->GetParent()->HasFlag(wxTAB_TRAVERSAL))
++    {
++        wxNavigationKeyEvent event;
++        event.SetEventObject(rb->GetParent());
++        event.SetDirection(keyval == GDK_KEY_Tab);
++        event.SetWindowChange((state & GDK_CONTROL_MASK) != 0);
++        event.SetCurrentFocus(rb);
++        return rb->GetParent()->HandleWindowEvent(event);
++    }
++    if (keyval != GDK_KEY_Up && keyval != GDK_KEY_Down &&
++        keyval != GDK_KEY_Left && keyval != GDK_KEY_Right)
++        return FALSE;
++    wxRadioBoxButtonsInfoList::compatibility_iterator node = rb->m_buttonsInfo.GetFirst();
++    while (node && node->GetData()->button != widget) node = node->GetNext();
++    if (!node) return FALSE;
++    if (keyval == GDK_KEY_Up || keyval == GDK_KEY_Left)
++        node = node == rb->m_buttonsInfo.GetFirst() ? rb->m_buttonsInfo.GetLast() : node->GetPrevious();
++    else
++        node = node == rb->m_buttonsInfo.GetLast() ? rb->m_buttonsInfo.GetFirst() : node->GetNext();
++    GtkWidget* nextButton = node->GetData()->button;
++    wxWeakRef<wxWindow> alive(rb);
++    gtk_widget_grab_focus(node->GetData()->button);
++    if (!alive)
++        return TRUE;
++    gtk_check_button_set_active(GTK_CHECK_BUTTON(nextButton), TRUE);
++    return TRUE;
++}
++#else
+ static gint gtk_radiobox_keypress_callback( GtkWidget *widget, GdkEventKey *gdk_event, wxRadioBox *rb )
+ {
+     if (g_blockEventsOnDrag) return FALSE;
+@@ -125,8 +181,10 @@
+ 
+     return TRUE;
+ }
++#endif
+ }
+ 
++#ifndef __WXGTK4__
+ extern "C" {
+ static gint gtk_radiobutton_focus_out( GtkWidget * WXUNUSED(widget),
+                                        GdkEventFocus *WXUNUSED(event),
+@@ -145,7 +203,22 @@
+     return FALSE;
+ }
+ }
++#endif
+ 
++#ifdef __WXGTK4__
++extern "C" {
++static void gtk_radiobutton_focus_enter(GtkEventControllerFocus*, wxRadioBox* win)
++{
++    win->GTKHandleFocusIn();
++}
++static void gtk_radiobutton_focus_leave(GtkEventControllerFocus*, wxRadioBox* win)
++{
++    win->GTKHandleFocusOut();
++}
++}
++#endif
++
++#ifndef __WXGTK4__
+ extern "C" {
+ static gint gtk_radiobutton_focus_in( GtkWidget * WXUNUSED(widget),
+                                       GdkEventFocus *WXUNUSED(event),
+@@ -158,7 +231,9 @@
+     return FALSE;
+ }
+ }
++#endif
+ 
++#ifndef __WXGTK4__
+ extern "C" {
+ static void gtk_radiobutton_size_allocate( GtkWidget *widget,
+                                            GtkAllocation * alloc,
+@@ -179,6 +254,7 @@
+     }
+ }
+ }
++#endif
+ 
+ #ifndef __WXGTK3__
+ extern "C" {
+@@ -230,7 +306,11 @@
+     if ( HasFlag(wxNO_BORDER) )
+     {
+         // If we don't do this here, the wxNO_BORDER style is ignored in Show()
++#ifdef __WXGTK4__
++        gtk_widget_remove_css_class(m_widget, "frame");
++#else
+         gtk_frame_set_shadow_type(GTK_FRAME(m_widget), GTK_SHADOW_NONE);
++#endif
+     }
+ 
+ 
+@@ -242,12 +322,15 @@
+     unsigned int num_of_cols = GetColumnCount();
+     unsigned int num_of_rows = GetRowCount();
+ 
+-    GtkRadioButton *rbtn = NULL;
++    GtkWidget *rbtn = NULL;
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     GtkWidget* grid = gtk_grid_new();
+     gtk_widget_show(grid);
+     gtk_container_add(GTK_CONTAINER(m_widget), grid);
++#elif defined(__WXGTK4__)
++    GtkWidget* grid = gtk_grid_new();
++    gtk_frame_set_child(GTK_FRAME(m_widget), grid);
+ #else
+     GtkWidget *table = gtk_table_new( num_of_rows, num_of_cols, FALSE );
+     gtk_table_set_col_spacings( GTK_TABLE(table), 1 );
+@@ -256,11 +339,17 @@
+     gtk_container_add( GTK_CONTAINER(m_widget), table );
+ #endif
+ 
++#ifdef __WXGTK4__
++    GtkCheckButton* radio_button_group = NULL;
++#else
+     GSList *radio_button_group = NULL;
++#endif
+     for (unsigned int i = 0; i < (unsigned int)n; i++)
+     {
++#ifndef __WXGTK4__
+         if ( i != 0 )
+             radio_button_group = gtk_radio_button_get_group( GTK_RADIO_BUTTON(rbtn) );
++#endif
+ 
+         // Process mnemonic in the label
+         wxString label;
+@@ -304,18 +393,43 @@
+             label += *pc;
+         }
+         if ( hasMnemonic )
+-            rbtn = GTK_RADIO_BUTTON( gtk_radio_button_new_with_mnemonic( radio_button_group, wxGTK_CONV( label ) ) );
++#ifdef __WXGTK4__
++        {
++            GtkCheckButton* button = GTK_CHECK_BUTTON(gtk_check_button_new_with_mnemonic(wxGTK_CONV(label)));
++            if (radio_button_group) gtk_check_button_set_group(button, radio_button_group);
++            radio_button_group = button;
++            rbtn = GTK_WIDGET(button);
++        }
++#else
++            rbtn = GTK_WIDGET(GTK_RADIO_BUTTON( gtk_radio_button_new_with_mnemonic( radio_button_group, wxGTK_CONV( label ) ) ));
++#endif
+         else
+-            rbtn = GTK_RADIO_BUTTON( gtk_radio_button_new_with_label( radio_button_group, wxGTK_CONV( label ) ) );
++#ifdef __WXGTK4__
++        {
++            GtkCheckButton* button = GTK_CHECK_BUTTON(gtk_check_button_new_with_label(wxGTK_CONV(label)));
++            if (radio_button_group) gtk_check_button_set_group(button, radio_button_group);
++            radio_button_group = button;
++            rbtn = GTK_WIDGET(button);
++        }
++#else
++            rbtn = GTK_WIDGET(GTK_RADIO_BUTTON( gtk_radio_button_new_with_label( radio_button_group, wxGTK_CONV( label ) ) ));
++#endif
+ 
+         gtk_widget_show( GTK_WIDGET(rbtn) );
+ 
+-        g_signal_connect (rbtn, "key_press_event",
+-                          G_CALLBACK (gtk_radiobox_keypress_callback), this);
++#ifdef __WXGTK4__
++        GtkEventController* keyController = gtk_event_controller_key_new();
++        g_signal_connect(keyController, "key-pressed",
++                         G_CALLBACK(gtk_radiobox_keypress_callback), this);
++        gtk_widget_add_controller(rbtn, keyController);
++#else
++        g_signal_connect(rbtn, "key_press_event",
++                         G_CALLBACK(gtk_radiobox_keypress_callback), this);
++#endif
+ 
+         m_buttonsInfo.Append( new wxGTKRadioButtonInfo( rbtn, wxRect() ) );
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+         int left, top;
+         if (HasFlag(wxRA_SPECIFY_COLS))
+         {
+@@ -328,6 +442,10 @@
+             top = i % num_of_rows;
+         }
+         gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(rbtn), left, top, 1, 1);
++#elif defined(__WXGTK4__)
++        int left = HasFlag(wxRA_SPECIFY_COLS) ? i % num_of_cols : i / num_of_rows;
++        int top = HasFlag(wxRA_SPECIFY_COLS) ? i / num_of_cols : i % num_of_rows;
++        gtk_grid_attach(GTK_GRID(grid), rbtn, left, top, 1, 1);
+ #else
+         if (HasFlag(wxRA_SPECIFY_COLS))
+         {
+@@ -352,8 +470,15 @@
+         ConnectWidget( GTK_WIDGET(rbtn) );
+ 
+         if (!i)
+-            gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(rbtn), TRUE );
++            wxGTKRadioButtonSetActive(rbtn, true);
+ 
++#ifdef __WXGTK4__
++        g_signal_connect(rbtn, "toggled", G_CALLBACK(gtk_radiobutton_clicked_callback), this);
++        GtkEventController* focusController = gtk_event_controller_focus_new();
++        g_signal_connect(focusController, "enter", G_CALLBACK(gtk_radiobutton_focus_enter), this);
++        g_signal_connect(focusController, "leave", G_CALLBACK(gtk_radiobutton_focus_leave), this);
++        gtk_widget_add_controller(rbtn, focusController);
++#else
+         g_signal_connect (rbtn, "clicked",
+                           G_CALLBACK (gtk_radiobutton_clicked_callback), this);
+         g_signal_connect (rbtn, "focus_in_event",
+@@ -362,6 +487,7 @@
+                           G_CALLBACK (gtk_radiobutton_focus_out), this);
+         g_signal_connect (rbtn, "size_allocate",
+                           G_CALLBACK (gtk_radiobutton_size_allocate), this);
++#endif
+     }
+ 
+     m_parent->DoAddChild( this );
+@@ -378,7 +504,9 @@
+     {
+         GtkWidget *button = GTK_WIDGET( node->GetData()->button );
+         GTKDisconnect(button);
++#ifndef __WXGTK4__
+         gtk_widget_destroy( button );
++#endif
+         node = node->GetNext();
+     }
+     WX_CLEAR_LIST( wxRadioBoxButtonsInfoList, m_buttonsInfo );
+@@ -394,18 +522,17 @@
+         return false;
+     }
+ 
++#ifndef __WXGTK4__
+     if ( HasFlag(wxNO_BORDER) )
+         gtk_widget_hide( m_widget );
++#endif
+ 
+     wxRadioBoxButtonsInfoList::compatibility_iterator node = m_buttonsInfo.GetFirst();
+     while (node)
+     {
+         GtkWidget *button = GTK_WIDGET( node->GetData()->button );
+ 
+-        if (show)
+-            gtk_widget_show( button );
+-        else
+-            gtk_widget_hide( button );
++        gtk_widget_set_visible(button, show);
+ 
+         node = node->GetNext();
+     }
+@@ -421,11 +548,8 @@
+ 
+     wxCHECK_RET( node, wxT("radiobox wrong index") );
+ 
+-    GtkToggleButton *button = GTK_TOGGLE_BUTTON( node->GetData()->button );
+-
+     GtkDisableEvents();
+-
+-    gtk_toggle_button_set_active( button, 1 );
++    wxGTKRadioButtonSetActive(node->GetData()->button, true);
+ 
+     GtkEnableEvents();
+ }
+@@ -439,8 +563,7 @@
+     wxRadioBoxButtonsInfoList::compatibility_iterator node = m_buttonsInfo.GetFirst();
+     while (node)
+     {
+-        GtkToggleButton *button = GTK_TOGGLE_BUTTON( node->GetData()->button );
+-        if (gtk_toggle_button_get_active(button)) return count;
++        if (wxGTKRadioButtonIsActive(node->GetData()->button)) return count;
+         count++;
+         node = node->GetNext();
+     }
+@@ -458,9 +581,14 @@
+ 
+     wxCHECK_MSG( node, wxEmptyString, wxT("radiobox wrong index") );
+ 
+-    GtkLabel* label = GTK_LABEL(gtk_bin_get_child(GTK_BIN(node->GetData()->button)));
+-
+-    wxString str( wxGTK_CONV_BACK( gtk_label_get_text(label) ) );
++#ifdef __WXGTK4__
++    GtkWidget* labelWidget = gtk_check_button_get_child(GTK_CHECK_BUTTON(node->GetData()->button));
++    const char* label = GTK_IS_LABEL(labelWidget) ? gtk_label_get_text(GTK_LABEL(labelWidget)) : "";
++#else
++    GtkLabel* labelWidget = GTK_LABEL(gtk_bin_get_child(GTK_BIN(node->GetData()->button)));
++    const char* label = gtk_label_get_text(labelWidget);
++#endif
++    wxString str(wxGTK_CONV_BACK(label ? label : ""));
+ 
+     return str;
+ }
+@@ -480,9 +608,12 @@
+ 
+     wxCHECK_RET( node, wxT("radiobox wrong index") );
+ 
++#ifdef __WXGTK4__
++    gtk_check_button_set_label(GTK_CHECK_BUTTON(node->GetData()->button), wxGTK_CONV(label));
++#else
+     GtkLabel* g_label = GTK_LABEL(gtk_bin_get_child(GTK_BIN(node->GetData()->button)));
+-
+-    gtk_label_set_text( g_label, wxGTK_CONV( label ) );
++    gtk_label_set_text(g_label, wxGTK_CONV(label));
++#endif
+ }
+ 
+ bool wxRadioBox::Enable( bool enable )
+@@ -503,11 +634,12 @@
+     wxRadioBoxButtonsInfoList::compatibility_iterator node = m_buttonsInfo.GetFirst();
+     while (node)
+     {
+-        GtkButton *button = GTK_BUTTON( node->GetData()->button );
++        GtkWidget* button = node->GetData()->button;
++        gtk_widget_set_sensitive(button, enable);
++#ifndef __WXGTK4__
+         GtkLabel *label = GTK_LABEL(gtk_bin_get_child(GTK_BIN(button)));
+-
+-        gtk_widget_set_sensitive( GTK_WIDGET(button), enable );
+-        gtk_widget_set_sensitive( GTK_WIDGET(label), enable );
++        gtk_widget_set_sensitive(GTK_WIDGET(label), enable);
++#endif
+         node = node->GetNext();
+     }
+ 
+@@ -523,11 +655,12 @@
+ 
+     wxCHECK_MSG( node, false, wxT("radiobox wrong index") );
+ 
+-    GtkButton *button = GTK_BUTTON( node->GetData()->button );
++    GtkWidget* button = node->GetData()->button;
++    gtk_widget_set_sensitive(button, enable);
++#ifndef __WXGTK4__
+     GtkLabel *label = GTK_LABEL(gtk_bin_get_child(GTK_BIN(button)));
+-
+-    gtk_widget_set_sensitive( GTK_WIDGET(button), enable );
+-    gtk_widget_set_sensitive( GTK_WIDGET(label), enable );
++    gtk_widget_set_sensitive(GTK_WIDGET(label), enable);
++#endif
+ 
+     return true;
+ }
+@@ -540,11 +673,11 @@
+ 
+     wxCHECK_MSG( node, false, wxT("radiobox wrong index") );
+ 
+-    GtkButton *button = GTK_BUTTON( node->GetData()->button );
++    GtkWidget *button = node->GetData()->button;
+ 
+     // don't use GTK_WIDGET_IS_SENSITIVE() here, we want to return true even if
+     // the parent radiobox is disabled
+-    return gtk_widget_get_sensitive(GTK_WIDGET(button)) != 0;
++    return gtk_widget_get_sensitive(button) != 0;
+ }
+ 
+ bool wxRadioBox::Show(unsigned int item, bool show)
+@@ -573,7 +706,7 @@
+ 
+     wxCHECK_MSG( node, false, wxT("radiobox wrong index") );
+ 
+-    GtkButton *button = GTK_BUTTON( node->GetData()->button );
++    GtkWidget *button = node->GetData()->button;
+ 
+     return gtk_widget_get_visible(GTK_WIDGET(button)) != 0;
+ }
+@@ -617,12 +750,16 @@
+         GtkWidget *widget = GTK_WIDGET( node->GetData()->button );
+ 
+         GTKApplyStyle(widget, style);
++#ifdef __WXGTK4__
++        GTKApplyStyle(gtk_check_button_get_child(GTK_CHECK_BUTTON(widget)), style);
++#else
+         GTKApplyStyle(gtk_bin_get_child(GTK_BIN(widget)), style);
++#endif
+ 
+         node = node->GetNext();
+     }
+ 
+-#ifndef __WXGTK3__
++#if !defined(__WXGTK3__) && !defined(__WXGTK4__)
+     g_signal_handlers_disconnect_by_func(m_widget, (void*)expose_event, this);
+     if (m_backgroundColour.IsOk())
+         g_signal_connect(m_widget, "expose-event", G_CALLBACK(expose_event), this);
+@@ -668,6 +805,7 @@
+ 
+ #endif // wxUSE_TOOLTIPS
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxRadioBox::GTKGetWindow(wxArrayGdkWindows& windows) const
+ {
+     windows.push_back(gtk_widget_get_window(m_widget));
+@@ -686,12 +824,17 @@
+ 
+     return NULL;
+ }
++#endif
+ 
+ // static
+ wxVisualAttributes
+ wxRadioBox::GetClassDefaultAttributes(wxWindowVariant WXUNUSED(variant))
+ {
++#ifdef __WXGTK4__
++    return GetDefaultAttributesFromGTKWidget(gtk_check_button_new());
++#else
+     return GetDefaultAttributesFromGTKWidget(gtk_radio_button_new_with_label(NULL, ""));
++#endif
+ }
+ 
+ int wxRadioBox::GetItemFromPoint(const wxPoint& point) const
+@@ -701,8 +844,18 @@
+     for ( wxRadioBoxButtonsInfoList::compatibility_iterator
+             node = m_buttonsInfo.GetFirst(); node; node = node->GetNext(), n++ )
+     {
++#ifdef __WXGTK4__
++        graphene_rect_t bounds;
++        if (gtk_widget_compute_bounds(node->GetData()->button, m_widget, &bounds))
++        {
++            wxRect rect(wxRound(bounds.origin.x), wxRound(bounds.origin.y),
++                        wxRound(bounds.size.width), wxRound(bounds.size.height));
++            if (rect.Contains(pt)) return n;
++        }
++#else
+         if ( m_buttonsInfo[n]->rect.Contains(pt) )
+             return n;
++#endif
+     }
+ 
+     return wxNOT_FOUND;
+--- src/gtk/slider.cpp.orig
++++ src/gtk/slider.cpp
+@@ -20,6 +20,7 @@
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ #include "wx/gtk/private/eventsdisabler.h"
++#include "wx/weakref.h"
+ 
+ //-----------------------------------------------------------------------------
+ // data
+@@ -32,9 +33,10 @@
+ // ----------------------------------------------------------------------------
+ 
+ // process a scroll event
+-static void
++static bool
+ ProcessScrollEvent(wxSlider *win, wxEventType evtType)
+ {
++    wxWeakRef<wxWindow> alive(win);
+     const int orient = win->HasFlag(wxSL_VERTICAL) ? wxVERTICAL
+                                                    : wxHORIZONTAL;
+ 
+@@ -47,6 +49,8 @@
+         wxScrollEvent event( evtType, win->GetId(), value, orient );
+         event.SetEventObject( win );
+         win->HandleWindowEvent( event );
++        if (!alive)
++            return false;
+     }
+ 
+     // but, in any case, except if we're dragging the slider (and so the change
+@@ -56,6 +60,8 @@
+         wxScrollEvent event(wxEVT_SCROLL_CHANGED, win->GetId(), value, orient);
+         event.SetEventObject( win );
+         win->HandleWindowEvent( event );
++        if (!alive)
++            return false;
+     }
+ 
+     // and also generate a command event for compatibility
+@@ -63,6 +69,7 @@
+     event.SetEventObject( win );
+     event.SetInt( value );
+     win->HandleWindowEvent( event );
++    return static_cast<bool>(alive);
+ }
+ 
+ static inline wxEventType GtkScrollTypeToWx(int scrollType)
+@@ -180,7 +187,8 @@
+     // If integral position has changed
+     if (wxRound(oldPos) != wxRound(value))
+     {
+-        ProcessScrollEvent(win, eventType);
++        if (!ProcessScrollEvent(win, eventType))
++            return;
+         win->m_needThumbRelease = eventType == wxEVT_SCROLL_THUMBTRACK;
+     }
+ }
+@@ -203,6 +211,7 @@
+ // "button_press_event"
+ //-----------------------------------------------------------------------------
+ 
++#ifndef __WXGTK4__
+ extern "C" {
+ static gboolean
+ gtk_button_press_event(GtkWidget*, GdkEventButton*, wxSlider* win)
+@@ -212,11 +221,13 @@
+     return false;
+ }
+ }
++#endif // !__WXGTK4__
+ 
+ //-----------------------------------------------------------------------------
+ // "event_after"
+ //-----------------------------------------------------------------------------
+ 
++#ifndef __WXGTK4__
+ extern "C" {
+ static void
+ gtk_event_after(GtkRange* range, GdkEvent* event, wxSlider* win)
+@@ -228,7 +239,8 @@
+         if (win->m_needThumbRelease)
+         {
+             win->m_needThumbRelease = false;
+-            ProcessScrollEvent(win, wxEVT_SCROLL_THUMBRELEASE);
++            if (!ProcessScrollEvent(win, wxEVT_SCROLL_THUMBRELEASE))
++                return;
+         }
+         // Keep slider at an integral position
+         wxGtkEventsDisabler<wxSlider> noEvents(win);
+@@ -236,11 +248,13 @@
+     }
+ }
+ }
++#endif // !__WXGTK4__
+ 
+ //-----------------------------------------------------------------------------
+ // "button_release_event"
+ //-----------------------------------------------------------------------------
+ 
++#ifndef __WXGTK4__
+ extern "C" {
+ static gboolean
+ gtk_button_release_event(GtkRange* range, GdkEventButton*, wxSlider* win)
+@@ -254,6 +268,66 @@
+     return false;
+ }
+ }
++#endif // !__WXGTK4__
++
++#ifdef __WXGTK4__
++extern "C" {
++static gboolean
++gtk_slider_observe_press(GtkEventControllerLegacy*, GdkEvent* event, wxSlider* win)
++{
++    const GdkEventType type = gdk_event_get_event_type(event);
++    if (type == GDK_TOUCH_BEGIN ||
++        (type == GDK_BUTTON_PRESS && gdk_button_event_get_button(event) != 0))
++        win->m_mouseButtonDown = true;
++    return FALSE;
++}
++
++static void
++gtk_slider_pressed(GtkGestureClick*, int, double, double, wxSlider* win)
++{
++    win->m_mouseButtonDown = true;
++}
++
++static void
++gtk_slider_release_common(wxSlider* win)
++{
++    if (!win->m_mouseButtonDown)
++        return;
++    win->m_mouseButtonDown = false;
++    if (!win->m_isScrolling)
++        return;
++
++    win->m_isScrolling = false;
++    if (win->m_needThumbRelease)
++    {
++        win->m_needThumbRelease = false;
++        if (!ProcessScrollEvent(win, wxEVT_SCROLL_THUMBRELEASE))
++            return;
++    }
++
++    wxGtkEventsDisabler<wxSlider> noEvents(win);
++    gtk_range_set_value(GTK_RANGE(win->m_scale), win->GetValue());
++}
++
++static void
++gtk_slider_released(GtkGestureClick*, int, double, double, wxSlider* win)
++{
++    gtk_slider_release_common(win);
++}
++
++static void
++gtk_slider_drag_began(GtkGestureDrag*, double, double, wxSlider* win)
++{
++    win->m_mouseButtonDown = true;
++}
++
++static void
++gtk_slider_drag_ended(GtkGestureDrag*, double, double, wxSlider* win)
++{
++    gtk_slider_release_common(win);
++}
++}
++#endif // __WXGTK4__
+ 
+ //-----------------------------------------------------------------------------
+ // "format_value"
+@@ -320,24 +394,50 @@
+         gtk_widget_show( m_scale );
+ 
+         m_widget = gtk_box_new(GtkOrientation(!isVertical), 0);
++#ifdef __WXGTK4__
++        gtk_widget_set_hexpand(m_scale, !isVertical);
++        gtk_widget_set_vexpand(m_scale, isVertical);
++        gtk_box_append(GTK_BOX(m_widget), m_scale);
++#else
+         gtk_box_pack_start(GTK_BOX(m_widget), m_scale, true, true, 0);
++#endif
+ 
+         GtkWidget* box = gtk_box_new(GtkOrientation(isVertical), 0);
+         gtk_widget_show(box);
++#ifdef __WXGTK4__
++        gtk_widget_set_hexpand(box, !isVertical);
++        gtk_widget_set_vexpand(box, isVertical);
++        gtk_box_append(GTK_BOX(m_widget), box);
++#else
+         gtk_box_pack_start(GTK_BOX(m_widget), box, true, true, 0);
++#endif
+ 
+         m_minLabel = gtk_label_new(NULL);
+         gtk_widget_show( m_minLabel );
++#ifdef __WXGTK4__
++        gtk_box_append(GTK_BOX(box), m_minLabel);
++#else
+         gtk_box_pack_start(GTK_BOX(box), m_minLabel, false, false, 0);
++#endif
+ 
+         // expanding empty space between the min/max labels
+         GtkWidget *space = gtk_label_new(NULL);
+         gtk_widget_show( space );
++#ifdef __WXGTK4__
++        gtk_widget_set_hexpand(space, !isVertical);
++        gtk_widget_set_vexpand(space, isVertical);
++        gtk_box_append(GTK_BOX(box), space);
++#else
+         gtk_box_pack_start(GTK_BOX(box), space, true, false, 0);
++#endif
+ 
+         m_maxLabel = gtk_label_new(NULL);
+         gtk_widget_show( m_maxLabel );
++#ifdef __WXGTK4__
++        gtk_box_append(GTK_BOX(box), m_maxLabel);
++#else
+         gtk_box_pack_end(GTK_BOX(box), m_maxLabel, false, false, 0);
++#endif
+     }
+     else
+     {
+@@ -379,13 +479,46 @@
+     if (style & wxSL_INVERSE)
+         gtk_range_set_inverted( GTK_RANGE(m_scale), TRUE );
+ 
++#ifdef __WXGTK4__
++    GtkEventController* pressObserver = gtk_event_controller_legacy_new();
++    gtk_event_controller_set_propagation_phase(pressObserver, GTK_PHASE_CAPTURE);
++    g_signal_connect(pressObserver, "event",
++                     G_CALLBACK(gtk_slider_observe_press), this);
++    gtk_widget_add_controller(m_scale, pressObserver);
++
++    GListModel* controllers = gtk_widget_observe_controllers(m_scale);
++    for (guint i = 0; i < g_list_model_get_n_items(controllers); ++i)
++    {
++        GtkEventController* controller = GTK_EVENT_CONTROLLER(
++            g_list_model_get_item(controllers, i));
++        if (GTK_IS_GESTURE_CLICK(controller))
++        {
++            g_signal_connect(controller, "pressed", G_CALLBACK(gtk_slider_pressed), this);
++            g_signal_connect(controller, "released", G_CALLBACK(gtk_slider_released), this);
++        }
++        else if (GTK_IS_GESTURE_DRAG(controller))
++        {
++            g_signal_connect(controller, "drag-begin", G_CALLBACK(gtk_slider_drag_began), this);
++            g_signal_connect(controller, "drag-end", G_CALLBACK(gtk_slider_drag_ended), this);
++        }
++        g_object_unref(controller);
++    }
++    g_object_unref(controllers);
++#else
+     g_signal_connect(m_scale, "button_press_event", G_CALLBACK(gtk_button_press_event), this);
+     g_signal_connect(m_scale, "button_release_event", G_CALLBACK(gtk_button_release_event), this);
++#endif
+     g_signal_connect(m_scale, "move_slider", G_CALLBACK(gtk_move_slider), this);
++#ifdef __WXGTK4__
++    gtk_scale_set_format_value_func(GTK_SCALE(m_scale), gtk_format_value, NULL, NULL);
++#else
+     g_signal_connect(m_scale, "format_value", G_CALLBACK(gtk_format_value), NULL);
++#endif
+     g_signal_connect(m_scale, "value_changed", G_CALLBACK(gtk_value_changed), this);
++#ifndef __WXGTK4__
+     gulong handler_id = g_signal_connect(m_scale, "event_after", G_CALLBACK(gtk_event_after), this);
+     g_signal_handler_block(m_scale, handler_id);
++#endif
+ 
+     SetRange( minValue, maxValue );
+ 
+@@ -581,6 +714,7 @@
+     return size;
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxSlider::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+ #ifdef __WXGTK3__
+@@ -589,6 +723,7 @@
+     return GTK_RANGE(m_scale)->event_window;
+ #endif
+ }
++#endif
+ 
+ // static
+ wxVisualAttributes
+--- src/gtk/spinbutt.cpp.orig
++++ src/gtk/spinbutt.cpp
+@@ -118,11 +118,16 @@
+     m_widget = gtk_spin_button_new_with_range(0, 100, 1);
+     g_object_ref(m_widget);
+ 
++#ifdef __WXGTK4__
++    gtk_editable_set_width_chars(GTK_EDITABLE(m_widget), 0);
++    gtk_editable_set_max_width_chars(GTK_EDITABLE(m_widget), 0);
++#else
+     gtk_entry_set_width_chars(GTK_ENTRY(m_widget), 0);
+ #if GTK_CHECK_VERSION(3,12,0)
+     if (gtk_check_version(3,12,0) == NULL)
+         gtk_entry_set_max_width_chars(GTK_ENTRY(m_widget), 0);
+ #endif
++#endif
+ #ifdef __WXGTK3__
+     if (gtk_check_version(3,20,0) == NULL)
+     {
+@@ -233,6 +238,7 @@
+         (void*)gtk_value_changed, const_cast<wxSpinButton*>(this));
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxSpinButton::GTKGetWindow(wxArrayGdkWindows& WXUNUSED_IN_GTK2(windows)) const
+ {
+ #ifdef __WXGTK3__
+@@ -242,15 +248,22 @@
+     return GTK_SPIN_BUTTON(m_widget)->panel;
+ #endif
+ }
++#endif
+ 
+ wxSize wxSpinButton::DoGetBestSize() const
+ {
+     wxSize best = base_type::DoGetBestSize();
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     GtkStyleContext* sc = gtk_widget_get_style_context(m_widget);
+     GtkBorder pad = { 0, 0, 0, 0 };
+     gtk_style_context_get_padding(sc, gtk_style_context_get_state(sc), &pad);
+     best.x -= pad.left + pad.right;
++#elif defined(__WXGTK4__)
++    int minWidth = 0;
++    int naturalWidth = 0;
++    gtk_widget_measure(m_widget, GTK_ORIENTATION_HORIZONTAL, -1,
++                       &minWidth, &naturalWidth, NULL, NULL);
++    best.x = naturalWidth;
+ #else
+     gtk_widget_ensure_style(m_widget);
+     int w = PANGO_PIXELS(pango_font_description_get_size(m_widget->style->font_desc));
+--- src/gtk/spinctrl.cpp.orig
++++ src/gtk/spinctrl.cpp
+@@ -92,7 +92,11 @@
+         return FALSE;
+ 
+     if ( text != win->GetTextValue() )
++#ifdef __WXGTK4__
++        gtk_editable_set_text(GTK_EDITABLE(spin), text.utf8_str());
++#else
+         gtk_entry_set_text(GTK_ENTRY(spin), text.utf8_str());
++#endif
+ 
+     return TRUE;
+ }
+@@ -263,7 +267,11 @@
+     int handled = 0;
+     g_signal_emit(m_widget, sig_id, 0, &value, &handled);
+     if (!handled)
++#ifdef __WXGTK4__
++        value = g_strtod(gtk_editable_get_text(GTK_EDITABLE(m_widget)), NULL);
++#else
+         value = g_strtod(gtk_entry_get_text(GTK_ENTRY(m_widget)), NULL);
++#endif
+     GtkAdjustment* adj =
+         gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(m_widget));
+     const double lower = gtk_adjustment_get_lower(adj);
+@@ -307,7 +315,11 @@
+ {
+     wxCHECK_MSG(m_widget, wxEmptyString, "invalid spin button");
+ 
+-    return wxGTK_CONV_BACK(gtk_entry_get_text( GTK_ENTRY(m_widget) ));
++#ifdef __WXGTK4__
++    return wxGTK_CONV_BACK(gtk_editable_get_text(GTK_EDITABLE(m_widget)));
++#else
++    return wxGTK_CONV_BACK(gtk_entry_get_text(GTK_ENTRY(m_widget)));
++#endif
+ }
+ 
+ bool wxSpinCtrlGTKBase::GetSnapToTicks() const
+@@ -336,7 +348,11 @@
+     GTKSetTextOverride(value);
+ 
+     wxSpinCtrlEventDisabler disable(this);
+-    gtk_entry_set_text( GTK_ENTRY(m_widget), wxGTK_CONV( value ) );
++#ifdef __WXGTK4__
++    gtk_editable_set_text(GTK_EDITABLE(m_widget), wxGTK_CONV(value));
++#else
++    gtk_entry_set_text(GTK_ENTRY(m_widget), wxGTK_CONV(value));
++#endif
+ }
+ 
+ void wxSpinCtrlGTKBase::DoSetValue( double value )
+@@ -446,6 +462,7 @@
+     event.Skip();
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxSpinCtrlGTKBase::GTKGetWindow(wxArrayGdkWindows& windows) const
+ {
+ #ifdef __WXGTK3__
+@@ -459,6 +476,7 @@
+ 
+     return NULL;
+ }
++#endif
+ 
+ wxSize wxSpinCtrlGTKBase::DoGetSizeFromTextSize(int xlen, int ylen) const
+ {
+@@ -470,12 +488,18 @@
+     const double widthDigit = GetTextExtent("0123456789").GetWidth() / 10.0;
+     const int numDigits = wxRound(xlen / widthDigit);
+ 
++    wxSize tsize;
++#ifdef __WXGTK4__
++    const gint widthChars = gtk_editable_get_width_chars(GTK_EDITABLE(m_widget));
++    gtk_editable_set_width_chars(GTK_EDITABLE(m_widget), numDigits);
++    tsize = GTKGetPreferredSize(m_widget);
++    gtk_editable_set_width_chars(GTK_EDITABLE(m_widget), widthChars);
++#else
+     const gint widthChars = gtk_entry_get_width_chars(GTK_ENTRY(m_widget));
+     gtk_entry_set_width_chars(GTK_ENTRY(m_widget), numDigits);
+-
+-    wxSize tsize = GTKGetPreferredSize(m_widget);
+-
++    tsize = GTKGetPreferredSize(m_widget);
+     gtk_entry_set_width_chars(GTK_ENTRY(m_widget), widthChars);
++#endif
+ 
+     // Check if the user requested a non-standard height.
+     if ( ylen > 0 )
+@@ -536,11 +560,16 @@
+     const int minVal = static_cast<int>(DoGetMin());
+     const int maxVal = static_cast<int>(DoGetMax());
+ 
++#ifdef __WXGTK4__
++    gtk_editable_set_width_chars(GTK_EDITABLE(m_widget),
++        wxSpinCtrlImpl::GetMaxValueLength(minVal, maxVal, GetBase()));
++#else
+     gtk_entry_set_width_chars
+     (
+         GTK_ENTRY(m_widget),
+         wxSpinCtrlImpl::GetMaxValueLength(minVal, maxVal, GetBase())
+     );
++#endif
+ }
+ 
+ bool wxSpinCtrl::SetBase(int base)
+@@ -637,10 +666,17 @@
+ void wxSpinCtrlDouble::GtkSetEntryWidth()
+ {
+     const unsigned digits = GetDigits();
+-    const int lenMin = wxString::Format("%.*f", digits, GetMin()).length();
+-    const int lenMax = wxString::Format("%.*f", digits, GetMax()).length();
++    const wxString textMin = wxString::Format("%.*f", digits, GetMin());
++    const wxString textMax = wxString::Format("%.*f", digits, GetMax());
+ 
++#ifdef __WXGTK4__
++    gtk_editable_set_width_chars(GTK_EDITABLE(m_widget),
++                                 wxMax(textMin.length(), textMax.length()));
++#else
++    const int lenMin = textMin.length();
++    const int lenMax = textMax.length();
+     gtk_entry_set_width_chars(GTK_ENTRY(m_widget), wxMax(lenMin, lenMax));
++#endif
+ }
+ 
+ void wxSpinCtrlDouble::SetIncrement(double inc)
