@@ -1,0 +1,144 @@
+$NetBSD$
+
+Relocate deprecated directory getter defaults with the loaded Pango library.
+Preserve environment overrides, cached ABI results and static configurations.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- meson.build.orig
++++ meson.build
+@@ -208,6 +208,30 @@
+ # Dependencies
+ pango_deps = []
+ 
++# Only prefix-owned defaults follow a relocated shared library. Static and
++# externally configured paths retain their configured meaning.
++if host_system in ['darwin', 'netbsd', 'linux']
++  path_deps = []
++  dl_dep = cc.find_library('dl', required: false)
++  if dl_dep.found()
++    path_deps += dl_dep
++  endif
++  if cc.links('''
++    #define _GNU_SOURCE 1
++    #define _DARWIN_C_SOURCE 1
++    #define _NETBSD_SOURCE 1
++    #include <dlfcn.h>
++    static char anchor;
++    int main(void) { Dl_info info; return !dladdr(&anchor, &info); }
++  ''', dependencies: path_deps, name: 'dladdr and Dl_info for default paths')
++    pango_conf.set('PANGO_HAVE_DLADDR', 1)
++    pango_conf.set('_DARWIN_C_SOURCE', 1)
++    pango_conf.set('_NETBSD_SOURCE', 1)
++    pango_conf.set_quoted('PANGO_INSTALL_PREFIX', pango_prefix)
++    pango_deps += path_deps
++  endif
++endif
++
+ glib_major_req = 2
+ glib_minor_req = 88
+ 
+--- pango/pango-utils.c.orig
++++ pango/pango-utils.c
+@@ -33,6 +33,11 @@
+ #include "pango-utils-private.h"
+ 
+ #include <glib/gstdio.h>
++
++#ifdef PANGO_HAVE_DLADDR
++#include <dlfcn.h>
++static const char pango_library_anchor;
++#endif
+ 
+ #ifdef G_OS_WIN32
+ 
+@@ -586,11 +591,62 @@
+   return NULL;
+ }
+ 
++/* Keep this private: callers' paths and environment overrides must not be
++ * relocated. An executable containing static Pango is not a shared library. */
++static char *
++pango_relocate_default (const char *path)
++{
++#ifdef PANGO_HAVE_DLADDR
++  char *prefix = g_canonicalize_filename (PANGO_INSTALL_PREFIX, NULL);
++  char *libdir = g_canonicalize_filename (LIBDIR, NULL);
++  char *configured = g_canonicalize_filename (path, NULL);
++  gsize plen = strlen (prefix);
++  Dl_info image;
++  char *result = NULL;
++
++  if (plen > 1 &&
++      g_str_has_prefix (configured, prefix) && configured[plen] == '/' &&
++      g_str_has_prefix (libdir, prefix) && libdir[plen] == '/' &&
++      dladdr (&pango_library_anchor, &image) && image.dli_fname)
++    {
++      char *resolved = realpath (image.dli_fname, NULL);
++      if (resolved)
++        {
++          char *base = g_path_get_basename (resolved);
++          if (strcmp (base, "libpango-1.0.so") == 0 ||
++              g_str_has_prefix (base, "libpango-1.0.so.") ||
++              (g_str_has_prefix (base, "libpango-1.0.") &&
++               g_str_has_suffix (base, ".dylib")))
++            {
++              char *directory = g_path_get_dirname (resolved);
++              const char *suffix = libdir + plen;
++              gsize len = strlen (directory), slen = strlen (suffix);
++
++              if (len >= slen && g_str_has_suffix (directory, suffix))
++                {
++                  directory[len - slen] = '\0';
++                  result = g_strconcat (directory, configured + plen, NULL);
++                }
++              g_free (directory);
++            }
++          g_free (base);
++          free (resolved);
++        }
++    }
++  g_free (configured);
++  g_free (libdir);
++  g_free (prefix);
++  if (result)
++    return result;
++#endif
++  return g_strdup (path);
++}
++
+ /**
+  * pango_get_sysconf_subdirectory:
+  *
+  * Returns the name of the "pango" subdirectory of SYSCONFDIR
+- * (which is set at compile time).
++ * (set at compile time, relocated with the shared library when prefix-owned).
+  *
+  * Returns: (transfer none): the Pango sysconf directory. The returned string should
+  * not be freed.
+@@ -609,7 +665,7 @@
+       if (sysconfdir != NULL)
+ 	tmp_result = g_build_filename (sysconfdir, "pango", NULL);
+       else
+-	tmp_result = SYSCONFDIR "/pango";
++	tmp_result = pango_relocate_default (SYSCONFDIR "/pango");
+       g_once_init_leave(&result, tmp_result);
+     }
+   return result;
+@@ -619,7 +675,7 @@
+  * pango_get_lib_subdirectory:
+  *
+  * Returns the name of the "pango" subdirectory of LIBDIR
+- * (which is set at compile time).
++ * (set at compile time, relocated with the shared library when prefix-owned).
+  *
+  * Returns: (transfer none): the Pango lib directory. The returned string should
+  * not be freed.
+@@ -638,7 +694,7 @@
+       if (libdir != NULL)
+ 	tmp_result = g_build_filename (libdir, "pango", NULL);
+       else
+-	tmp_result = LIBDIR "/pango";
++	tmp_result = pango_relocate_default (LIBDIR "/pango");
+       g_once_init_leave(&result, tmp_result);
+     }
+   return result;

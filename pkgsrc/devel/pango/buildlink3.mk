@@ -10,6 +10,12 @@ BUILDLINK_ABI_DEPENDS.pango+=	pango>=1.58.2nb3
 BUILDLINK_PKGSRCDIR.pango?=	../../devel/pango
 
 .include "../../mk/bsd.fast.prefs.mk"
+# Static consumers also resolve dladdr used for prefix-owned defaults.
+.if !empty(OPSYS:MDarwin) || !empty(OPSYS:MNetBSD) || !empty(OPSYS:MLinux)
+.include "../../mk/dlopen.buildlink3.mk"
+BUILDLINK_LDFLAGS.pango+=	${DL_LDFLAGS}
+BUILDLINK_LIBS.pango+=	${DL_LIBS} ${BUILDLINK_LDADD.dl}
+.endif
 
 pkgbase := pango
 .include "../../mk/pkg-build-options.mk"

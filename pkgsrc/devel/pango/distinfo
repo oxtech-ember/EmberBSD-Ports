@@ -9,3 +9,4 @@ SHA1 (patch-pango_pangocairo-coretextfontmap.c) = 395cb1f8472a319c4b1c58ea137e36
 SHA1 (patch-pango_pangocoretext-private.h) = 0d7d61cd7e7b9da34bf8a0d5d1c6e7734341cadf
 SHA1 (patch-pango_pangocoretext.c) = deb37c157f8fb517e2e367a685c4dcab1b93c7c2
 SHA1 (patch-pangocairo-coretext.h) = 2f7c8efad48b58398070f48e71c16d99d3d59f57
+SHA1 (patch-relocatable-directories) = 1f9b7af012bf822310cbecd6bd5677b6f444302e
