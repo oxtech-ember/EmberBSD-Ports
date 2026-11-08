@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.2 2026/09/06 10:23:28 markd Exp $
+
+BLAKE2s (oxygen-sounds-6.8.2.tar.xz) = 1eb3843fdd4d413ae2bd2ba031c93dd5b850436e5054d30cdf1e9b7dbaaa480c
+SHA512 (oxygen-sounds-6.8.2.tar.xz) = f9c3fcf34862231609aa8684ca3e4ff0d08b062d9926239d112b38f0bbe90769b53b975227199c67a0e7c65c7deaff4061a0c7ffd91ebcdcec35012ef7f66d94
+Size (oxygen-sounds-6.8.2.tar.xz) = 1935716 bytes

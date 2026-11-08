@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.2 2026/09/06 10:23:29 markd Exp $
+
+BLAKE2s (oxygen-6.8.2.tar.xz) = 7428107fe82f923420faa50d3c52a7e4e2b77f94d1b8fcf1d765824e6e052d67
+SHA512 (oxygen-6.8.2.tar.xz) = bf9acbb94a5acd7c488cbac4af3ca26471d506ab9faba908a7b684153acb689baa564d7d4263b2f8ff15da33bfe3bcdd0c037569da318d7fad98ce7361a20f49
+Size (oxygen-6.8.2.tar.xz) = 34884632 bytes
