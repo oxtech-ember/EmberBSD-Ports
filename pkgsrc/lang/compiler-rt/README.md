@@ -183,7 +183,9 @@ and archive as this source preparation interface. Native Clang depends on it
 so its compiler-owned builtins and diagnostic runtimes are installed from the
 common version. On Darwin, the package requires explicit `OSX_SDK_PATH` and
 `EMBERBSD_DARWIN_SDK_VERSION`, selects the native CPU and uses LLVM lipo and
-install-name-tool. In the initial compiler phase, its already required LLVM
+install-name-tool. A cross graph supplies that version with
+`--native-make-variable` so only the native metadata query sees it. The guard
+does not read `MACOSX_DEPLOYMENT_TARGET`. In the initial compiler phase, its already required LLVM
 dependency also supplies `llvm-libtool-darwin`; this prevents the independent
 compiler-rt `UseLibtool.cmake` module from discovering the incompatible pkgsrc
 GNU libtool wrapper. Full-phase builds retain the explicitly selected

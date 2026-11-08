@@ -74,6 +74,8 @@ options = values.pop('_options_by_required', {})
 if options:
     values['PKG_OPTIONS'] = options.get(settings.get('PKGNAME_REQD'), 'default')
 cross = settings['USE_CROSS_COMPILE']
+if values.pop('_darwin_sdk_guard', None) and cross == 'no' and 'EMBERBSD_DARWIN_SDK_VERSION' not in settings:
+    values['PKG_FAIL_REASON'] = '"compiler-rt Darwin requires explicit OSX_SDK_PATH and EMBERBSD_DARWIN_SDK_VERSION"'
 version = values.get('PKGVERSION', '1')
 values.setdefault('PKGNAME', directory.name + '-' + version)
 values.setdefault('PKGVERSION', version)
@@ -295,6 +297,79 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
                     '--make-variable', assignment, success=False))
         self.assertIn('duplicate --make-variable', self.run_export(
             '--make-variable', 'SAMPLE=yes', '--make-variable', 'SAMPLE=no', success=False))
+
+    def test_native_make_variable_fixes_host_guard_without_changing_targets(self):
+        # The real compiler-rt Darwin guard fails a native query when
+        # EMBERBSD_DARWIN_SDK_VERSION is absent, even if MAKECONF already
+        # selected OSX_SDK_PATH. It does not read MACOSX_DEPLOYMENT_TARGET.
+        control = self.run_export()
+        control_nodes = self.nodes(control)
+        for package in ('devel/generator', 'devel/hostlib'):
+            self.packages[package]['_darwin_sdk_guard'] = True
+        calls = self.pkgsrc / 'calls.jsonl'
+        calls.unlink()
+        error = self.run_export(success=False)
+        self.assertIn('pkgsrc rejected devel/generator', error)
+        self.assertIn('compiler-rt Darwin requires explicit OSX_SDK_PATH and EMBERBSD_DARWIN_SDK_VERSION', error)
+        failed = [json.loads(line) for line in calls.read_text().splitlines()]
+        generator = [call for call in failed if call['package'] == 'devel/generator']
+        self.assertTrue(generator)
+        self.assertTrue(all(call['settings']['USE_CROSS_COMPILE'] == 'no' and
+                            'EMBERBSD_DARWIN_SDK_VERSION' not in call['settings'] and
+                            'MACOSX_DEPLOYMENT_TARGET' not in call['settings']
+                            for call in generator))
+        calls.unlink()
+        graph = self.run_export('--native-make-variable', 'EMBERBSD_DARWIN_SDK_VERSION=27.2')
+        nodes = self.nodes(graph)
+        native = {'devel/generator', 'devel/hostlib', 'devel/bootstrap'}
+        target = {'devel/app', 'devel/library', 'devel/runtime', 'devel/tests'}
+        seen = [json.loads(line) for line in calls.read_text().splitlines()]
+        self.assertEqual({call['package'] for call in seen}, native | target)
+        for call in seen:
+            settings = call['settings']
+            self.assertNotIn('MACOSX_DEPLOYMENT_TARGET', settings)
+            if call['package'] in native:
+                self.assertEqual(settings['USE_CROSS_COMPILE'], 'no')
+                self.assertEqual(settings['EMBERBSD_DARWIN_SDK_VERSION'], '27.2')
+            if call['package'] in target:
+                self.assertEqual(settings['USE_CROSS_COMPILE'], 'yes')
+                self.assertNotIn('EMBERBSD_DARWIN_SDK_VERSION', settings)
+        for key, node in control_nodes.items():
+            if key.startswith('target:'):
+                self.assertEqual(nodes[key]['input_sha256'], node['input_sha256'], key)
+            if key.startswith('host:'):
+                self.assertNotEqual(nodes[key]['input_sha256'], node['input_sha256'], key)
+        self.assertEqual(graph['context']['shared_inputs']['make-variables'],
+                         control['context']['shared_inputs']['make-variables'])
+        self.assertNotIn('native-make-variables', control['context']['shared_inputs'])
+        self.assertIn('native-make-variables', graph['context']['shared_inputs'])
+        self.assertNotEqual(graph['context']['shared_inputs']['native-make-variables'],
+                            graph['context']['shared_inputs']['make-variables'])
+        self.assertIn('make variables: none', graph['provenance']['source'])
+        self.assertIn('native make variables: EMBERBSD_DARWIN_SDK_VERSION=27.2',
+                      graph['provenance']['source'])
+        self.assertNotIn('EMBERBSD_DARWIN_SDK_VERSION',
+                         graph['provenance']['source'].split('; native make variables:')[0])
+        calls.unlink()
+        parallel = self.run_export('--jobs', '2', '--native-make-variable', 'EMBERBSD_DARWIN_SDK_VERSION=27.2')
+        self.assertEqual(graph, parallel)
+        calls.unlink()
+        self.run_export('--make-variable', 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
+                        '--native-make-variable', 'EMBERBSD_DARWIN_SDK_VERSION=27.2')
+        combined = [json.loads(line) for line in calls.read_text().splitlines()]
+        self.assertTrue(combined)
+        self.assertTrue(all(call['settings']['EMBERBSD_DARWIN_BOOTSTRAP'] == 'yes' for call in combined))
+        self.assertTrue(all((call['settings'].get('EMBERBSD_DARWIN_SDK_VERSION') == '27.2')
+                            == (call['settings']['USE_CROSS_COMPILE'] == 'no') for call in combined))
+        for assignment in ('EMBERBSD_DARWIN_SDK_VERSION=', 'USE_CROSS_COMPILE=no',
+                           'TARGET_MACHINE_ARCH=aarch64', 'MAKECONF=/tmp/other.conf'):
+            with self.subTest(assignment=assignment):
+                self.assertIn('--native-make-variable assignment', self.run_export(
+                    '--native-make-variable', assignment, success=False))
+        self.assertIn('duplicate --native-make-variable', self.run_export(
+            '--native-make-variable', 'SAMPLE=yes', '--native-make-variable', 'SAMPLE=no', success=False))
+        self.assertIn('conflicting --make-variable and --native-make-variable', self.run_export(
+            '--make-variable', 'SAMPLE=yes', '--native-make-variable', 'SAMPLE=no', success=False))
 
     def test_native_constraint_failure_is_not_resolved_in_python(self):
         self.packages['devel/app']['TOOL_DEPENDS'] = 'generator>=3:../../devel/generator'
@@ -557,7 +632,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         spec = importlib.util.spec_from_file_location('export_build_graph', SCRIPT)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        args = types.SimpleNamespace(make_variable=[], pkgsrc=self.pkgsrc,
+        args = types.SimpleNamespace(make_variable=[], native_make_variable=[], pkgsrc=self.pkgsrc,
                                      makeconf=self.config, bmake=self.bmake,
                                      pkg_admin=self.pkg_admin)
         calls = []

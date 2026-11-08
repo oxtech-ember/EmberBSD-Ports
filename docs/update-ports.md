@@ -68,6 +68,28 @@ This accepts scalar assignments only; it does not accept make targets or flags.
 `MAKECONF`, `USE_CROSS_COMPILE`, and target-routing variables remain controlled
 by the exporter.
 
+Host-only metadata uses repeatable `--native-make-variable NAME=VALUE`. It has
+the same scalar, reserved-name, and duplicate checks, and a name cannot also be
+a global `--make-variable`. The assignment is added only to native role queries
+(`USE_CROSS_COMPILE=no`), including tool dependencies and the native packages
+those tools depend on. Target queries do not receive it. It is absent from the
+global `make-variables` digest and from target node hashes. Provenance records
+it as `native make variables`, and `shared_inputs` records
+`native-make-variables` only when at least one assignment is present.
+
+On Darwin, native `lang/compiler-rt` rejects a metadata query unless
+`OSX_SDK_PATH` and `EMBERBSD_DARWIN_SDK_VERSION` are both set. A selected host
+prefix `mk.conf` can already provide `OSX_SDK_PATH`. Pass the SDK version with
+`--native-make-variable`; do not pass it with global `--make-variable`, because
+that stamps Darwin SDK metadata onto NetBSD target queries. The compiler-rt
+guard does not read `MACOSX_DEPLOYMENT_TARGET`, and the graph does not
+synthesize one. Read `sdk_version` from the selected SDK with the SDK reader
+`scripts/darwin-sdk.py --macos-sdk <absolute SDK> --xcode-version-plist
+<absolute Xcode Contents/version.plist>`. Do not derive the version from the
+SDK directory name, the host ABI, or `xcrun`. The frozen recipe tree,
+MAKECONF, and `--revision` stay the sources that were built. A newer exporter
+may query that frozen tree; its own file digest is the `exporter` shared input.
+
 The exporter asks bmake for expanded dependency variables and loaded makefiles.
 It requires native `-dg1` variable inventory output. It queries the listed
 `FILESDIR.*` variables with `-V` to resolve shared copied-source trees.

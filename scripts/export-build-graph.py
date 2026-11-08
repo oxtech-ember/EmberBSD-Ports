@@ -59,7 +59,7 @@ def assignments(value):
     return result
 
 
-def make_variables(values):
+def make_variables(values, option='--make-variable'):
     """Parse repeatable, scalar bmake assignments (never make arguments)."""
     result = {}
     for value in values:
@@ -68,9 +68,9 @@ def make_variables(values):
                      re.fullmatch(r'PKG_OPTIONS\.[A-Za-z0-9][A-Za-z0-9_.-]*', key)) or
                 key in RESERVED_MAKE_VARIABLES or key.startswith('TARGET_') or
                 not item or not re.fullmatch(r'[A-Za-z0-9_./:+,@%+-]+', item)):
-            raise ExportError('unsupported --make-variable assignment')
+            raise ExportError('unsupported ' + option + ' assignment')
         if key in result:
-            raise ExportError('duplicate --make-variable: ' + key)
+            raise ExportError('duplicate ' + option + ': ' + key)
         result[key] = item
     return dict(sorted(result.items()))
 
@@ -80,6 +80,11 @@ class Exporter:
         self.sha256_file = sha256_file
         self.args = args
         self.make_variables = make_variables(args.make_variable)
+        self.native_make_variables = make_variables(
+            args.native_make_variable, '--native-make-variable')
+        overlap = sorted(set(self.make_variables) & set(self.native_make_variables))
+        if overlap:
+            raise ExportError('conflicting --make-variable and --native-make-variable: ' + overlap[0])
         self.root = args.pkgsrc.resolve(strict=True)
         self.makeconf = args.makeconf.resolve(strict=True)
         self.bmake = args.bmake.resolve(strict=True)
@@ -120,6 +125,10 @@ class Exporter:
                    'MAKECONF=' + str(self.makeconf),
                    'USE_CROSS_COMPILE=' + cross, '_MAKEVARS_MK=defined']
         command += [key + '=' + value for key, value in self.make_variables.items()]
+        # Native assignments stay off target queries. A Darwin SDK version that
+        # satisfies a host compiler-rt guard must not enter NetBSD metadata.
+        if cross == 'no':
+            command += [key + '=' + value for key, value in self.native_make_variables.items()]
         command += [key + '=' + value for key, value in sorted(settings.items())]
         if pattern:
             command.append('PKGNAME_REQD=' + pattern)
@@ -234,7 +243,7 @@ class Exporter:
 
     def visit(self, package, cross, settings, environment, pattern=None):
         identity = self.node_identity(package, cross, settings)
-        context = [cross, settings, environment, self.make_variables]
+        context = self.query_context(cross, settings, environment)
         if identity in self.nodes:
             if self.contexts[identity] != context:
                 raise ExportError('conflicting recursive contexts for ' + identity)
@@ -276,9 +285,16 @@ class Exporter:
             identity += '@' + digest(canonical(settings))[:16]
         return identity
 
+    def query_context(self, cross, settings, environment):
+        context = [cross, settings, environment, self.make_variables]
+        if cross == 'no' and self.native_make_variables:
+            context.append(self.native_make_variables)
+        return context
+
     def query_key(self, package, cross, settings, environment, pattern):
+        native = tuple(self.native_make_variables.items()) if cross == 'no' else ()
         return (package, cross, tuple(sorted(settings.items())), tuple(sorted(environment.items())),
-                tuple(self.make_variables.items()), pattern)
+                tuple(self.make_variables.items()), native, pattern)
 
     def query_result(self, package, cross, settings, environment, pattern):
         key = self.query_key(package, cross, settings, environment, pattern)
@@ -332,7 +348,7 @@ class Exporter:
         for request in requests:
             package, cross, settings, environment, pattern = request
             identity = self.node_identity(package, cross, settings)
-            context = [cross, settings, environment, self.make_variables]
+            context = self.query_context(cross, settings, environment)
             if identity in self.contexts:
                 if self.contexts[identity] != context:
                     raise ExportError('conflicting recursive contexts for ' + identity)
@@ -405,21 +421,26 @@ class Exporter:
                   'make-variables': digest(canonical(self.make_variables)),
                   'environment': digest(canonical(self.environment)),
                   'exporter': self.file_digest(Path(__file__))}
+        if self.native_make_variables:
+            shared['native-make-variables'] = digest(canonical(self.native_make_variables))
         for item in self.args.shared_input:
             name, sep, path = item.partition('=')
             if not sep or not re.fullmatch(r'[a-zA-Z0-9_.-]+', name) or name in shared:
                 raise ExportError('invalid or duplicate --shared-input name')
             shared[name] = self.file_digest(path)
-        make_variable_summary = ', '.join(
-            key + '=' + value for key, value in self.make_variables.items()) or 'none'
+        def summary(variables):
+            return ', '.join(key + '=' + value for key, value in variables.items()) or 'none'
+        source = ('pkgsrc native metadata (' + self.args.mode +
+                  '; dependency phase ' + self.args.dependency_phase +
+                  '; make variables: ' + summary(self.make_variables))
+        if self.native_make_variables:
+            source += '; native make variables: ' + summary(self.native_make_variables)
         return {'schema': 'ports-graph-v1',
                 'context': {'target': self.args.target, 'triplet': self.args.triplet,
                             'toolchain_sha256': self.file_digest(self.args.toolchain_input),
                             'base_sha256': self.file_digest(self.args.base_input),
                             'shared_inputs': shared},
-                'provenance': {'source': 'pkgsrc native metadata (' + self.args.mode +
-                               '; dependency phase ' + self.args.dependency_phase +
-                               '; make variables: ' + make_variable_summary + ')',
+                'provenance': {'source': source + ')',
                                'revision': self.args.revision},
                 'nodes': [self.nodes[key] for key in sorted(self.nodes)]}
 
@@ -440,7 +461,9 @@ def main():
     parser.add_argument('--root', action='append', required=True, help='category/package; repeat for each root')
     parser.add_argument('--shared-input', action='append', default=[], metavar='NAME=FILE')
     parser.add_argument('--make-variable', action='append', default=[], metavar='NAME=VALUE',
-                        help='repeatable scalar bmake assignment; does not accept targets or make flags')
+                        help='repeatable scalar bmake assignment for every query; does not accept targets or make flags')
+    parser.add_argument('--native-make-variable', action='append', default=[], metavar='NAME=VALUE',
+                        help='repeatable scalar assignment for native role queries only, including their native dependencies')
     parser.add_argument('--max-nodes', type=int, default=1000)
     parser.add_argument('--jobs', type=int, default=1,
                         help='maximum concurrent bmake metadata queries (default: 1)')
