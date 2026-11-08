@@ -1,0 +1,3 @@
+Qt API for storing passwords. This sysroot package is 0.16.0. It stores
+secrets through libsecret when that service is present, and it does not
+change the login keyring.

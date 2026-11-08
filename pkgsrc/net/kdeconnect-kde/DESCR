@@ -1,0 +1,3 @@
+KDE Connect libraries, plugins, and the desktop client. PulseAudio control
+plugins and the Qt Bluetooth backend are not built. The daemon is not
+started and pairing is not enabled.

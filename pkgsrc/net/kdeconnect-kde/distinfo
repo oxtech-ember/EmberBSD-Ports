@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (kdeconnect-kde-25.08.3.tar.xz) = 5defc36f5620dafbb5b0ecf0ee9725451c5e07e8984869039a404023a820aaa8
+SHA512 (kdeconnect-kde-25.08.3.tar.xz) = 7c83a68d03e45eb60d10d5d38017029130807c1e6f3943bf593c1709679973c9173a46c3e639da51c44fa6f067043d3a578dbbbc21455b424b1cf3583dd061d5
+Size (kdeconnect-kde-25.08.3.tar.xz) = 635720 bytes
+SHA1 (patch-core_sslhelper.cpp) = 9200c55bd3facd2c8e36d17ecc794410889a1922
+SHA1 (patch-interfaces_conversationmessage.h) = 2fffc0865c5d89546c458f2bed354634cc90b3da
+SHA1 (patch-plugins_mousepad_waylandremoteinput.cpp) = c9528ac9231c09b9ccb6c431a2acaa863dc07e17
