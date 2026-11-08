@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (plasma-welcome-6.8.2.tar.xz) = 4110b503ce4a7b373bd3f75b8376480e4d37a1768a64bd99ef9c8ff0099f431f
+SHA512 (plasma-welcome-6.8.2.tar.xz) = 8dcfcad5c56e64b0f8cedce82d2d8011a8371c78b3aa4961cdd1012cd8b2c667e7da0f1566059c314a2383bf46add654facf92a32e8d27d04ddfe3696fa89526
+Size (plasma-welcome-6.8.2.tar.xz) = 1023392 bytes
+SHA1 (patch-src_public_controller.cpp) = 4d1cc5d605fbaeb89f9c633a8cc7a3e4d25e10bb
+SHA1 (patch-src_public_utils.cpp) = ca6a22c6088a5e6cdb45e8951588fbc5b8ddf4e9

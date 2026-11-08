@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.2 2025/12/21 20:17:06 markd Exp $
+
+BLAKE2s (kirigami-addons-1.12.0.tar.xz) = a8a62093f8188f53c2b63b0e59ae8dc965bae428e3cab0d4c5554950c9610e64
+SHA512 (kirigami-addons-1.12.0.tar.xz) = b358d185dfc2e66a0734e611070374749f65adac08ad7de912ae0d77b1c114d4cd35e84a28095c424353ab70cc605a0c9354b8386ce1c7558b4e411b2cad105f
+Size (kirigami-addons-1.12.0.tar.xz) = 2814364 bytes

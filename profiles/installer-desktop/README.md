@@ -76,6 +76,49 @@ and hashes the bundle before offering disk-write confirmation, then validates
 its target copy and every package archive before normal `pkg_add` execution.
 The bundle is available through the same USB or HTTP(S) set source as the OS.
 
+## Sign a cross-built package before sysroot installation
+
+The signing contract is the SDK release procedure. This profile only records
+the host commands that accept or reject an archive. Do not place a private key
+in the repository, a package, a log or this file. The public trust root is
+`trust/emberbsd-release-root.pem` in the SDK source. Its leaf is the existing
+release signer, with `CA:FALSE`, `digitalSignature`, and exactly
+`codeSigning,emailProtection`.
+
+`pkg_admin -C` takes a configuration file, not a directory. An unreadable
+directory leaves `CERTIFICATE_ANCHOR_PKGS` empty and `VERIFIED_INSTALLATION`
+at its built-in value `never`. `pkg_add` then prints `Failed to verify
+signature` and can still exit 0. That exit is not acceptance.
+
+Create two regular files. The signing file is empty. The verification file
+contains exactly:
+
+```text
+CERTIFICATE_ANCHOR_PKGS=/absolute/trust/emberbsd-release-root.pem
+VERIFIED_INSTALLATION=always
+GPG_KEYRING_VERIFY=/dev/null
+```
+
+Sign the unsigned archive, then require `check-signature` to exit 0 with an
+empty standard error. The tool prints `Sigature ok` on standard output. A
+tampered copy of the same archive must exit 1. Install the checked archive
+with the same verification file:
+
+```sh
+pkg_admin -C /absolute/sign.conf x509-sign-package \
+  unsigned.tgz signed.tgz /absolute/leaf-key.pem /absolute/leaf-cert.pem
+pkg_admin -C /absolute/verify.conf check-signature /absolute/signed.tgz
+pkg_add -C /absolute/verify.conf -U -K /usr/pkg/pkgdb -p /usr/pkg \
+  -P /absolute/sysroot -I -m 'NetBSD/x86_64 11.0' /absolute/signed.tgz
+```
+
+`packages/amd64/All` retains the unsigned archive. Only the checked signed
+file is installed. An OpenSSL content check of the embedded PKCS7 uses
+`cms -verify -binary` against the same public root. Without `-binary` the
+content check does not match the pkg_tools payload and is not evidence of a
+bad signature. A successful certificate line does not replace the command's
+exit status: a later payload block can still fail.
+
 ## Assemble a Plasma bundle
 
 Use the complete output of the [package-set auditor](../../probes/plasma-mobile/toolkit/tests/package-set.md)
