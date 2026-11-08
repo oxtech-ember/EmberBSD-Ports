@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (print-manager-6.8.2.tar.xz) = 52d939e0268ea03275d9aec917f5817dcb3a4893694da740d93c46ec9ae6ca08
+SHA512 (print-manager-6.8.2.tar.xz) = 6ccccf85e2a0e500b90d9615ef9f66fcfdbac2e26199f377d4d2a56b1c908c9bd6aed4d6aeaef90b2f31c9bffbedaa31a63b5dac0b455a4bc205107fc32969f8
+Size (print-manager-6.8.2.tar.xz) = 418564 bytes
+SHA1 (patch-CMakeLists.txt) = c1f5624ccf2c6036f2dd8d1bb92f43fb9b447f26
+SHA1 (patch-src_print-queue_CMakeLists.txt) = 838ea5747f1b58e4c32923be30777165a94eb50b
+SHA1 (patch-src_print-queue_main.cpp) = 2a639a378717c89d0145ef678c006c5b21bbe404

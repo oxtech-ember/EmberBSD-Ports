@@ -1,0 +1,21 @@
+$NetBSD$
+
+Find the frameworks used by the Kirigami defaults.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -34,11 +34,14 @@
+     Widgets
+     Qml
+     Quick
++    QuickControls2
+ )
+ 
+ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED 
++    ColorScheme
+     Config 
+     ConfigWidgets 
++    IconThemes
+     CoreAddons 
+     DBusAddons 
+     I18n 

@@ -1,0 +1,22 @@
+$NetBSD$
+
+Link the frameworks used by the Kirigami defaults.
+
+--- src/print-queue/CMakeLists.txt.orig
++++ src/print-queue/CMakeLists.txt
+@@ -21,11 +21,15 @@
+     Qt::Core
+     Qt::Gui
+     Qt::Quick
++    Qt::QuickControls2
+     KF6::CoreAddons
+     KF6::I18n
+     KF6::I18nQml
+     KF6::DBusAddons
+     KirigamiApp
++    KF6::ColorScheme
++    KF6::ConfigCore
++    KF6::IconThemes
+     kcups
+ )
+ 

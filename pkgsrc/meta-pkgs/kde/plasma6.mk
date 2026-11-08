@@ -31,7 +31,8 @@ _EMBERBSD_PLASMA6_RECIPES= audio/plasma6-plasma-pa devel/plasma6-kwayland time/p
     www/plasma6-plasma-browser-integration \
     devel/plasma6-plasma-sdk \
     misc/plasma6-kwrited \
-    security/plasma6-ksshaskpass
+    security/plasma6-ksshaskpass \
+    print/plasma6-print-manager
 .if empty(_EMBERBSD_PLASMA6_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Plasma 6 recipe ${PKGPATH} is not prepared in the common toolkit"
 .endif
