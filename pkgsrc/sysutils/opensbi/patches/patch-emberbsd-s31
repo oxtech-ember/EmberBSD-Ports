@@ -1677,8 +1677,36 @@ index 1df0280..e501c12 100644
 +# CONFIG_SBI_ECALL_MPXY is not set
 
 --- /dev/null
++++ b/platform/generic/espressif/esp32s31/objects.mk
+@@ -0,0 +1,24 @@
++#
++# SPDX-License-Identifier: BSD-2-Clause
++#
++# ESP32-S31 (RV32 CLIC) generic platform_override module + boot layout.
++# Everything here is gated on CONFIG_PLATFORM_ESPRESSIF_ESP32S31 because
++# the generic build discovers every objects.mk unconditionally.
++#
++
++ifeq ($(CONFIG_PLATFORM_ESPRESSIF_ESP32S31),y)
++
++carray-platform_override_modules-y += esp32s31
++platform-objs-y += espressif/esp32s31/esp32s31.o
++platform-objs-y += espressif/esp32s31/cache_mmu.o
++platform-objs-y += espressif/esp32s31/apm.o
++platform-objs-y += espressif/esp32s31/hsm.o
++platform-objs-y += espressif/esp32s31/flash.o
++
++ifeq ($(S31_FLASH_DIAG),y)
++$(platform_build_dir)/espressif/esp32s31/flash.o: CFLAGS += -DS31_FLASH_DIAG
++endif
++
++FW_TEXT_START    = 0x2F000000
++
++endif
+
+--- /dev/null
 +++ b/platform/generic/espressif/esp32s31/flash.c
-@@ -0,0 +1,574 @@
+@@ -0,0 +1,608 @@
 +/*
 + * SPDX-License-Identifier: BSD-2-Clause
 + *
@@ -1746,6 +1774,8 @@ index 1df0280..e501c12 100644
 +	((s31_rom_cache_all_fn)0x2f800600U)
 +#define S31_ROM_CACHE_INVALIDATE_RANGE \
 +	((s31_rom_cache_range_fn)0x2f8005e8U)
++#define S31_ROM_CACHE_WRITEBACK_RANGE \
++	((s31_rom_cache_range_fn)0x2f8005f0U)
 +#define S31_ROM_CACHE_DISABLE_ICACHE0 \
 +	((s31_rom_cache_disable_fn)0x2f80068cU)
 +#define S31_ROM_CACHE_ENABLE_ICACHE0 \
@@ -2094,6 +2124,33 @@ index 1df0280..e501c12 100644
 +}
 +
 +static int
++s31_flash_sync_buffer(u32 address, u32 length, bool output)
++{
++	u32 start = address & ~(S31_FLASH_CACHE_LINE - 1);
++	u64 end = ((u64)address + length + S31_FLASH_CACHE_LINE - 1) &
++	    ~((u64)S31_FLASH_CACHE_LINE - 1);
++	int error;
++
++	if (length == 0)
++		return 0;
++	if (start < PSRAM_START || end > (u64)PSRAM_START + PSRAM_SIZE)
++		return SBI_ERR_INVALID_ADDRESS;
++	/*
++	 * The caller owns the buffer's cache lines for the transfer and uses
++	 * non-coherent DMA synchronization. Our identity alias is cacheable:
++	 * discard stale WRITE input, or publish READ output to backing RAM
++	 * before the caller invalidates its destination mapping.
++	 */
++	if (output)
++		error = S31_ROM_CACHE_WRITEBACK_RANGE(S31_CACHE_MAP_L1_DCACHE,
++		    start, (u32)(end - start));
++	else
++		error = S31_ROM_CACHE_INVALIDATE_RANGE(S31_CACHE_MAP_L1_DCACHE,
++		    start, (u32)(end - start));
++	return error ? SBI_EFAIL : 0;
++}
++
++static int
 +s31_flash_validate_buffer(u32 address, u32 length, bool output)
 +{
 +	unsigned long access = output ? SBI_DOMAIN_WRITE : SBI_DOMAIN_READ;
@@ -2166,9 +2223,6 @@ index 1df0280..e501c12 100644
 +		error = s31_flash_validate_buffer(buffer, length, !writes);
 +		if (error)
 +			goto done;
-+		if (writes && length)
-+			sbi_memcpy(s31_flash_bounce, (const void *)(uintptr_t)buffer,
-+			    length);
 +	} else if (funcid == S31_SBI_FLASH_ERASE) {
 +		error = s31_flash_range_valid(address, length, chip->chip_size,
 +		    chip->sector_size, S31_FLASH_BOUNCE_SIZE) ? 0 :
@@ -2192,6 +2246,13 @@ index 1df0280..e501c12 100644
 +	if (error)
 +		goto done;
 +	S31_FLASH_DIAG_MARK('P');
++	if (writes) {
++		error = s31_flash_sync_buffer(buffer, length, false);
++		if (error)
++			goto release_harts;
++		sbi_memcpy(s31_flash_bounce, (const void *)(uintptr_t)buffer,
++		    length);
++	}
 +	error = s31_flash_cache_disable(&icache_state, &dcache_state);
 +	if (error)
 +		goto release_harts;
@@ -2219,10 +2280,11 @@ index 1df0280..e501c12 100644
 +	S31_FLASH_DIAG_MARK('E');
 +	if (changes)
 +		cache_error = s31_flash_invalidate(address, length);
-+	if (funcid == S31_SBI_FLASH_READ && rom_error == 0 && length)
++	if (funcid == S31_SBI_FLASH_READ && rom_error == 0 && length) {
 +		sbi_memcpy((void *)(uintptr_t)buffer, s31_flash_bounce, length);
-+	if (funcid == S31_SBI_FLASH_READ && rom_error == 0 && length)
++		cache_error = s31_flash_sync_buffer(buffer, length, true);
 +		S31_FLASH_DIAG_MARK('C');
++	}
 +	error = s31_flash_result(rom_error, cache_error);
 +
 +release_harts:
@@ -2253,32 +2315,4 @@ index 1df0280..e501c12 100644
 +	return s31_flash_operation(funcid, (u32)regs->a0, (u32)regs->a1,
 +	    (u32)regs->a2);
 +}
-
---- /dev/null
-+++ b/platform/generic/espressif/esp32s31/objects.mk
-@@ -0,0 +1,24 @@
-+#
-+# SPDX-License-Identifier: BSD-2-Clause
-+#
-+# ESP32-S31 (RV32 CLIC) generic platform_override module + boot layout.
-+# Everything here is gated on CONFIG_PLATFORM_ESPRESSIF_ESP32S31 because
-+# the generic build discovers every objects.mk unconditionally.
-+#
-+
-+ifeq ($(CONFIG_PLATFORM_ESPRESSIF_ESP32S31),y)
-+
-+carray-platform_override_modules-y += esp32s31
-+platform-objs-y += espressif/esp32s31/esp32s31.o
-+platform-objs-y += espressif/esp32s31/cache_mmu.o
-+platform-objs-y += espressif/esp32s31/apm.o
-+platform-objs-y += espressif/esp32s31/hsm.o
-+platform-objs-y += espressif/esp32s31/flash.o
-+
-+ifeq ($(S31_FLASH_DIAG),y)
-+$(platform_build_dir)/espressif/esp32s31/flash.o: CFLAGS += -DS31_FLASH_DIAG
-+endif
-+
-+FW_TEXT_START    = 0x2F000000
-+
-+endif
 
