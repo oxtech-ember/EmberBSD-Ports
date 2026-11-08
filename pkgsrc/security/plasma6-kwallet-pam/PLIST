@@ -1,0 +1,7 @@
+@comment $NetBSD$
+lib/security/pam_kwallet5.so
+libexec/pam_kwallet_init
+share/examples/plasma6-kwallet-pam/pam_kwallet_init.desktop
+share/examples/plasma6-kwallet-pam/plasma-kwallet-pam.service
+@pkgdir lib/systemd/user
+@pkgdir etc/xdg/autostart

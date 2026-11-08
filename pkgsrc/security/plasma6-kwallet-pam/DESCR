@@ -1,0 +1,1 @@
+PAM module that unlocks KWallet. It is not added to a login stack.
