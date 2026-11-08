@@ -559,3 +559,36 @@ Primary sources: [GtkTreeView](https://docs.gtk.org/gtk4/class.TreeView.html),
 [GtkCellRenderer.snapshot](https://docs.gtk.org/gtk4/vfunc.CellRenderer.snapshot.html),
 [GtkCellEditable](https://docs.gtk.org/gtk4/iface.CellEditable.html),
 [GtkTreeDragSource](https://docs.gtk.org/gtk4/iface.TreeDragSource.html).
+
+# GTK4 cursor bitmaps, native widgets and MDI
+
+The GTK4 cursor-to-bitmap constructor copies pixels from the cursor's borrowed
+`GdkTexture` into an owned pixbuf. Named cursors do not expose a texture in GTK4;
+converting one, or an invalid cursor, yields an invalid bitmap. It does not
+substitute a theme image. Display lookup uses the GTK4 X11 header and a helper
+name distinct from `wxDisplayFactory::GetDisplay(unsigned)`.
+
+MDI child menus use the parent GtkBox and GTK4 measurement, retaining their
+position above the notebook and their non-expanding vertical layout. MIME icon
+lookup uses the display's GtkIconTheme and releases both the icon paintable and
+its returned GFile. The filename interface returns a local path when available;
+resource-backed and generated icons have no local filename and return empty.
+GTK4 can return SVG icon files; loading remains the responsibility of the
+existing image/icon consumer. GTK3 keeps its original lookup flags and API.
+
+`native-small4-contract` checks custom cursor RGBA pixels after cursor disposal,
+the named/invalid cursor boundary, native widget retention and explicit ownership
+transfer, and MDI menu parenting/client geometry. Build it with
+`BUILD_NATIVE_SMALL_CONTRACT=ON` using the same SDK/installed wx-config as the
+other GUI contracts. It requires a display and returns failures through OnRun.
+Target syntax and Clang Static Analyzer checks cover the modified translation
+units; linked execution, GUI behavior and runtime memory checks remain pending.
+
+GTK4 continues to define `wxHAS_NATIVE_WINDOW`: unparented GtkWidgets can be
+embedded, retained by their caller after wrapper deletion, or transferred with
+`Disown()`. Both floating and already-owned native widget references are covered.
+GTK4 does not define `wxHAS_NATIVE_CONTAINER_WINDOW`: it has no public equivalent
+of GTK3's foreign GdkWindow ownership/reparent API. This capability boundary is
+checked by the fixture at compile time; foreign toplevel embedding is not
+represented by a successful no-op Create. GTK3's existing container path is
+unchanged.

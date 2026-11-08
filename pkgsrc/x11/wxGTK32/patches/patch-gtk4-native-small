@@ -1,0 +1,169 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local wxWidgets 3.2.12 GTK4 port.
+Use public GTK4 layout/icon APIs and preserve native child widget ownership.
+Foreign toplevel embedding has no GTK4 public API and is not advertised.
+
+--- include/wx/nativewin.h.orig
++++ include/wx/nativewin.h
+@@ -38,6 +38,12 @@
+     typedef HWND wxNativeContainerWindowHandle;
+     typedef HWND wxNativeWindowHandle;
+ #elif defined(__WXGTK__)
++    typedef GtkWidget *wxNativeWindowHandle;
++    #ifdef __WXGTK4__
++        // GTK4 has no public foreign-surface ownership/reparenting API.
++        // Native child widgets remain supported by wxNativeWindow.
++        #undef wxHAS_NATIVE_CONTAINER_WINDOW
++    #else
+     // GdkNativeWindow is guint32 under GDK/X11 and gpointer under GDK/WIN32
+     #ifdef __UNIX__
+         typedef unsigned long wxNativeContainerWindowId;
+@@ -45,7 +51,7 @@
+         typedef void *wxNativeContainerWindowId;
+     #endif
+     typedef GdkWindow *wxNativeContainerWindowHandle;
+-    typedef GtkWidget *wxNativeWindowHandle;
++    #endif
+ #elif defined(__WXOSX_COCOA__)
+     typedef NSView *wxNativeWindowHandle;
+ 
+--- src/gtk/nativewin.cpp.orig
++++ src/gtk/nativewin.cpp
+@@ -26,7 +26,7 @@
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ 
+-#ifdef GDK_WINDOWING_X11
++#if defined(GDK_WINDOWING_X11) && defined(wxHAS_NATIVE_CONTAINER_WINDOW)
+     #include <gdk/gdkx.h>
+ #endif
+ 
+@@ -44,6 +44,10 @@
+                        wxNativeWindowHandle widget)
+ {
+     wxCHECK_MSG( widget, false, wxS("Invalid null GtkWidget") );
++#ifdef __WXGTK4__
++    wxCHECK_MSG(parent && !GTK_IS_WINDOW(widget) && !gtk_widget_get_parent(widget),
++                false, wxS("Native widget must be an unparented child widget"));
++#endif
+ 
+     // Standard wxGTK controls use PreCreation() but we never have any size
+     // specified at this stage, so don't bother with it.
+@@ -52,6 +56,12 @@
+ 
+     // Add a reference to the widget to match g_object_unref() in wxWindow dtor.
+     m_widget = widget;
++#ifdef __WXGTK4__
++    // Retain the caller's initial ownership when parenting sinks a freshly
++    // created widget. Disown() releases this reference, not the wx lifetime ref.
++    if (g_object_is_floating(m_widget))
++        g_object_ref_sink(m_widget);
++#endif
+     g_object_ref(m_widget);
+ 
+     parent->DoAddChild(this);
+@@ -61,7 +71,14 @@
+     // Ensure that the best (and minimal) size is set to fully display the
+     // widget.
+     GtkRequisition req;
++#ifdef __WXGTK4__
++    gtk_widget_measure(widget, GTK_ORIENTATION_HORIZONTAL, -1,
++                       NULL, &req.width, NULL, NULL);
++    gtk_widget_measure(widget, GTK_ORIENTATION_VERTICAL, req.width,
++                       NULL, &req.height, NULL, NULL);
++#else
+     gtk_widget_get_preferred_size(widget, NULL, &req);
++#endif
+     SetInitialSize(wxSize(req.width, req.height));
+ 
+     return true;
+@@ -75,6 +92,8 @@
+ // ----------------------------------------------------------------------------
+ // wxNativeContainerWindow
+ // ----------------------------------------------------------------------------
++
++#ifdef wxHAS_NATIVE_CONTAINER_WINDOW
+ 
+ // TODO: we probably need equivalent code for other GDK platforms
+ #ifdef GDK_WINDOWING_X11
+@@ -182,3 +201,5 @@
+     // object) or we are being deleted because the native window was destroyed
+     // and in this case our m_widget was set to NULL by OnNativeDestroyed()
+ }
++
++#endif // wxHAS_NATIVE_CONTAINER_WINDOW
+--- src/gtk/mdi.cpp.orig
++++ src/gtk/mdi.cpp
+@@ -199,7 +199,12 @@
+             if (menubar && menubar->IsShown())
+             {
+                 GtkRequisition req;
++#ifdef __WXGTK4__
++                gtk_widget_measure(menubar->m_widget, GTK_ORIENTATION_VERTICAL,
++                                   -1, NULL, &req.height, NULL, NULL);
++#else
+                 gtk_widget_get_preferred_height(menubar->m_widget, NULL, &req.height);
++#endif
+                 *height -= req.height;
+                 if (*height < 0) *height = 0;
+             }
+@@ -313,8 +318,14 @@
+ 
+         /* insert the invisible menu bar into the _parent_ mdi frame */
+         m_menuBar->Show(false);
++#ifdef __WXGTK4__
++        gtk_widget_set_hexpand(m_menuBar->m_widget, TRUE);
++        gtk_widget_set_vexpand(m_menuBar->m_widget, FALSE);
++        gtk_box_prepend(GTK_BOX(mdi_frame->m_mainWidget), m_menuBar->m_widget);
++#else
+         gtk_box_pack_start(GTK_BOX(mdi_frame->m_mainWidget), m_menuBar->m_widget, false, false, 0);
+         gtk_box_reorder_child(GTK_BOX(mdi_frame->m_mainWidget), m_menuBar->m_widget, 0);
++#endif
+         gtk_widget_set_size_request(m_menuBar->m_widget, -1, -1);
+     }
+ }
+--- src/gtk/mimetype.cpp.orig
++++ src/gtk/mimetype.cpp
+@@ -32,10 +32,33 @@
+     if ( !gicon )
+         return icon;
+ 
++#ifdef __WXGTK4__
++    GdkDisplay* const display = gdk_display_get_default();
++    if (!display)
++        return icon;
++    GtkIconTheme* const theme = gtk_icon_theme_get_for_display(display);
++#else
+     GtkIconTheme *theme(gtk_icon_theme_get_default());
++#endif
+     if ( !theme )
+         return icon;
+ 
++#ifdef __WXGTK4__
++    wxGtkObject<GtkIconPaintable> paintable(gtk_icon_theme_lookup_by_gicon(
++        theme, gicon, 256, 1, GTK_TEXT_DIR_NONE, GTK_ICON_LOOKUP_FORCE_REGULAR));
++    if (paintable)
++    {
++        // The filename API cannot represent resource-backed or generated
++        // paintables. GFile's local path is the public file-icon contract.
++        wxGtkObject<GFile> file(gtk_icon_paintable_get_file(paintable));
++        if (file)
++        {
++            wxGtkString path(g_file_get_path(file));
++            if (path)
++                icon = wxString::FromUTF8(path);
++        }
++    }
++#else
+     // Notice that we can't use wxGtkObject here because a special function
+     // needs to be used for freeing this object prior to GTK+ 3.8.
+     GtkIconInfo* const giconinfo = gtk_icon_theme_lookup_by_gicon
+@@ -54,6 +77,7 @@
+         gtk_icon_info_free(giconinfo);
+         wxGCC_WARNING_RESTORE()
+     }
++#endif // __WXGTK4__
+ #endif // GTK_CHECK_VERSION(2,14,0)
+     return icon;
+ }

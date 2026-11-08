@@ -242,7 +242,7 @@
  void wxBeginBusyCursor(const wxCursor* cursor)
 --- src/gtk/display.cpp.orig
 +++ src/gtk/display.cpp
-@@ -16,28 +16,59 @@
+@@ -16,28 +16,63 @@
  #include "wx/gtk/private/wrapgtk.h"
  #include "wx/gtk/private/backend.h"
  #ifdef GDK_WINDOWING_X11
@@ -250,10 +250,14 @@
 -        #include "wx/unix/private/displayx11.h"
 -
 -        #define wxGTK_HAVE_X11_DISPLAY
--    #endif
--
 +    #include "wx/unix/private/displayx11.h"
-     #include <gdk/gdkx.h>
++    #ifdef __WXGTK4__
++        #include <gdk/x11/gdkx.h>
++    #else
++        #include <gdk/gdkx.h>
+     #endif
+-
+-    #include <gdk/gdkx.h>
 +    #define wxGTK_HAVE_X11_DISPLAY
  #endif
  
@@ -270,15 +274,16 @@
  #ifdef __WXGTK4__
  
 -static inline GdkDisplay* GetDisplay()
-+static GdkDisplay* GetDisplay()
+-{
+-    return gdk_window_get_display(wxGetTopLevelGDK());
++static GdkDisplay* GetGdkDisplay()
 +{
 +    return gdk_display_get_default();
 +}
 +
 +static GListModel* GetMonitors()
- {
--    return gdk_window_get_display(wxGetTopLevelGDK());
-+    GdkDisplay* const display = GetDisplay();
++{
++    GdkDisplay* const display = GetGdkDisplay();
 +    return display ? gdk_display_get_monitors(display) : NULL;
 +}
 +
@@ -310,7 +315,7 @@
  }
  
  // This class is always defined as it's used for the main display even when
-@@ -47,6 +78,7 @@
+@@ -47,6 +82,7 @@
      typedef wxDisplayImpl base_type;
  public:
      wxDisplayImplGTK(unsigned i);
@@ -318,7 +323,7 @@
      virtual wxRect GetGeometry() const wxOVERRIDE;
      virtual wxRect GetClientArea() const wxOVERRIDE;
      virtual int GetDepth() const wxOVERRIDE;
-@@ -80,55 +112,66 @@
+@@ -80,55 +116,66 @@
  
  unsigned wxDisplayFactoryGTK::GetCount()
  {
@@ -334,14 +339,15 @@
 -    GdkMonitor* monitor = gdk_display_get_monitor_at_point(display, pt.x, pt.y);
 -    gdk_monitor_get_geometry(monitor, &rect);
 -    if (wxRect(rect.x, rect.y, rect.width, rect.height).Contains(pt))
-+    GdkDisplay* const display = GetDisplay();
+-    {
+-        for (unsigned i = gdk_display_get_n_monitors(display); i--;)
++    GdkDisplay* const display = GetGdkDisplay();
 +#ifdef GDK_WINDOWING_X11
 +    // wx screen points are global only on X11. Wayland does not expose a
 +    // global monitor coordinate space, so do not guess from toplevel-relative
 +    // window coordinates here.
 +    if (display && wxGTKImpl::IsX11(display))
-     {
--        for (unsigned i = gdk_display_get_n_monitors(display); i--;)
++    {
 +        GListModel* const monitors = GetMonitors();
 +        const guint count = monitors ? g_list_model_get_n_items(monitors) : 0;
 +        for (guint i = 0; i < count; ++i)
@@ -395,16 +401,17 @@
  wxDisplayImplGTK::wxDisplayImplGTK(unsigned i)
 -    : base_type(i)
 -    , m_monitor(gdk_display_get_monitor(GetDisplay(), i))
+-{
 +    : base_type(i), m_monitor(GetMonitor(i))
- {
- }
- 
++{
++}
++
 +wxDisplayImplGTK::~wxDisplayImplGTK()
 +{
 +    if (m_monitor)
 +        g_object_unref(m_monitor);
-+}
-+
+ }
+ 
  wxRect wxDisplayImplGTK::GetGeometry() const
  {
 +    if (!m_monitor)
@@ -412,7 +419,7 @@
      GdkRectangle rect;
      gdk_monitor_get_geometry(m_monitor, &rect);
      return wxRect(rect.x, rect.y, rect.width, rect.height);
-@@ -136,9 +179,25 @@
+@@ -136,9 +183,25 @@
  
  wxRect wxDisplayImplGTK::GetClientArea() const
  {
@@ -421,7 +428,7 @@
 -    return wxRect(rect.x, rect.y, rect.width, rect.height);
 +    wxRect client = GetGeometry();
 +#ifdef GDK_WINDOWING_X11
-+    GdkDisplay* const display = GetDisplay();
++    GdkDisplay* const display = GetGdkDisplay();
 +    if (display && wxGTKImpl::IsX11(display))
 +    {
 +        GdkRectangle work = { 0, 0, 0, 0 };
@@ -441,7 +448,7 @@
  }
  
  int wxDisplayImplGTK::GetDepth() const
-@@ -148,13 +207,20 @@
+@@ -148,13 +211,20 @@
  
  double wxDisplayImplGTK::GetScaleFactor() const
  {
@@ -454,7 +461,7 @@
  {
 -    return gdk_monitor_is_primary(m_monitor) != 0;
 +#ifdef GDK_WINDOWING_X11
-+    GdkDisplay* const display = GetDisplay();
++    GdkDisplay* const display = GetGdkDisplay();
 +    if (display && wxGTKImpl::IsX11(display))
 +        return GetMonitorIndex(gdk_x11_display_get_primary_monitor(display)) == int(GetIndex());
 +#endif
