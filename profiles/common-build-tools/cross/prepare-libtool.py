@@ -204,16 +204,87 @@ def clang_c_foundation(sysroot, target, result, base, paths, application_toolcha
         result, sysroot, target=target, **options)
 
 
-def native_package_database(pkg_admin, process, env):
-    """Return the package database of the selected native pkg_install."""
-    # Each native prefix configures its own database; do not assume var/db/pkg.
-    output = process.capture([pkg_admin, 'config-var', 'PKG_DBDIR'], env=env).stdout
-    database = (output.decode('utf-8') if isinstance(output, bytes) else output).strip()
+def _package_database_path(database):
+    """Accept one real absolute database directory."""
+    if isinstance(database, bytes):
+        database = database.decode('utf-8')
+    database = database.strip()
     if (not os.path.isabs(database) or any(c.isspace() or c in '\\"\'`$#;:' for c in database)
             or not os.path.isdir(database)
             or os.path.realpath(database) != os.path.normpath(database)):
         raise ValueError('native pkg_install reports an invalid package database')
     return os.path.normpath(database)
+
+
+def native_package_database(pkg_admin, process, env):
+    """Return the package database of the selected native pkg_install."""
+    # Each native prefix configures its own database; do not assume var/db/pkg.
+    # config-var reads the binary's compiled configuration, which is not relocated
+    # when the prefix moves. Callers with a selected MAKECONF use that instead.
+    output = process.capture([pkg_admin, 'config-var', 'PKG_DBDIR'], env=env).stdout
+    return _package_database_path(output)
+
+
+def _installed_prefix(contents):
+    with open(contents, 'r', encoding='utf-8') as stream:
+        remaining = 65536
+        while remaining > 0:
+            line = stream.readline(remaining)
+            if not line:
+                return None
+            remaining -= len(line)
+            if line.startswith('@cwd '):
+                return line[len('@cwd '):].strip()
+    return None
+
+
+def selected_host_database(database, prefix, sysroot):
+    """Prove an explicit database is the selected host prefix, not the target."""
+    database = _package_database_path(database)
+    prefix = os.path.normpath(prefix)
+    sysroot = os.path.normpath(sysroot)
+    if os.path.commonpath((database, sysroot)) == sysroot:
+        raise ValueError('native package database is inside the target sysroot')
+    found = False
+    with os.scandir(database) as entries:
+        for entry in entries:
+            if entry.is_symlink():
+                raise ValueError('native package database contains a symlink')
+            if not entry.is_dir(follow_symlinks=False):
+                continue
+            contents = os.path.join(entry.path, '+CONTENTS')
+            if os.path.islink(contents) or not os.path.isfile(contents):
+                raise ValueError('native package database entry has no package contents')
+            installed = _installed_prefix(contents)
+            if installed is None or os.path.normpath(installed) != prefix:
+                raise ValueError('native package database belongs to another prefix')
+            found = True
+    if not found:
+        raise ValueError('native package database contains no packages')
+    return database
+
+
+def resolve_native_database(*, pkg_admin, process, env, prefix, sysroot,
+                            native_makeconf=None, make=None, pkgsrc=None):
+    """Select the host database from MAKECONF, or from pkg_admin when omitted."""
+    if native_makeconf is None:
+        return native_package_database(pkg_admin, process, env)
+    if not make or not pkgsrc:
+        raise ValueError('explicit native database requires the selected pkgsrc tree')
+    # Ignore an ambient PKG_DBDIR. The selected file is the authority.
+    query_env = dict(env)
+    query_env.pop('PKG_DBDIR', None)
+    query_env.pop('HOST_PKG_DBDIR', None)
+    output = process.capture([
+        make, '-C', os.path.join(pkgsrc, 'pkgtools/pkg_install'),
+        'USE_CROSS_COMPILE=no', 'MAKECONF=' + native_makeconf,
+        'show-vars', 'VARNAMES=PREFIX PKG_DBDIR'], env=query_env).stdout
+    text = output.decode('utf-8').splitlines()
+    if len(text) != 2 or any(not line or line != line.strip() for line in text):
+        raise ValueError('selected MAKECONF returned invalid installation destinations')
+    if os.path.normpath(text[0]) != os.path.normpath(prefix):
+        raise ValueError('selected MAKECONF prefix differs from the host prefix')
+    return selected_host_database(text[1], prefix, sysroot)
 
 
 def package_database_conf(pkgdb):
@@ -244,6 +315,8 @@ def main():
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--distdir')
     parser.add_argument('--lock-directory', help='shared prefix/pkgdb lock directory')
+    parser.add_argument('--native-makeconf',
+                        help='selected native MAKECONF; its host PKG_DBDIR replaces pkg_admin config-var')
     parser.add_argument('--pkgsrc-export',
                         help='read-only stage from scripts/pkgsrc-export-stage.py prepare')
     parser.add_argument('--pkgsrc-tree',
@@ -276,7 +349,7 @@ def main():
     for value in (sdk, a.host_prefix, a.compiler, a.os_tools, a.sysroot,
                   a.output, a.work_parent, a.git, a.distdir, a.runtime_stage, a.runtime_base,
                   a.c_foundation_result, a.c_foundation_base, a.lock_directory, a.pkgsrc_tree,
-                  a.pkgsrc_export):
+                  a.pkgsrc_export, a.native_makeconf):
         if value is None:
             continue
         if not os.path.isabs(value) or any(c.isspace() or c in '\\"\'`$#;:' for c in value):
@@ -291,7 +364,17 @@ def main():
             compiler_family=a.host_compiler_family)
         query_env = process.sanitized_environment()
         query_env['PATH'] = os.pathsep.join((prefix + '/bin', prefix + '/sbin'))
-        pkgdb = native_package_database(native.tool('pkg_admin'), process, query_env)
+        stage_sysroot = paths.canonical_existing(a.sysroot)
+        if a.native_makeconf and not (a.pkgsrc_tree or a.pkgsrc_export):
+            raise SDKError('explicit native database requires --pkgsrc-tree or --pkgsrc-export')
+        pkgdb = resolve_native_database(
+            pkg_admin=native.tool('pkg_admin'), process=process, env=query_env,
+            prefix=prefix, sysroot=stage_sysroot,
+            native_makeconf=(paths.canonical_existing(a.native_makeconf) if a.native_makeconf else None),
+            make=native.tool('make'),
+            pkgsrc=(paths.canonical_existing(a.pkgsrc_tree or a.pkgsrc_export)
+                    if a.native_makeconf else None))
+        # Same prefix-parent lock as the compiled database. Do not retarget it.
         locks.enter_context(process.ContextLocks([pkgdb], lock_directory))
         tooldir = paths.canonical_existing(a.os_tools)
         output = os.path.join(paths.canonical_existing(os.path.dirname(a.output)), os.path.basename(a.output))
@@ -304,7 +387,6 @@ def main():
                 raise SDKError('incompatible cross-libtool output')
         work = paths.canonical_existing(a.work_parent)
         distdir = paths.canonical_existing(a.distdir) if a.distdir else None
-        stage_sysroot = paths.canonical_existing(a.sysroot)
         compiler = paths.canonical_existing(a.compiler)
         git = paths.canonical_existing(a.git)
         ports = Path(__file__).resolve().parents[3]

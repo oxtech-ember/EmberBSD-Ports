@@ -76,6 +76,87 @@ class ContextTest(unittest.TestCase):
             self.assertEqual(producer.package_database_conf('/selected/native/pkgdb'),
                              ['HOST_PKG_DBDIR=/selected/native/pkgdb', 'PKG_DBDIR=/selected/native/pkgdb'])
 
+    def test_selected_makeconf_names_the_host_database(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            prefix = root / 'host'
+            prefix.mkdir()
+            database = root / 'host-pkgdb'
+            self._install_package(database, prefix)
+            sysroot = root / 'sysroot'
+            (sysroot / 'usr/pkg/pkgdb').mkdir(parents=True)
+            calls = []
+            def capture(argv, *, env):
+                calls.append((argv, env))
+                return SimpleNamespace(stdout=(str(prefix) + '\n' + str(database) + '\n').encode())
+            env = {'PATH': str(prefix / 'bin'), 'PKG_DBDIR': str(sysroot / 'usr/pkg/pkgdb'),
+                   'HOST_PKG_DBDIR': str(sysroot / 'usr/pkg/pkgdb')}
+            selected = producer.resolve_native_database(
+                pkg_admin=str(prefix / 'sbin/pkg_admin'), process=SimpleNamespace(capture=capture),
+                env=env, prefix=str(prefix), sysroot=str(sysroot),
+                native_makeconf=str(root / 'native.mk'), make=str(prefix / 'bin/bmake'),
+                pkgsrc=str(root / 'pkgsrc'))
+            self.assertEqual(selected, str(database))
+            self.assertEqual(calls[0][0], [
+                str(prefix / 'bin/bmake'), '-C', str(root / 'pkgsrc/pkgtools/pkg_install'),
+                'USE_CROSS_COMPILE=no', 'MAKECONF=' + str(root / 'native.mk'),
+                'show-vars', 'VARNAMES=PREFIX PKG_DBDIR'])
+            self.assertNotIn('PKG_DBDIR', calls[0][1])
+            self.assertNotIn('HOST_PKG_DBDIR', calls[0][1])
+            self.assertNotIn('config-var', calls[0][0])
+
+    def test_selected_makeconf_refuses_target_database_and_wrong_prefix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            prefix = root / 'host'
+            prefix.mkdir()
+            sysroot = root / 'sysroot'
+            target = sysroot / 'usr/pkg/pkgdb'
+            self._install_package(target, prefix)
+            other = root / 'other-pkgdb'
+            self._install_package(other, root / 'other-prefix')
+            foreign_prefix = root / 'foreign-host'
+            foreign_prefix.mkdir()
+            def answer(prefix_text, database):
+                def capture(argv, *, env):
+                    return SimpleNamespace(stdout=(prefix_text + '\n' + str(database) + '\n').encode())
+                return SimpleNamespace(capture=capture)
+            kwargs = dict(pkg_admin=str(prefix / 'sbin/pkg_admin'), env={'PATH': '/bin'},
+                          prefix=str(prefix), sysroot=str(sysroot),
+                          native_makeconf=str(root / 'native.mk'), make=str(prefix / 'bin/bmake'),
+                          pkgsrc=str(root / 'pkgsrc'))
+            with self.assertRaisesRegex(ValueError, 'target sysroot'):
+                producer.resolve_native_database(process=answer(str(prefix), target), **kwargs)
+            with self.assertRaisesRegex(ValueError, 'another prefix'):
+                producer.resolve_native_database(process=answer(str(prefix), other), **kwargs)
+            with self.assertRaisesRegex(ValueError, 'differs from the host prefix'):
+                producer.resolve_native_database(process=answer(str(foreign_prefix), other), **kwargs)
+            link = root / 'linked-pkgdb'
+            link.symlink_to(other)
+            with self.assertRaisesRegex(ValueError, 'invalid package database'):
+                producer.resolve_native_database(process=answer(str(prefix), link), **kwargs)
+            self.assertFalse((root / 'context').exists())
+
+    def test_omitted_makeconf_keeps_compiled_pkg_admin_database(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            database = Path(tmp).resolve() / 'pkgdb'
+            database.mkdir()
+            calls = []
+            def capture(argv, *, env):
+                calls.append(argv)
+                return SimpleNamespace(stdout=(str(database) + '\n').encode())
+            selected = producer.resolve_native_database(
+                pkg_admin='/selected/sbin/pkg_admin', process=SimpleNamespace(capture=capture),
+                env={'PATH': '/selected/bin'}, prefix='/selected', sysroot='/sysroot')
+            self.assertEqual(selected, str(database))
+            self.assertEqual(calls, [['/selected/sbin/pkg_admin', 'config-var', 'PKG_DBDIR']])
+
+    def _install_package(self, database, prefix):
+        database.mkdir(parents=True, exist_ok=True)
+        package = database / 'example-1.0'
+        package.mkdir()
+        (package / '+CONTENTS').write_text('@name example-1.0\n@cwd ' + str(prefix) + '\n')
+
     def test_clang_runtime_uses_foundation_only_for_explicit_stage(self):
         paths = SimpleNamespace(canonical_existing=lambda p: p)
         stage = SimpleNamespace(FULL_COMPONENTS=('runtime',), validate_stage=Mock(return_value={'stage': 'ok'}))

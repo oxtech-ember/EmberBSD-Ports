@@ -4,8 +4,25 @@
 pkgsrc recipe and builds its `cross/cross-libtool-base` package. The package is
 installed with its own package database inside the selected OS TOOLDIR. Its
 ordinary native build dependencies use the selected native Ports prefix and
-the package database that its `pkg_admin config-var PKG_DBDIR` reports.
-A prefix can keep that database outside `var/db/pkg`.
+its package database. By default that database is the one
+`pkg_admin config-var PKG_DBDIR` reports. That answer is compiled into
+pkg_install and is not relocated when the prefix moves; a missing
+`etc/pkg_install.conf` in the current prefix does not change it. Pass
+`--native-makeconf FILE` to select the database from the same host query the
+SDK uses, instead of rewriting the shared prefix or the compiled configuration:
+
+```
+bmake -C PKGSRC/pkgtools/pkg_install USE_CROSS_COMPILE=no MAKECONF=FILE \
+  show-vars VARNAMES=PREFIX PKG_DBDIR
+```
+
+`PREFIX` must be the selected host prefix. `PKG_DBDIR` must be a real
+directory, not a symlink, outside the target sysroot, and every installed
+`+CONTENTS` `@cwd` must be that host prefix. The target sysroot database and a
+database from another prefix are refused. This still requires `--pkgsrc-tree`
+or `--pkgsrc-export`. The dependency `pkg_add -K PKG_DBDIR -U` and the prefix
+and database locks are unchanged; the lock directory still defaults to the
+native prefix parent. A prefix can keep that database outside `var/db/pkg`.
 
 Select the host prefix, compiler, target sysroot, OS TOOLDIR, Git, work parent,
 and target explicitly. A Clang runtime stage must match the actual foundation;
