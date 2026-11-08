@@ -838,3 +838,5 @@ grammars. The target `pkg-config`, headers and library must resolve together;
 gettext's configure probe checks the runtime API and grammar ABI before
 building scanner backends. See the [Tree-sitter source owner](../../scripts/source-inputs/tree-sitter/README.md)
 and [gettext source owner](../../scripts/source-inputs/gettext/README.md).
+
+gi-docgen keeps case-distinct type-function pages separate on case-insensitive filesystems and carries the allocated link through generated pages and search indexes. `tests/gi-docgen-casefold-pages.py` exercises two colliding class functions, Markdown, navigation, Devhelp, and standalone search-index generation.

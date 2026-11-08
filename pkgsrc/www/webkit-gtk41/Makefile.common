@@ -19,7 +19,7 @@ TOOL_DEPENDS+=	gettext-tools>=0.18:../../devel/gettext-tools
 TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
 # uses 'unifdef -x1'
 TOOL_DEPENDS+=	unifdef-[0-9]*:../../devel/unifdef
-TOOL_DEPENDS+=	${PYPKGPREFIX}-gi-docgen-[0-9]*:../../devel/py-gi-docgen
+TOOL_DEPENDS+=	${PYPKGPREFIX}-gi-docgen>=2026.1nb1:../../devel/py-gi-docgen
 
 USE_CXX_FEATURES=	c++23
 USE_LANGUAGES=		c c++

@@ -1,0 +1,21 @@
+$NetBSD$
+
+--- a/devel/py-gi-docgen/Makefile.orig
++++ b/devel/py-gi-docgen/Makefile
+@@ -3,3 +3,4 @@
+ DISTNAME=	gi_docgen-2026.1
+ PKGNAME=	${PYPKGPREFIX}-${DISTNAME:S/gi_/gi-/}
++PKGREVISION=	1
+ CATEGORIES=	devel python
+--- a/devel/py-gi-docgen/PLIST.orig
++++ b/devel/py-gi-docgen/PLIST
+@@ -52,6 +52,9 @@
+ ${PYSITELIB}/gidocgen/log.py
+ ${PYSITELIB}/gidocgen/log.pyc
+ ${PYSITELIB}/gidocgen/log.pyo
++${PYSITELIB}/gidocgen/links.py
++${PYSITELIB}/gidocgen/links.pyc
++${PYSITELIB}/gidocgen/links.pyo
+ ${PYSITELIB}/gidocgen/mdext.py
+ ${PYSITELIB}/gidocgen/mdext.pyc
+ ${PYSITELIB}/gidocgen/mdext.pyo

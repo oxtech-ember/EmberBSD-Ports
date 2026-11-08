@@ -1,0 +1,478 @@
+$NetBSD$
+# Origin: EmberBSD (AI-assisted); preserve distinct case-only API page names on insensitive filesystems.
+
+--- gidocgen/gdgenerate.py.orig
++++ gidocgen/gdgenerate.py
+@@ -15,6 +15,7 @@
+ 
+ from . import config, gir, log, utils
+ from . import gdgenindices
++from .links import type_func_filename
+ 
+ 
+ class CallableType:
+@@ -185,7 +186,7 @@
+     return mode.get(transfer)
+ 
+ 
+-def gen_index_func(func, namespace, md=None):
++def gen_index_func(func, namespace, md=None, type_owner=None):
+     """Generates a dictionary with the callable metadata required by an index template"""
+     name = func.name
+     if getattr(func, "identifier"):
+@@ -205,13 +206,16 @@
+         deprecated_since = version
+     else:
+         deprecated_since = None
+-    return {
++    result = {
+         "name": name,
+         "identifier": identifier,
+         "summary": summary,
+         "available_since": available_since,
+         "deprecated_since": deprecated_since,
+     }
++    if type_owner is not None:
++        result["link"] = type_func_filename(namespace, type_owner, name)
++    return result
+ 
+ 
+ def gen_index_property(prop, namespace, md=None):
+@@ -1125,6 +1129,8 @@
+         self.namespace = namespace.name
+ 
+         self.is_type_func = type_ is not None
++        self.link = (type_func_filename(namespace, type_.name, func.name)
++                     if type_ is not None else f"func.{func.name}.html")
+         self.is_macro = isinstance(func, gir.FunctionMacro)
+         self.is_inline = func.inline
+ 
+@@ -1170,6 +1176,12 @@
+         self.introspectable = func.introspectable
+ 
+         self.shadows = func.shadows
++        self.finish_func_link = (type_func_filename(namespace, type_.name, func.finish_func)
++                                 if type_ is not None and func.finish_func else None)
++        self.shadows_link = (type_func_filename(namespace, type_.name, func.shadows)
++                             if type_ is not None and func.shadows else None)
++        self.shadowed_by_link = (type_func_filename(namespace, type_.name, func.shadowed_by)
++                                 if type_ is not None and func.shadowed_by else None)
+         if func.shadows:
+             f = namespace.find_function(func.shadows)
+             if f is not None:
+@@ -1522,7 +1534,7 @@
+         if len(interface.functions) != 0:
+             for func in interface.functions:
+                 if not config.is_hidden(interface.name, "function", func.name):
+-                    self.type_funcs.append(gen_index_func(func, namespace, md))
++                    self.type_funcs.append(gen_index_func(func, namespace, md, interface.name))
+ 
+         self.implementations = []
+         if len(interface.implementations) != 0:
+@@ -1694,7 +1706,7 @@
+         if len(cls.functions) != 0:
+             for func in cls.functions:
+                 if not config.is_hidden(cls.name, "function", func.name):
+-                    self.type_funcs.append(gen_index_func(func, namespace, md))
++                    self.type_funcs.append(gen_index_func(func, namespace, md, cls.name))
+ 
+     @property
+     def show_methods(self):
+@@ -1875,7 +1887,7 @@
+         if len(record.functions) != 0:
+             for func in record.functions:
+                 if not config.is_hidden(record.name, "function", func.name):
+-                    self.type_funcs.append(gen_index_func(func, namespace, md))
++                    self.type_funcs.append(gen_index_func(func, namespace, md, record.name))
+ 
+     @property
+     def c_decl(self):
+@@ -1949,7 +1961,7 @@
+         if len(union.functions) != 0:
+             for func in union.functions:
+                 if not config.is_hidden(union.name, "function", func.name):
+-                    self.type_funcs.append(gen_index_func(func, namespace, md))
++                    self.type_funcs.append(gen_index_func(func, namespace, md, union.name))
+ 
+     @property
+     def c_decl(self):
+@@ -2084,7 +2096,7 @@
+             self.type_funcs = []
+             for func in enum.functions:
+                 if not config.is_hidden(enum.name, "function", func.name):
+-                    self.type_funcs.append(gen_index_func(func, namespace, md))
++                    self.type_funcs.append(gen_index_func(func, namespace, md, enum.name))
+ 
+     @property
+     def c_decl(self):
+@@ -2234,7 +2246,11 @@
+                     continue
+ 
+                 s = section['template_class'](namespace, cls, sym)
+-                sym_file = os.path.join(output_dir, f"{section['section_fragment']}.{cls.name}.{sym.name}.html")
++                if section["section_fragment"] == "type_func":
++                    sym_name = type_func_filename(namespace, cls.name, sym.name)
++                else:
++                    sym_name = f"{section['section_fragment']}.{cls.name}.{sym.name}.html"
++                sym_file = os.path.join(output_dir, sym_name)
+                 log.debug(f"Creating symbol file for {namespace.name}.{cls.name}.{sym.name}: {sym_file}")
+ 
+                 with open(sym_file, "w", encoding="utf-8") as out:
+@@ -2362,7 +2378,11 @@
+                     continue
+ 
+                 s = section['template_class'](namespace, iface, sym)
+-                sym_file = os.path.join(output_dir, f"{section['section_fragment']}.{iface.name}.{sym.name}.html")
++                if section["section_fragment"] == "type_func":
++                    sym_name = type_func_filename(namespace, iface.name, sym.name)
++                else:
++                    sym_name = f"{section['section_fragment']}.{iface.name}.{sym.name}.html"
++                sym_file = os.path.join(output_dir, sym_name)
+                 log.debug(f"Creating symbol file for {namespace.name}.{iface.name}.{sym.name}: {sym_file}")
+ 
+                 with open(sym_file, "w", encoding="utf-8") as out:
+@@ -2408,7 +2428,7 @@
+                 continue
+ 
+             f = TemplateFunction(namespace, enum, type_func)
+-            type_func_file = os.path.join(output_dir, f"type_func.{enum.name}.{type_func.name}.html")
++            type_func_file = os.path.join(output_dir, type_func_filename(namespace, enum.name, type_func.name))
+             log.debug(f"Creating type func file for {namespace.name}.{enum.name}.{type_func.name}: {type_func_file}")
+ 
+             with open(type_func_file, "w", encoding="utf-8") as out:
+@@ -2453,7 +2473,7 @@
+                 continue
+ 
+             f = TemplateFunction(namespace, enum, type_func)
+-            type_func_file = os.path.join(output_dir, f"type_func.{enum.name}.{type_func.name}.html")
++            type_func_file = os.path.join(output_dir, type_func_filename(namespace, enum.name, type_func.name))
+             log.debug(f"Creating type func file for {namespace.name}.{enum.name}.{type_func.name}: {type_func_file}")
+ 
+             with open(type_func_file, "w", encoding="utf-8") as out:
+@@ -2498,7 +2518,7 @@
+                 continue
+ 
+             f = TemplateFunction(namespace, enum, type_func)
+-            type_func_file = os.path.join(output_dir, f"type_func.{enum.name}.{type_func.name}.html")
++            type_func_file = os.path.join(output_dir, type_func_filename(namespace, enum.name, type_func.name))
+             log.debug(f"Creating type func file for {namespace.name}.{enum.name}.{type_func.name}: {type_func_file}")
+ 
+             with open(type_func_file, "w", encoding="utf-8") as out:
+@@ -2640,7 +2660,11 @@
+                     continue
+ 
+                 s = section['template_class'](namespace, record, sym)
+-                sym_file = os.path.join(output_dir, f"{section['section_fragment']}.{record.name}.{sym.name}.html")
++                if section["section_fragment"] == "type_func":
++                    sym_name = type_func_filename(namespace, record.name, sym.name)
++                else:
++                    sym_name = f"{section['section_fragment']}.{record.name}.{sym.name}.html"
++                sym_file = os.path.join(output_dir, sym_name)
+                 log.debug(f"Creating symbol file for {namespace.name}.{record.name}.{sym.name}: {sym_file}")
+ 
+                 with open(sym_file, "w", encoding="utf-8") as out:
+@@ -2727,7 +2751,11 @@
+                     continue
+ 
+                 s = section['template_class'](namespace, union, sym)
+-                sym_file = os.path.join(output_dir, f"{section['section_fragment']}.{union.name}.{sym.name}.html")
++                if section["section_fragment"] == "type_func":
++                    sym_name = type_func_filename(namespace, union.name, sym.name)
++                else:
++                    sym_name = f"{section['section_fragment']}.{union.name}.{sym.name}.html"
++                sym_file = os.path.join(output_dir, sym_name)
+                 log.debug(f"Creating symbol file for {namespace.name}.{union.name}.{sym.name}: {sym_file}")
+ 
+                 with open(sym_file, "w", encoding="utf-8") as out:
+@@ -3123,7 +3151,7 @@
+                 keyword = etree.SubElement(functions, "keyword")
+                 keyword.set("type", "function")
+                 keyword.set("name", f['identifier'])
+-                keyword.set("link", f"type_func.{t.name}.{f['name']}.html")
++                keyword.set("link", f['link'])
+                 if f["available_since"] is not None:
+                     keyword.set("since", f["available_since"])
+                 if f["deprecated_since"] is not None:
+--- gidocgen/gdgenindices.py.orig
++++ gidocgen/gdgenindices.py
+@@ -7,6 +7,7 @@
+ import sys
+ 
+ from . import config, core, gir, log, utils
++from .links import type_func_filename
+ 
+ 
+ HELP_MSG = "Generates the symbol indices for search"
+@@ -74,6 +75,7 @@
+                 "type": "type_func",
+                 "name": func.name,
+                 "type_name": bitfield.name,
++                "link": type_func_filename(repository.namespace, bitfield.name, func.name),
+                 "ident": func.identifier,
+                 "summary": utils.preprocess_docs(func_desc, repository.namespace, summary=True, plain=True),
+                 "deprecated": func_deprecated,
+@@ -177,6 +179,7 @@
+                 "type": "type_func",
+                 "name": func.name,
+                 "type_name": cls.name,
++                "link": type_func_filename(repository.namespace, cls.name, func.name),
+                 "ident": func.identifier,
+                 "summary": utils.preprocess_docs(func_desc, repository.namespace, summary=True, plain=True),
+                 "deprecated": func_deprecated,
+@@ -321,6 +324,7 @@
+                 "type": "type_func",
+                 "name": func.name,
+                 "type_name": domain.name,
++                "link": type_func_filename(repository.namespace, domain.name, func.name),
+                 "ident": func.identifier,
+                 "summary": utils.preprocess_docs(func_desc, repository.namespace, summary=True, plain=True),
+                 "deprecated": func_deprecated,
+@@ -363,6 +367,7 @@
+                 "type": "type_func",
+                 "name": func.name,
+                 "type_name": enum.name,
++                "link": type_func_filename(repository.namespace, enum.name, func.name),
+                 "ident": func.identifier,
+                 "summary": utils.preprocess_docs(func_desc, repository.namespace, summary=True, plain=True),
+                 "deprecated": func_deprecated,
+@@ -472,6 +477,7 @@
+                 "type": "type_func",
+                 "name": func.name,
+                 "type_name": iface.name,
++                "link": type_func_filename(repository.namespace, iface.name, func.name),
+                 "ident": func.identifier,
+                 "summary": utils.preprocess_docs(func_desc, repository.namespace, summary=True, plain=True),
+                 "deprecated": func_deprecated,
+@@ -619,6 +625,7 @@
+                 "type": "type_func",
+                 "name": func.name,
+                 "type_name": record.name,
++                "link": type_func_filename(repository.namespace, record.name, func.name),
+                 "ident": func.identifier,
+                 "summary": utils.preprocess_docs(func_desc, repository.namespace, summary=True, plain=True),
+             })
+@@ -696,6 +703,7 @@
+                 "type": "type_func",
+                 "name": func.name,
+                 "type_name": union.name,
++                "link": type_func_filename(repository.namespace, union.name, func.name),
+                 "ident": func.identifier,
+                 "summary": utils.preprocess_docs(func_desc, repository.namespace, summary=True, plain=True),
+                 "deprecated": func_deprecated,
+--- gidocgen/gdsearch.py.orig
++++ gidocgen/gdsearch.py
+@@ -7,6 +7,7 @@
+ import sys
+ 
+ from . import gir, log, utils
++from .links import type_func_filename
+ 
+ 
+ HELP_MSG = "Search terms in the symbol indices"
+@@ -308,7 +309,7 @@
+                 "name": f"{t.name}.{f.name}",
+                 "ctype": f.identifier,
+                 "summary": summary.split("\n"),
+-                "link": f"type_func.{t.name}.{f.name}.html",
++                "link": type_func_filename(namespace, t.name, f.name),
+             }
+ 
+     return None
+--- gidocgen/utils.py.orig
++++ gidocgen/utils.py
+@@ -14,6 +14,7 @@
+ from typogrify.filters import typogrify
+ 
+ from . import gir, log, mdext
++from .links import type_func_filename
+ 
+ 
+ # The beginning of a gtk-doc code block:
+@@ -656,6 +657,7 @@
+                 raise LinkParseError(self._line, self._start, self._end,
+                                      fragment, endpoint,
+                                      f"Namespace {ns} not found")
++        self._target_namespace = namespace
+         if name is None:
+             t = namespace.find_function(func_name)
+             if t is not None:
+@@ -720,7 +722,8 @@
+             return f"{self._fragment}.{self._name}.{self._method_name}.html{anchor}"
+         elif self._fragment == 'func':
+             if self._name is not None:
+-                return f"type_func.{self._name}.{self._func_name}.html{anchor}"
++                target_namespace = getattr(self, "_target_namespace", self._namespace)
++                return f"{type_func_filename(target_namespace, self._name, self._func_name)}{anchor}"
+             else:
+                 return f"func.{self._func_name}.html{anchor}"
+         else:
+--- /dev/null
++++ gidocgen/links.py
+@@ -0,0 +1,63 @@
++# SPDX-FileCopyrightText: 2026 EmberBSD
++# SPDX-License-Identifier: Apache-2.0 OR GPL-3.0-or-later
++
++"""Helpers for links to generated API pages."""
++
++
++def type_func_filename(namespace, owner, name):
++    """Return the allocated page filename for a type function."""
++    links = getattr(namespace, "_type_func_links", {})
++    return links.get((owner, name), f"type_func.{owner}.{name}.html")
++
++
++def allocate_type_func_filenames(namespace):
++    """Preallocate case-insensitive unique type-function page names."""
++    functions = {}
++    for getter in (namespace.get_classes, namespace.get_interfaces,
++                   namespace.get_effective_records, namespace.get_enumerations,
++                   namespace.get_bitfields, namespace.get_error_domains,
++                   namespace.get_unions):
++        for owner in getter():
++            for func in getattr(owner, "functions", ()):
++                functions[(owner.name, func.name)] = (
++                    f"type_func.{owner.name}.{func.name}.html")
++
++    groups = {}
++    for key, filename in functions.items():
++        groups.setdefault(filename.casefold(), []).append(key)
++
++    result = {}
++    reserved = {filename.casefold() for filename in functions.values()}
++    occupied = set()
++    for group in sorted(groups):
++        keys = groups[group]
++        keys.sort(key=lambda key: (functions[key].casefold(), key[0].casefold(),
++                                   key[0], key[1].casefold(), key[1]))
++        for index, key in enumerate(keys):
++            filename = functions[key]
++            if index:
++                import hashlib
++                digest = hashlib.sha256((key[0] + "." + key[1]).encode("utf-8")).hexdigest()
++                stem = filename[:-5]
++                width = 8
++                candidate = f"{stem}.case-{digest[:width]}.html"
++                while candidate.casefold() in occupied or candidate.casefold() in reserved:
++                    width += 2
++                    candidate = f"{stem}.case-{digest[:width]}.html"
++                filename = candidate
++            occupied.add(filename.casefold())
++            result[key] = filename
++    namespace._type_func_links = result
++
++
++def allocate_repository_type_func_filenames(repository):
++    """Allocate links for a repository and all of its included namespaces."""
++    pending = [repository]
++    seen = set()
++    while pending:
++        current = pending.pop()
++        if id(current) in seen:
++            continue
++        seen.add(id(current))
++        allocate_type_func_filenames(current.namespace)
++        pending.extend(current.includes.values())
+--- gidocgen/gir/parser.py.orig
++++ gidocgen/gir/parser.py
+@@ -6,6 +6,7 @@
+ import xml.etree.ElementTree as ET
+ 
+ from .. import log
++from ..links import allocate_repository_type_func_filenames
+ from . import ast
+ 
+ GI_NAMESPACES = {
+@@ -110,6 +111,7 @@
+             self._repository.resolve_interface_implementations()
+             self._repository.resolve_moved_to()
+             self._repository.resolve_symbols()
++            allocate_repository_type_func_filenames(self._repository)
+ 
+     def get_repository(self, name: T.Optional[str] = None) -> T.Optional[ast.Repository]:
+         if name is None:
+--- gidocgen/templates/basic/class.html.orig
++++ gidocgen/templates/basic/class.html
+@@ -260,7 +260,7 @@
+       <div class="docblock">
+       {% for func in class.type_funcs %}
+       <div class="{% if func.deprecated_since %}deprecated{% endif %}">
+-        <h6><a href="type_func.{{ class.name }}.{{ func.name }}.html">{{ func.identifier }}</a></h6>
++        <h6><a href="{{ func.link }}">{{ func.identifier }}</a></h6>
+         <div class="docblock">
+           {{ func.summary }}
+         </div>
+--- gidocgen/templates/basic/interface.html.orig
++++ gidocgen/templates/basic/interface.html
+@@ -179,7 +179,7 @@
+       <div class="docblock">
+       {% for func in interface.type_funcs %}
+       <div class="{% if func.deprecated_since %}deprecated{% endif %}">
+-        <h6><a href="type_func.{{ interface.name }}.{{ func.name }}.html">{{ func.identifier }}</a></h6>
++        <h6><a href="{{ func.link }}">{{ func.identifier }}</a></h6>
+         <div class="docblock">
+           {{ func.summary }}
+         </div>
+--- gidocgen/templates/basic/struct.html.orig
++++ gidocgen/templates/basic/struct.html
+@@ -199,7 +199,7 @@
+       <div class="docblock">
+       {% for func in struct.type_funcs %}
+       <div class="{% if func.deprecated_since %}deprecated{% endif %}">
+-        <h6><a href="type_func.{{ struct.name }}.{{ func.name }}.html">{{ func.identifier }}</a></h6>
++        <h6><a href="{{ func.link }}">{{ func.identifier }}</a></h6>
+         <div class="docblock">
+           {{ func.summary }}
+         </div>
+--- gidocgen/templates/basic/enum.html.orig
++++ gidocgen/templates/basic/enum.html
+@@ -187,7 +187,7 @@
+       <div class="docblock">
+       {% for func in enum.type_funcs %}
+         <div class="{% if func.deprecated_since %}deprecated{% endif %}">
+-          <h6><a href="type_func.{{ enum.name }}.{{ func.name }}.html">{{ func.identifier }}</a></h6>
++          <h6><a href="{{ func.link }}">{{ func.identifier }}</a></h6>
+           <div class="docblock">
+             {{ func.summary }}
+           </div>
+--- gidocgen/templates/basic/type_func.html.orig
++++ gidocgen/templates/basic/type_func.html
+@@ -20,7 +20,7 @@
+   <h5>Functions</h5>
+   <div class="links">
+   {% for m in class.type_funcs %}
+-    <a class="method{% if type_func.name == m.name %} current{% endif %}" href="type_func.{{ class.name }}.{{ m.name }}.html">{{ m.name }}</a>
++    <a class="method{% if type_func.name == m.name %} current{% endif %}" href="{{ m.link }}">{{ m.name }}</a>
+   {% endfor %}
+   </div>
+ </div>
+@@ -92,16 +92,16 @@
+         </div>
+         {%- endif %}
+         {% if type_func.finish_func -%}
+-        <p>This function completes asynchronously. Use <a href="type_func.{{class.name}}.{{type_func.finish_func}}.html"><code>{{type_func.finish_func_symbol}}()</code></a> inside the <code>GAsyncReadyCallback</code> to obtain the result of the operation.</p>
++        <p>This function completes asynchronously. Use <a href="{{ type_func.finish_func_link }}"><code>{{type_func.finish_func_symbol}}()</code></a> inside the <code>GAsyncReadyCallback</code> to obtain the result of the operation.</p>
+         {%- endif %}
+         {% if not type_func.introspectable -%}
+         <p>This function is not directly available to language bindings.</p>
+         {%- endif %}
+         {% if type_func.shadows -%}
+-        <p>This function is renamed to <a href="type_func.{{class.name}}.{{type_func.shadows}}.html"><code>{{type_func.shadows_symbol}}()</code></a> in language bindings.</p>
++        <p>This function is renamed to <a href="{{ type_func.shadows_link }}"><code>{{type_func.shadows_symbol}}()</code></a> in language bindings.</p>
+         {%- endif %}
+         {% if type_func.shadowed_by -%}
+-        <p>The implementation of this function is provided by <a href="type_func.{{class.name}}.{{type_func.shadowed_by}}.html"><code>{{type_func.shadowed_by_symbol}}()</code></a> in language bindings.</p>
++        <p>The implementation of this function is provided by <a href="{{ type_func.shadowed_by_link }}"><code>{{type_func.shadowed_by_symbol}}()</code></a> in language bindings.</p>
+         {%- endif %}
+       </div>
+ 
+--- gidocgen/templates/basic/search.js.orig
++++ gidocgen/templates/basic/search.js
+@@ -277,7 +277,7 @@
+         case "property": return "property." + doc.type_name + "." + doc.name + ".html";
+         case "record": return "struct." + doc.name + ".html";
+         case "signal": return "signal." + doc.type_name + "." + doc.name + ".html";
+-        case "type_func": return "type_func." + doc.type_name + "." + doc.name + ".html";
++        case "type_func": return doc.link;
+         case "union": return "union." + doc.name + ".html";
+         case "vfunc": return "vfunc." + doc.type_name + "." + doc.name + ".html";
+     }
