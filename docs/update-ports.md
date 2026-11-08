@@ -90,6 +90,28 @@ SDK directory name, the host ABI, or `xcrun`. The frozen recipe tree,
 MAKECONF, and `--revision` stay the sources that were built. A newer exporter
 may query that frozen tree; its own file digest is the `exporter` shared input.
 
+Host bootstrap packages form real dependency cycles when every build and tool
+edge is kept. `scripts/cross-bulk.sh` does not rebuild a native package whose
+installed PKGNAME is already at the tree version or newer, and it does not
+schedule that package's bootstrap, build, or tool dependencies. Its runtime
+dependencies stay, because the installed tool still runs them. Pass that
+selected host prefix as `--native-installed RECEIPT`. Build the receipt with
+the host `PKG_INFO` from `pkgtools/pkg_install` under `USE_CROSS_COMPILE=no`
+and the frozen MAKECONF, using `pkg_info -a -Q PKGNAME`. That is one PKGNAME
+per line, no comments, a trailing newline, and no duplicate names. Do not
+read the target sysroot database. The exporter hashes the file as the
+`native-installed` shared input and records `native installed receipt` in
+provenance. For each host node, it asks the selected `pkg_admin pmatch` whether
+any receipt line satisfies `PKGBASE>=PKGVERSION`. A matching host node remains
+in the graph and keeps `DEPENDS` and `INDIRECT_DEPENDS`. Its other dependency
+kinds are not prerequisites and are not queried. Target nodes are unchanged,
+including when the receipt names the same PKGNAME. An older installed package
+does not match. Without the receipt, the export is the full closure, and a
+real cycle still fails. Do not drop host nodes that another selected package
+depends on, delete an edge only to satisfy the cycle checker, switch this
+build plan to the runtime phase, or declare a bootstrap tool as a platform
+builtin.
+
 The exporter asks bmake for expanded dependency variables and loaded makefiles.
 It requires native `-dg1` variable inventory output. It queries the listed
 `FILESDIR.*` variables with `-V` to resolve shared copied-source trees.

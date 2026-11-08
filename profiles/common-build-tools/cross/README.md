@@ -611,6 +611,12 @@ builds that dependent with the installed package. Order reports each such
 edge as `Cycle broken: DEPENDENT builds with the installed DEPENDENCY` and
 refuses any other cycle;
 `scripts/tests/cross-bulk-native-cycle.sh NEW_OUTPUT` checks both.
+The build-phase graph export follows the same current-package rule when
+`--native-installed` names the selected host prefix receipt: a current host
+node stays, keeps its runtime dependencies, and does not schedule its
+bootstrap, build, or tool dependencies. Target nodes are unchanged. The
+receipt is not a substitute for that soft-edge cycle break, and it does
+not apply to an older installed package.
 An older installed package is not current: its node is built
 again and replaces it with the pkgsrc `replace` target (`pkg_add -U`), which
 keeps the packages that depend on it registered. A newer host package, such

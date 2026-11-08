@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -682,6 +683,204 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
 
     def test_closure_limit(self):
         self.assertIn('exceeds --max-nodes', self.run_export('--max-nodes', '2', success=False))
+
+    def add_package(self, package, metadata):
+        directory = self.pkgsrc / package
+        directory.mkdir(parents=True)
+        (directory / 'Makefile').write_text('# Native metadata fixture\n')
+        (directory / 'patches').mkdir()
+        (directory / 'patches' / 'patch-one').write_text('patch bytes\n')
+        self.packages[package] = metadata
+
+    def native_receipt(self, names):
+        path = self.path / ('native-installed-' + str(self.counter + 1))
+        path.write_text(''.join(name + '\n' for name in names))
+        return str(path)
+
+    def cycle_edges(self, stderr):
+        self.assertIn('dependency cycle: ', stderr)
+        line = stderr.split('dependency cycle: ', 1)[1].splitlines()[0]
+        parts = re.split(r' -\[(\w+)\]-> ', line)
+        self.assertGreater(len(parts), 1)
+        nodes = parts[::2]
+        kinds = parts[1::2]
+        self.assertEqual(len(kinds), len(nodes) - 1)
+        self.assertEqual(nodes[0], nodes[-1])
+        return [(nodes[index], kinds[index], nodes[index + 1]) for index in range(len(kinds))]
+
+    def assert_same_cycle(self, actual, expected):
+        actual = list(actual)
+        expected = list(expected)
+        self.assertEqual(len(actual), len(expected))
+        self.assertTrue(any(actual == expected[index:] + expected[:index]
+                            for index in range(len(expected))), actual)
+
+    def install_bootstrap_cycle(self):
+        # The publication build-phase closure walks this host loop. Kinds are
+        # the edges reported for frozen 4bb1: build, tool, runtime, tool,
+        # runtime, tool, tool.
+        specs = (
+            ('pkgtools/cwrappers', 'BUILD_DEPENDS', 'libnbcompat>=1:../../pkgtools/libnbcompat'),
+            ('pkgtools/libnbcompat', 'TOOL_DEPENDS', 'coreutils>=1:../../sysutils/coreutils'),
+            ('sysutils/coreutils', 'DEPENDS', 'gettext-lib>=1:../../devel/gettext-lib'),
+            ('devel/gettext-lib', 'TOOL_DEPENDS', 'libtool-base>=1:../../devel/libtool-base'),
+            ('devel/libtool-base', 'DEPENDS', 'm4>=1:../../devel/m4'),
+            ('devel/m4', 'TOOL_DEPENDS', 'nbpatch>=1:../../devel/nbpatch'),
+            ('devel/nbpatch', 'TOOL_DEPENDS', 'cwrappers>=1:../../pkgtools/cwrappers'),
+        )
+        for package, variable, dependency in specs:
+            self.add_package(package, {variable: dependency})
+        self.packages['devel/app'].update({
+            'TOOL_DEPENDS': 'cwrappers>=1:../../pkgtools/cwrappers',
+            'BUILD_DEPENDS': '', 'DEPENDS': '', 'TEST_DEPENDS': '',
+            'BOOTSTRAP_DEPENDS': ''})
+        return (
+            ('host:pkgtools/cwrappers', 'build', 'host:pkgtools/libnbcompat'),
+            ('host:pkgtools/libnbcompat', 'tool', 'host:sysutils/coreutils'),
+            ('host:sysutils/coreutils', 'runtime', 'host:devel/gettext-lib'),
+            ('host:devel/gettext-lib', 'tool', 'host:devel/libtool-base'),
+            ('host:devel/libtool-base', 'runtime', 'host:devel/m4'),
+            ('host:devel/m4', 'tool', 'host:devel/nbpatch'),
+            ('host:devel/nbpatch', 'tool', 'host:pkgtools/cwrappers'),
+        )
+
+    def test_bootstrap_cycle_matches_publication_failure(self):
+        expected = self.install_bootstrap_cycle()
+        stderr = self.run_export('--dependency-phase', 'build', success=False)
+        self.assert_same_cycle(self.cycle_edges(stderr), expected)
+
+    def test_current_host_receipt_keeps_runtime_edges_and_nodes(self):
+        self.install_bootstrap_cycle()
+        # Every bootstrap package is already at the tree version. The target
+        # still depends on each of them, so none of those host nodes disappear.
+        names = ('cwrappers-2', 'libnbcompat-1', 'coreutils-1', 'gettext-lib-1',
+                 'libtool-base-1', 'm4-1', 'nbpatch-1')
+        self.packages['devel/app']['TOOL_DEPENDS'] = ' '.join((
+            'cwrappers>=1:../../pkgtools/cwrappers',
+            'libnbcompat>=1:../../pkgtools/libnbcompat',
+            'coreutils>=1:../../sysutils/coreutils',
+            'gettext-lib>=1:../../devel/gettext-lib',
+            'libtool-base>=1:../../devel/libtool-base',
+            'm4>=1:../../devel/m4',
+            'nbpatch>=1:../../devel/nbpatch'))
+        control = self.run_export('--dependency-phase', 'build', success=False)
+        self.assertIn('dependency cycle:', control)
+        graph = self.run_export('--dependency-phase', 'build',
+                                '--native-installed', self.native_receipt(names))
+        nodes = self.nodes(graph)
+        self.assertNotIn('dependency cycle:', json.dumps(graph))
+        self.assertIn('native-installed', graph['context']['shared_inputs'])
+        self.assertIn('native installed receipt', graph['provenance']['source'])
+        for package in ('pkgtools/cwrappers', 'pkgtools/libnbcompat', 'sysutils/coreutils',
+                        'devel/gettext-lib', 'devel/libtool-base', 'devel/m4', 'devel/nbpatch'):
+            self.assertTrue(any(key.startswith('host:' + package + '@') for key in nodes), package)
+        # Runtime providers of those installed tools stay, unsuffixed.
+        self.assertIn('host:devel/gettext-lib', nodes)
+        self.assertIn('host:devel/m4', nodes)
+        coreutils = next(key for key in nodes if key.startswith('host:sysutils/coreutils@'))
+        libtool = next(key for key in nodes if key.startswith('host:devel/libtool-base@'))
+        cwrappers = next(key for key in nodes if key.startswith('host:pkgtools/cwrappers@'))
+        gettext = nodes['host:devel/gettext-lib']
+        self.assertIn({'id': 'host:devel/gettext-lib', 'kind': 'runtime'}, nodes[coreutils]['dependencies'])
+        self.assertIn({'id': 'host:devel/m4', 'kind': 'runtime'}, nodes[libtool]['dependencies'])
+        self.assertFalse(any(edge['id'].endswith('libnbcompat') or edge['id'].endswith('libnbcompat@')
+                             or '/libnbcompat' in edge['id'] for edge in nodes[cwrappers]['dependencies']))
+        self.assertEqual(gettext['dependencies'], [])
+        self.assertFalse(any(edge['kind'] in ('build', 'tool')
+                             for key, node in nodes.items() if key.startswith('host:')
+                             for edge in node['dependencies']))
+        # The receipt does not retarget or rehash the target package.
+        self.assertIn('target:devel/app', nodes)
+
+    def test_receipt_does_not_drop_a_host_node_another_package_needs(self):
+        self.add_package('pkgtools/cwrappers', {
+            'BUILD_DEPENDS': 'libnbcompat>=1:../../pkgtools/libnbcompat',
+            'DEPENDS': 'gettext-lib>=1:../../devel/gettext-lib'})
+        self.add_package('pkgtools/libnbcompat', {'PKG_FAIL_REASON': 'must not be queried'})
+        self.add_package('devel/gettext-lib', {})
+        self.packages['devel/app'].update({
+            'TOOL_DEPENDS': 'cwrappers>=1:../../pkgtools/cwrappers libnbcompat>=1:../../pkgtools/libnbcompat',
+            'BUILD_DEPENDS': '', 'DEPENDS': '', 'TEST_DEPENDS': '', 'BOOTSTRAP_DEPENDS': ''})
+        # libnbcompat is a direct target tool, so it remains even though the
+        # current cwrappers package does not rebuild against it. Its own
+        # failure is visible because that direct edge still queries it.
+        self.packages['pkgtools/libnbcompat']['PKG_FAIL_REASON'] = ''
+        graph = self.run_export('--dependency-phase', 'build', '--native-installed',
+                                self.native_receipt(('cwrappers-1',)))
+        nodes = self.nodes(graph)
+        self.assertTrue(any(key.startswith('host:pkgtools/cwrappers@') for key in nodes))
+        self.assertTrue(any(key.startswith('host:pkgtools/libnbcompat@') for key in nodes))
+        self.assertIn('host:devel/gettext-lib', nodes)
+        cwrappers = next(key for key in nodes if key.startswith('host:pkgtools/cwrappers@'))
+        self.assertEqual(nodes[cwrappers]['dependencies'],
+                         [{'id': 'host:devel/gettext-lib', 'kind': 'runtime'}])
+
+    def test_current_host_does_not_query_its_unscheduled_build_tools(self):
+        self.add_package('pkgtools/cwrappers', {
+            'BUILD_DEPENDS': 'libnbcompat>=1:../../pkgtools/libnbcompat'})
+        self.add_package('pkgtools/libnbcompat', {'PKG_FAIL_REASON': 'not a scheduled prerequisite'})
+        self.packages['devel/app'].update({
+            'TOOL_DEPENDS': 'cwrappers>=1:../../pkgtools/cwrappers',
+            'BUILD_DEPENDS': '', 'DEPENDS': '', 'TEST_DEPENDS': '', 'BOOTSTRAP_DEPENDS': ''})
+        refused = self.run_export('--dependency-phase', 'build', success=False)
+        self.assertIn('libnbcompat', refused)
+        calls_path = self.pkgsrc / 'calls.jsonl'
+        calls_path.unlink()
+        graph = self.run_export('--dependency-phase', 'build', '--native-installed',
+                                self.native_receipt(('cwrappers-1',)))
+        calls = [json.loads(line)['package'] for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertIn('pkgtools/cwrappers', calls)
+        self.assertNotIn('pkgtools/libnbcompat', calls)
+        self.assertTrue(any(key.startswith('host:pkgtools/cwrappers@') for key in self.nodes(graph)))
+        self.assertFalse(any('libnbcompat' in key for key in self.nodes(graph)))
+
+    def test_runtime_providers_being_current_does_not_cut_the_cycle(self):
+        expected = self.install_bootstrap_cycle()
+        # Only the packages whose cycle edges are runtime are current.
+        # Their runtime edges stay, so the loop remains a hard failure.
+        stderr = self.run_export('--dependency-phase', 'build', '--native-installed',
+                                 self.native_receipt(('coreutils-1', 'libtool-base-1')),
+                                 success=False)
+        self.assert_same_cycle(self.cycle_edges(stderr), expected)
+
+    def test_older_installed_package_is_not_current(self):
+        expected = self.install_bootstrap_cycle()
+        names = ('cwrappers-0', 'libnbcompat-0', 'coreutils-0', 'gettext-lib-0',
+                 'libtool-base-0', 'm4-0', 'nbpatch-0')
+        stderr = self.run_export('--dependency-phase', 'build', '--native-installed',
+                                 self.native_receipt(names), success=False)
+        self.assert_same_cycle(self.cycle_edges(stderr), expected)
+
+    def test_native_installed_receipt_does_not_apply_to_target_cycles(self):
+        self.packages['devel/library']['DEPENDS'] = 'app>=1:../../devel/app'
+        stderr = self.run_export('--dependency-phase', 'build', '--native-installed',
+                                 self.native_receipt(('app-1', 'library-1')), success=False)
+        self.assertIn('dependency cycle:', stderr)
+        self.assertIn('target:devel/app', stderr)
+        self.assertIn('-[runtime]->', stderr)
+
+    def test_native_installed_receipt_is_a_shared_input_without_retargeting(self):
+        before = self.run_export('--dependency-phase', 'build')
+        empty = self.path / 'empty-receipt'
+        empty.write_text('')
+        after = self.run_export('--dependency-phase', 'build', '--native-installed', str(empty))
+        self.assertEqual(before['nodes'], after['nodes'])
+        self.assertNotIn('native-installed', before['context']['shared_inputs'])
+        self.assertIn('native-installed', after['context']['shared_inputs'])
+        self.assertEqual(after['provenance']['source'],
+                         before['provenance']['source'][:-1] + '; native installed receipt)')
+        bare = self.path / 'bare-receipt'
+        bare.write_text('cwrappers-1')
+        self.assertIn('must end with a newline', self.run_export(
+            '--dependency-phase', 'build', '--native-installed', str(bare), success=False))
+        duplicate = self.path / 'duplicate-receipt'
+        duplicate.write_text('cwrappers-1\ncwrappers-1\n')
+        self.assertIn('duplicate native installed package', self.run_export(
+            '--dependency-phase', 'build', '--native-installed', str(duplicate), success=False))
+        invalid = self.path / 'invalid-receipt'
+        invalid.write_text('cwrappers 1\n')
+        self.assertIn('invalid native installed package name', self.run_export(
+            '--dependency-phase', 'build', '--native-installed', str(invalid), success=False))
 
 
 if __name__ == '__main__':

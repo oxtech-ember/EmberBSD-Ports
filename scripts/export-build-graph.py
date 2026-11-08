@@ -102,6 +102,11 @@ class Exporter:
         self.test_requirements = []
         self.query_results = {}
         self.file_digests = {}
+        self.pmatch_cache = {}
+        # None means the closure is complete. A receipt, including an empty
+        # one, selects the installed host packages cross-bulk would not rebuild.
+        receipt = getattr(args, 'native_installed', None)
+        self.native_installed = None if receipt is None else self.read_native_installed(receipt)
 
     def run(self, command, **kwargs):
         completed = subprocess.run(command, text=True, capture_output=True,
@@ -171,13 +176,59 @@ class Exporter:
                               result['PKG_SKIP_REASON'] + result['PKG_FAIL_REASON'])
         return result
 
+    def read_native_installed(self, path):
+        """One PKGNAME per line from the selected host prefix, with no extras."""
+        path = Path(path).resolve(strict=True)
+        if not path.is_file():
+            raise ExportError('native installed receipt must be a regular file')
+        text = path.read_text()
+        if text and not text.endswith('\n'):
+            raise ExportError('native installed receipt must end with a newline')
+        names = []
+        seen = set()
+        for line in text.splitlines():
+            if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.+-]*', line):
+                raise ExportError('invalid native installed package name')
+            if line in seen:
+                raise ExportError('duplicate native installed package: ' + line)
+            seen.add(line)
+            names.append(line)
+        return tuple(names)
+
+    def pmatch(self, pattern, name):
+        key = (pattern, name)
+        if key not in self.pmatch_cache:
+            completed = subprocess.run([str(self.pkg_admin), 'pmatch', pattern, name],
+                                       env=self.environment, text=True,
+                                       capture_output=True, timeout=self.args.timeout)
+            if completed.returncode not in (0, 1):
+                raise ExportError('native pkg_admin rejected dependency ' +
+                                  pattern + ' for ' + name)
+            self.pmatch_cache[key] = completed.returncode == 0
+        return self.pmatch_cache[key]
+
     def matches(self, pattern, name):
-        completed = subprocess.run([str(self.pkg_admin), 'pmatch', pattern, name],
-                                   env=self.environment, text=True,
-                                   capture_output=True, timeout=self.args.timeout)
-        if completed.returncode:
+        if not self.pmatch(pattern, name):
             raise ExportError('native pkg_admin rejected dependency ' +
                               pattern + ' for ' + name)
+
+    def host_is_current(self, metadata):
+        """Whether the host prefix already has this package at its version or newer.
+
+        This is cross-bulk's native_current check. An installed current host
+        package is not rebuilt, so its build and tool dependencies are not
+        prerequisites. Its runtime dependencies remain.
+        """
+        if self.native_installed is None:
+            return False
+        version = metadata['PKGVERSION']
+        name = metadata['PKGNAME']
+        if not version or not name.endswith('-' + version) or name == '-' + version:
+            raise ExportError('PKGNAME does not end with its PKGVERSION: ' + name)
+        base = name[:-(len(version) + 1)]
+        pattern = base + '>=' + version
+        return any(self.pmatch(pattern, installed) for installed in self.native_installed
+                   if installed.startswith(base + '-'))
 
     def file_digest(self, path):
         path = Path(path)
@@ -311,8 +362,14 @@ class Exporter:
             if key in ('MAKEFLAGS', '_PKGSRC_BARRIER', 'PKGNAME_REQD', 'MAKECONF') or key.startswith('TARGET_'):
                 recursive_env.pop(key)
         children = []
+        # A current host package keeps the runtime providers it executes and
+        # omits the bootstrap/build/tool edges cross-bulk does not schedule.
+        # The node itself stays. Target packages are never treated this way.
+        current_host = cross == 'no' and self.host_is_current(metadata)
         for variable, kind in DEPENDENCIES.items():
             if self.args.dependency_phase == 'runtime' and kind != 'runtime':
+                continue
+            if current_host and kind != 'runtime':
                 continue
             for dependency in sorted(set(shlex.split(metadata[variable]))):
                 pattern, sep, path = dependency.partition(':')
@@ -423,6 +480,8 @@ class Exporter:
                   'exporter': self.file_digest(Path(__file__))}
         if self.native_make_variables:
             shared['native-make-variables'] = digest(canonical(self.native_make_variables))
+        if self.native_installed is not None:
+            shared['native-installed'] = self.file_digest(self.args.native_installed)
         for item in self.args.shared_input:
             name, sep, path = item.partition('=')
             if not sep or not re.fullmatch(r'[a-zA-Z0-9_.-]+', name) or name in shared:
@@ -435,6 +494,8 @@ class Exporter:
                   '; make variables: ' + summary(self.make_variables))
         if self.native_make_variables:
             source += '; native make variables: ' + summary(self.native_make_variables)
+        if self.native_installed is not None:
+            source += '; native installed receipt'
         return {'schema': 'ports-graph-v1',
                 'context': {'target': self.args.target, 'triplet': self.args.triplet,
                             'toolchain_sha256': self.file_digest(self.args.toolchain_input),
@@ -464,6 +525,8 @@ def main():
                         help='repeatable scalar bmake assignment for every query; does not accept targets or make flags')
     parser.add_argument('--native-make-variable', action='append', default=[], metavar='NAME=VALUE',
                         help='repeatable scalar assignment for native role queries only, including their native dependencies')
+    parser.add_argument('--native-installed', type=Path,
+                        help='host prefix receipt from pkg_info -a -Q PKGNAME; current host packages keep runtime edges only')
     parser.add_argument('--max-nodes', type=int, default=1000)
     parser.add_argument('--jobs', type=int, default=1,
                         help='maximum concurrent bmake metadata queries (default: 1)')
