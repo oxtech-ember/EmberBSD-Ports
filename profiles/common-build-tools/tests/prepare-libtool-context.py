@@ -163,6 +163,57 @@ class ContextTest(unittest.TestCase):
             self.assertEqual(selected, str(database))
             self.assertEqual(calls, [['/selected/sbin/pkg_admin', 'config-var', 'PKG_DBDIR']])
 
+    def test_wrong_prefix_inserted_before_the_lock_is_not_built(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            prefix = root / 'host'
+            prefix.mkdir()
+            database = root / 'host-pkgdb'
+            self._install_package(database, prefix)
+            sysroot = root / 'sysroot'
+            (sysroot / 'usr/pkg/pkgdb').mkdir(parents=True)
+            def capture(argv, *, env):
+                return SimpleNamespace(stdout=(str(prefix) + '\n' + str(database) + '\n').encode())
+            selected = producer.resolve_native_database(
+                pkg_admin=str(prefix / 'sbin/pkg_admin'), process=SimpleNamespace(capture=capture),
+                env={'PATH': str(prefix / 'bin')}, prefix=str(prefix), sysroot=str(sysroot),
+                native_makeconf=str(root / 'native.mk'), make=str(prefix / 'bin/bmake'),
+                pkgsrc=str(root / 'pkgsrc'))
+            self.assertEqual(selected, str(database))
+            foreign = database / 'foreign-9.9'
+            foreign.mkdir()
+            (foreign / '+CONTENTS').write_text('@cwd ' + str(root / 'other-prefix') + '\n')
+            calls = []
+            def run_logged(argv, log, *, env):
+                calls.append(argv[-1])
+            sys.path.insert(0, os.path.join(os.environ['EMBERBSD_SDK_SOURCE'], 'src'))
+            from emberbsd_sdk.process import ContextLocks
+            # Injection is before the lock. The default lock directory is the
+            # parent of the host prefix; the subjects are that prefix and the
+            # same database path resolve returned.
+            with ContextLocks([str(prefix), selected], str(prefix.parent)):
+                with self.assertRaisesRegex(ValueError, 'another prefix'):
+                    producer.build_selected_package(
+                        ['/selected/bmake'], str(prefix), selected, str(sysroot), root / 'context',
+                        str(prefix / 'sbin/pkg_add'), SimpleNamespace(run_logged=run_logged),
+                        {'PATH': str(prefix / 'bin')}, prove_contents=True)
+            self.assertEqual(calls, [])
+            self.assertEqual(selected, str(database))
+
+    def test_repeated_identical_cwd_names_the_same_host_prefix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            prefix = root / 'host'
+            prefix.mkdir()
+            database = root / 'host-pkgdb'
+            sysroot = root / 'sysroot'
+            sysroot.mkdir()
+            self._install_package(database, prefix)
+            (database / 'example-1.0' / '+CONTENTS').write_text(
+                '@name example-1.0\n@cwd ' + str(prefix) + '\n@cwd ' + str(prefix) + '\n')
+            self.assertEqual(producer.selected_host_database(str(database), str(prefix), str(sysroot)),
+                             str(database))
+
     def _install_package(self, database, prefix):
         database.mkdir(parents=True, exist_ok=True)
         package = database / 'example-1.0'

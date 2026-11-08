@@ -18,15 +18,23 @@ bmake -C PKGSRC/pkgtools/pkg_install USE_CROSS_COMPILE=no MAKECONF=FILE \
 
 `PREFIX` must be the selected host prefix. `PKG_DBDIR` must be a real
 directory, not a symlink, outside the target sysroot. Every `@cwd` line in
-every installed `+CONTENTS` must name that host prefix; a later `@cwd` and a
-trailing space are refused. The target sysroot database and a database from
-another prefix are refused. This still requires `--pkgsrc-tree` or
+every installed `+CONTENTS` must name that host prefix. A plist may repeat
+that same prefix; a later `@cwd` that names any other path is refused, as is
+a trailing space. The target sysroot database and a database from another
+prefix are refused. This still requires `--pkgsrc-tree` or
 `--pkgsrc-export`. The producer verifies that input before the query.
 `--pkgsrc-export` is the stage directory; the query uses the inner `pkgsrc`
-tree from its receipt, not the stage directory itself. The dependency
-`pkg_add -K PKG_DBDIR -U` and the prefix and database locks are unchanged;
-the lock directory still defaults to the native prefix parent. A prefix can
-keep that database outside `var/db/pkg`.
+tree from its receipt, not the stage directory itself. The selected path is
+locked with the host prefix before `depends`, in the same lock directory as
+before (the native prefix parent unless `--lock-directory` is set). The
+installed-prefix scan runs again after both locks are held and before
+`pkg_add -K PKG_DBDIR -U`. The database path is not changed. Those locks
+exclude other producers that take the same SDK context locks. They do not
+stop a `pkg_add` that never takes the locks; the scan under the locks is the
+precondition for this producer's dependency install, not exclusive control of
+the database directory. Omitting `--native-makeconf` still uses the compiled
+`pkg_admin` path and does not add this content scan. A prefix can keep that
+database outside `var/db/pkg`.
 
 Select the host prefix, compiler, target sysroot, OS TOOLDIR, Git, work parent,
 and target explicitly. A Clang runtime stage must match the actual foundation;

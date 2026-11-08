@@ -307,6 +307,24 @@ def build_package(make, prefix, pkgdb, context, pkg_add, process, env):
                        str(context / 'build.log'), env=env)
 
 
+def build_selected_package(make, prefix, pkgdb, sysroot, context, pkg_add, process, env, *,
+                           prove_contents):
+    """Install dependencies only after the locked database still has this prefix.
+
+    The caller holds the host-prefix lock and the lock for this same database
+    path. Those SDK context locks exclude other producers that take them in
+    the same lock directory. They do not stop pkg_add that never takes them.
+    For an explicit native MAKECONF, the installed-prefix scan is the
+    precondition for depends and uses the database path just selected.
+    """
+    if prove_contents:
+        confirmed = selected_host_database(pkgdb, prefix, sysroot)
+        if confirmed != os.path.normpath(pkgdb):
+            raise ValueError('selected package database changed')
+        pkgdb = confirmed
+    build_package(make, prefix, pkgdb, context, pkg_add, process, env)
+
+
 def main():
     sdk, argv = load_sdk()
     from emberbsd_sdk import (application_toolchain, inventory, llvm_runtime, native_toolset,
@@ -553,7 +571,11 @@ def main():
                 raise SDKError('cross-libtool recipe returned an invalid package name')
             database = context / 'pkgdb'
             if not reused:
-                build_package(make, prefix, pkgdb, context, native.tool('pkg_add'), process, env)
+                # Prefix and database locks are already held. Re-read @cwd
+                # before depends; do not switch to another database.
+                build_selected_package(make, prefix, pkgdb, stage_sysroot, context,
+                                       native.tool('pkg_add'), process, env,
+                                       prove_contents=a.native_makeconf is not None)
                 package = tmp / 'packages/All' / (name + '.tgz')
                 if not package.is_file():
                     raise SDKError('cross-libtool package was not produced')
