@@ -37,8 +37,8 @@ Additional changes: EmberBSD contributors (AI-assisted).
  conf.set('HAVE_C99_VSNPRINTF', 1)
  
  prefix = get_option('prefix')
-+conf.set_quoted('FC_INSTALL_PREFIX', prefix.rstrip('/'))
-+conf.set_quoted('FC_INSTALL_LIBDIR', (prefix / get_option('libdir')).rstrip('/'))
++conf.set_quoted('FC_INSTALL_PREFIX', prefix)
++conf.set_quoted('FC_INSTALL_LIBDIR', prefix / get_option('libdir'))
  
  fonts_conf = configuration_data()
  
