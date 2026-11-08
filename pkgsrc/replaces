@@ -552,3 +552,25 @@ graphics/vulkan-headers
 graphics/vulkan-loader
 
 x11/gtk4
+
+# Common Plasma packages and supporting libraries carried by EmberBSD recipes.
+audio/plasma6-ocean-sound-theme
+audio/plasma6-oxygen-sounds
+devel/appstream
+graphics/plasma6-breeze-gtk
+graphics/plasma6-oxygen
+graphics/plasma6-plasma-workspace-wallpapers
+misc/plasma6-kde-gtk-config
+misc/plasma6-kwrited
+security/plasma6-ksshaskpass
+security/qt6-qtkeychain
+sysutils/plasma6-kinfocenter
+sysutils/plasma6-kmenuedit
+sysutils/plasma6-powerdevil
+sysutils/plasma6-systemsettings
+textproc/libstemmer
+textproc/libxmlb
+textproc/py-libxml2
+x11/kirigami-addons
+x11/plasma6-kdeplasma-addons
+x11/plasma6-kscreen
