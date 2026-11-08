@@ -103,6 +103,25 @@ def validate_root_layout(mode, root_offset, root_size, root_length, fit_end,
         raise ValueError('NOR root partition exceeds flash capacity')
 
 
+def validate_firmware_runtime_fdt(get):
+    """Reject kernel DTBs and require the S31 OpenSBI and SPL SRAM contract."""
+    try:
+        if 'opensbi,config' not in get(
+                '/chosen/opensbi-config', 'compatible').split():
+            raise ValueError
+        if int(get('/chosen/opensbi-config', 'heap-size', 'x'), 16) <= 0:
+            raise ValueError
+        if get('/memory@2f030000', 'device_type') != 'memory':
+            raise ValueError
+        bank = [int(value, 16) for value in
+                get('/memory@2f030000', 'reg', 'x').split()]
+        if (len(bank) != 2 or bank[0] != 0x2f030000 or bank[1] <= 0 or
+            bank[0] + bank[1] > 0x2f07afb0):
+            raise ValueError
+    except (KeyError, subprocess.CalledProcessError, ValueError):
+        raise ValueError('firmware DTB lacks valid OpenSBI heap or S31 SRAM layout') from None
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for name in ('host-prefix', 'mkimage', 'spl-rom', 'opensbi', 'uboot', 'uboot-elf', 'firmware-dtb', 'kernel-fit', 'kernel-elf', 'root-fs', 'output'):
@@ -158,6 +177,7 @@ def main():
             raise ValueError('profiled firmware FDT exceeds padded slot')
         def firmware_get(node, prop, typ='s'):
             return run((tools['fdtget'], '-t', typ, work/'firmware.dtb', node, prop), env=env).decode().strip()
+        validate_firmware_runtime_fdt(firmware_get)
         if (firmware_get('/chosen', 'emberbsd,root-mode') != a.root_mode or
             firmware_get('/chosen', 'bootargs') != bootargs):
             raise ValueError('firmware FDT root mode or bootargs differ from profile')

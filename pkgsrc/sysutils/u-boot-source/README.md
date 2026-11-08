@@ -102,6 +102,12 @@ offsets and erase geometry come from the producer's profile inputs, not the
 generic board hook. The flash-root layout is a preparation contract and does
 not establish a writable filesystem or hardware acceptance.
 
+The firmware DTB input must also carry `/chosen/opensbi-config` with the
+`opensbi,config` compatible and a nonzero `heap-size`, plus the S31 SRAM bank
+at `/memory@2f030000`. The producer accepts any positive heap setting and
+checks the bank base and upper SRAM boundary; it rejects kernel DTBs that lack
+the firmware runtime contract before packaging.
+
 Use `mkimage` from the common `sysutils/u-boot-tools` package in the host
 prefix; `dtc`, `fdtget`, `llvm-objcopy`, and `llvm-readobj` also come from
 that prefix. Prepare the ROM-format SPL with the selected target BFD `nm` and
@@ -133,9 +139,11 @@ hash checks validate that image. The host checks cover separate code contracts:
 - `tests/test-s31-nor-bootcmd.py` checks U-Boot's boot command and loadable
   contract. Run it when that boot-selection contract changes.
 - `tests/test-s31-nor-integration.py` deliberately builds two complete images
-  to check deterministic output and NOR offsets. Run it when the producer,
-  FIT format or boot chain changes, or for explicit image qualification; it is
-  not needed for each payload-only update.
+  to check deterministic output and NOR offsets, then confirms a kernel DTB
+  cannot be substituted for the firmware DTB. It accepts explicit root mode
+  and NOR geometry for exercising the flash-root path. Run it when the
+  producer, FIT format or boot chain changes, or for explicit image
+  qualification; it is not needed for each payload-only update.
 
 ### Opt-in Mosaico LCD command
 

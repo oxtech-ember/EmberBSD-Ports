@@ -33,6 +33,25 @@ def rom():
 
 
 class NorInputs(unittest.TestCase):
+    def test_firmware_fdt_requires_runtime_role_without_pinning_heap(self):
+        properties = {
+            ('/chosen/opensbi-config', 'compatible'):
+                'vendor,firmware opensbi,config',
+            ('/chosen/opensbi-config', 'heap-size'): '6000',
+            ('/memory@2f030000', 'device_type'): 'memory',
+            ('/memory@2f030000', 'reg'): '2f030000 4afb0',
+        }
+
+        def get(node, prop, _typ='s'):
+            return properties[(node, prop)]
+
+        m.validate_firmware_runtime_fdt(get)
+        with self.assertRaisesRegex(ValueError, 'firmware DTB'):
+            m.validate_firmware_runtime_fdt(lambda node, prop, typ='s': {
+                ('/memory@2f030000', 'device_type'): 'memory',
+                ('/memory@2f030000', 'reg'): '2f030000 4afb0',
+            }[(node, prop)])
+
     def test_root_storage_geometry_keeps_nor_fs_after_fit(self):
         m.validate_root_layout('nor', 0x600000, 0xa00000, 0xa00000,
                                0x526000, 4096)
