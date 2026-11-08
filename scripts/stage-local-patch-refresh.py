@@ -1082,7 +1082,11 @@ def main():
     candidates = [x for x in candidates if x.is_dir() and re.fullmatch(re.escape(v['PKGBASE'] + '-' + v['PKGVERSION_NOREV']) + r'(?:nb[0-9]+)?', x.name)]
     require(len(candidates) == 1 or (not candidates and a.previous_recipe is not None),
             'expected exactly one compatible installed package owner or an explicit previous recipe for an unfinished stage')
-    owner = candidates[0] / '+BUILD_VERSION' if candidates else None
+    # An explicitly recovered source stage can be newer than the installed
+    # package after configure/build failed. Its selected previous recipe and
+    # locked patch cookie supply the replay; live preimages still must match.
+    owner = (candidates[0] / '+BUILD_VERSION'
+             if candidates and not a.recover_applied_patches else None)
     marker = work / '.emberbsd-patch-refresh.json'
     subst_stage = None
     if a.subst_class:

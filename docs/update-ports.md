@@ -350,8 +350,7 @@ full archive scope. All old/current patch targets, including unchanged targets
 and expected absent files, must match the old replay before any live source
 write. Then refresh applies the complete current series, preserving unchanged
 source and object timestamps. No package database entry is created. Without a
-previous recipe, or when an existing installed owner's metadata is invalid,
-refresh still refuses.
+previous recipe, ordinary refresh still requires valid installed provenance.
 
 Candidate replay follows pkgsrc stage order: `SUBST_STAGE=pre-configure` runs
 before the `replace-interpreter` configure hook; for `do-configure-pre-hook`,
@@ -361,11 +360,13 @@ state, so an ordinary retry can reproduce those rewrites after `configure-clean`
 removes the configure cookie.
 
 For an explicitly failed source stage whose saved `.patch_done` cookie is an
-ordered subset of the installed package's complete patch inventory, use
+ordered subset of the selected previous recipe's complete patch inventory, use
 `CROSS_BULK_PATCH_REFRESH_RECOVER_APPLIED_PATCHES=yes` together with the
-previous-recipe selector. This recovery replays exactly the cookie's applied
-patches as the live preimage, verifies every installed patch hash and archive
-checksum, and applies the complete current patch set transactionally. Every
+previous-recipe selector. That recipe describes the prepared source, which may
+be newer than the installed package when configuration or compilation failed.
+This recovery replays exactly the cookie's applied patches as the live preimage,
+verifies both recipes' complete patch checksums and archive checksums, and
+applies the complete current patch set transactionally. Every
 changed live file must match that replay before any write; an unrelated or
 modified preimage is refused. Ordinary refresh keeps its full previous-recipe
 replay and stale-cookie checks.
