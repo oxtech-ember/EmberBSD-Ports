@@ -388,6 +388,21 @@ Neither finding identifies a new cache path error. The kernel's actual-source BO
 model passed Cppcheck, Clang analysis, ASan and UBSan for both native page sizes.
 Valgrind was unavailable in the selected SDK; no Valgrind result is claimed.
 
+## PowerVR BO reuse
+
+The BO reuse check uses Mesa's `util_barrier` and C11 thread support.
+The harness builds those helpers from the supplied Mesa tree.
+This preserves all four concurrent workers on hosts without `pthread_barrier_t`,
+including macOS. It does not substitute a sequential test for concurrency.
+The pre-fix harness fails to compile on macOS at `pthread_barrier_t`.
+The repaired harness passes the reuse, ownership, limits, and teardown cases
+with native SDK Clang 23.1.4, including ASan/UBSan. Target execution remains separate.
+
+```sh
+python3 pkgsrc/graphics/MesaLib/tests/pvr-bo-reuse.py \
+    --mesa "$MESA_SOURCE" --cc "$HOST_PREFIX/bin/clang" --work "$WORK/bo-reuse"
+```
+
 ## PowerVR queue dependencies across submissions
 
 The queue retains per-stage job tails and unconsumed waits across Vulkan

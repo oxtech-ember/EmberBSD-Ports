@@ -22,6 +22,30 @@ Vulkan device, acceleration, or tablet display. Validate those separately on
 the intended target. The normal QtBase configuration of other profiles is
 unchanged.
 
+## Rendering and presentation are separate
+
+The shared bsdfb [native-image interface](../../../tests/qt-bsdfb/README.md#direct-image-presentation)
+also accepts a completed image directly from a presentation worker.
+Resolve `bsdfbPresentImage` and `bsdfbNativeImageFormat` through Qt's platform API.
+The plugin owns the framebuffer mapping and serializes presentation and teardown.
+The call copies native rows synchronously and retains no source reference.
+It requires the exact framebuffer dimensions, native format, and `rotation=0`.
+A consumer can rotate its offscreen image on the GPU and select input rotation
+separately. This avoids the ordinary backing-store composition and CPU rotation.
+It still performs GPU readback and one CPU framebuffer copy. It is not GPU scanout.
+
+Use completion fences before reading a GPU result or recycling a frame slot.
+Keep the image alive until the native presentation call returns.
+Stop presentation workers before destroying QGuiApplication.
+Use the same contracts for every compatible framebuffer; keep board selection
+outside the renderer and presenter. DRM/KMS buffer import and page flips require
+a separate display backend, with format, modifier, fence, and lifetime support.
+
+The [PowerVR queue and BO checks](../../../pkgsrc/graphics/MesaLib/tests/README.md#powervr-queue-dependencies-across-submissions)
+cover asynchronous dependencies and bounded allocation reuse.
+They do not establish frame rate, physical presentation timing, or device stability.
+The [UI measurement procedure](ui-performance.md) separates those checks.
+
 The source-only options and consumer graph can be checked with:
 
 ```sh

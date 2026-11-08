@@ -8,6 +8,7 @@
 #include <string.h>
 #include <pthread.h>
 #include "util/list.h"
+#include "util/u_thread.h"
 
 typedef int VkResult;
 typedef pthread_mutex_t simple_mtx_t;
@@ -23,7 +24,6 @@ typedef struct { uint64_t addr; } pvr_dev_addr_t;
 #define PVR_WINSYS_BO_FLAG_PM_FW_PROTECT 4
 #define PVR_WINSYS_BO_TYPE_GPU 0
 #define VG(x)
-#define mtx_plain 0
 #define simple_mtx_init(m, f) assert(!pthread_mutex_init(m, NULL))
 #define simple_mtx_lock(m) assert(!pthread_mutex_lock(m))
 #define simple_mtx_unlock(m) assert(!pthread_mutex_unlock(m))
@@ -147,7 +147,7 @@ static void frame(struct pvr_suballocator *a)
 }
 
 struct thread_args { struct pvr_device *device; struct pvr_winsys_heap *heap; unsigned id; };
-static pthread_barrier_t barrier;
+static util_barrier barrier;
 static void *thread_run(void *data)
 {
    struct thread_args *arg = data;
@@ -156,9 +156,9 @@ static void *thread_run(void *data)
       assert(pvr_bo_alloc(arg->device, arg->heap, 16384, 64,
                          PVR_BO_ALLOC_FLAG_CPU_MAPPED | PVR_BO_ALLOC_FLAG_CACHE, &bo) == VK_SUCCESS);
       memset(bo->bo->map, (int)arg->id, 16384);
-      pthread_barrier_wait(&barrier);
+      util_barrier_wait(&barrier);
       for (unsigned j = 0; j < 16384; j++) assert(((unsigned char *)bo->bo->map)[j] == arg->id);
-      pthread_barrier_wait(&barrier);
+      util_barrier_wait(&barrier);
       pvr_bo_free(arg->device, bo);
    }
    return NULL;
@@ -256,13 +256,13 @@ int main(void)
 
    pthread_t threads[4];
    struct thread_args thread_data[4];
-   assert(!pthread_barrier_init(&barrier, NULL, 4));
+   util_barrier_init(&barrier, 4);
    for (unsigned i = 0; i < 4; i++) {
       thread_data[i] = (struct thread_args){&device, &heap, i + 1};
       assert(!pthread_create(&threads[i], NULL, thread_run, &thread_data[i]));
    }
    for (unsigned i = 0; i < 4; i++) assert(!pthread_join(threads[i], NULL));
-   assert(!pthread_barrier_destroy(&barrier));
+   util_barrier_destroy(&barrier);
    pvr_bo_cache_fini(&device);
    assert(created == destroyed && mapped == unmapped && live_bytes == 0);
    puts("PASS: frame reuse, live references, zero fill, exact keys, OOM, limits, threads, teardown");

@@ -43,9 +43,22 @@ def main():
     code = template.replace("/* HEADER */", header).replace("/* SOURCE */", limits + "\n" + "\n\n".join(bodies))
     out = args.work / "contract.c"
     out.write_text(code)
+    # Reuse Mesa's portable barrier, including its Darwin condition-variable
+    # implementation. Keep the source's native pthread selection unchanged.
+    thread_source = (args.mesa / "src/util/u_thread.c").read_text()
+    start = thread_source.index('#if defined(HAVE_PTHREAD) && !defined(__APPLE__) && !defined(__HAIKU__)\n\nvoid util_barrier_init')
+    end = thread_source.index('\n#endif', start) + len('\n#endif')
+    barrier = args.work / "barrier.c"
+    copyright = thread_source[:thread_source.index('#include')]
+    barrier.write_text(copyright + '#include <assert.h>\n#include "util/u_thread.h"\n' +
+                       thread_source[start:end] + '\n')
     command = [str(args.cc), "-std=gnu11", "-g", "-O1", "-Wall", "-Wextra", "-Werror",
-               "-Wno-unused-function", "-Wno-unused-parameter", "-pthread",
-               "-I" + str(args.mesa / "src"), str(out), "-o", str(args.work / "contract")]
+               "-Wno-unused-function", "-Wno-unused-parameter", "-pthread", "-DHAVE_PTHREAD",
+               "-DHAVE_STRUCT_TIMESPEC",
+               "-I" + str(args.mesa / "src"), str(out), str(barrier),
+               str(args.mesa / "src/c11/impl/threads_posix.c"),
+               str(args.mesa / "src/c11/impl/time.c"),
+               "-o", str(args.work / "contract")]
     if args.sanitize:
         command[1:1] = ["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
     subprocess.run(command, check=True)
