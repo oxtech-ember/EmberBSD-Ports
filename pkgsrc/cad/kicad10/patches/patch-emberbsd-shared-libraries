@@ -1,0 +1,645 @@
+$NetBSD$
+
+Use shared Ports libraries and the native Lemon generator.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1016,15 +1016,10 @@
+ 
+ find_package( PythonLibs 3.6 REQUIRED )
+ 
+-# pybind11 is header-only, so include the subdir
+-# USE_CROSSCOMPILING is needed to avoid pybind11 trying to run a non-native intrepreter
+-# It also makes no sense it needs a second flag in addition to CMAKE_CROSSCOMPILING
++# Keep native Python for generators and target Python for embedding.
+ set( PYBIND11_USE_CROSSCOMPILING TRUE )
+-# Disable the findpython integration that pybind has buried in it
+-set( PYBIND11_NOPYTHON TRUE )
+-add_subdirectory(thirdparty/pybind11)
+-
+-# Make sure that we get our pybind11 and not the system pybind11 (ours is patched to work with wx)
++find_package( pybind11 3.1.0 CONFIG REQUIRED )
++get_target_property( PYBIND11_INCLUDE_DIR pybind11::headers INTERFACE_INCLUDE_DIRECTORIES )
+ include_directories( BEFORE SYSTEM ${PYBIND11_INCLUDE_DIR} )
+ 
+ # Infrequently needed headers go at end of search paths, append to INC_AFTER which
+@@ -1223,6 +1218,67 @@
+ if( UNIX AND NOT APPLE )
+     include( ${KICAD_CMAKE_MODULE_PATH}/KiCadAppNames.cmake )
+ endif()
++
++# Use the shared Ports providers. Required package discovery intentionally has
++# no fallback to the copies in thirdparty/.
++find_package( argparse 3.2 CONFIG REQUIRED )
++find_package( sul-dynamic_bitset 1.3.3 CONFIG REQUIRED )
++find_package( LibPopcnt CONFIG REQUIRED )
++find_package( Clipper2 2.0.1 CONFIG REQUIRED )
++find_package( FastFloat 8.3.2 CONFIG REQUIRED )
++find_package( fmt 12.2.0 CONFIG REQUIRED )
++find_package( nlohmann_json 3.12.0 CONFIG REQUIRED )
++find_package( NanoSVG 20261029 CONFIG REQUIRED )
++find_package( nanodbc 3.0.8 CONFIG REQUIRED )
++find_package( tl-expected 1.3.1 CONFIG REQUIRED )
++find_package( magic_enum 0.9.8 CONFIG REQUIRED )
++find_package( nanoflann 2.0.1 CONFIG REQUIRED )
++find_package( rapidcsv CONFIG REQUIRED )
++find_package( zint CONFIG REQUIRED )
++find_package( nlohmann_json_schema_validator 2.4.1 CONFIG REQUIRED )
++find_package( BS_thread_pool CONFIG REQUIRED )
++find_package( tinysplinecxx 0.6.0 CONFIG REQUIRED )
++find_package( pegtl 4.0.2 CONFIG REQUIRED )
++find_package( sundown 1.16.0 CONFIG REQUIRED )
++find_package( libcontext 20261029 CONFIG REQUIRED )
++find_package( delaunator 1.0.0 CONFIG REQUIRED )
++find_package( rectpack2d CONFIG REQUIRED )
++find_package( rtree 10.0.8 CONFIG REQUIRED )
++find_package( dxflib 3.26.4 CONFIG REQUIRED )
++find_package( glad 2.0.8 CONFIG REQUIRED )
++find_package( TDxWare_SDK 4.0 CONFIG REQUIRED COMPONENTS 3DxWare::Navlib )
++if( KICAD_BUILD_QA_TESTS )
++    find_package( turtle 2.0.0 CONFIG REQUIRED )
++    add_library( turtle ALIAS turtle::turtle )
++endif()
++find_package( CompoundFileReader CONFIG REQUIRED )
++find_package( gzip-hpp CONFIG REQUIRED )
++find_path( MAGIC_ENUM_INCLUDE_DIR NAMES magic_enum.hpp PATH_SUFFIXES magic_enum REQUIRED )
++find_path( PICOSHA2_INCLUDE_DIR NAMES picosha2.h REQUIRED )
++
++# Keep the existing target names while forwarding each provider's full interface.
++add_library( compoundfilereader ALIAS CompoundFileReader::CompoundFileReader )
++add_library( gzip-hpp ALIAS gzip-hpp::gzip-hpp )
++add_library( glad ALIAS glad::glad )
++add_library( dxflib_qcad ALIAS dxflib::dxflib )
++add_library( clipper2 ALIAS Clipper2::Clipper2Z )
++add_library( dynamic_bitset ALIAS sul::dynamic_bitset )
++add_library( popcnt ALIAS LibPopcnt::libpopcnt )
++add_library( nlohmann_json ALIAS nlohmann_json::nlohmann_json )
++add_library( nanosvg ALIAS NanoSVG::nanosvg )
++add_library( nanodbc ALIAS nanodbc::nanodbc )
++add_library( expected ALIAS tl::expected )
++add_library( magic_enum INTERFACE )
++target_link_libraries( magic_enum INTERFACE magic_enum::magic_enum )
++target_include_directories( magic_enum INTERFACE "${MAGIC_ENUM_INCLUDE_DIR}" )
++add_library( nanoflann ALIAS nanoflann::nanoflann )
++add_library( rapidcsv ALIAS rapidcsv::rapidcsv )
++add_library( nlohmann_json_schema_validator ALIAS nlohmann_json_schema_validator::validator )
++add_library( picosha2 INTERFACE )
++target_include_directories( picosha2 INTERFACE "${PICOSHA2_INCLUDE_DIR}" )
++add_library( thread-pool INTERFACE )
++target_link_libraries( thread-pool INTERFACE BS::thread_pool )
++target_compile_definitions( thread-pool INTERFACE BS_THREAD_POOL_NATIVE_EXTENSIONS=1 )
+ 
+ # Binaries ( CMake targets )
+ add_subdirectory( api )
+--- bitmap2component/CMakeLists.txt.orig
++++ bitmap2component/CMakeLists.txt
+@@ -54,7 +54,7 @@
+     common
+     kicommon
+     ${wxWidgets_LIBRARIES}
+-    potrace
++    Potrace::potrace
+     )
+ 
+ if( APPLE )
+--- cmake/Functions.cmake.orig
++++ cmake/Functions.cmake
+@@ -77,8 +77,6 @@
+ 
+     file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${GRAMMAR_DIR} )
+ 
+-    set( LEMON_EXE $<TARGET_FILE:lemon> CACHE FILEPATH "Path to Lemon Executable" )
+-
+     get_property( LEMON_TEMPLATE
+         TARGET lemon
+         PROPERTY lemon_template
+@@ -94,7 +92,7 @@
+             -DGRAMMAR_DIR=${CMAKE_CURRENT_BINARY_DIR}/${GRAMMAR_DIR}
+             -P ${KICAD_CMAKE_MODULE_PATH}/BuildSteps/LemonParserGenerator.cmake
+         COMMENT "Running Lemon on ${GRAMMAR_FILE} to generate ${GRAMMAR_DIR}/${GRAMMAR_BASE}.c"
+-        DEPENDS lemon
++        DEPENDS "${LEMON_EXE}" "${LEMON_TEMPLATE}"
+                 ${CMAKE_CURRENT_SOURCE_DIR}/${GRAMMAR_FILE}
+                 ${KICAD_CMAKE_MODULE_PATH}/BuildSteps/LemonParserGenerator.cmake
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${GRAMMAR_DIR}
+--- common/CMakeLists.txt.orig
++++ common/CMakeLists.txt
+@@ -472,14 +472,15 @@
+         ${CMAKE_BINARY_DIR}
+         $<TARGET_PROPERTY:dynamic_bitset,INTERFACE_INCLUDE_DIRECTORIES>
+         $<TARGET_PROPERTY:magic_enum,INTERFACE_INCLUDE_DIRECTORIES>
+-        $<TARGET_PROPERTY:pegtl,INTERFACE_INCLUDE_DIRECTORIES>
++        $<TARGET_PROPERTY:taocpp::pegtl,INTERFACE_INCLUDE_DIRECTORIES>
+         $<TARGET_PROPERTY:expected,INTERFACE_INCLUDE_DIRECTORIES>
+         $<TARGET_PROPERTY:kiapi,INTERFACE_INCLUDE_DIRECTORIES>
+         $<TARGET_PROPERTY:picosha2,INTERFACE_INCLUDE_DIRECTORIES>
+         $<TARGET_PROPERTY:nlohmann_json_schema_validator,INTERFACE_INCLUDE_DIRECTORIES>
+     )
+ 
+-add_dependencies( kicommon pegtl version_header )
++add_dependencies( kicommon version_header )
++target_link_libraries( kicommon taocpp::pegtl )
+ 
+ if( TARGET remote_provider_schema_build_copy )
+     add_dependencies( kicommon remote_provider_schema_build_copy )
+@@ -907,10 +908,10 @@
+ if( TARGET remote_provider_schema_build_copy )
+     add_dependencies( common remote_provider_schema_build_copy )
+ endif()
+-add_dependencies( common compoundfilereader )  # used by altium_parser.cpp
+ 
+ target_link_libraries( common
+-    libcontext
++    compoundfilereader
++    libcontext::context
+     kimath
+     kiplatform
+     kicommon
+@@ -919,7 +920,7 @@
+     gal
+     nanosvg
+     dxflib_qcad
+-    tinyspline_lib
++    tinysplinecxx::tinysplinecxx
+     scripting
+     nlohmann_json
+     pybind11::embed
+@@ -956,10 +957,10 @@
+     )
+ 
+ # text markup support
+-add_dependencies( common pegtl )
++target_link_libraries( common taocpp::pegtl )
+ 
+ target_include_directories( common PUBLIC
+-    $<TARGET_PROPERTY:pegtl,INTERFACE_INCLUDE_DIRECTORIES>
++    $<TARGET_PROPERTY:taocpp::pegtl,INTERFACE_INCLUDE_DIRECTORIES>
+     $<TARGET_PROPERTY:magic_enum,INTERFACE_INCLUDE_DIRECTORIES>
+     )
+ 
+@@ -1101,12 +1102,12 @@
+ target_link_libraries( pcbcommon PUBLIC
+     core
+     common
+-    delaunator
++    delaunator::delaunator
+     kimath
+     kiplatform
+     markdown_lib
+     nanoflann
+-    zint
++    zint::zint
+ )
+ 
+ if( APPLE OR NOT UNIX )
+@@ -1116,7 +1117,6 @@
+     target_link_libraries( pcbcommon PUBLIC pcbnew_navlib)
+ endif()
+ 
+-add_dependencies( pcbcommon delaunator )
+ 
+ # The lemon grammar for the numeric evaluator
+ generate_lemon_grammar(
+--- common/io/csv.cpp.orig
++++ common/io/csv.cpp
+@@ -4,7 +4,7 @@
+ 
+ #include <wx/txtstrm.h>
+ 
+-#include <rapidcsv/rapidcsv.h>
++#include <rapidcsv.h>
+ 
+ 
+ CSV_WRITER::CSV_WRITER( wxOutputStream& aStream ) :
+--- common/netlist_reader/CMakeLists.txt.orig
++++ common/netlist_reader/CMakeLists.txt
+@@ -38,7 +38,6 @@
+     ${CMAKE_SOURCE_DIR}/libs/kimath/include
+     ${CMAKE_SOURCE_DIR}/libs/kicommon/include
+     ${CMAKE_SOURCE_DIR}/libs/core/include
+-    ${CMAKE_SOURCE_DIR}/thirdparty/nlohmann_json
+     ${CMAKE_BINARY_DIR}/common  # For generated netlist_lexer.h
+     ${CMAKE_BINARY_DIR}  # For kicad_build_version.h
+ )
+@@ -46,6 +45,7 @@
+ # Ensure netlist_lexer.h is generated before compiling netlist_reader_obj
+ # The lexer files are generated as part of the kicommon target
+ add_dependencies( netlist_reader_obj kicommon )
++target_link_libraries( netlist_reader_obj PRIVATE nlohmann_json )
+ 
+ target_include_directories( netlist_reader_obj PUBLIC
+     ${CMAKE_SOURCE_DIR}/common  # So users can find netlist_reader/netlist.h
+--- common/singleton.cpp.orig
++++ common/singleton.cpp
+@@ -19,7 +19,7 @@
+ 
+ #include <singleton.h>
+ #include <advanced_config.h>
+-#include <bs_thread_pool.hpp>
++#include <BS_thread_pool.hpp>
+ #include <kicad_gl/gl_context_mgr.h>
+ #include <thread_pool.h>
+ 
+--- eeschema/sch_io/database/sch_io_database.cpp.orig
++++ eeschema/sch_io/database/sch_io_database.cpp
+@@ -24,7 +24,7 @@
+ #include <string_view>
+ #include <unordered_set>
+ #include <utility>
+-#include <bs_thread_pool.hpp>
++#include <BS_thread_pool.hpp>
+ #include <wx/datetime.h>
+ #include <wx/log.h>
+ #include <wx/tokenzr.h>
+--- eeschema/sch_io/http_lib/sch_io_http_lib.cpp.orig
++++ eeschema/sch_io/http_lib/sch_io_http_lib.cpp
+@@ -23,7 +23,7 @@
+ #include <chrono>
+ #include <string_view>
+ 
+-#include <bs_thread_pool.hpp>
++#include <BS_thread_pool.hpp>
+ #include <wx/log.h>
+ #include <wx/tokenzr.h>
+ 
+--- include/base_set.h.orig
++++ include/base_set.h
+@@ -24,7 +24,7 @@
+ #include <limits>
+ #include <ostream>
+ #include <stdexcept>
+-#include <dynamic_bitset.h>
++#include <sul/dynamic_bitset.hpp>
+ 
+ #include <core/arraydim.h>
+ #include <core/kicad_algo.h>
+--- include/thread_pool.h.orig
++++ include/thread_pool.h
+@@ -25,7 +25,7 @@
+ #ifndef INCLUDE_THREAD_POOL_H_
+ #define INCLUDE_THREAD_POOL_H_
+ 
+-#include <bs_thread_pool.hpp>
++#include <BS_thread_pool.hpp>
+ #include <import_export.h>
+ 
+ using thread_pool = BS::priority_thread_pool;
+--- libs/kimath/CMakeLists.txt.orig
++++ libs/kimath/CMakeLists.txt
+@@ -54,7 +54,7 @@
+ target_link_libraries( kimath
+     core
+     clipper2
+-    rtree
++    rtree::rtree
+     Boost::headers
+     ${wxWidgets_LIBRARIES}      # wxLogDebug, wxASSERT
+ )
+--- libs/kimath/include/geometry/shape_index.h.orig
++++ libs/kimath/include/geometry/shape_index.h
+@@ -135,7 +135,7 @@
+              */
+             void Init( RTree<T, int, 2, double>* aTree )
+             {
+-                aTree->GetFirst( iterator );
++                iterator = aTree->begin();
+             }
+ 
+         public:
+@@ -162,7 +162,8 @@
+              */
+             bool operator++()
+             {
+-                return ++iterator;
++                ++iterator;
++                return iterator.IsNotNull();
+             }
+ 
+             /**
+@@ -170,7 +171,8 @@
+              */
+             bool operator++( int )
+             {
+-                return ++iterator;
++                ++iterator;
++                return iterator.IsNotNull();
+             }
+ 
+             /**
+@@ -180,7 +182,7 @@
+              */
+             bool IsNull() const
+             {
+-                return iterator.IsNull();
++                return !iterator.IsNotNull();
+             }
+ 
+             /**
+--- pcbnew/CMakeLists.txt.orig
++++ pcbnew/CMakeLists.txt
+@@ -844,7 +844,7 @@
+         common
+         core
+         nlohmann_json
+-        rectpack2d
++        rectpack2d::rectpack2d
+         gzip-hpp
+         nanoflann
+         Boost::boost
+--- pcbnew/autorouter/spread_footprints.cpp.orig
++++ pcbnew/autorouter/spread_footprints.cpp
+@@ -41,7 +41,7 @@
+ #include <refdes_utils.h>
+ #include <string_utils.h>
+ #include <pcb_edit_frame.h>
+-#include <rectpack2d/finders_interface.h>
++#include <rectpack2D/finders_interface.h>
+ 
+ 
+ constexpr bool allow_flip = true;
+@@ -107,7 +107,11 @@
+                                                                              report_successful, report_unsuccessful,
+                                                                              rectpack2D::flipping_option::DISABLED ) );
+ 
+-        if( !result || anyUnsuccessful )
++        // Current rectpack2D reports failure through the callback.
++        if( anyUnsuccessful )
++            result.reset();
++
++        if( !result )
+         {
+             max_side = (int) ( max_side * 1.2 );
+             continue;
+--- pcbnew/pcb_barcode.cpp.orig
++++ pcbnew/pcb_barcode.cpp
+@@ -51,7 +51,7 @@
+ #include <api/api_utils.h>
+ #include <footprint.h>
+ 
+-#include <backend/zint.h>
++#include <zint.h>
+ #include <board_design_settings.h>
+ #include <google/protobuf/any.pb.h>
+ #include <properties/property.h>
+--- pcbnew/router/CMakeLists.txt.orig
++++ pcbnew/router/CMakeLists.txt
+@@ -8,11 +8,6 @@
+     ../../pcbnew
+     ../../libs/kimath/include/
+     ../../libs/core/include/
+-    ../../thirdparty/clipper2/Clipper2Lib/include
+-    ../../thirdparty/nlohmann_json
+-    ../../thirdparty/rtree
+-    ../../thirdparty/dynamic_bitset/
+-    ../../thirdparty/expected/include/
+     ../../libs/kiplatform/include/
+     ../../common
+ 
+@@ -123,8 +118,12 @@
+ 
+ target_link_libraries( pnsrouter PRIVATE
+     common
++    expected
++    dynamic_bitset
+ )
+ 
+ target_link_libraries( pnsrouter_qa PRIVATE
+     common
++    expected
++    dynamic_bitset
+ )
+--- qa/fuzz/CMakeLists.txt.orig
++++ qa/fuzz/CMakeLists.txt
+@@ -75,7 +75,7 @@
+             pnsrouter
+             gal
+             dxflib_qcad
+-            tinyspline_lib
++            tinysplinecxx::tinysplinecxx
+             nanosvg
+             idf3
+             common
+--- qa/tests/common/CMakeLists.txt.orig
++++ qa/tests/common/CMakeLists.txt
+@@ -195,7 +195,7 @@
+ 
+ target_link_libraries( qa_common
+     common
+-    libcontext
++    libcontext::context
+     gal
+     pads_common
+     qa_utils
+--- qa/tests/pcbnew/CMakeLists.txt.orig
++++ qa/tests/pcbnew/CMakeLists.txt
+@@ -275,7 +275,7 @@
+     scripting
+     qa_utils
+     dxflib_qcad
+-    tinyspline_lib
++    tinysplinecxx::tinysplinecxx
+     nanosvg
+     idf3
+     markdown_lib
+--- qa/tools/common_tools/CMakeLists.txt.orig
++++ qa/tools/common_tools/CMakeLists.txt
+@@ -49,7 +49,7 @@
+ target_link_libraries( qa_common_tools
+     common
+     core
+-    libcontext
++    libcontext::context
+     gal
+     qa_utils
+     sexpr
+--- qa/tools/drc_proto/CMakeLists.txt.orig
++++ qa/tools/drc_proto/CMakeLists.txt
+@@ -96,7 +96,7 @@
+     gal
+     qa_utils
+     dxflib_qcad
+-    tinyspline_lib
++    tinysplinecxx::tinysplinecxx
+     nanosvg
+     markdown_lib
+     idf3
+--- qa/tools/ibis/CMakeLists.txt.orig
++++ qa/tools/ibis/CMakeLists.txt
+@@ -59,7 +59,7 @@
+     gal
+     qa_utils
+     dxflib_qcad
+-    tinyspline_lib
++    tinysplinecxx::tinysplinecxx
+     nanosvg
+     idf3
+     Boost::headers
+--- qa/tools/pcbnew_tools/CMakeLists.txt.orig
++++ qa/tools/pcbnew_tools/CMakeLists.txt
+@@ -56,7 +56,7 @@
+     pnsrouter
+     gal
+     dxflib_qcad
+-    tinyspline_lib
++    tinysplinecxx::tinysplinecxx
+     nanosvg
+     idf3
+     common
+--- qa/tools/pegtl/CMakeLists.txt.orig
++++ qa/tools/pegtl/CMakeLists.txt
+@@ -26,12 +26,12 @@
+     main.cpp
+   )
+ 
+-add_dependencies( test_pegtl pegtl )
++target_link_libraries( test_pegtl PRIVATE taocpp::pegtl )
+ 
+ include_directories( BEFORE ${INC_BEFORE} )
+ include_directories(
+     ${CMAKE_SOURCE_DIR}
+-    ${CMAKE_SOURCE_DIR}/thirdparty/pegtl/
++    ${CMAKE_SOURCE_DIR}/include
+     ${INC_AFTER}
+ )
+ 
+--- qa/tools/pns/CMakeLists.txt.orig
++++ qa/tools/pns/CMakeLists.txt
+@@ -110,7 +110,7 @@
+     gal
+     qa_utils
+     dxflib_qcad
+-    tinyspline_lib
++    tinysplinecxx::tinysplinecxx
+     nanosvg
+     idf3
+     pcbcommon
+@@ -135,7 +135,7 @@
+     gal
+     qa_utils
+     dxflib_qcad
+-    tinyspline_lib
++    tinysplinecxx::tinysplinecxx
+     nanosvg
+     idf3
+     pcbcommon
+--- thirdparty/CMakeLists.txt.orig
++++ thirdparty/CMakeLists.txt
+@@ -30,46 +30,12 @@
+ # instead of with cmake_policy will apply the change to the third-party CMakeLists files.
+ set( CMAKE_POLICY_DEFAULT_CMP0077 NEW )
+ 
+-# Avoid spurious warnings on g++
+-if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+-    set_source_files_properties(
+-        ${CMAKE_SOURCE_DIR}/thirdparty/3dxware_sdk/src/navlib_stub.c
+-        PROPERTIES COMPILE_FLAGS "-Wno-attributes"
++add_subdirectory( lemon )
++add_subdirectory( markdown2html )
++find_path( POTRACE_INCLUDE_DIR NAMES potracelib.h REQUIRED )
++find_library( POTRACE_LIBRARY NAMES potrace REQUIRED )
++add_library( Potrace::potrace UNKNOWN IMPORTED GLOBAL )
++set_target_properties( Potrace::potrace PROPERTIES
++    IMPORTED_LOCATION "${POTRACE_LIBRARY}"
++    INTERFACE_INCLUDE_DIRECTORIES "${POTRACE_INCLUDE_DIR}"
+     )
+-endif()
+-
+-set( ARGPARSE_INSTALL OFF )
+-add_subdirectory( argparse )
+-add_subdirectory( clipper2 )
+-add_subdirectory( compoundfilereader )
+-add_subdirectory( delaunator )
+-add_subdirectory( dxflib_qcad )
+-add_subdirectory( dynamic_bitset )
+-add_subdirectory( expected )
+-set( FASTFLOAT_INSTALL OFF )
+-add_subdirectory( fast_float )
+-set( FMT_INSTALL OFF )
+-add_subdirectory( fmt )
+-add_subdirectory( glad )
+-add_subdirectory( gzip-hpp )
+-add_subdirectory( lemon )
+-add_subdirectory( libcontext )
+-add_subdirectory( libpopcnt )
+-add_subdirectory( magic_enum )
+-add_subdirectory( markdown2html )
+-add_subdirectory( nanoflann )
+-add_subdirectory( nanodbc )
+-add_subdirectory( nanosvg )
+-add_subdirectory( rectpack2d )
+-add_subdirectory( rtree )
+-add_subdirectory( tinyspline_lib )
+-add_subdirectory( potrace )
+-add_subdirectory( nlohmann_json )
+-add_subdirectory( picosha2 )
+-add_subdirectory( json_schema_validator )
+-add_subdirectory( pegtl )
+-add_subdirectory( 3dxware_sdk )
+-add_subdirectory( rapidcsv )
+-add_subdirectory( turtle )
+-add_subdirectory( thread-pool )
+-add_subdirectory( zint )
+--- thirdparty/lemon/CMakeLists.txt.orig
++++ thirdparty/lemon/CMakeLists.txt
+@@ -1,5 +1,18 @@
+-add_executable( lemon
+-    lemon.c
++set( LEMON_EXE "" CACHE FILEPATH "Host Lemon executable from Ports" )
++set( LEMON_TEMPLATE "" CACHE FILEPATH "Host Lemon template from Ports" )
++
++if( NOT IS_ABSOLUTE "${LEMON_EXE}" OR NOT EXISTS "${LEMON_EXE}" )
++    message( FATAL_ERROR "LEMON_EXE must name the installed host Lemon executable" )
++endif()
++
++if( NOT IS_ABSOLUTE "${LEMON_TEMPLATE}" OR NOT EXISTS "${LEMON_TEMPLATE}" )
++    message( FATAL_ERROR "LEMON_TEMPLATE must name the installed host Lemon template" )
++endif()
++
++add_executable( lemon IMPORTED GLOBAL )
++set_target_properties( lemon PROPERTIES
++    IMPORTED_LOCATION "${LEMON_EXE}"
++    lemon_template "${LEMON_TEMPLATE}"
+     )
+ 
+ # The location of the template file for lemon is passed as a property on the lemon target
+@@ -9,6 +22,3 @@
+     FULL_DOCS "Location of the template file for the lemon parser"
+     )
+ 
+-set_property( TARGET lemon
+-    PROPERTY lemon_template ${CMAKE_CURRENT_SOURCE_DIR}/lempar.c
+-    )
+--- thirdparty/markdown2html/CMakeLists.txt.orig
++++ thirdparty/markdown2html/CMakeLists.txt
+@@ -1,29 +1,4 @@
+-# Add all the warnings to the files
+-if( COMPILER_SUPPORTS_WARNINGS )
+-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WARN_FLAGS_CXX}")
+-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${WARN_FLAGS_C}")
+-endif()
+-
++# Keep the wxString adapter in KiCad; parse and render with the shared library.
+ include_directories( BEFORE ${INC_BEFORE} ${INC_AFTER} )
+-
+-set( SUNDOWN_SRC
+-    md_parser/markdown.c
+-    md_parser/stack.c
+-    md_parser/buffer.c
+-    md_parser/autolink.c
+-    )
+-
+-set( SUNDOWN_SRC_HTML
+-    html_formatter/html.c
+-    html_formatter/html_smartypants.c
+-    html_formatter/houdini_html_e.c
+-    html_formatter/houdini_href_e.c
+-    )
+-
+-add_library(markdown_lib STATIC
+-            markdown2html.cpp
+-            ${SUNDOWN_SRC}
+-            ${SUNDOWN_SRC_HTML}
+-            )
+-
+-target_include_directories( markdown_lib PRIVATE md_parser html_formatter )
++add_library( markdown_lib STATIC markdown2html.cpp )
++target_link_libraries( markdown_lib PRIVATE sundown::sundown )

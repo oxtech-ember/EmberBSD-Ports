@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (kicad-footprints-10.0.7.tar.bz2) = fe257adc7a02a33eb2e2bfc2e8ea7eda757e15e68ea7dd75eb865877b486172d
-SHA512 (kicad-footprints-10.0.7.tar.bz2) = b2b8e3eae46c8ecd2b6e219da870b5352c3ebf01df46b46035fedb9b7a30f5e16d5e1572af93170c7d6070f378c3305f51ebbf967715bcf77fbe5da750dd9425
-Size (kicad-footprints-10.0.7.tar.bz2) = 7782220 bytes
+BLAKE2s (kicad-footprints-10.0.8.tar.bz2) = 9b3562ba612b955e5b8d215919684c9f6aafa713dc11ca89741360f85c096076
+SHA512 (kicad-footprints-10.0.8.tar.bz2) = 9e090cafbdc64f29e5e9ce65392dd61b5524488994d4eb3dd8dff70f6fdd7a0a5806b63fa59d149836f0a678f290fbf02598195071fc93f96f51a307d25199d8
+Size (kicad-footprints-10.0.8.tar.bz2) = 7792085 bytes

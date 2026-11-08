@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.20)
+project(kicad_pegtl_consumer LANGUAGES CXX)
+if(NOT IS_DIRECTORY "${KICAD_SOURCE_DIR}")
+    message(FATAL_ERROR "Set KICAD_SOURCE_DIR to the patched KiCad source tree")
+endif()
+find_package(pegtl 4.0.2 CONFIG REQUIRED)
+add_executable(kicad_pegtl_consumer main.cpp)
+target_include_directories(kicad_pegtl_consumer PRIVATE
+    "${KICAD_SOURCE_DIR}/include" "${KICAD_SOURCE_DIR}")
+target_link_libraries(kicad_pegtl_consumer PRIVATE taocpp::pegtl)
+enable_testing()
+add_test(NAME kicad_pegtl_consumer COMMAND kicad_pegtl_consumer)
