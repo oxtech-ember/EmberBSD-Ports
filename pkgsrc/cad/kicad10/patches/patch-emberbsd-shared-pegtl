@@ -760,3 +760,25 @@ Use current shared PEGTL inputs, typed errors and parse trees; preserve diagnost
  
      if( chosen_selector == "complex" )
      {
+--- common/plotters/PDF_plotter.cpp.orig
++++ common/plotters/PDF_plotter.cpp
+@@ -2744,7 +2744,7 @@
+         }
+ 
+         // Render content of this node if it has text
+-        if( aNode->has_content() )
++        if( aNode->data.data() != nullptr )
+         {
+             wxString nodeText = aNode->asWxString();
+ 
+--- qa/tests/common/test_markup_parser.cpp.orig
++++ qa/tests/common/test_markup_parser.cpp
+@@ -46,7 +46,7 @@
+     if( aNode->isSuperscript() )
+         aStringToPopulate += "SUP";
+ 
+-    if( aNode->has_content() )
++    if( aNode->data.data() != nullptr )
+         aStringToPopulate += "'" + aNode->string() + "'";
+ 
+     for( auto& c : aNode->children )

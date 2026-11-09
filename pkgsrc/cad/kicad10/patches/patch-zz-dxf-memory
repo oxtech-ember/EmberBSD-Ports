@@ -1,0 +1,31 @@
+$NetBSD$
+
+Read a memory DXF through the shared stream API, not the filename overload.
+
+--- common/import_gfx/dxf_import_plugin.cpp.orig
++++ common/import_gfx/dxf_import_plugin.cpp
+@@ -38,6 +38,7 @@
+ #include <trigo.h>
+ #include <macros.h>
+ #include <cmath>    // isnan
++#include <sstream>
+ #include <vector>
+ #include <board.h>
+ #include "common.h"
+@@ -241,11 +242,11 @@
+ {
+     DL_Dxf dxf_reader;
+ 
+-    std::string str( reinterpret_cast<char*>( aMemBuffer.GetData() ), aMemBuffer.GetDataLen() );
+-
+-    // Note the dxf reader takes care of switching to "C" locale before reading the file
+-    // and will close the file after reading
+-    bool success = dxf_reader.in( str, this );
++    std::istringstream stream( std::string( reinterpret_cast<char*>( aMemBuffer.GetData() ),
++                                           aMemBuffer.GetDataLen() ) );
++
++    // The reader borrows the stream and parses its contents in the C locale.
++    bool success = dxf_reader.in( stream, this );
+ 
+     return success;
+ }

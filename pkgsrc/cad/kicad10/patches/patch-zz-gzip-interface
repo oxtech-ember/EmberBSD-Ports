@@ -1,0 +1,67 @@
+$NetBSD$
+
+Use the installed gzip-hpp include layout and its transitive CMake interface.
+
+--- plugins/3d/vrml/vrml.cpp.orig
++++ plugins/3d/vrml/vrml.cpp
+@@ -46,7 +46,7 @@
+ #include <wx/wfstream.h>
+ #include <wx/log.h>
+ 
+-#include <decompress.hpp>
++#include <gzip/decompress.hpp>
+ 
+ 
+ #define PLUGIN_VRML_MAJOR 1
+--- plugins/3d/oce/loadmodel.cpp.orig
++++ plugins/3d/oce/loadmodel.cpp
+@@ -42,7 +42,7 @@
+ #include <wx/zipstrm.h>
+ 
+ #include <advanced_config.h>
+-#include <decompress.hpp>
++#include <gzip/decompress.hpp>
+ 
+ #include <TDocStd_Document.hxx>
+ #include <TopoDS.hxx>
+--- pcbnew/exporters/step/step_pcb_model.cpp.orig
++++ pcbnew/exporters/step/step_pcb_model.cpp
+@@ -43,7 +43,7 @@
+ #include <wx/stdstream.h>
+ #include <wx/crt.h>
+ 
+-#include <decompress.hpp>
++#include <gzip/decompress.hpp>
+ 
+ #include <thread_pool.h>
+ #include <trace_helpers.h>
+--- plugins/3d/vrml/CMakeLists.txt.orig
++++ plugins/3d/vrml/CMakeLists.txt
+@@ -63,11 +63,7 @@
+         x3d/x3d_transform.cpp
+         )
+ 
+-target_link_libraries( s3d_plugin_vrml kicad_3dsg kicommon core ${OPENGL_LIBRARIES} ${wxWidgets_LIBRARIES} kiplatform ZLIB::ZLIB )
+-
+-target_include_directories( s3d_plugin_vrml PRIVATE
+-    $<TARGET_PROPERTY:gzip-hpp,INTERFACE_INCLUDE_DIRECTORIES>
+-    )
++target_link_libraries( s3d_plugin_vrml kicad_3dsg kicommon core ${OPENGL_LIBRARIES} ${wxWidgets_LIBRARIES} kiplatform gzip-hpp::gzip-hpp )
+ 
+ if( APPLE )
+     # puts library into the main kicad.app bundle in build tree
+--- plugins/3d/oce/CMakeLists.txt.orig
++++ plugins/3d/oce/CMakeLists.txt
+@@ -17,11 +17,7 @@
+         loadmodel.cpp
+         )
+ 
+-target_link_libraries( s3d_plugin_oce kicad_3dsg common ${OCC_LIBRARIES} ${wxWidgets_LIBRARIES} ZLIB::ZLIB )
+-
+-target_include_directories( s3d_plugin_oce PRIVATE
+-    $<TARGET_PROPERTY:gzip-hpp,INTERFACE_INCLUDE_DIRECTORIES>
+-    )
++target_link_libraries( s3d_plugin_oce kicad_3dsg common ${OCC_LIBRARIES} ${wxWidgets_LIBRARIES} gzip-hpp::gzip-hpp )
+ 
+ if( APPLE )
+     # puts library into the main kicad.app bundle in build tree
