@@ -1,0 +1,64 @@
+# $NetBSD: options.mk,v 1.7 2026/05/15 17:01:04 wiz Exp $
+
+PKG_OPTIONS_VAR=	PKG_OPTIONS.upower
+
+PKG_SUPPORTED_OPTIONS+=	doc idevice introspection polkit
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Cross consumers use the D-Bus API; target-side GIR output is unnecessary.
+PKG_SUGGESTED_OPTIONS=	polkit
+.else
+PKG_SUGGESTED_OPTIONS=	introspection polkit
+.endif
+
+PLIST_VARS+=		doc introspection polkit
+
+.include "../../mk/bsd.options.mk"
+
+##
+## Build developer documentation
+##
+.if !empty(PKG_OPTIONS:Mdoc)
+TOOL_DEPENDS+=	gtk-doc-[0-9]*:../../textproc/gtk-doc
+MESON_ARGS+=	-Dgtk-doc=true
+PLIST.doc=	yes
+.else
+MESON_ARGS+=	-Dgtk-doc=false
+.endif
+
+###
+### Build GObject Introspection data
+###
+.if !empty(PKG_OPTIONS:Mintrospection)
+TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
+BUILDLINK_DEPMETHOD.gobject-introspection+= build
+.include "../../devel/gobject-introspection/buildlink3.mk"
+MESON_ARGS+=    -Dintrospection=enabled
+PLIST.introspection=	yes
+.else
+MESON_ARGS+=    -Dintrospection=disabled
+.endif
+
+###
+### Enable libimobiledevice support
+###
+.if !empty(PKG_OPTIONS:Midevice)
+.include "../../comms/libimobiledevice/buildlink3.mk"
+MESON_ARGS+=    -Didevice=enabled
+.else
+MESON_ARGS+=    -Didevice=disabled
+.endif
+
+
+###
+### Polkit support in UPower Daemon
+###
+.if !empty(PKG_OPTIONS:Mpolkit)
+.  include "../../security/polkit/buildlink3.mk"
+MESON_ARGS+=	-Dpolkit=enabled
+# msgfmt merges the policy translations with the ITS rules of polkit.
+MAKE_ENV+=	GETTEXTDATADIRS=${CROSS_DESTDIR}${BUILDLINK_PREFIX.polkit}/share/gettext
+PLIST.polkit=	yes
+.else
+MESON_ARGS+=    -Dpolkit=disabled
+.endif

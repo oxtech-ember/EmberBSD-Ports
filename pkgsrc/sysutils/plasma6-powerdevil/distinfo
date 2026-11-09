@@ -4,3 +4,4 @@ BLAKE2s (powerdevil-6.8.2.tar.xz) = f116969e26ec78daabd302344927747c2a60507d11f7
 SHA512 (powerdevil-6.8.2.tar.xz) = 82605b14d4b88ccdf3070ead04c42cdcfa2ecd7ab46e607bf610f242e4bbf849f8cb69ef25a903d2809c9a041a94f3c5d9ac97e4fee4ec0dcf0e18ef5281898c
 Size (powerdevil-6.8.2.tar.xz) = 1263928 bytes
 SHA1 (patch-daemon_CMakeLists.txt) = 06a1d2f64094cefb22110573b2c0cad2c54266d9
+SHA1 (patch-daemon_controllers_backlightbrightness.cpp) = 041c5bee7cc09fa106c53e6349156e99eae79262

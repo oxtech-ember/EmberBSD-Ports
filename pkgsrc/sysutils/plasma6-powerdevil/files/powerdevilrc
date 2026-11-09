@@ -1,0 +1,20 @@
+# EmberBSD system defaults for PowerDevil.
+# ConsoleKit reports that this host can suspend, but ACPI S3 resume is not
+# accepted on EmberBSD yet. Idle and lid actions turn the screen off instead.
+# Critical battery shuts the system down. Users override these values in
+# System Settings > Power Management (~/.config/powerdevilrc).
+
+[BatteryManagement]
+BatteryCriticalAction=8
+
+[AC][SuspendAndShutdown]
+AutoSuspendAction=0
+LidAction=64
+
+[Battery][SuspendAndShutdown]
+AutoSuspendAction=0
+LidAction=64
+
+[LowBattery][SuspendAndShutdown]
+AutoSuspendAction=0
+LidAction=64

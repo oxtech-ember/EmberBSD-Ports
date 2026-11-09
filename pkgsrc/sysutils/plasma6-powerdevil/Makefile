@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.7 2026/09/09 11:51:45 markd Exp $
 
 DISTNAME=	powerdevil-${PLASMAVER}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	sysutils
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -22,11 +22,20 @@ SUBST_FILES.xdg=	daemon/CMakeLists.txt
 SUBST_SED.xdg=		-e 's:{KDE_INSTALL_AUTOSTARTDIR}:{KDE_INSTALL_AUTOSTARTEXDIR}:'
 
 # The upstream idle default suspends when ConsoleKit reports suspend.
-# Do not copy that desktop file into the active autostart directory.
+# files/powerdevilrc turns the screen off instead until S3 resume is accepted.
+MAKE_DIRS+=	${PKG_SYSCONFDIR}/xdg/autostart
+CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/autostart/powerdevil.desktop \
+		${PKG_SYSCONFDIR}/xdg/autostart/powerdevil.desktop
+CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/powerdevilrc \
+		${PKG_SYSCONFDIR}/xdg/powerdevilrc
+
 post-extract:
 	${CP} ${FILESDIR}/backlighthelper_netbsd.cpp ${WRKSRC}/daemon/controllers/backlighthelper_netbsd.cpp
 	${CP} ${FILESDIR}/backlighthelper_netbsd.h ${WRKSRC}/daemon/controllers/backlighthelper_netbsd.h
 	${CP} ${FILESDIR}/chargethresholdhelper_netbsd.cpp ${WRKSRC}/daemon/chargethresholdhelper_netbsd.cpp
+
+post-install:
+	${INSTALL_DATA} ${FILESDIR}/powerdevilrc ${DESTDIR}${PREFIX}/share/examples/kde-xdg/powerdevilrc
 
 .include "../../devel/kf6-kcmutils/buildlink3.mk"
 .include "../../devel/kf6-kconfig/buildlink3.mk"

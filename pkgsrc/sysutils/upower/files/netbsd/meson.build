@@ -1,0 +1,12 @@
+prop_dep = cc.find_library('prop')
+
+upshared += { 'netbsd': static_library('upshared',
+    sources: [
+        'up-backend.c',
+        'up-envsys-native.h',
+        'up-native.c',
+    ],
+    c_args: [ '-DG_LOG_DOMAIN="UPower-NetBSD"' ],
+    dependencies: [ gudev_dep, upowerd_deps, upshared_common_dep, prop_dep ],
+    build_by_default: false,
+)}
