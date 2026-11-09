@@ -393,10 +393,10 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
         old_paths = [Path(s) for s in cookie.decode('utf-8').splitlines() if s]
     except UnicodeError as exc:
         raise ValueError('invalid old patch cookie') from exc
-    patchdir = Path(patchdir or recipe / 'patches').resolve(strict=True)
+    patchdir = Path(patchdir or recipe / 'patches').resolve(strict=False)
     cookie_roots = {patchdir}
     if previous_recipe is not None:
-        previous_patches = Path(previous_patchdir or Path(previous_recipe) / 'patches').resolve(strict=True)
+        previous_patches = Path(previous_patchdir or Path(previous_recipe) / 'patches').resolve(strict=False)
         cookie_roots.add(previous_patches)
     require(all(p.is_absolute() and not p.is_symlink() and p.resolve(strict=True).name == p.name and
                 Path(os.path.normpath(str(p))).parent == p.resolve(strict=True).parent and
@@ -426,13 +426,13 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
     new = sorted(p.name for p in patchdir.glob('patch-*') if p.is_file())
     old_recipe = Path(previous_recipe) if previous_recipe is not None else recipe
     old_inventory = old
-    old_patchdir = (Path(previous_patchdir or old_recipe / 'patches').resolve(strict=True)
+    old_patchdir = (Path(previous_patchdir or old_recipe / 'patches').resolve(strict=False)
                     if previous_recipe is not None else patchdir)
     def provenance_path(path, root, fallback):
         if old_recipe.parts[-2:] != recipe.parts[-2:]:
             return fallback
         try:
-            return path.resolve(strict=True).relative_to(root.resolve(strict=True)).as_posix()
+            return path.resolve(strict=False).relative_to(root.resolve(strict=True)).as_posix()
         except ValueError:
             return fallback
     if previous_recipe is not None:
@@ -483,7 +483,9 @@ def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
     patchdir_input, distinfo_input = Path(patchdir), Path(distinfo)
     require(patchdir_input.is_absolute() and distinfo_input.is_absolute(),
             'selected patch paths must be absolute')
-    patchdir = patchdir_input.resolve(strict=True)
+    # An unpatched pkgsrc recipe normally has no patches directory.
+    # read_recipe() still rejects every declared patch that is missing.
+    patchdir = patchdir_input.resolve(strict=False)
     distinfo = distinfo_input.resolve(strict=True)
     require(Path(os.path.abspath(os.path.normpath(str(patchdir_input)))) == patchdir and
             Path(os.path.abspath(os.path.normpath(str(distinfo_input)))) == distinfo,
@@ -493,6 +495,8 @@ def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
     require(patchdir.name == 'patches' and distinfo.name == 'distinfo' and
             patchdir.parent == distinfo.parent,
             'selected patch directory and distinfo do not share a standard owner')
+    require(not os.path.lexists(patchdir) or patchdir.is_dir(),
+            'selected patch inventory is not a directory')
     return patchdir, distinfo
 
 
@@ -1269,8 +1273,8 @@ def main():
                 return same_source_input(name, old, new)
             if a.previous_recipe.parts[-2:] != a.recipe.parts[-2:]:
                 return same_source_input(name, old, new)
-            new_path = Path(new).resolve(strict=True).relative_to(current_pkgsrc_root).as_posix()
-            old_path = Path(old).resolve(strict=True)
+            new_path = Path(new).resolve(strict=name != 'PATCHDIR').relative_to(current_pkgsrc_root).as_posix()
+            old_path = Path(old).resolve(strict=name != 'PATCHDIR')
             try:
                 old_relative = old_path.relative_to(old_pkgsrc_root).as_posix()
             except ValueError:

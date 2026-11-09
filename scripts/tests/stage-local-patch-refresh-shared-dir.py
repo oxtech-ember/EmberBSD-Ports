@@ -27,6 +27,7 @@ if not sdk_source.is_absolute() or not args.patch.is_absolute():
     raise SystemExit('SDK source and patch tool must be absolute')
 sys.path.insert(0, str(sdk_source / 'src'))
 from emberbsd_sdk import archive_metadata, jsonio, paths, sourceprep
+from emberbsd_sdk.errors import SDKError
 
 sdk = dict(paths=paths, jsonio=jsonio, archive_metadata=archive_metadata, sourceprep=sourceprep)
 
@@ -40,7 +41,7 @@ def distinfo(archive, patch_name, patch_data):
 def expect_refusal(call, marker):
     try:
         call()
-    except (ValueError, OSError) as exc:
+    except (ValueError, OSError, SDKError) as exc:
         assert marker in str(exc), str(exc)
     else:
         raise AssertionError('unsafe or incomplete shared patch input accepted')
@@ -276,4 +277,56 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
         patchdir=add_owner / 'patches', distinfo=add_owner / 'distinfo')
     assert [(name, before, after) for name, before, after, _, _ in added[0]] == [
         ('extra.h', b'old\n', b'new\n')]
+
+    # First patch for a package whose old recipe never had a patches directory.
+    first_old = base / 'first-old/pkgsrc/devel/demo'
+    first_new = base / 'first-new/pkgsrc/devel/demo'
+    first_old.mkdir(parents=True)
+    (first_new / 'patches').mkdir(parents=True)
+    for owner in (first_old, first_new):
+        (owner / 'Makefile').write_text('# no build fixture\n')
+    first_info = b'\n'.join(line for line in add_info.split(b'\n')
+                            if not line.startswith(b'SHA1 (patch-'))
+    (first_old / 'distinfo').write_bytes(first_info)
+    (first_new / 'distinfo').write_bytes(first_info +
+        f'SHA1 ({first_name}) = {hashlib.sha1(first).hexdigest()}\n'.encode())
+    (first_new / 'patches' / first_name).write_bytes(first)
+    empty = refresh.selected_patch_inputs(first_old.parents[1], first_old / 'patches',
+                                           first_old / 'distinfo')
+    assert empty == (first_old / 'patches', first_old / 'distinfo')
+    first_work = base / 'first-work'
+    first_source = first_work / 'mesa-1'
+    first_source.mkdir(parents=True)
+    (first_source / 'configure.ac').write_bytes(b'A\nB\n')
+    (first_source / 'keep.o').write_bytes(b'compatible object\n')
+    retained = (first_source / 'keep.o').stat()
+    (first_work / '.patch_done').write_bytes(b'')
+    first_version = base / 'first-BUILD_VERSION'
+    first_version.write_text('devel/demo/Makefile: ' +
+                             hashlib.sha256((first_old / 'Makefile').read_bytes()).hexdigest() + '\n')
+    def first_prepare(suffix):
+        scratch = base / suffix
+        scratch.mkdir()
+        return refresh.prepare(sdk, first_new, first_work, archive, 'mesa-1', first_version,
+            args.patch, ['-E', '-p0', '--batch', '--forward', '-V', 'simple', '-z', '.orig'],
+            scratch, previous_recipe=first_old)
+    first_result = first_prepare('first-scratch')
+    refresh.transaction(sdk, first_work, first_source, first_result[0], b'',
+                        [first_new / 'patches' / name for name in first_result[2]], lambda: None)
+    assert (first_source / 'configure.ac').read_bytes() == b'A\nold\n'
+    assert not (first_old / 'patches').exists()
+    assert (first_source / 'keep.o').read_bytes() == b'compatible object\n'
+    assert (first_source / 'keep.o').stat().st_ino == retained.st_ino
+    assert (first_source / 'keep.o').stat().st_mtime_ns == retained.st_mtime_ns
+    (first_work / '.patch_done').write_bytes(b'')
+    (first_old / 'distinfo').write_bytes(first_info +
+        f'SHA1 ({first_name}) = {hashlib.sha1(first).hexdigest()}\n'.encode())
+    expect_refusal(lambda: first_prepare('first-missing-declared'), 'patch inventory differs')
+    (first_old / 'patches').symlink_to(base / 'missing-patch-target')
+    expect_refusal(lambda: refresh.selected_patch_inputs(first_old.parents[1],
+                   first_old / 'patches', first_old / 'distinfo'), 'symlink alias')
+    (first_old / 'patches').unlink()
+    (first_old / 'patches').write_bytes(b'not a directory')
+    expect_refusal(lambda: refresh.selected_patch_inputs(first_old.parents[1],
+                   first_old / 'patches', first_old / 'distinfo'), 'not a directory')
 print('PASS shared patch owner replay, containment, and full old inventory')
