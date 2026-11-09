@@ -29,6 +29,37 @@ python3 tests/bmake-dependencies.py --source /prepared/wxWidgets \
   --shell /native/bin/mksh
 ```
 
+# GTK4 window and control creation
+
+`patch-zz-gtk4-control-creation` restores upstream top-level registration before
+`CreateBase`. This prevents native minimum-size calls before native widgets exist.
+GTK4 spin controls use `GtkEditable` alignment rather than a `GtkEntry` cast.
+The affected target translation units pass syntax checks and Clang Static Analyzer.
+Cppcheck still cannot parse the target `sys/endian.h`; no clean result is claimed.
+`creation4-contract` checks default and explicit minimum sizes, three spin-control
+alignments and the initial value. GTK criticals fail the test. Runtime acceptance
+requires the rebuilt library; compilation alone does not establish that result.
+
+`patch-zz-gtk4-style-css` selects modern font syntax on GTK4, terminates CSS
+declarations and converts Pango absolute font sizes from `PANGO_SCALE` to pixels.
+`css-check.py` extracts the actual CSS generator and private helpers from the
+prepared wx source. Its generated standalone fixture uses real GTK4/Pango and
+checks all 14 foreground/background/font combinations, including absolute 10px:
+
+```sh
+python3 tests/css-check.py --source /prepared/wxWidgets/src/gtk/window.cpp \
+  --wx-source /prepared/wxWidgets --output /work/style-css.cpp
+```
+
+Compile the output with the selected target C++ compiler and target `gtk4`
+pkg-config flags, then run it on the target. No display is required.
+On EmberBSD aarch64, the old generator fails with CSS parser/font-size errors;
+the corrected generator passes all 14 cases with the real GTK4 parser.
+The full target `window.cpp` syntax check passes. Clang Static Analyzer completed
+with four findings in unchanged key/touch paths and included headers, none in the
+CSS method; this is not a clean full-translation-unit verdict. The existing
+Cppcheck `sys/endian.h` parser limitation still applies.
+
 # GTK4 AUI and top-level window hints
 
 `patch-gtk4-window-hints` draws AUI sashes through the existing native splitter

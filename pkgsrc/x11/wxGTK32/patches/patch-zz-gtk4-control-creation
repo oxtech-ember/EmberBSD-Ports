@@ -1,0 +1,36 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Preserve wxWidgets 3.2.12 GTK top-level registration order before CreateBase,
+which uses the list to avoid assigning child minimum sizes to top-level windows.
+Use GTK4 GtkEditable alignment for GtkSpinButton, which is no longer GtkEntry.
+
+--- src/gtk/toplevel_gtk4.inc.orig
++++ src/gtk/toplevel_gtk4.inc
+@@ -443,9 +443,11 @@
+ {
+     wxSize size(sizeOrig);
+     size.SetDefaults(GetDefaultSize());
++    // CreateBase uses this list to distinguish top-level windows before the
++    // native widgets exist. Keep the upstream GTK creation order.
++    wxTopLevelWindows.Append(this);
+     if (!PreCreation(parent, pos, size) ||
+         !CreateBase(parent, id, pos, size, style, wxDefaultValidator, name)) return false;
+-    wxTopLevelWindows.Append(this);
+     m_title = title;
+     if (!m_widget)
+     {
+--- src/gtk/spinctrl.cpp.orig
++++ src/gtk/spinctrl.cpp
+@@ -219,7 +219,11 @@
+     else
+         align = 0.0;
+ 
++#ifdef __WXGTK4__
++    gtk_editable_set_alignment(GTK_EDITABLE(m_widget), align);
++#else
+     gtk_entry_set_alignment(GTK_ENTRY(m_widget), align);
++#endif
+ 
+     GtkSetEntryWidth();
+ 

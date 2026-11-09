@@ -1,0 +1,60 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use modern CSS font syntax on GTK4 and terminate declarations explicitly.
+Pango absolute font sizes, like point sizes, are expressed in PANGO_SCALE units.
+
+--- src/gtk/window.cpp.orig
++++ src/gtk/window.cpp
+@@ -6424,7 +6424,7 @@
+         {
+             g_string_append(css, "font:");
+             const PangoFontDescription* pfd = m_font.GetNativeFontInfo()->description;
+-            if (gtk_check_version(3,22,0))
++            if (!wx_is_at_least_gtk3(22))
+                 g_string_append(css, wxGtkString(pango_font_description_to_string(pfd)));
+             else
+             {
+@@ -6495,7 +6495,7 @@
+                 {
+                     const int size = pango_font_description_get_size(pfd);
+                     if (pango_font_description_get_size_is_absolute(pfd))
+-                        g_string_append_printf(css, "%dpx ", size);
++                        g_string_append_printf(css, "%dpx ", size / PANGO_SCALE);
+                     else
+                         g_string_append_printf(css, "%dpt ", size / PANGO_SCALE);
+                 }
+@@ -6505,6 +6505,7 @@
+                         pango_font_description_get_family(pfd));
+                 }
+             }
++            g_string_append_c(css, ';');
+         }
+         g_string_append_c(css, '}');
+ 
+@@ -6518,21 +6519,21 @@
+             wxGtkString fg_sel_string(gdk_rgba_to_string(fg_sel));
+             wxGtkString bg_sel_string(gdk_rgba_to_string(bg_sel));
+             g_string_append_printf(css,
+-                "selection{color:%s;background:%s}"
+-                "*:selected{color:%s;background:%s}",
++                "selection{color:%s;background:%s;}"
++                "*:selected{color:%s;background:%s;}",
+                 fg_sel_string.c_str(), bg_sel_string.c_str(),
+                 fg_sel_string.c_str(), bg_sel_string.c_str());
+ 
+             if (isFg && wx_is_at_least_gtk3(20))
+             {
+-                g_string_append_printf(css, "*{caret-color:%s}",
++                g_string_append_printf(css, "*{caret-color:%s;}",
+                     wxGtkString(gdk_rgba_to_string(fg)).c_str());
+             }
+             if (isBg)
+             {
+                 // make "undershoot" node background transparent,
+                 // keeps expected look of GtkEntry with default theme
+-                g_string_append(css, "* undershoot{background:transparent}");
++                g_string_append(css, "* undershoot{background:transparent;}");
+             }
+         }
+ 

@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: BSD-2-Clause
+// Actual wx CSS generator and string owner are inserted by css-check.py.
+#include <gtk/gtk.h>
+#include <cstdio>
+#include <cstring>
+#define wxDECLARE_NO_COPY_CLASS(T) T(const T&) = delete; T& operator=(const T&) = delete
+@STRING_OWNER@
+@VERSION_HELPER@
+// Only wx value/settings access is supplied here; GTK, Pango, GString and CSS
+// parsing are real. No window, font renderer or application runtime is mocked.
+struct wxColour {
+    GdkRGBA value;
+    operator const GdkRGBA*() const { return &value; }
+};
+enum {wxSYS_COLOUR_HIGHLIGHTTEXT, wxSYS_COLOUR_HIGHLIGHT};
+struct wxSystemSettings {
+    static wxColour GetColour(int which) {
+        return which == wxSYS_COLOUR_HIGHLIGHTTEXT
+            ? wxColour{{1,1,1,1}} : wxColour{{0,0,0,1}};
+    }
+};
+struct NativeFont { PangoFontDescription* description; };
+struct Font {
+    NativeFont native;
+    const NativeFont* GetNativeFontInfo() const { return &native; }
+};
+static gchar* Generate(bool isFg, bool isBg, bool isFont, const Font& m_font)
+{
+    const wxColour fg{{0,0,0,1}}, bg{{1,1,1,1}};
+@GENERATOR@
+    return g_string_free(css, FALSE);
+}
+static void ParseError(GtkCssProvider*, GtkCssSection*, const GError* error, gpointer data)
+{
+    ++*static_cast<int*>(data);
+    std::fprintf(stderr, "CSS parse: %s\n", error->message);
+}
+int main()
+{
+    Font font{{pango_font_description_from_string("Sans Bold Italic 10")}};
+    int failures = 0;
+    for (bool absolute : {false, true})
+    {
+        if (absolute) pango_font_description_set_absolute_size(font.native.description, 10 * PANGO_SCALE);
+        for (unsigned mask = 1; mask < 8; ++mask)
+        {
+            gchar* css = Generate(mask & 1, mask & 2, mask & 4, font);
+            GtkCssProvider* provider = gtk_css_provider_new();
+            g_signal_connect(provider, "parsing-error", G_CALLBACK(ParseError), &failures);
+            gtk_css_provider_load_from_string(provider, css);
+            if ((mask & 4) && !std::strstr(css, absolute ? "10px " : "10pt "))
+            {
+                std::fprintf(stderr, "incorrect font unit/size: %s\n", css);
+                ++failures;
+            }
+            g_object_unref(provider);
+            g_free(css);
+        }
+    }
+    pango_font_description_free(font.native.description);
+    if (failures) return 1;
+    std::puts("actual CSS generator + GTK4 parser: PASS (14 cases, absolute 10px)");
+    return 0;
+}
