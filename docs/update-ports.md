@@ -394,6 +394,8 @@ Ordinary native and target builds use the same configuration preservation path
 as scoped `package` and `package-install`, after the existing workdir identity
 and dependency checks. Changed `USE_TOOLS` entries refresh their wrappers before
 configure; this also updates aliases such as `make` when a recipe adds `gmake`.
+Removed tools are compared with their previous factory output before removal;
+aliases retained by a current tool are updated, and interrupted changes can resume.
 Unchanged generated configure inputs retain their timestamps. This path adds
 newly missing pkgsrc buildlink providers. The existing factory
 creates their links under the stage lock. Existing provider cookies and compiled

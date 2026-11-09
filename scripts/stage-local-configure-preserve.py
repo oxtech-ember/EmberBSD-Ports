@@ -87,75 +87,110 @@ def refresh_tools(a, paths, jsonio, command, work):
     if os.path.lexists(cookie):
         require(cookie.is_file() and not cookie.is_symlink() and cookie.stat().st_nlink == 1,
                 'invalid tools cookie file')
-        old_use = cookie.read_text()
+        cookie_use = cookie.read_text()
     else:
-        old_use = ''
+        cookie_use = ''
     identity = {'work': str(work), 'recipe': str(a.recipe), 'use': use.split(),
                 'command': [x for x in command if not x.startswith(('MAKE_JOBS=', 'NATIVE_PKG_ADD_CMD='))]}
-    if not os.path.lexists(marker) and old_use.split() == use.split():
-        return
-    require(set(old_use.split()) <= set(use.split()), 'removing USE_TOOLS is unsupported')
     with tempfile.TemporaryDirectory(prefix='ember-tools-plan-') as tmp:
-        scratch = Path(tmp) / 'tools'
-        query = command + ['TOOLS_DIR=' + str(scratch)]
         expr = '${TOOLS_CREATE:@t@${t}|${TOOLS_CMD.${t}}|${TOOLS_ALIASES.${t}:ts,}@}'
-        groups = subprocess.run(query + ['-V', expr], check=True, text=True,
-                                stdout=subprocess.PIPE).stdout.strip()
+
+        def state(path, scratch=None):
+            if path.is_symlink():
+                target = os.readlink(path)
+                if scratch is not None:
+                    target = target.replace(str(scratch), str(live))
+                return {'kind': 'link', 'value': target}
+            if not os.path.lexists(path): return {'kind': 'missing'}
+            require(path.is_file() and path.stat().st_nlink == 1, 'unsafe tools file: ' + str(path))
+            data = path.read_bytes()
+            if scratch is not None:
+                data = data.replace(os.fsencode(scratch), os.fsencode(live))
+            return {'kind': 'file', 'sha256': hashlib.sha256(data).hexdigest(),
+                    'mode': stat.S_IMODE(path.stat().st_mode)}
+
+        def factory_inventory(selected_use, label):
+            scratch = Path(tmp) / label
+            query = command + ['_MAKEVARS_MK=defined', 'USE_TOOLS=' + ' '.join(selected_use),
+                               'TOOLS_DIR=' + str(scratch)]
+            groups = subprocess.run(query + ['-V', expr], check=True, text=True,
+                                    stdout=subprocess.PIPE).stdout.strip()
+            specs = {}
+            for group in groups.split():
+                parts = group.split('|')
+                require(len(parts) == 3 and parts[0] not in ('', '.', '..') and '/' not in parts[0] and '\\' not in parts[0], 'invalid tools group')
+                primary = Path(parts[1]); require(primary.parent == scratch / 'bin', 'tool outside tools bin')
+                aliases = [x for x in parts[2].split(',') if x]
+                require(all(x not in ('', '.', '..') and '/' not in x and '\\' not in x for x in aliases), 'invalid tools alias')
+                key = primary.name
+                spec = (key, tuple(aliases))
+                require(key not in specs or specs[key] == spec, 'conflicting tool targets')
+                specs[key] = spec
+            targets = [str(scratch / 'bin' / x) for x in specs]
+            if targets:
+                subprocess.run(query + targets, check=True)
+            expected = {}
+            for primary, aliases in specs.values():
+                for name in (primary, *aliases):
+                    item = state(scratch / 'bin' / name, scratch)
+                    require(item['kind'] != 'missing', 'factory did not produce tool: ' + name)
+                    require(name not in expected or expected[name] == item, 'conflicting tool alias')
+                    expected[name] = item
+            return specs, expected
+
+        # A recovery journal pins the previous cookie even if the cookie swap
+        # completed just before an interruption.
+        previous = jsonio.read_json(str(marker)) if os.path.lexists(marker) else None
+        if previous is not None:
+            require(previous.get('identity') == identity and previous.get('version') == 1,
+                    'tools refresh journal changed')
+            old_use = previous.get('old_use', cookie_use).split()
+            require(cookie_use.split() in (old_use, use.split()), 'tools cookie changed during refresh')
+        else:
+            old_use = cookie_use.split()
+        if not os.path.lexists(marker) and old_use == use.split():
+            return
         live = work / '.tools'
         paths.real_directory(str(live)); paths.real_directory(str(live / 'bin'))
-        if os.path.lexists(marker):
-            record = jsonio.read_json(str(marker))
-            require(record.get('identity') == identity and record.get('version') == 1,
-                    'tools refresh journal changed')
+        old_expected = {}
+        if not set(old_use) <= set(use.split()):
+            _, old_expected = factory_inventory(old_use, 'old')
+        specs, expected = factory_inventory(use.split(), 'new')
+        fresh_command = command + ['_MAKEVARS_MK=defined', 'USE_TOOLS=' + use]
+        retired = set(old_expected) - set(expected)
+        # Confirm every retired entry is still exactly owned by the prior
+        # pkgsrc factory. Unknown or locally changed wrappers are never deleted.
+        for name in retired:
+            current = state(live / 'bin' / name)
+            require(current in (old_expected[name], {'kind': 'missing'}),
+                    'refusing to remove changed staged tool: ' + name)
+        if previous is not None:
+            record = previous
         else:
             dry = subprocess.run(command + ['-n', 'post-tools'], check=True, text=True,
                                  stdout=subprocess.PIPE).stdout
             require(not dry.strip(), 'custom post-tools is unsupported')
             record = {'version': 1, 'identity': identity, 'files': {}, 'writing': []}
-        specs = {}
-        for group in groups.split():
-            parts = group.split('|')
-            require(len(parts) == 3 and parts[0] not in ('', '.', '..') and '/' not in parts[0] and '\\' not in parts[0], 'invalid tools group')
-            primary = Path(parts[1]); require(primary.parent == scratch / 'bin', 'tool outside tools bin')
-            aliases = [x for x in parts[2].split(',') if x]
-            require(all(x not in ('', '.', '..') and '/' not in x and '\\' not in x for x in aliases), 'invalid tools alias')
-            key = primary.name
-            spec = (key, tuple(aliases))
-            require(key not in specs or specs[key] == spec, 'conflicting tool targets')
-            specs[key] = spec
-        targets = [str(scratch / 'bin' / x) for x in specs]
-        subprocess.run(query + targets, check=True)
-        def state(path, normalize=False):
-            if path.is_symlink():
-                target = os.readlink(path)
-                if normalize: target = target.replace(str(scratch), str(live))
-                return {'kind': 'link', 'value': target}
-            if not os.path.lexists(path): return {'kind': 'missing'}
-            require(path.is_file() and path.stat().st_nlink == 1, 'unsafe tools file: ' + str(path))
-            data = path.read_bytes()
-            if normalize: data = data.replace(os.fsencode(scratch), os.fsencode(live))
-            return {'kind': 'file', 'sha256': hashlib.sha256(data).hexdigest(),
-                    'mode': stat.S_IMODE(path.stat().st_mode)}
-        expected = {}
-        for primary, aliases in specs.values():
-            for name in (primary, *aliases):
-                candidate = scratch / 'bin' / name
-                item = state(candidate, True)
-                require(item['kind'] != 'missing', 'factory did not produce tool: ' + name)
-                require(name not in expected or expected[name] == item, 'conflicting tool alias')
-                expected[name] = item
         if not record['files']:
-            for name, goal in expected.items():
+            for name in sorted(set(expected) | retired):
+                goal = expected.get(name, {'kind': 'missing'})
                 path = live / 'bin' / name
                 record['files'][name] = {'before': state(path), 'after': goal,
                                          'mtime_ns': path.lstat().st_mtime_ns if os.path.lexists(path) else None}
+            record.update({'old_use': ' '.join(old_use), 'retired': sorted(retired)})
             jsonio.write_json(str(marker), record)
-        require(set(record['files']) == set(expected), 'tool inventory changed during retry')
+        else:
+            require(record.get('old_use', ' '.join(old_use)).split() == old_use and
+                    record.get('retired', sorted(retired)) == sorted(retired),
+                    'tools refresh old inventory changed during retry')
+        require(set(record['files']) == set(expected) | retired, 'tool inventory changed during retry')
         for name, item in record['files'].items():
-            require(item['after'] == expected[name], 'tool factory changed during retry')
+            require(item['after'] == expected.get(name, {'kind': 'missing'}), 'tool factory changed during retry')
             now = state(live / 'bin' / name)
-            partial = name in record.get('writing', []) and now['kind'] == 'file'
-            require(now in (item['before'], item['after'], {'kind': 'missing'}) or partial, 'tool changed during retry: ' + name)
+            partial = name in record.get('writing', []) and name in specs and now['kind'] == 'file'
+            require(now in (item['before'], item['after']) or partial or
+                    (name in record.get('writing', []) and now['kind'] == 'missing'),
+                    'tool changed during retry: ' + name)
         for primary, aliases in specs.values():
             for alias in aliases:
                 path = live / 'bin' / alias
@@ -164,27 +199,31 @@ def refresh_tools(a, paths, jsonio, command, work):
         for primary, aliases in specs.values():
             if any(state(live / 'bin' / n) != expected[n] for n in (primary, *aliases)):
                 changed.append(primary)
-        changed = sorted(set(changed) | set(record.get('writing', [])))
-        require(set(changed) <= set(specs), 'invalid writing journal')
-        record['writing'] = changed
+        actions = sorted(set(changed) | set(record.get('writing', [])) | {name for name in retired if state(live / 'bin' / name) != {'kind': 'missing'}})
+        require(set(actions) <= set(specs) | retired, 'invalid writing journal')
+        record['writing'] = actions
         jsonio.write_json(str(marker), record, exclusive=False)
-        for primary in changed:
-            path = live / 'bin' / primary
+        for name in actions:
+            path = live / 'bin' / name
             if os.path.lexists(path):
                 path.unlink()
-        if changed:
-            subprocess.run(command + [str(live / 'bin' / x) for x in changed], check=True)
+        factory_tools = sorted(set(actions) & set(specs))
+        if factory_tools:
+            subprocess.run(fresh_command + [str(live / 'bin' / x) for x in factory_tools], check=True)
         for name, item in record['files'].items():
             path = live / 'bin' / name
             require(state(path) == item['after'], 'tool factory output differs: ' + name)
             if item['before'] == item['after'] and item['mtime_ns'] is not None:
                 info = path.lstat()
                 os.utime(path, ns=(info.st_atime_ns, item['mtime_ns']), follow_symlinks=False)
-        record['writing'] = []
+        # Keep removed names in the journal until the cookie swap commits. A
+        # retry after configure-clean can then distinguish our missing files
+        # from an unrecorded external deletion.
+        record['writing'] = sorted(name for name in actions if name in retired)
         jsonio.write_json(str(marker), record, exclusive=False)
         with tempfile.TemporaryDirectory(prefix='.tools-cookie-', dir=work) as tmpcookie:
             temporary = Path(tmpcookie) / 'cookie'
-            subprocess.run(command + ['_COOKIE.tools=' + str(temporary), 'tools-cookie'], check=True)
+            subprocess.run(fresh_command + ['_COOKIE.tools=' + str(temporary), 'tools-cookie'], check=True)
             require(temporary.is_file() and not temporary.is_symlink() and
                     temporary.read_text().split() == use.split(), 'invalid generated tools cookie')
             subprocess.run(command + ['configure-clean'], check=True)
