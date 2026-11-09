@@ -2,7 +2,7 @@
 
 DISTNAME=	qtbase-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtbase-${QTVERSION}
-PKGREVISION=	23
+PKGREVISION=	24
 COMMENT=	C++ X GUI toolkit
 CATEGORIES=	x11
 

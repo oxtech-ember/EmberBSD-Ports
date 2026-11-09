@@ -70,3 +70,5 @@ SHA1 (patch-cmake_QtBaseHelpers.cmake) = 626e5f324ef854eaf29b97c4ebd90be08589dfc
 SHA1 (patch-src_gui_rhi_qrhivulkan.cpp) = bb6a456992cbcc964cb361eb78a88f72908fadd2
 SHA1 (patch-src_gui_rhi_qrhivulkan__p.h) = 0cc2d813db9f775c6a74b76805875e310caaf70a
 SHA1 (patch-src_plugins_platforms_bsdfb_qbsdfbpresent__p.h) = 2323739d2cf1da395a4911e6ed634fd047e76dd1
+SHA1 (patch-src_plugins_platforms_wayland_qwaylandwindow.cpp) = 706d99715614ac836994b310ba3d3f6d0f683b9b
+SHA1 (patch-src_plugins_platforms_wayland_qwaylandwindow__p.h) = b6dd34b247039fc122714a933bd03b19c347c731
