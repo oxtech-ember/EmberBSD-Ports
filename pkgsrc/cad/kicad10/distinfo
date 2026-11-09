@@ -22,4 +22,4 @@ SHA1 (patch-pcb__calculator_CMakeLists.txt) = 4b496498c6bef100f2eca99209e3efa521
 SHA1 (patch-pcbnew_CMakeLists.txt) = 428d7fabb492f71feeac6d989afc50f778daea43
 SHA1 (patch-plugins_3d_idf_CMakeLists.txt) = 9061c5c5eac3311625ba93e541d557007c83eddc
 SHA1 (patch-plugins_3d_vrml_CMakeLists.txt) = ea6942a953432c5c0124c57e9afb01f8a5c5325d
-SHA1 (patch-emberbsd-wxgtk4) = ecdf5b0dcb7fa51d9972424f1b7b2e9680ef9256
+SHA1 (patch-emberbsd-wxgtk4) = 331eeb3267fc5c2a5a835bceea758a7c049eb2a9
