@@ -60,6 +60,30 @@ with four findings in unchanged key/touch paths and included headers, none in th
 CSS method; this is not a clean full-translation-unit verdict. The existing
 Cppcheck `sys/endian.h` parser limitation still applies.
 
+# Calendar range and clipboard MIME selection
+
+The generic calendar now returns false when `SetDate` rejects a date outside
+its current range, preserving the date and the normal year-edit state reset.
+The existing `calendar4-contract` exposes the previous incorrect true result.
+
+The shared GTK4 clipboard/drop transport prefers advertised MIME formats before
+considering native GType serializers. GTK augments clipboard formats with
+deserializable types; serializing those again can invent a UTF-8 MIME variant
+that a plain-text byte provider cannot supply. Native typed providers retain
+the existing serializer path.
+
+`clipboard-mime4-contract` uses the actual private transport header and real GDK
+providers, asynchronous IO and wx Unicode conversion. It covers plain-only UTF-8
+bytes, preferred explicit UTF-8 MIME, a native string clipboard, and GType-only
+format selection for local drops. Its namespace separates inline helpers from
+an older installed wx library. Build it through `BUILD_CLIPBOARD_CONTRACT` with
+`WX_SOURCE_DIR` pointing to the matching prepared source, then run with a display.
+The previous header fails on EmberBSD aarch64; the corrected header passes.
+Clang analysis has no finding in `Match`; the unchanged `Receive` path produces
+the known wx shared-buffer reference-counting false positive. The target-header
+Cppcheck parser limitation described above still applies. This narrow fixture
+does not replace the full clipboard or interactive drag-and-drop contracts.
+
 # GTK4 AUI and top-level window hints
 
 `patch-gtk4-window-hints` draws AUI sashes through the existing native splitter

@@ -27,7 +27,7 @@ DEPENDS+=	kicad-packages3d-${V}{,nb*}:../../cad/kicad-packages3d
 USE_CXX_FEATURES=	charconv filesystem c++17
 USE_PKGLOCALEDIR=	yes
 USE_LANGUAGES=		c c++
-USE_TOOLS+=		pkg-config msgfmt msgmerge xgettext
+USE_TOOLS+=		pkg-config msgfmt msgmerge xgettext tar
 
 CMAKE_CONFIGURE_ARGS+=		-DCMAKE_BUILD_TYPE=Release
 # Keep the default-on IPC API explicit; its providers are direct dependencies.
@@ -36,6 +36,7 @@ CMAKE_CONFIGURE_ARGS+=		-DKICAD_SCRIPTING_WXPYTHON=OFF
 CMAKE_CONFIGURE_ARGS+=		-DKICAD_BUILD_I18N=ON
 CMAKE_CONFIGURE_ARGS+=		-DLEMON_EXE:FILEPATH=${TOOLBASE}/bin/lemon
 CMAKE_CONFIGURE_ARGS+=		-DLEMON_TEMPLATE:FILEPATH=${TOOLBASE}/share/lemon/lempar.c
+CMAKE_CONFIGURE_ARGS+=		-DTAR:FILEPATH=${TAR}
 
 # KICAD_USE_EGL must be defined if wxWidgets was compiled with EGL canvas.
 .include "../../graphics/MesaLib/features.mk"
@@ -122,7 +123,7 @@ BUILDLINK_API_DEPENDS.glm+=	glm>=0.9.9.8
 .include "../../textproc/sundown/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"
 .include "../../x11/libspnav/buildlink3.mk"
-BUILDLINK_API_DEPENDS.wxGTK32+=	wxGTK32>=3.2.12nb19
+BUILDLINK_API_DEPENDS.wxGTK32+=	wxGTK32>=3.2.12nb20
 .include "../../x11/wxGTK32/buildlink3.mk"
 # needs 64-bit CAS for std::atomic<size_t>
 .include "../../mk/atomic64.mk"

@@ -57,3 +57,5 @@ SHA1 (patch-wx-config.in) = 87cca953a550858cb95ad061352fd82038e67e16
 SHA1 (patch-zz-bmake-dependencies) = e802367fbf6b21c4707a535c48e2de5fe41aab51
 SHA1 (patch-zz-gtk4-control-creation) = b1c8c52e83e27426371233e36a14b31b27379cb5
 SHA1 (patch-zz-gtk4-style-css) = e6ee91fa96c0f776bc54b066e72d47338ee9fe67
+SHA1 (patch-zz-generic-calendar-range) = 65fcc31eba815c06af5428313e881d72af96e3e5
+SHA1 (patch-zz-gtk4-transfer-mime) = 24ea57628380190fb1f2ffba8fff62a4f1f9dc4c

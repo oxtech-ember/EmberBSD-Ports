@@ -1,0 +1,48 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Prefer advertised MIME bytes over synthesized GType serializations.
+
+--- include/wx/gtk/private/transfer4.h.orig
++++ include/wx/gtk/private/transfer4.h
+@@ -96,19 +96,28 @@
+ 
+ inline const char* Match(GdkContentFormats* available, const wxDataFormat& wanted)
+ {
+-    // Native GTypes (e.g. G_TYPE_STRING/GDK_TYPE_TEXTURE) also expose their
+-    // standard MIME serializations through GDK's registered serializers.
++    const auto matchMime = [&wanted](GdkContentFormats* formats) -> const char*
++    {
++        if (IsText(wanted))
++        {
++            if (gdk_content_formats_contain_mime_type(formats, "text/plain;charset=utf-8"))
++                return "text/plain;charset=utf-8";
++            if (gdk_content_formats_contain_mime_type(formats, "text/plain"))
++                return "text/plain";
++        }
++        else if (wanted.GetFormatId() && gdk_content_formats_contain_mime_type(formats, wanted.GetFormatId()))
++            return wanted.GetFormatId();
++        return NULL;
++    };
++    // Clipboard/drop formats also include deserializable GTypes. Serializing
++    // those again can invent a MIME type the original byte provider cannot
++    // supply: text/plain -> G_TYPE_STRING -> text/plain;charset=utf-8.
++    // Prefer the advertised MIME before considering native typed providers.
++    if (const char* mime = matchMime(available))
++        return mime;
++
+     GdkContentFormats* formats = gdk_content_formats_union_serialize_mime_types(gdk_content_formats_ref(available));
+-    const char* result = NULL;
+-    if (IsText(wanted))
+-    {
+-        if (gdk_content_formats_contain_mime_type(formats, "text/plain;charset=utf-8"))
+-            result = "text/plain;charset=utf-8";
+-        else if (gdk_content_formats_contain_mime_type(formats, "text/plain"))
+-            result = "text/plain";
+-    }
+-    else if (wanted.GetFormatId() && gdk_content_formats_contain_mime_type(formats, wanted.GetFormatId()))
+-        result = wanted.GetFormatId();
++    const char* result = matchMime(formats);
+     gdk_content_formats_unref(formats);
+     return result;
+ }

@@ -1,0 +1,23 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Report an out-of-range date as rejected, as required by wxCalendarCtrl::SetDate.
+Keep the common exit path resetting the user's year-selection state.
+
+--- src/generic/calctrlg.cpp.orig
++++ src/generic/calctrlg.cpp
+@@ -431,12 +431,12 @@
+ {
+     wxCHECK_MSG( date.IsValid(), false, "invalid date" );
+ 
+-    bool retval = true;
++    bool retval = IsDateInRange(date);
+ 
+     bool sameMonth = m_date.GetMonth() == date.GetMonth(),
+          sameYear = m_date.GetYear() == date.GetYear();
+ 
+-    if ( IsDateInRange(date) )
++    if ( retval )
+     {
+         if ( sameMonth && sameYear )
+         {
