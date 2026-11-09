@@ -1,13 +1,27 @@
 # Incremental Autoconf builds
 
-The Autoconf recipe selects the common native GNU make. pkgsrc binds both
-configure's `make` alias and the build command to that tool; the CMake option
-keeps its existing build-system selection. Bakefile only includes the compiler's
-`.deps/*.d` files after detecting GNU make. With BSD make those files were
-generated but ignored, allowing an object to survive a change to its included
-GTK4 implementation. A dry run against the real object and depfile reproduces
-the missed update with the include disabled and schedules the affected compile
-with it enabled. Preserve the dependency files along with compatible objects.
+The Autoconf recipe uses the selected native bmake, with no GNU make dependency.
+Bakefile's shared dependency emitter reads compiler depfiles for bmake through
+`.ALLTARGETS` and optional includes. It covers every generated makefile, including
+wxrc, samples and tests. The historical `IF_GNU_MAKE` substitution is an include
+prefix; for bmake it emits the common include loop and comments out the original
+GNU wildcard include. Upstream's GNU make branch remains supported. The CMake
+option keeps its existing build-system selection.
+
+Previously, Bakefile generated `.deps/*.d` but ignored them with bmake, allowing
+an object to survive a change to its included GTK4 implementation. The regression
+uses the real Autoconf macro and three generated makefile contexts, checks the
+shipped configure against the macro, and proves that only changed headers trigger
+rebuilds. Nested object paths and a first build without depfiles are covered.
+The previous producer fails this regression. A dry run with the actual wx makefile
+accepts the bmake include loop and preserves the already updated GL canvas object.
+Keep dependency files along with compatible objects.
+
+```sh
+python3 tests/bmake-dependencies.py --source /prepared/wxWidgets \
+  --bmake /native/bin/bmake --autoconf /native/bin/autoconf \
+  --shell /native/bin/mksh
+```
 
 # GTK4 AUI and top-level window hints
 

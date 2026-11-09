@@ -1,0 +1,28 @@
+$NetBSD$
+
+Read compiler dependencies with the selected BSD make in every generated
+Bakefile makefile, including samples and tests. Preserve upstream GNU make
+support without requiring it for the Ports build.
+
+--- build/aclocal/bakefile.m4.orig
++++ build/aclocal/bakefile.m4
+@@ -54,7 +54,18 @@
+     if test "x$bakefile_cv_prog_makeisgnu" = "xyes"; then
+         IF_GNU_MAKE=""
+     else
+-        IF_GNU_MAKE="#"
++        bakefile_make_version=`${SHELL-sh} -c "${MAKE-make} -V .MAKE.VERSION" 2> /dev/null` || bakefile_make_version=
++        case "$bakefile_make_version" in
++            ''|*[[!0-9]]*) IF_GNU_MAKE="#" ;;
++            *)
++                # This historical substitution prefixes every Bakefile dep
++                # include. bmake needs explicit names, not a wildcard include.
++                IF_GNU_MAKE='.for dep_object in ${.ALLTARGETS:M*.o}
++.[sinclude] "${dep_object:H}/.deps/${dep_object:T}.d"
++.endfor
++#'
++                ;;
++        esac
+     fi
+     AC_SUBST(IF_GNU_MAKE)
+ ])

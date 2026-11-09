@@ -2,7 +2,7 @@
 
 DISTNAME=	wxWidgets-3.2.12
 PKGNAME=	${DISTNAME:S/wxWidgets/wxGTK32/}
-PKGREVISION=	17
+PKGREVISION=	18
 CATEGORIES=	x11
 MASTER_SITES=	${MASTER_SITE_GITHUB:=wxWidgets/}
 GITHUB_PROJECT=	wxWidgets
@@ -88,9 +88,6 @@ SUBST_SED.unwrap+=	-e 's,echo.*/${CXX} -o",echo "${CXX} -o",'
 .else # empty(PKG_OPTIONS:Mcmake)
 
 GNU_CONFIGURE=		yes
-# Bakefile enables compiler-generated dependencies only with GNU make.
-# Select the same native tool for configure's probe and incremental builds.
-USE_TOOLS+=		gmake
 PLIST_SRC+=		PLIST.configure
 
 # Use pkgsrc build/host tuples for cross builds. Keep native autodetection.
