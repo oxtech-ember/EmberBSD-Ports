@@ -1204,6 +1204,10 @@ stage_configure_preserve_target()
     if [ "$install" = package-install ]; then
         set -- "$@" PKGSRC_KEEP_BIN_PKGS=yes
     fi
+    if [ "${stage_local:-no}" = yes ]; then
+        set -- "$@" _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
+            "_EMBER_STAGE_LOCAL_PKGPATH=$1" "_EMBER_STAGE_LOCAL_WRKDIR=$2"
+    fi
     stage_configure_preserve "$@"
 }
 
@@ -1368,7 +1372,7 @@ build_native()
     [ "${stage_local:-no}" = yes ] || : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
         { [ "${stage_local_metadata_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" depends-clean _package-clean < /dev/null >> "$log" 2>&1; } &&
-        { [ "${stage_local:-no}" != yes ] || stage_configure_preserve "$path" "$wrkdir" "$@" _AUTOMATIC=yes >> "$log" 2>&1; } &&
+        stage_configure_preserve "$path" "$wrkdir" "$@" _AUTOMATIC=yes >> "$log" 2>&1 &&
         if [ "${package_only:-no}" = yes ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1
         elif [ "$install" = replace ]; then
@@ -1839,9 +1843,7 @@ build_one()
     fi
     set +f
     { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
-        { [ "${stage_local:-no}" != yes ] || stage_configure_preserve_target "$path" "$wrkdir" \
-            _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
-            "_EMBER_STAGE_LOCAL_PKGPATH=$path" "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir" >> "$log" 2>&1; } &&
+        stage_configure_preserve_target "$path" "$wrkdir" >> "$log" 2>&1 &&
         target_install "$path" $install >> "$log" 2>&1 &&
         { [ -z "$replace" ] || if [ "${stage_local:-no}" = yes ]; then
             target_install "$path" replace >> "$log" 2>&1

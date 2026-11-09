@@ -390,8 +390,12 @@ changed live file must match that replay before any write; an unrelated or
 modified preimage is refused. Ordinary refresh keeps its full previous-recipe
 replay and stale-cookie checks.
 
-The stage-local configuration preservation path adds newly missing pkgsrc
-buildlink providers during `package` and `package-install`. The existing factory
+Ordinary native and target builds use the same configuration preservation path
+as scoped `package` and `package-install`, after the existing workdir identity
+and dependency checks. Changed `USE_TOOLS` entries refresh their wrappers before
+configure; this also updates aliases such as `make` when a recipe adds `gmake`.
+Unchanged generated configure inputs retain their timestamps. This path adds
+newly missing pkgsrc buildlink providers. The existing factory
 creates their links under the stage lock. Existing provider cookies and compiled
 objects remain intact. Interrupted additions can be retried. This refresh path
 does not support new or changed libtool `.la` outputs.
