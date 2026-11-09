@@ -6,6 +6,7 @@
 # base system at run time. After installation, the cross tool map replaces
 # build-host paths of the configure shell, Perl, awk, grep, sed and the tools
 # directory in installed text files with the NetBSD target programs.
+# Scan installed data once for the whole map, retaining replacement order.
 
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
@@ -19,7 +20,7 @@
  .    endif
  .    endif
  .  endif
-@@ -1590,6 +1593,46 @@
+@@ -1590,6 +1593,51 @@
  # TOOLS_VALUE_GNU.<tool>, which defaults to the full command line of
  # the tool.
  #
@@ -48,18 +49,23 @@
 +post-install: ember-cross-tool-paths
 +.PHONY: ember-cross-tool-paths
 +ember-cross-tool-paths:
-+	${RUN} for m in ${EMBER_CROSS_TOOL_MAP}; do \
++	${RUN} script=${WRKDIR}/.ember-cross-tool-paths.sed; \
++	trap '${RM} -f "$$script"' 0; \
++	: > "$$script"; set --; \
++	for m in ${EMBER_CROSS_TOOL_MAP}; do \
 +	    h=$${m%%=*}; t=$${m#*=}; \
 +	    case "$$h" in /?*) ;; *) continue ;; esac; \
 +	    case "$$t" in /?*) ;; *) continue ;; esac; \
 +	    [ "$$h" != "$$t" ] || continue; \
 +	    r=$$(printf '%s\n' "$$h" | LC_ALL=C ${SED} -e 's/[].[*^$$\\]/\\&/g'); \
-+	    ${FIND} ${DESTDIR}${PREFIX} -type f -exec ${GREP} -lIF -e "$$h" {} + 2>/dev/null | \
-+	    while IFS= read -r f; do \
-+	        LC_ALL=C ${SED} -e "s|$$r\([^A-Za-z0-9._+/-]\)|$$t\1|g" -e "s|$$r\$$|$$t|" \
-+	            "$$f" > "$$f.ember-tool" && \
-+	        ${CAT} "$$f.ember-tool" > "$$f" && ${RM} -f "$$f.ember-tool"; \
-+	    done; \
++	    printf '%s\n' "s|$$r\([^A-Za-z0-9._+/-]\)|$$t\1|g" "s|$$r\$$|$$t|" >> "$$script"; \
++	    set -- "$$@" -e "$$h"; \
++	done; \
++	[ "$$#" -ne 0 ] || exit 0; \
++	${FIND} ${DESTDIR}${PREFIX} -type f -exec ${GREP} -lIF "$$@" {} + 2>/dev/null | \
++	while IFS= read -r f; do \
++	    LC_ALL=C ${SED} -f "$$script" "$$f" > "$$f.ember-tool" && \
++	    ${CAT} "$$f.ember-tool" > "$$f" && ${RM} -f "$$f.ember-tool"; \
 +	done
 +.  endif
 +.endif

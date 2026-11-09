@@ -374,6 +374,11 @@ Pkgconf 3.0.7, GNU M4 1.4.21, Libtool 2.6.2 and
 [Binutils 2.47nb1](binutils.md) pass package checks
 and [installed AArch64 VM acceptance](cross/validation.md). Cross package
 metadata, alternate-root updates and target script paths have regressions.
+The cross-installed tool map scans staged text once for all host-to-target
+path replacements, retaining their order and ignoring binary files. Large
+data packages do not incur a separate full scan for each build tool.
+`tests/cross-tool-paths.py --host-prefix /absolute/host` exercises the actual
+rule, checks file contents and permissions, and counts tree traversals.
 The cross-tools check also queries pkgsrc's `archivers/gzip` recipe to keep
 `INFO_FILES` enabled and select the target `install-info` provider.
 The [common gzip 1.15 recipe](gzip.md) keeps that
