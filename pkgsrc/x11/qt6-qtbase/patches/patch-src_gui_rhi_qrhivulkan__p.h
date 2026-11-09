@@ -1,7 +1,7 @@
 $NetBSD$
 
 Allow opt-in host-visible static buffer uploads in idle offscreen frames.
-Keep staging for used buffers, pending frames, swapchains, and external commands.
+Keep staging for used buffers, unfinished frames, swapchains, and external commands.
 
 Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
 

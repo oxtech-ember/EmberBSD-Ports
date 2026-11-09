@@ -7,7 +7,22 @@
 #include <vector>
 
 constexpr int QVK_FRAMES_IN_FLIGHT = 2;
+using quint64 = std::uint64_t;
 using VkMemoryPropertyFlags = unsigned;
+using VkResult = int;
+using VkFence = int;
+using VkDevice = void *;
+constexpr VkResult VK_SUCCESS = 0;
+constexpr VkResult VK_NOT_READY = 1;
+static bool fenceSignaled[QVK_FRAMES_IN_FLIGHT];
+static int fenceQueries = 0;
+struct DeviceFunctions {
+    VkResult vkGetFenceStatus(VkDevice, VkFence fence)
+    {
+        ++fenceQueries;
+        return fenceSignaled[fence] ? VK_SUCCESS : VK_NOT_READY;
+    }
+};
 constexpr unsigned VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT = 2;
 static int optIn = 1;
 static unsigned memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
@@ -30,7 +45,14 @@ struct SwapChains : std::vector<QVkSwapChain *> {
 };
 struct QRhiVulkan {
     int hostStaticUploads = -1;
-    struct { bool active = true; bool cmdFenceWaitable[QVK_FRAMES_IN_FLIGHT]{}; } ofr;
+    struct {
+        bool active = true;
+        bool cmdFenceWaitable[QVK_FRAMES_IN_FLIGHT]{};
+        VkFence cmdFence[QVK_FRAMES_IN_FLIGHT]{0, 1};
+    } ofr;
+    DeviceFunctions functions;
+    DeviceFunctions *df = &functions;
+    VkDevice dev = nullptr;
     std::uint64_t offscreenFrameSerial = 1;
     bool offscreenFrameHasExternalCommands = false;
     int currentFrameSlot = 1;
@@ -71,8 +93,20 @@ int main()
     require(!rhi.canWriteStaticBufferDirectly(&buffer), "buffer already used by this frame");
     ++rhi.offscreenFrameSerial;
     rhi.ofr.cmdFenceWaitable[0] = true;
-    require(!rhi.canWriteStaticBufferDirectly(&buffer), "pending offscreen frame");
+    fenceQueries = 0;
+    require(!rhi.canWriteStaticBufferDirectly(&buffer), "unfinished offscreen frame");
+    require(!rhi.canWriteStaticBufferDirectly(&buffer), "still unfinished in the same frame");
+    require(fenceQueries == 1, "one fence query per frame");
+    // The previous frame is on screen: its fence signaled, nothing reads the buffer.
+    ++rhi.offscreenFrameSerial;
+    fenceSignaled[0] = true;
+    fenceQueries = 0;
+    require(rhi.canWriteStaticBufferDirectly(&buffer), "finished offscreen frame");
+    require(rhi.canWriteStaticBufferDirectly(&buffer), "finished, same frame");
+    require(fenceQueries == 1, "cached for the frame");
+    fenceSignaled[0] = false;
     rhi.ofr.cmdFenceWaitable[0] = false;
+    ++rhi.offscreenFrameSerial;
     memoryFlags = 0;
     require(!rhi.canWriteStaticBufferDirectly(&buffer), "device-only memory");
     memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
