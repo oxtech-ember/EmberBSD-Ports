@@ -1,0 +1,161 @@
+$NetBSD$
+
+Use the common GTK4 renderer and top-level services for AUI and splash windows.
+Keep EWMH type requests at the shared window-state owner; Wayland has no such hint.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+See tests/README.md for validation scope and runtime boundaries.
+
+--- src/aui/dockart.cpp.orig
++++ src/aui/dockart.cpp
+@@ -41,6 +41,7 @@
+ 
+ #ifdef __WXGTK__
+ #include "wx/renderer.h"
++#include "wx/dc.h"
+ #ifdef __WXGTK20__
+     #include "wx/gtk/private/wrapgtk.h"
+ #else
+@@ -463,7 +464,7 @@
+     if (!window->m_wxwindow) return;
+     if (!gtk_widget_is_drawable(window->m_wxwindow)) return;
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     cairo_t* cr = static_cast<cairo_t*>(dc.GetGraphicsContext()->GetNativeContext());
+     // invert orientation for widget (horizontal GtkPaned has a vertical splitter)
+     wxOrientation orient = orientation == wxVERTICAL ? wxHORIZONTAL : wxVERTICAL;
+@@ -475,6 +476,14 @@
+     gtk_render_handle(sc, cr, rect.x, rect.y, rect.width, rect.height);
+ 
+     gtk_style_context_restore(sc);
++#elif defined(__WXGTK4__)
++    // The native renderer draws the complete splitter sash. Clip it to the
++    // AUI-provided rectangle, which can cover only part of the host window.
++    wxDCClipper clipper(dc, rect);
++    const wxSize size = window->GetClientSize();
++    const wxOrientation orient = orientation == wxVERTICAL ? wxVERTICAL : wxHORIZONTAL;
++    const wxCoord position = orient == wxVERTICAL ? rect.x : rect.y;
++    wxRendererNative::Get().DrawSplitterSash(window, dc, size, position, orient);
+ #else
+     gtk_paint_handle
+     (
+--- src/aui/framemanager.cpp.orig
++++ src/aui/framemanager.cpp
+@@ -229,8 +229,34 @@
+ wxEND_EVENT_TABLE()
+ 
+ 
+-#else
+-  // __WXGTK20__
++#elif defined(__WXGTK4__)
++
++// GTK4 has no child popup surface and no portable shape API. Use a regular
++// top-level hint and the GTK4 compositor opacity path instead.
++class wxPseudoTransparentFrame : public wxFrame
++{
++public:
++    wxPseudoTransparentFrame(wxWindow* parent = NULL,
++                wxWindowID id = wxID_ANY,
++                const wxString& title = wxEmptyString,
++                const wxPoint& pos = wxDefaultPosition,
++                const wxSize& size = wxDefaultSize,
++                long style = wxDEFAULT_FRAME_STYLE,
++                const wxString& name = wxT("frame"))
++        : wxFrame(parent, id, title, pos, size, style, name)
++    {
++        SetBackgroundColour(wxColour(128, 192, 255));
++        SetTransparent(0);
++    }
++
++
++private:
++    wxDECLARE_DYNAMIC_CLASS(wxPseudoTransparentFrame);
++};
++
++wxIMPLEMENT_DYNAMIC_CLASS(wxPseudoTransparentFrame, wxFrame);
++
++#else // __WXGTK20__
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ 
+--- src/generic/splash.cpp.orig
++++ src/generic/splash.cpp
+@@ -11,6 +11,10 @@
+ // For compilers that support precompilation, includes "wx/wx.h".
+ #include "wx/wxprec.h"
+ 
++#ifdef __WXGTK4__
++#include "wx/gtk/private/windowstate4.h"
++#endif
++
+ 
+ #if wxUSE_SPLASH
+ 
+@@ -62,7 +66,12 @@
+     // is going to disappear soon, indicate it by giving it this special style
+     SetExtraStyle(GetExtraStyle() | wxWS_EX_TRANSIENT);
+ 
+-#if defined(__WXGTK20__)
++#ifdef __WXGTK4__
++    // EWMH type hints are X11-only; Wayland keeps normal wx top-level
++    // behavior and exposes no native splash role here.
++    (void)wxGTKWindowState4::RequestWindowType(
++        GTK_WINDOW(m_widget), "_NET_WM_WINDOW_TYPE_SPLASH");
++#elif defined(__WXGTK20__)
+     gtk_window_set_type_hint(GTK_WINDOW(m_widget),
+                              GDK_WINDOW_TYPE_HINT_SPLASHSCREEN);
+ #endif
+--- include/wx/gtk/private/windowstate4.h.orig
++++ include/wx/gtk/private/windowstate4.h
+@@ -11,6 +11,29 @@
+ #endif
+ namespace wxGTKWindowState4
+ {
++// Request an EWMH window type before mapping; Wayland keeps its native role.
++inline bool RequestWindowType(GtkWindow* window, const char* typeAtom)
++{
++    if (!window || !typeAtom || !*typeAtom ||
++        gtk_widget_get_mapped(GTK_WIDGET(window)))
++        return false;
++#ifdef GDK_WINDOWING_X11
++    if (GDK_IS_X11_DISPLAY(gtk_widget_get_display(GTK_WIDGET(window))))
++    {
++        g_object_set_data_full(G_OBJECT(window), "wx-gtk4-window-type-hint",
++                               g_strdup(typeAtom), g_free);
++        return true;
++    }
++#endif
++    return false;
++}
++
++inline const char* GetRequestedWindowType(GtkWindow* window)
++{
++    return window ? static_cast<const char*>(
++        g_object_get_data(G_OBJECT(window), "wx-gtk4-window-type-hint")) : NULL;
++}
++
+ // Apply after mapping, when the WM manages the surface. Wayland deliberately
+ // has no equivalent public always-on-top protocol; return false there.
+ inline bool SetKeepAbove(GtkWindow* window, bool above)
+--- src/gtk/toplevel_gtk4.inc.orig
++++ src/gtk/toplevel_gtk4.inc
+@@ -324,10 +324,15 @@
+             const Atom motif = XInternAtom(xdpy, "_MOTIF_WM_HINTS", False);
+             XChangeProperty(xdpy, xid, motif, motif, 32, PropModeReplace,
+                             reinterpret_cast<unsigned char*>(hints), 5);
+-            const Atom type = XInternAtom(xdpy,
+-                (win->GetExtraStyle() & wxTOPLEVEL_EX_DIALOG) ? "_NET_WM_WINDOW_TYPE_DIALOG" :
+-                (style & wxFRAME_TOOL_WINDOW) ? "_NET_WM_WINDOW_TYPE_UTILITY" :
+-                "_NET_WM_WINDOW_TYPE_NORMAL", False);
++            const char* defaultType =
++                (win->GetExtraStyle() & wxTOPLEVEL_EX_DIALOG) ?
++                    "_NET_WM_WINDOW_TYPE_DIALOG" :
++                    (style & wxFRAME_TOOL_WINDOW) ? "_NET_WM_WINDOW_TYPE_UTILITY" :
++                    "_NET_WM_WINDOW_TYPE_NORMAL";
++            const char* typeName = wxGTKWindowState4::GetRequestedWindowType(
++                GTK_WINDOW(win->m_widget));
++            if (!typeName) typeName = defaultType;
++            const Atom type = XInternAtom(xdpy, typeName, False);
+             XChangeProperty(xdpy, xid, XInternAtom(xdpy, "_NET_WM_WINDOW_TYPE", False),
+                 XA_ATOM, 32, PropModeReplace, reinterpret_cast<const unsigned char*>(&type), 1);
+             // EWMH state messages apply to managed windows. GtkWindow's map

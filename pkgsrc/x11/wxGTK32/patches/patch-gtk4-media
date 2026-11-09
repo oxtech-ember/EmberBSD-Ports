@@ -1,0 +1,497 @@
+$NetBSD$
+
+Present shared GstPlayer frames through GTK4 snapshots, retaining the player API.
+The bounded mailbox owns pending pixels; UI-context delivery owns GTK resources.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+See tests/README.md for validation scope and runtime boundaries.
+
+--- src/unix/mediactrl_gstplayer.cpp.orig
++++ src/unix/mediactrl_gstplayer.cpp
+@@ -27,12 +27,19 @@
+ 
+ #ifdef __WXGTK__
+     #include "wx/gtk/private/wrapgtk.h"
+-    #include "wx/gtk/private/mediactrl.h"
++    #ifndef __WXGTK4__
++        #include "wx/gtk/private/mediactrl.h"
++    #endif
+ #endif
+ 
+ wxGCC_WARNING_SUPPRESS(cast-qual)
+ #include <gst/player/player.h>      // main gstreamer player header
+ wxGCC_WARNING_RESTORE()
++
++#ifdef __WXGTK4__
++#include "wx/weakref.h"
++#include "mediactrl_gtk4.inc"
++#endif
+ 
+ //=============================================================================
+ //  Declarations
+@@ -104,6 +111,11 @@
+     wxSize                  m_videoSize;
+     wxMediaState            m_last_state;
+     bool                    m_loaded;
++#ifdef __WXGTK4__
++    wxGTKMediaPresentationPtr m_presentation;
++    gulong                  m_snapshotId;
++    bool NotifyGTK4Size(bool loaded);
++#endif
+ 
+     wxDECLARE_DYNAMIC_CLASS(wxGStreamerMediaBackend);
+ };
+@@ -128,7 +140,7 @@
+ // (Returns TRUE to pass to other handlers, FALSE if not)
+ //
+ //-----------------------------------------------------------------------------
+-#ifdef __WXGTK__
++#if defined(__WXGTK__) && !defined(__WXGTK4__)
+ static gboolean
+ #ifdef __WXGTK3__
+ draw_callback(GtkWidget* widget, cairo_t* cr, wxGStreamerMediaBackend* be)
+@@ -188,7 +200,7 @@
+ // callback for when it is - the purpose of which is to tell
+ // GStreamer to play the video in our control
+ //-----------------------------------------------------------------------------
+-#ifdef __WXGTK__
++#if defined(__WXGTK__) && !defined(__WXGTK4__)
+ extern "C" {
+ static void realize_callback(GtkWidget* widget, wxGStreamerMediaBackend* be)
+ {
+@@ -223,12 +235,31 @@
+ 
+ wxGStreamerMediaBackend::wxGStreamerMediaBackend()
+   : m_player(0), m_video_renderer(0), m_videoSize(0, 0), m_last_state(wxMEDIASTATE_STOPPED), m_loaded(false)
++#ifdef __WXGTK4__
++  , m_snapshotId(0)
++#endif
+ {
+ 
+ }
+ 
+ wxGStreamerMediaBackend::~wxGStreamerMediaBackend()
+ {
++#ifdef __WXGTK4__
++    if (m_presentation)
++    {
++        GtkWidget* widget = GTK_WIDGET(g_weak_ref_get(&m_presentation->widget));
++        if (widget)
++        {
++            if (m_snapshotId)
++                g_signal_handler_disconnect(widget, m_snapshotId);
++            g_object_unref(widget);
++        }
++        m_presentation->Detach();
++        m_presentation.reset();
++    }
++    if (m_player)
++        g_signal_handlers_disconnect_by_data(m_player, this);
++#endif
+     m_video_renderer = NULL;
+     if (m_player)
+         gst_object_unref(m_player);
+@@ -251,6 +282,7 @@
+     be->EndOfStream();
+ }
+ 
++#ifndef __WXGTK4__
+ #define GST_WAYLAND_DISPLAY_HANDLE_CONTEXT_TYPE "GstWaylandDisplayHandleContextType"
+ static GstBusSyncReply bus_sync_handler(GstBus * WXUNUSED(bus), GstMessage* msg,  gpointer WXUNUSED(user_data))
+ {
+@@ -277,6 +309,7 @@
+ 
+     return GST_BUS_PASS;
+ }
++#endif
+ }
+ 
+ 
+@@ -358,7 +391,7 @@
+         return false;
+     }
+ 
+-#ifdef __WXGTK__
++#if defined(__WXGTK__) && !defined(__WXGTK4__)
+     // Turn off double-buffering so that
+     // so it doesn't draw over the video and cause sporadic
+     // disappearances of the video
+@@ -369,6 +402,20 @@
+     // so that resizing is a bit smoother
+     m_ctrl->SetBackgroundStyle(wxBG_STYLE_PAINT);
+ 
++#ifdef __WXGTK4__
++    m_presentation = std::make_shared<wxGTKMediaPresentation>(m_ctrl->m_wxwindow);
++    m_video_renderer = wxGTKMediaCreateRenderer(m_presentation);
++    if (!m_video_renderer)
++    {
++        wxLogError("GStreamer appsink is required for GTK4 media presentation.");
++        return false;
++    }
++    m_snapshotId = g_signal_connect_data(m_ctrl->m_wxwindow, "wx-snapshot",
++        G_CALLBACK(wxGTKMediaSnapshot), new wxGTKMediaPresentationPtr(m_presentation),
++        wxGTKMediaDeleteClosure, GConnectFlags(0));
++    m_player = gst_player_new(m_video_renderer,
++        gst_player_g_main_context_signal_dispatcher_new(m_presentation->context));
++#else
+     // Tell gstreamer to play in our window
+     gpointer window_handle = NULL;
+ #ifdef __WXGTK__
+@@ -425,6 +472,8 @@
+         }
+     }
+ 
++#endif
++
+     g_signal_connect(m_player, "video-dimensions-changed", G_CALLBACK(video_dimensions_changed_callback), this);
+     g_signal_connect(m_player, "state-changed", G_CALLBACK(state_changed_callback), this);
+     g_signal_connect(m_player, "end-of-stream", G_CALLBACK(end_of_stream_callback), this);
+@@ -483,9 +532,43 @@
+     if (m_loaded) {
+         m_videoSize.x = width;
+         m_videoSize.y = height;
++#ifdef __WXGTK4__
++        NotifyGTK4Size(false);
++#else
+         NotifyMovieSizeChanged();
+-    }
+-}
++#endif
++    }
++}
++
++#ifdef __WXGTK4__
++// Resizing/layout can invoke application handlers that delete this backend.
++// Retain only weak wx objects across these callbacks, never a raw parent.
++bool wxGStreamerMediaBackend::NotifyGTK4Size(bool loaded)
++{
++    wxWeakRef<wxMediaCtrl> control(m_ctrl);
++    if (!control->HasFlag(wxMC_NO_AUTORESIZE))
++    {
++        control->InvalidateBestSize();
++        control->SetSize(control->GetSize());
++        if (!control)
++            return false;
++        wxWeakRef<wxWindow> parent(control->GetParent());
++        if (parent && parent->GetSizer())
++        {
++            parent->Layout();
++            if (parent && control)
++                parent->Refresh();
++            if (parent && control)
++                parent->Update();
++            if (!control)
++                return false;
++        }
++    }
++    if (loaded)
++        QueueEvent(wxEVT_MEDIA_LOADED);
++    return true;
++}
++#endif
+ 
+ void wxGStreamerMediaBackend::StateChanged(GstPlayerState state)
+ {
+@@ -493,8 +576,14 @@
+     case GST_PLAYER_STATE_BUFFERING:
+     case GST_PLAYER_STATE_PAUSED:
+       if (!m_loaded) {
++#ifdef __WXGTK4__
++          m_loaded = true;
++          if (!NotifyGTK4Size(true))
++              return;
++#else
+           NotifyMovieLoaded();
+           m_loaded = true;
++#endif
+       }
+ 
+       m_last_state = wxMEDIASTATE_PAUSED;
+@@ -514,8 +603,15 @@
+ 
+ void wxGStreamerMediaBackend::EndOfStream()
+ {
++#ifdef __WXGTK4__
++    wxWeakRef<wxMediaCtrl> control(m_ctrl);
++    const bool allow = SendStopEvent();
++    if (control && allow)
++        QueueFinishEvent();
++#else
+     if (SendStopEvent())
+         QueueFinishEvent();
++#endif
+ }
+ 
+ bool wxGStreamerMediaBackend::SetPosition(wxLongLong where)
+--- /dev/null
++++ src/unix/mediactrl_gtk4.inc
+@@ -0,0 +1,270 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 presentation for the shared GstPlayer backend.
++// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#include <gst/video/video.h>
++#include <memory>
++#include <cstring>
++
++// Streaming threads only copy pixels into this bounded mailbox. GTK resources
++// belong to the UI context; a GSource (not g_main_context_invoke) always queues
++// their creation there. No callback retains a wx backend/control pointer.
++struct wxGTKMediaFrame
++{
++    GBytes* bytes;
++    int width, height;
++    double aspect;
++    wxGTKMediaFrame(GBytes* b, int w, int h, double a)
++        : bytes(b), width(w), height(h), aspect(a) {}
++    ~wxGTKMediaFrame() { g_bytes_unref(bytes); }
++};
++
++struct wxGTKMediaPresentation
++{
++    GMutex mutex;
++    GWeakRef widget;
++    GMainContext* context;
++    GSource* source;
++    std::shared_ptr<wxGTKMediaFrame> pending;
++    GdkTexture* texture;
++    double aspect;
++    bool active;
++
++    explicit wxGTKMediaPresentation(GtkWidget* w)
++        : context(g_main_context_ref_thread_default()), source(NULL),
++          texture(NULL), aspect(1), active(true)
++    {
++        g_mutex_init(&mutex);
++        g_weak_ref_init(&widget, G_OBJECT(w));
++    }
++    ~wxGTKMediaPresentation()
++    {
++        // Detach clears UI-owned resources before streaming closures can take
++        // the final reference, possibly on a GStreamer thread.
++        wxASSERT(!source && !texture && !active);
++        g_weak_ref_clear(&widget);
++        g_main_context_unref(context);
++        g_mutex_clear(&mutex);
++    }
++
++    void Detach()
++    {
++        g_mutex_lock(&mutex);
++        active = false;
++        GSource* queued = source;
++        source = NULL;
++        pending.reset();
++        g_mutex_unlock(&mutex);
++        if (queued)
++        {
++            g_source_destroy(queued);
++            g_source_unref(queued);
++        }
++        g_clear_object(&texture);
++        g_weak_ref_set(&widget, NULL);
++    }
++};
++typedef std::shared_ptr<wxGTKMediaPresentation> wxGTKMediaPresentationPtr;
++
++static void wxGTKMediaDeleteState(gpointer data)
++{
++    delete static_cast<wxGTKMediaPresentationPtr*>(data);
++}
++static void wxGTKMediaDeleteClosure(gpointer data, GClosure*)
++{
++    wxGTKMediaDeleteState(data);
++}
++
++static gboolean wxGTKMediaDeliver(gpointer data)
++{
++    const wxGTKMediaPresentationPtr state =
++        *static_cast<wxGTKMediaPresentationPtr*>(data);
++    g_mutex_lock(&state->mutex);
++    GSource* source = state->source;
++    state->source = NULL;
++    std::shared_ptr<wxGTKMediaFrame> frame;
++    frame.swap(state->pending);
++    const bool active = state->active;
++    g_mutex_unlock(&state->mutex);
++    if (source)
++        g_source_unref(source);
++    if (!active || !frame)
++        return G_SOURCE_REMOVE;
++
++    GtkWidget* widget = GTK_WIDGET(g_weak_ref_get(&state->widget));
++    if (widget)
++    {
++        GdkTexture* texture = gdk_memory_texture_new(frame->width, frame->height,
++            GDK_MEMORY_R8G8B8A8, frame->bytes, size_t(frame->width) * 4);
++        g_set_object(&state->texture, texture);
++        g_object_unref(texture);
++        state->aspect = frame->aspect;
++        gtk_widget_queue_draw(widget);
++        g_object_unref(widget);
++    }
++    return G_SOURCE_REMOVE;
++}
++
++static void wxGTKMediaQueue(const wxGTKMediaPresentationPtr& state,
++                            const std::shared_ptr<wxGTKMediaFrame>& frame)
++{
++    g_mutex_lock(&state->mutex);
++    if (state->active)
++    {
++        state->pending = frame;
++        if (!state->source)
++        {
++            state->source = g_idle_source_new();
++            g_source_set_callback(state->source, wxGTKMediaDeliver,
++                new wxGTKMediaPresentationPtr(state), wxGTKMediaDeleteState);
++            g_source_attach(state->source, state->context);
++        }
++    }
++    g_mutex_unlock(&state->mutex);
++}
++
++static GstFlowReturn wxGTKMediaSample(GstElement* sink, gpointer data,
++                                      const char* action)
++{
++    const wxGTKMediaPresentationPtr state =
++        *static_cast<wxGTKMediaPresentationPtr*>(data);
++    GstSample* sample = NULL;
++    // Public appsink action signals avoid a second application-specific media
++    // library: the existing gst-plugins-base app plugin provides this sink.
++    g_signal_emit_by_name(sink, action, &sample);
++    if (!sample)
++        return GST_FLOW_FLUSHING;
++    GstVideoInfo info;
++    gst_video_info_init(&info);
++    GstVideoFrame mapped;
++    GstCaps* caps = gst_sample_get_caps(sample);
++    GstBuffer* buffer = gst_sample_get_buffer(sample);
++    if (!caps || !buffer || !gst_video_info_from_caps(&info, caps) ||
++        GST_VIDEO_INFO_FORMAT(&info) != GST_VIDEO_FORMAT_RGBA ||
++        info.width <= 0 || info.height <= 0 ||
++        size_t(info.width) > G_MAXSIZE / 4 / size_t(info.height) ||
++        !gst_video_frame_map(&mapped, &info, buffer, GST_MAP_READ))
++    {
++        gst_sample_unref(sample);
++        return GST_FLOW_ERROR;
++    }
++    const size_t row = size_t(info.width) * 4;
++    const gint stride = GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 0);
++    const guchar* input = static_cast<const guchar*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 0));
++    // GstVideoMeta may supply custom offsets/strides: successful mapping does
++    // not validate the complete visible plane. Check its span before copying,
++    // using subtraction/division so malformed metadata cannot overflow it.
++    const guintptr start = reinterpret_cast<guintptr>(mapped.map[0].data);
++    const guintptr plane = reinterpret_cast<guintptr>(input);
++    const bool inside = input && mapped.map[0].data && plane >= start &&
++                        plane - start <= mapped.map[0].size;
++    const gsize available = inside ? mapped.map[0].size - (plane - start) : 0;
++    if (stride < 0 || size_t(stride) < row || available < row ||
++        size_t(info.height - 1) > (available - row) / size_t(stride))
++    {
++        gst_video_frame_unmap(&mapped);
++        gst_sample_unref(sample);
++        return GST_FLOW_ERROR;
++    }
++    guchar* pixels = static_cast<guchar*>(g_try_malloc(row * info.height));
++    if (!pixels)
++    {
++        gst_video_frame_unmap(&mapped);
++        gst_sample_unref(sample);
++        return GST_FLOW_ERROR;
++    }
++    for (int y = 0; y < info.height; ++y)
++        std::memcpy(pixels + size_t(y) * row, input + size_t(y) * stride, row);
++    gst_video_frame_unmap(&mapped);
++    gst_sample_unref(sample);
++    const double par = info.par_n > 0 && info.par_d > 0
++                     ? double(info.par_n) / info.par_d : 1;
++    wxGTKMediaQueue(state, std::make_shared<wxGTKMediaFrame>(
++        g_bytes_new_take(pixels, row * info.height), info.width, info.height,
++        double(info.width) * par / info.height));
++    return GST_FLOW_OK;
++}
++static GstFlowReturn wxGTKMediaNewSample(GstElement* sink, gpointer data)
++{
++    return wxGTKMediaSample(sink, data, "pull-sample");
++}
++static GstFlowReturn wxGTKMediaNewPreroll(GstElement* sink, gpointer data)
++{
++    return wxGTKMediaSample(sink, data, "pull-preroll");
++}
++
++static void wxGTKMediaSnapshot(GtkWidget* widget, GtkSnapshot* snapshot,
++                               gpointer data)
++{
++    const wxGTKMediaPresentationPtr state =
++        *static_cast<wxGTKMediaPresentationPtr*>(data);
++    const float width = gtk_widget_get_width(widget);
++    const float height = gtk_widget_get_height(widget);
++    if (width <= 0 || height <= 0)
++        return;
++    graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, width, height);
++    const GdkRGBA black = {0, 0, 0, 1};
++    gtk_snapshot_append_color(snapshot, &black, &bounds);
++    if (state->texture)
++    {
++        float w = width, h = width / state->aspect;
++        if (h > height)
++        {
++            h = height;
++            w = height * state->aspect;
++        }
++        bounds = GRAPHENE_RECT_INIT((width-w)/2, (height-h)/2, w, h);
++        gtk_snapshot_append_texture(snapshot, state->texture, &bounds);
++    }
++}
++
++// GstPlayer's public renderer interface owns a normal, independently referenced
++// appsink. GstPlayer/Play takes its own reference when installing the sink.
++struct wxGTKMediaRenderer { GObject parent; GstElement* sink; };
++struct wxGTKMediaRendererClass { GObjectClass parent; };
++static void wx_gtk_media_renderer_interface_init(GstPlayerVideoRendererInterface* iface);
++G_DEFINE_TYPE_WITH_CODE(wxGTKMediaRenderer, wx_gtk_media_renderer, G_TYPE_OBJECT,
++    G_IMPLEMENT_INTERFACE(GST_TYPE_PLAYER_VIDEO_RENDERER,
++                          wx_gtk_media_renderer_interface_init))
++static GstElement* wxGTKMediaCreateSink(GstPlayerVideoRenderer* renderer, GstPlayer*)
++{
++    return reinterpret_cast<wxGTKMediaRenderer*>(renderer)->sink;
++}
++static void wx_gtk_media_renderer_interface_init(GstPlayerVideoRendererInterface* iface)
++{
++    iface->create_video_sink = wxGTKMediaCreateSink;
++}
++static void wxGTKMediaRendererFinalize(GObject* object)
++{
++    wxGTKMediaRenderer* renderer = reinterpret_cast<wxGTKMediaRenderer*>(object);
++    gst_object_unref(renderer->sink);
++    G_OBJECT_CLASS(wx_gtk_media_renderer_parent_class)->finalize(object);
++}
++static void wx_gtk_media_renderer_class_init(wxGTKMediaRendererClass* klass)
++{
++    G_OBJECT_CLASS(klass)->finalize = wxGTKMediaRendererFinalize;
++}
++static void wx_gtk_media_renderer_init(wxGTKMediaRenderer* renderer)
++{
++    renderer->sink = NULL;
++}
++static GstPlayerVideoRenderer* wxGTKMediaCreateRenderer(const wxGTKMediaPresentationPtr& state)
++{
++    GstElement* sink = gst_element_factory_make("appsink", NULL);
++    if (!sink)
++        return NULL;
++    gst_object_ref_sink(sink);
++    GstCaps* caps = gst_caps_from_string("video/x-raw,format=RGBA,colorimetry=sRGB");
++    g_object_set(sink, "caps", caps, "emit-signals", TRUE, "max-buffers", 1u,
++                 "drop", TRUE, "sync", TRUE, "enable-last-sample", FALSE,
++                 "wait-on-eos", FALSE, NULL);
++    gst_caps_unref(caps);
++    g_signal_connect_data(sink, "new-sample", G_CALLBACK(wxGTKMediaNewSample),
++        new wxGTKMediaPresentationPtr(state), wxGTKMediaDeleteClosure, GConnectFlags(0));
++    g_signal_connect_data(sink, "new-preroll", G_CALLBACK(wxGTKMediaNewPreroll),
++        new wxGTKMediaPresentationPtr(state), wxGTKMediaDeleteClosure, GConnectFlags(0));
++    wxGTKMediaRenderer* renderer = static_cast<wxGTKMediaRenderer*>(
++        g_object_new(wx_gtk_media_renderer_get_type(), NULL));
++    renderer->sink = sink;
++    return GST_PLAYER_VIDEO_RENDERER(renderer);
++}

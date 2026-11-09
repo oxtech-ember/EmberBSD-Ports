@@ -1,3 +1,136 @@
+# GTK4 AUI and top-level window hints
+
+`patch-gtk4-window-hints` draws AUI sashes through the existing native splitter
+renderer, clipped to the requested AUI rectangle. The GTK4 hint frame uses the
+common top-level opacity path instead of GTK3 popup/shape calls. Its placement
+remains subject to the window system, including Wayland compositor policy.
+The splash window requests its X11 EWMH type through the shared window-state
+helper before mapping; the common top-level mapper uses that request before
+the ordinary dialog/utility/normal default. On Wayland the unsupported type
+hint returns false and normal wx top-level behavior remains; no native Wayland
+splash or transient role is claimed.
+
+```sh
+python3 tests/window-type-gtk4.py \
+  --source /prepared/wxWidgets/include/wx/gtk/private/windowstate4.h \
+  --cxx /native/bin/clang++ --pkg-config /native/bin/pkg-config \
+  --work-parent /work/tmp
+```
+
+The fixture extracts the actual request/getter functions and uses native
+GObject qdata, mocking only GTK display/mapping boundaries. Native ASan/UBSan
+passes X11 copying/replacement, absent defaults, Wayland refusal and invalid or
+already-mapped requests. The previous guard fails the empty-string case.
+Use repeated `--cxx-flag` arguments for the diagnostic flags shown below.
+This fixture does not simulate a window manager or rendered sash.
+All four changed target TUs pass syntax checks. Clang analysis is clean for
+dockart, splash and toplevel; framemanager retains one unrelated, unchanged
+`OnPaneButton`/assertion path to `p.window->SetSize`. Cppcheck 2.22 was interrupted
+after a bounded run on the first TU without producing diagnostics, so its
+analysis of this group is incomplete. Real AUI dragging, opacity and splash
+window-manager behavior remain GUI acceptance work.
+
+# GTK4 font picker and API declarations
+
+`patch-gtk4-fontpicker` uses an asynchronous GtkFontDialog and a normal GtkButton.
+This keeps the full font chooser independent of the wx label styles: the label
+can show only the family or the complete style/fractional-size description, and
+can optionally use the selected font. Pending requests are cancellable, use
+weak native/wx owners, and prevent duplicate dialogs. Label updates hold both
+button and label across property notifications; callbacks recheck the wx owner
+before sending the selection event. Programmatic updates send no picker event.
+
+```sh
+python3 tests/fontpicker-gtk4.py --source /prepared/wxWidgets/src/gtk/fontpicker.cpp \
+  --cxx /native/bin/clang++ --work-parent /work/tmp
+```
+
+The extracted production helpers and methods pass native ASan/UBSan with
+mocked GTK/GObject and wx lifetime boundaries. Cases cover success, cancellation,
+duplicate activation, late completion, reentrant owner destruction, a detached
+child label, both label styles and programmatic updates. Use repeated
+`--cxx-flag` arguments for diagnostic flags, as in the Cairo fixture below.
+This is not real GTK dialog, font selection or native GObject leak acceptance.
+Target syntax and Clang analysis pass. Cppcheck 2.22 completed before the final
+label-reference-only change, reporting standard GTK cast macros and an existing
+asserted-font null-check pattern, with no actionable source finding. The final
+ownership delta is covered by the lifetime fixture and Clang analysis.
+
+The text-entry declaration patch exposes GTK4's opaque `GdkEvent` type without
+including GTK headers in the public interface. The taskbar patch only corrects
+the existing GTK4 stub's `wxBitmapBundle` signature. Upstream GTK4 tray support
+remains unavailable; no StatusNotifierItem implementation is claimed. Both
+actual target translation units pass syntax checks.
+
+# GTK4 Cairo contexts and media presentation
+
+`patch-gtk4-window-cairo` routes window graphics contexts through the existing
+wxClientDC/wxPizza drawing owner. The DC stays alive until its referencing Cairo
+context is released. Measuring contexts use a one-pixel Cairo image and font
+scaling uses the shared Pango context. The exported private widget-owner lookup
+is shared with input dispatch.
+
+For `CreateContextFromNativeWindow`, the GTK4 native handle is `GdkSurface*`.
+wx-owned GTK surfaces use that same DC path; a foreign GtkNative surface is
+refused instead of detaching its GSK renderer. A raw surface without GtkNative
+must be exclusively owned by the caller. Only that explicit raw-surface path
+uses GDK's supported, deprecated Cairo frame API, pairing begin/end on success
+and failure. This is not an API for drawing over arbitrary GTK widgets.
+
+```sh
+python3 tests/cairo-gtk4.py --source /prepared/wxWidgets/src/generic/graphicc.cpp \
+  --wx-source /prepared/wxWidgets --cxx /native/bin/clang++ \
+  --pkg-config /native/bin/pkg-config --work-parent /work/tmp
+```
+
+The fixture extracts production constructors, factories, initialization and
+destruction, with real Cairo/Pango/GLib and the actual wx ownership templates.
+GDK frames and wxWindow/DC boundaries are mocked. It checks frame pairing,
+failed context cleanup, GTK renderer ownership, parent fallback, DC lifetime,
+measuring dimensions and explicit/default font resolution. The initial owner
+route fails its unavailable-DC case; the corrected factory returns null.
+Strict native ASan/UBSan passes with repeated `--cxx-flag` arguments:
+`-fsanitize=address,undefined`, `-fno-sanitize-recover=all`,
+`-fno-omit-frame-pointer`. Target syntax passes for graphicc and window.cpp.
+Full-TU Clang analysis reports five paths in unchanged font/string-buffer and
+user-dash code, with none in the GTK4 adapter; it is not a zero-finding result.
+Cppcheck 2.22 cannot parse the actual target-preprocessed `sys/endian.h` input.
+Real GUI composition and raw-surface execution remain separate checks.
+
+`patch-gtk4-media` retains the shared GstPlayer backend, including playback
+rate, seeking, audio and media events. Its public video-renderer interface uses
+the common gst-plugins-base appsink. Streaming callbacks copy validated RGBA
+rows into a bounded latest-frame mailbox; a queued GSource delivers frames to
+the UI context, where GdkMemoryTexture is drawn by the existing wx-snapshot
+signal. This is a CPU frame copy, not a zero-copy or hardware-decoding claim.
+The mapped span is checked independently of GstVideoMeta's stride and offset.
+Detach cancels pending delivery and releases GTK resources on the UI context.
+
+```sh
+python3 tests/media-gtk4.py --source /prepared/wxWidgets/src/unix/mediactrl_gtk4.inc \
+  --cxx /native/bin/clang++ --pkg-config /native/bin/pkg-config \
+  --work-parent /work/tmp
+```
+
+The actual presentation methods pass strict native ASan/UBSan with the same
+diagnostic flags, real GLib/GObject, and mocked sample/drawing boundaries.
+Cases include worker-to-UI delivery, latest-frame coalescing, stride packing,
+preroll, invalid caps/maps, truncated and overflowing spans, nonzero offsets,
+detach, late callbacks, destroyed widgets and aspect-fit geometry. The fixture
+rejects malformed and truncated mapped spans. The full target GstPlayer TU
+passes syntax and Clang analysis. Cppcheck's target header/preprocessor limits
+affect both baseline and candidate; it has no clean full-TU verdict.
+Real decoding, audio, seek/rate, EOF and window integration still need runtime
+acceptance with the common GStreamer plugins.
+
+`patch-gtk4-glcanvas-header` uses GTK's real `GtkSnapshot` alias and includes
+complete GTK types before the private implementation structs. The public wx
+header remains usable without GTK include paths and alongside GTK headers.
+Both header probes, the actual target GLCanvas TU and Clang analysis pass.
+Cppcheck 2.22 cannot preprocess the actual Graphene ARM SIMD header, and its
+Clang-import path asserts in `token.cpp`; these are analyzer limitations.
+This header correction does not add GL rendering/runtime acceptance.
+
 # GTK4 status bar and checklist contract
 
 `patch-gtk4-statusbar` draws the resize grip with the existing wxDC/theme pens

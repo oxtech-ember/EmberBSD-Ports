@@ -1,0 +1,17 @@
+$NetBSD$
+
+Match the existing GTK4 unsupported-tray implementation to the public bundle signature.
+This does not implement StatusNotifierItem or claim GTK4 tray support.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+
+--- src/gtk/taskbar.cpp.orig
++++ src/gtk/taskbar.cpp
+@@ -602,7 +602,7 @@
+ {
+ }
+ 
+-bool wxTaskBarIcon::SetIcon(const wxIcon&, const wxString&)
++bool wxTaskBarIcon::SetIcon(const wxBitmapBundle&, const wxString&)
+ {
+     return false;
+ }

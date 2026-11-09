@@ -1,0 +1,206 @@
+$NetBSD$
+
+Reuse the wx GTK4 client DC for Cairo window contexts and pair explicit raw surface frames.
+Native GTK surfaces retain their GSK renderer; measuring contexts use a Cairo image.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+See tests/README.md for validation scope and runtime boundaries.
+
+--- src/generic/graphicc.cpp.orig
++++ src/generic/graphicc.cpp
+@@ -88,6 +88,11 @@
+ #include "wx/gtk/dc.h"
+ #endif
+ #include "wx/gtk/private/object.h"
++#ifdef __WXGTK4__
++#include "wx/scopedptr.h"
++#include "wx/gtk/private.h"
++extern PangoContext* wxGetPangoContext();
++#endif
+ #endif
+ 
+ #ifdef __WXQT__
+@@ -420,7 +425,9 @@
+ #if wxUSE_PRINTING_ARCHITECTURE
+     wxCairoContext( wxGraphicsRenderer* renderer, const wxPrinterDC& dc );
+ #endif
+-#ifdef __WXGTK__
++#ifdef __WXGTK4__
++    wxCairoContext(wxGraphicsRenderer* renderer, GdkSurface* surface);
++#elif defined(__WXGTK__)
+     wxCairoContext( wxGraphicsRenderer* renderer, GdkWindow *window );
+ #endif
+ #ifdef __WXMSW__
+@@ -574,6 +581,10 @@
+     class OffsetHelper;
+ 
+ private:
++#ifdef __WXGTK4__
++    wxScopedPtr<wxClientDC> m_gtk4DC;
++    wxGtkObject<GdkCairoContext> m_gtk4Native;
++#endif
+     cairo_t* m_context;
+     cairo_matrix_t m_internalTransform;
+ 
+@@ -2289,7 +2300,28 @@
+ #endif
+ }
+ 
+-#ifdef __WXGTK20__
++#ifdef __WXGTK4__
++// The explicit native-window API uses a GdkSurface on GTK4. Normal wx windows
++// use their shared wxClientDC/snapshot path below, not direct surface painting.
++wxCairoContext::wxCairoContext(wxGraphicsRenderer* renderer, GdkSurface* surface)
++    : wxGraphicsContext(renderer)
++{
++    m_width = gdk_surface_get_width(surface);
++    m_height = gdk_surface_get_height(surface);
++    m_gtk4Native = gdk_surface_create_cairo_context(surface);
++    cairo_t* cr = NULL;
++    if (m_gtk4Native.get())
++    {
++        const cairo_rectangle_int_t bounds = {0, 0, int(m_width), int(m_height)};
++        cairo_region_t* region = cairo_region_create_rectangle(&bounds);
++        gdk_draw_context_begin_frame(GDK_DRAW_CONTEXT(m_gtk4Native.get()), region);
++        cairo_region_destroy(region);
++        if (gdk_draw_context_is_in_frame(GDK_DRAW_CONTEXT(m_gtk4Native.get())))
++            cr = gdk_cairo_context_cairo_create(m_gtk4Native.get());
++    }
++    Init(cr);
++}
++#elif defined(__WXGTK20__)
+ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, GdkWindow *window )
+ : wxGraphicsContext(renderer)
+ {
+@@ -2447,7 +2479,18 @@
+ #endif
+ {
+     EnableOffset();
+-#ifdef __WXGTK__
++#ifdef __WXGTK4__
++    // Keep the common DC alive until this context is destroyed: it owns the
++    // wxPizza client-drawing token and schedules presentation on completion.
++    if (!window->m_wxwindow && window->GetParent())
++        window = window->GetParent();
++    m_gtk4DC.reset(new wxClientDC(window));
++    cairo_t* cr = static_cast<cairo_t*>(m_gtk4DC->GetImpl()->GetCairoContext());
++    Init(cr ? cairo_reference(cr) : NULL);
++    const wxSize size = window->GetClientSize();
++    m_width = size.x;
++    m_height = size.y;
++#elif defined(__WXGTK__)
+     // something along these lines (copied from dcclient)
+ 
+     // Some controls don't have m_wxwindow - like wxStaticBox, but the user
+@@ -2507,6 +2550,11 @@
+         PopState();
+         cairo_destroy(m_context);
+     }
++#ifdef __WXGTK4__
++    if (m_gtk4Native.get() &&
++        gdk_draw_context_is_in_frame(GDK_DRAW_CONTEXT(m_gtk4Native.get())))
++        gdk_draw_context_end_frame(GDK_DRAW_CONTEXT(m_gtk4Native.get()));
++#endif
+ #ifdef __WXMSW__
+     if ( m_mswSurface )
+     {
+@@ -2533,7 +2581,14 @@
+ 
+ void wxCairoContext::Init(cairo_t *context)
+ {
+-#if defined(__WXGTK3__) && !defined(__WIN32__)
++#if defined(__WXGTK4__)
++    wxGtkObject<PangoContext> pango(wxGetPangoContext());
++    double dpi = pango.get() ? pango_cairo_context_get_resolution(pango.get()) : -1;
++    if (dpi <= 0)
++        dpi = pango_cairo_font_map_get_resolution(
++            PANGO_CAIRO_FONT_MAP(pango_cairo_font_map_get_default()));
++    m_fontScalingFactor = dpi > 0 ? float(dpi / 96.0) : 1.0f;
++#elif defined(__WXGTK3__) && !defined(__WIN32__)
+     // Attempt to find the system font scaling parameter (e.g. "Fonts->Scaling
+     // Factor" in Gnome Tweaks, "Force font DPI" in KDE System Settings or
+     // GDK_DPI_SCALE environment variable).
+@@ -3350,7 +3405,39 @@
+ wxGraphicsContext * wxCairoRenderer::CreateContextFromNativeWindow( void * window )
+ {
+     ENSURE_LOADED_OR_RETURN(NULL);
+-#ifdef __WXGTK__
++#ifdef __WXGTK4__
++    GdkSurface* surface = static_cast<GdkSurface*>(window);
++    if (!surface || gdk_surface_is_destroyed(surface) ||
++        gdk_surface_get_width(surface) <= 0 || gdk_surface_get_height(surface) <= 0)
++        return NULL;
++    if (GtkNative* native = gtk_native_get_for_surface(surface))
++    {
++        // Starting a raw GDK Cairo frame would detach GTK's GSK renderer.
++        // Route our widgets through the same DC owner as Create(wxWindow*).
++        wxWindow* owner = static_cast<wxWindow*>(
++            wxWindowFromGtkWidget(GTK_WIDGET(native)));
++        if (!owner)
++        {
++            wxFAIL_MSG("Use a GTK snapshot to draw a native GTK widget not owned by wx");
++            return NULL;
++        }
++        wxCairoContext* context = new wxCairoContext(this, owner);
++        if (!context->GetNativeContext())
++        {
++            delete context;
++            return NULL;
++        }
++        return context;
++    }
++    // A raw surface without GtkNative must be exclusively owned by the caller.
++    wxCairoContext* context = new wxCairoContext(this, surface);
++    if (!context->GetNativeContext())
++    {
++        delete context;
++        return NULL;
++    }
++    return context;
++#elif defined(__WXGTK__)
+     return new wxCairoContext(this, static_cast<GdkWindow*>(window));
+ #elif defined(__WXMSW__)
+     return new wxCairoContext(this, static_cast<HWND>(window));
+@@ -3378,7 +3465,16 @@
+ 
+ wxGraphicsContext * wxCairoRenderer::CreateMeasuringContext()
+ {
+-#ifdef __WXGTK__
++#ifdef __WXGTK4__
++    ENSURE_LOADED_OR_RETURN(NULL);
++    // Measurement needs a Cairo/Pango context, not a desktop root surface.
++    cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
++    cairo_t* cr = cairo_create(surface);
++    wxGraphicsContext* context = new wxCairoContext(this, cr);
++    cairo_destroy(cr);
++    cairo_surface_destroy(surface);
++    return context;
++#elif defined(__WXGTK__)
+     return CreateContextFromNativeWindow(gdk_get_default_root_window());
+ #elif defined(__WXMSW__)
+     ENSURE_LOADED_OR_RETURN(NULL);
+--- include/wx/gtk/private.h.orig
++++ include/wx/gtk/private.h
+@@ -14,6 +14,12 @@
+ #include "wx/gtk/private/wrapgtk.h"
+ 
+ #include "wx/gtk/private/string.h"
++
++#ifdef __WXGTK4__
++class wxWindowGTK;
++// Shared native-widget owner lookup for input and drawing consumers.
++WXDLLIMPEXP_CORE wxWindowGTK* wxWindowFromGtkWidget(GtkWidget* widget);
++#endif
+ 
+ #ifndef G_VALUE_INIT
+     // introduced in GLib 2.30
+--- src/gtk/window_input4.inc.orig
++++ src/gtk/window_input4.inc
+@@ -3,7 +3,7 @@
+ // Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+-static wxWindowGTK* wxWindowFromGtkWidget(GtkWidget* widget)
++wxWindowGTK* wxWindowFromGtkWidget(GtkWidget* widget)
+ {
+     for (; widget; widget = gtk_widget_get_parent(widget))
+     {

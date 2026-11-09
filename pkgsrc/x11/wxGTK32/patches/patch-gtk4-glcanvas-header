@@ -1,0 +1,30 @@
+$NetBSD$
+
+Use the public GtkSnapshot alias and complete GTK types at the implementation boundary.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+See tests/README.md for validation scope and runtime boundaries.
+
+--- include/wx/gtk/glcanvas.h.orig
++++ include/wx/gtk/glcanvas.h
+@@ -17,7 +17,8 @@
+     #include <GL/gl.h>
+     struct wxGTKGLCanvasData;
+     struct wxGTKGLContextData;
+-    typedef struct _GtkSnapshot GtkSnapshot;
++    typedef struct _GdkSnapshot GdkSnapshot;
++    typedef GdkSnapshot GtkSnapshot;
+ 
+ class WXDLLIMPEXP_GL wxGLContext : public wxGLContextBase
+ {
+--- src/gtk/glcanvas_gtk4.inc.orig
++++ src/gtk/glcanvas_gtk4.inc
+@@ -4,8 +4,8 @@
+ ///////////////////////////////////////////////////////////////////////////////
+ #include "wx/log.h"
+ #include "wx/thread.h"
++#include <gtk/gtk.h>
+ #include "wx/gtk/private/win_gtk.h"
+-#include <gtk/gtk.h>
+ #include <EGL/egl.h>
+ #include <EGL/eglext.h>
+ #include <vector>

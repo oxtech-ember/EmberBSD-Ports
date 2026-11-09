@@ -1,0 +1,233 @@
+$NetBSD$
+
+Use GtkFontDialog asynchronously while preserving independent wx font-label styles.
+Own pending requests and guard native/wx lifetime across callbacks.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+
+--- src/gtk/fontpicker.cpp.orig
++++ src/gtk/fontpicker.cpp
+@@ -22,28 +22,126 @@
+ 
+ #include "wx/fontutil.h"        // for wxNativeFontInfo
+ #include "wx/gtk/private.h"
++#ifdef __WXGTK4__
++    #include "wx/weakref.h"
++#endif
+ 
+ // ============================================================================
+ // implementation
+ // ============================================================================
+ 
+ //-----------------------------------------------------------------------------
+-// "font-set"
+-//-----------------------------------------------------------------------------
+-
++// Font selection
++//-----------------------------------------------------------------------------
++
++#ifdef __WXGTK4__
++namespace
++{
++const char kFontDialogPendingKey[] = "wx-font-dialog-pending";
++
++struct FontDialogRequest
++{
++    explicit FontDialogRequest(wxFontButton* button, GtkWidget* widget)
++        : m_button(button), m_cancellable(g_cancellable_new()),
++          m_dialog(gtk_font_dialog_new())
++    {
++        g_weak_ref_init(&m_widget, widget);
++    }
++
++    ~FontDialogRequest()
++    {
++        g_weak_ref_clear(&m_widget);
++        g_object_unref(m_dialog);
++        g_object_unref(m_cancellable);
++    }
++
++    wxWeakRef<wxFontButton> m_button;
++    GWeakRef m_widget;
++    GCancellable* m_cancellable;
++    GtkFontDialog* m_dialog;
++};
++
++void CancelFontDialog(gpointer data, GObject*)
++{
++    auto* request = static_cast<FontDialogRequest*>(data);
++    g_cancellable_cancel(request->m_cancellable);
++}
++
++void FontDialogFinished(GObject* source, GAsyncResult* result, gpointer data)
++{
++    auto* request = static_cast<FontDialogRequest*>(data);
++    GError* error = nullptr;
++    PangoFontDescription* description =
++        gtk_font_dialog_choose_font_finish(GTK_FONT_DIALOG(source), result, &error);
++
++    GtkWidget* widget = GTK_WIDGET(g_weak_ref_get(&request->m_widget));
++    if (widget)
++    {
++        if (g_object_get_data(G_OBJECT(widget), kFontDialogPendingKey) == request)
++        {
++            g_object_weak_unref(G_OBJECT(widget), CancelFontDialog, request);
++            g_object_set_data(G_OBJECT(widget), kFontDialogPendingKey, nullptr);
++        }
++        g_object_unref(widget);
++    }
++
++    wxFontButton* button = request->m_button.get();
++    if (button && description && !error)
++    {
++        char* fontname = pango_font_description_to_string(description);
++        button->SetNativeFontInfo(fontname);
++        g_free(fontname);
++
++        // Updating the GTK label can run application callbacks that destroy
++        // the control, so reacquire it before reading it or sending the event.
++        button = request->m_button.get();
++        if (button)
++        {
++            const wxFont selectedFont = button->GetSelectedFont();
++            wxFontPickerEvent event(button, button->GetId(), selectedFont);
++            button = request->m_button.get();
++            if (button)
++                button->HandleWindowEvent(event);
++        }
++    }
++
++    if (description)
++        pango_font_description_free(description);
++    g_clear_error(&error);
++    delete request;
++}
++
++void FontDialogButtonClicked(GtkWidget* widget, wxFontButton* button)
++{
++    if (g_object_get_data(G_OBJECT(widget), kFontDialogPendingKey))
++        return;
++
++    auto* request = new FontDialogRequest(button, widget);
++    g_object_set_data(G_OBJECT(widget), kFontDialogPendingKey, request);
++    g_object_weak_ref(G_OBJECT(widget), CancelFontDialog, request);
++
++    const wxFont selectedFont = button->GetSelectedFont();
++    const wxNativeFontInfo* info = selectedFont.GetNativeFontInfo();
++    GtkRoot* root = gtk_widget_get_root(widget);
++    GtkWindow* parent = root && GTK_IS_WINDOW(root) ? GTK_WINDOW(root) : nullptr;
++    gtk_font_dialog_choose_font(request->m_dialog, parent,
++                                info ? info->description : nullptr,
++                                request->m_cancellable, FontDialogFinished, request);
++}
++} // namespace
++#else
+ extern "C" {
+ static void gtk_fontbutton_setfont_callback(GtkFontButton *widget,
+                                             wxFontButton *p)
+ {
+-    // update the m_selectedFont member of the wxFontButton
+     wxASSERT(p);
+     p->SetNativeFontInfo(gtk_font_button_get_font_name(widget));
+ 
+-    // fire the colour-changed event
+     wxFontPickerEvent event(p, p->GetId(), p->GetSelectedFont());
+     p->HandleWindowEvent(event);
+ }
+ }
++#endif
+ 
+ //-----------------------------------------------------------------------------
+ // wxFontButton
+@@ -64,11 +162,16 @@
+         return false;
+     }
+ 
+-    m_widget = gtk_font_button_new();
+-    g_object_ref(m_widget);
+-
+     // set initial font
+     m_selectedFont = initial.IsOk() ? initial : *wxNORMAL_FONT;
++#ifdef __WXGTK4__
++    m_widget = gtk_button_new();
++    GtkWidget* label = gtk_label_new("");
++    gtk_button_set_child(GTK_BUTTON(m_widget), label);
++    UpdateFont();
++    g_signal_connect(m_widget, "clicked", G_CALLBACK(FontDialogButtonClicked), this);
++#else
++    m_widget = gtk_font_button_new();
+     UpdateFont();
+ 
+     // honour the fontbutton styles
+@@ -80,9 +183,10 @@
+     gtk_font_button_set_use_size(GTK_FONT_BUTTON(m_widget), usefont);
+     gtk_font_button_set_use_font(GTK_FONT_BUTTON(m_widget), usefont);
+ 
+-    // GtkFontButton signals
+     g_signal_connect(m_widget, "font-set",
+                     G_CALLBACK(gtk_fontbutton_setfont_callback), this);
++#endif
++    g_object_ref(m_widget);
+ 
+ 
+     m_parent->DoAddChild( this );
+@@ -95,19 +199,59 @@
+ 
+ wxFontButton::~wxFontButton()
+ {
++#ifdef __WXGTK4__
++    if (m_widget)
++    {
++        auto* request = static_cast<FontDialogRequest*>(
++            g_object_get_data(G_OBJECT(m_widget), kFontDialogPendingKey));
++        if (request)
++            g_cancellable_cancel(request->m_cancellable);
++    }
++#endif
+ }
+ 
+ void wxFontButton::UpdateFont()
+ {
+-    const wxNativeFontInfo *info = m_selectedFont.GetNativeFontInfo();
++    const wxFont selectedFont = m_selectedFont;
++    const wxNativeFontInfo *info = selectedFont.GetNativeFontInfo();
+     wxASSERT_MSG( info, wxT("The fontbutton's internal font is not valid ?") );
+ 
++#ifdef __WXGTK4__
++    // GTK label property notifications can reenter application code and
++    // destroy this control. Keep the widget and font data alive and avoid
++    // accessing this object after notifying GTK.
++    GtkWidget* const button = GTK_WIDGET(g_object_ref(m_widget));
++    const long style = m_windowStyle;
++    GtkWidget* const label = GTK_WIDGET(
++        g_object_ref(gtk_button_get_child(GTK_BUTTON(button))));
++    wxString labelText = (style & wxFNTP_FONTDESC_AS_LABEL)
++        ? info->ToString() : selectedFont.GetFaceName();
++    gtk_label_set_text(GTK_LABEL(label), wxGTK_CONV(labelText));
++
++    if (style & wxFNTP_USEFONT_FOR_LABEL)
++    {
++        PangoAttrList* attrs = pango_attr_list_new();
++        pango_attr_list_insert(attrs, pango_attr_font_desc_new(info->description));
++        gtk_label_set_attributes(GTK_LABEL(label), attrs);
++        pango_attr_list_unref(attrs);
++    }
++    else
++    {
++        gtk_label_set_attributes(GTK_LABEL(label), nullptr);
++    }
++    g_object_unref(label);
++    g_object_unref(button);
++#else
+     const wxString& fontname = info->ToString();
+     gtk_font_button_set_font_name(GTK_FONT_BUTTON(m_widget), wxGTK_CONV(fontname));
++#endif
+ }
+ 
+ void wxFontButton::SetNativeFontInfo(const char* gtkdescription)
+ {
+     m_selectedFont.SetNativeFontInfo(wxString::FromUTF8(gtkdescription));
++#ifdef __WXGTK4__
++    UpdateFont();
++#endif
+ }
+ #endif // wxUSE_FONTPICKERCTRL

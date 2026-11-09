@@ -1,0 +1,19 @@
+$NetBSD$
+
+Declare the opaque GTK4 event type used by the shared text-entry interface.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+
+--- include/wx/gtk/textentry.h.orig
++++ include/wx/gtk/textentry.h
+@@ -10,7 +10,11 @@
+ #ifndef _WX_GTK_TEXTENTRY_H_
+ #define _WX_GTK_TEXTENTRY_H_
+ 
++#ifdef __WXGTK4__
++typedef struct _GdkEvent GdkEvent;
++#else
+ typedef struct _GdkEventKey GdkEventKey;
++#endif
+ typedef struct _GtkEditable GtkEditable;
+ typedef struct _GtkEntry GtkEntry;
+ 
