@@ -1,0 +1,456 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Declare the standard iterator factories used by KiCad consumers explicitly.
+Current libc++ no longer supplies them through unrelated container headers.
+
+--- common/dialogs/rule_editor_dialog_base.cpp.orig
++++ common/dialogs/rule_editor_dialog_base.cpp
+@@ -19,6 +19,7 @@
+ 
+ 
+ #include <widgets/resettable_panel.h>
++#include <iterator>
+ #include <widgets/wx_infobar.h>
+ #include <widgets/wx_panel.h>
+ #include <widgets/ui_common.h>
+--- common/lib_table_grid_tricks.cpp.orig
++++ common/lib_table_grid_tricks.cpp
+@@ -18,6 +18,7 @@
+  */
+ 
+ #include "lib_table_grid_tricks.h"
++#include <iterator>
+ #include "confirm.h"
+ #include "lib_table_grid_data_model.h"
+ #include <libraries/library_manager.h>
+--- common/lset.cpp.orig
++++ common/lset.cpp
+@@ -23,6 +23,7 @@
+  */
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <bitset>                             // for bitset, __bitset<>::ref...
+ #include <cassert>
+ #include <cstdarg>
+--- common/netlist_reader/kicad_netlist_reader.cpp.orig
++++ common/netlist_reader/kicad_netlist_reader.cpp
+@@ -23,6 +23,7 @@
+  */
+ 
+ #include <netlist_lexer.h>  // netlist_lexer is common to Eeschema and Pcbnew
++#include <iterator>
+ #include <string_utils.h>
+ #include <json_common.h>
+ #include <wx/log.h>
+--- common/plotters/pdf_outline_font.cpp.orig
++++ common/plotters/pdf_outline_font.cpp
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include <plotters/pdf_outline_font.h>
++#include <iterator>
+ #include <trace_helpers.h>
+ #include <wx/log.h>
+ #include <cstdlib>
+--- common/plotters/pdf_stroke_font.cpp.orig
++++ common/plotters/pdf_stroke_font.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <plotters/pdf_stroke_font.h>
++#include <iterator>
+ 
+ #include <algorithm>
+ #include <cstdint>
+--- common/settings/settings_manager.cpp.orig
++++ common/settings/settings_manager.cpp
+@@ -19,6 +19,7 @@
+  */
+ 
+ #include "settings/json_settings.h"
++#include <iterator>
+ #include <regex>
+ #include <set>
+ #include <wx/debug.h>
+--- common/string_utils.cpp.orig
++++ common/string_utils.cpp
+@@ -27,6 +27,7 @@
+  */
+ 
+ #include <clocale>
++#include <iterator>
+ #include <cmath>
+ #include <map>
+ #include <core/map_helpers.h>
+--- eeschema/connection_graph.cpp.orig
++++ eeschema/connection_graph.cpp
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <list>
+ #include <future>
+ #include <vector>
+--- eeschema/cross-probing.cpp.orig
++++ eeschema/cross-probing.cpp
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include <wx/tokenzr.h>
++#include <iterator>
+ #include <fmt.h>
+ #include <kiface_base.h>
+ #include <kiway.h>
+--- eeschema/erc/erc.cpp.orig
++++ eeschema/erc/erc.cpp
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <numeric>
+ #include <set>
+ 
+--- eeschema/refdes_tracker.cpp.orig
++++ eeschema/refdes_tracker.cpp
+@@ -18,6 +18,7 @@
+  */
+ 
+ #include <regex>
++#include <iterator>
+ #include <algorithm>
+ #include <cctype>
+ #include <charconv>
+--- eeschema/sch_base_frame.cpp.orig
++++ eeschema/sch_base_frame.cpp
+@@ -23,6 +23,7 @@
+  */
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <advanced_config.h>
+ #include <base_units.h>
+ #include <kiplatform/environment.h>
+--- eeschema/sch_io/cadstar/cadstar_sch_archive_loader.cpp.orig
++++ eeschema/sch_io/cadstar/cadstar_sch_archive_loader.cpp
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include <sch_io/cadstar/cadstar_sch_archive_loader.h>
++#include <iterator>
+ #include <io/cadstar/cadstar_parts_lib_parser.h>
+ 
+ #include <bus_alias.h>
+--- eeschema/sch_io/cadstar/sch_io_cadstar_archive.cpp.orig
++++ eeschema/sch_io/cadstar/sch_io_cadstar_archive.cpp
+@@ -19,6 +19,7 @@
+  */
+ 
+ #include <sch_io/cadstar/cadstar_sch_archive_loader.h>
++#include <iterator>
+ #include <sch_io/cadstar/sch_io_cadstar_archive.h>
+ #include <io/cadstar/cadstar_parts_lib_parser.h>
+ 
+--- eeschema/sch_io/database/sch_io_database.cpp.orig
++++ eeschema/sch_io/database/sch_io_database.cpp
+@@ -19,6 +19,7 @@
+  */
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <chrono>
+ #include <iostream>
+ #include <string_view>
+--- eeschema/sch_io/eagle/sch_io_eagle.cpp.orig
++++ eeschema/sch_io/eagle/sch_io_eagle.cpp
+@@ -23,6 +23,7 @@
+  */
+ 
+ #include <sch_io/eagle/sch_io_eagle.h>
++#include <iterator>
+ 
+ #include <algorithm>
+ #include <memory>
+--- eeschema/sch_io/geda/sch_io_geda.cpp.orig
++++ eeschema/sch_io/geda/sch_io_geda.cpp
+@@ -29,6 +29,7 @@
+  */
+ 
+ #include <sch_io/geda/sch_io_geda.h>
++#include <iterator>
+ 
+ #include <wx/dir.h>
+ #include <wx/file.h>
+--- eeschema/sch_io/http_lib/sch_io_http_lib.cpp.orig
++++ eeschema/sch_io/http_lib/sch_io_http_lib.cpp
+@@ -20,6 +20,7 @@
+ 
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <chrono>
+ #include <string_view>
+ 
+--- eeschema/sch_io/kicad_sexpr/sch_io_kicad_sexpr.cpp.orig
++++ eeschema/sch_io/kicad_sexpr/sch_io_kicad_sexpr.cpp
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include <algorithm>
++#include <iterator>
+ 
+ #include <fmt/format.h>
+ 
+--- eeschema/sch_screen.cpp.orig
++++ eeschema/sch_screen.cpp
+@@ -25,6 +25,7 @@
+  */
+ 
+ #include <stack>
++#include <iterator>
+ #include <vector>
+ #include <wx/filefn.h>
+ #include <wx/log.h>
+--- eeschema/sch_sheet_path.cpp.orig
++++ eeschema/sch_sheet_path.cpp
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include <set>
++#include <iterator>
+ 
+ #include <refdes_utils.h>
+ #include <hash.h>
+--- eeschema/symbol_library_manager.cpp.orig
++++ eeschema/symbol_library_manager.cpp
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include "symbol_library_manager.h"
++#include <iterator>
+ 
+ #include <dialogs/html_message_box.h>
+ #include <symbol_edit_frame.h>
+--- eeschema/symbol_tree_model_adapter.cpp.orig
++++ eeschema/symbol_tree_model_adapter.cpp
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "symbol_tree_model_adapter.h"
++#include <iterator>
+ 
+ #include <wx/log.h>
+ #include <wx/tokenzr.h>
+--- eeschema/tools/symbol_editor_edit_tool.cpp.orig
++++ eeschema/tools/symbol_editor_edit_tool.cpp
+@@ -23,6 +23,7 @@
+  */
+ 
+ #include "symbol_editor_edit_tool.h"
++#include <iterator>
+ 
+ #include <tool/picker_tool.h>
+ #include <tools/sch_selection_tool.h>
+--- include/collector.h.orig
++++ include/collector.h
+@@ -25,6 +25,7 @@
+ #ifndef COLLECTOR_H
+ #define COLLECTOR_H
+ 
++#include <iterator>
+ #include <vector>
+ #include <core/kicad_algo.h>
+ #include <algorithm>
+--- kicad/pcm/dialogs/panel_packages_view.cpp.orig
++++ kicad/pcm/dialogs/panel_packages_view.cpp
+@@ -19,6 +19,7 @@
+  */
+ 
+ #include "panel_packages_view.h"
++#include <iterator>
+ #include <grid_tricks.h>
+ #include <widgets/html_window.h>
+ #include <pgm_base.h>
+--- libs/kimath/include/geometry/shape_compound.h.orig
++++ libs/kimath/include/geometry/shape_compound.h
+@@ -25,6 +25,7 @@
+ #ifndef __SHAPE_COMPOUND_H
+ #define __SHAPE_COMPOUND_H
+ 
++#include <iterator>
+ #include <geometry/shape.h>
+ #include <math/vector2d.h>
+ #include <math/box2.h>
+--- pcbnew/api/api_handler_pcb.cpp.orig
++++ pcbnew/api/api_handler_pcb.cpp
+@@ -19,6 +19,7 @@
+  */
+ 
+ #include <magic_enum.hpp>
++#include <iterator>
+ #include <properties/property.h>
+ 
+ #include <common.h>
+--- pcbnew/connectivity/connectivity_algo.cpp.orig
++++ pcbnew/connectivity/connectivity_algo.cpp
+@@ -26,6 +26,7 @@
+ 
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <future>
+ #include <limits>
+ #include <mutex>
+--- pcbnew/connectivity/connectivity_data.cpp.orig
++++ pcbnew/connectivity/connectivity_data.cpp
+@@ -28,6 +28,7 @@
+ #endif
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <future>
+ #include <initializer_list>
+ 
+--- pcbnew/cross-probing.cpp.orig
++++ pcbnew/cross-probing.cpp
+@@ -32,6 +32,7 @@
+  */
+ 
+ #include <wx/tokenzr.h>
++#include <iterator>
+ #include <board.h>
+ #include <board_design_settings.h>
+ #include <fmt.h>
+--- pcbnew/drc/drc_creepage_utils.cpp.orig
++++ pcbnew/drc/drc_creepage_utils.cpp
+@@ -21,6 +21,7 @@
+     */
+ 
+ #include "drc/drc_creepage_utils.h"
++#include <iterator>
+ 
+ #include <geometry/intersection.h>
+ #include <geometry/shape_simple.h>
+--- pcbnew/drc/drc_test_provider_creepage.cpp.orig
++++ pcbnew/drc/drc_test_provider_creepage.cpp
+@@ -21,6 +21,7 @@
+     */
+ 
+ #include <common.h>
++#include <iterator>
+ #include <macros.h>
+ #include <board_design_settings.h>
+ #include <footprint.h>
+--- pcbnew/drc/drc_test_provider_library_parity.cpp.orig
++++ pcbnew/drc/drc_test_provider_library_parity.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <layer_range.h>
++#include <iterator>
+ #include <layer_utils.h>
+ #include <kiway.h>
+ #include <macros.h>
+--- pcbnew/footprint_libraries_utils.cpp.orig
++++ pcbnew/footprint_libraries_utils.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <memory>
+ #include <wx/ffile.h>
+ #include <pgm_base.h>
+--- pcbnew/git/kigit_pcb_merge.cpp.orig
++++ pcbnew/git/kigit_pcb_merge.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include "kigit_pcb_merge.h"
++#include <iterator>
+ #include <git/kicad_git_blob_reader.h>
+ #include <git/kicad_git_common.h>
+ #include <git/kicad_git_memory.h>
+--- pcbnew/netlist_reader/kicad_netlist_reader.cpp.orig
++++ pcbnew/netlist_reader/kicad_netlist_reader.cpp
+@@ -23,6 +23,7 @@
+  */
+ 
+ #include <wx/log.h>
++#include <iterator>
+ 
+ #include <netlist_lexer.h>  // netlist_lexer is common to Eeschema and Pcbnew
+ #include <string_utils.h>
+--- pcbnew/netlist_reader/netlist.cpp.orig
++++ pcbnew/netlist_reader/netlist.cpp
+@@ -25,6 +25,7 @@
+  */
+ 
+ #include <functional>
++#include <iterator>
+ using namespace std::placeholders;
+ 
+ #include <confirm.h>
+--- pcbnew/ratsnest/ratsnest_data.cpp.orig
++++ pcbnew/ratsnest/ratsnest_data.cpp
+@@ -35,6 +35,7 @@
+ #endif
+ 
+ #include <ratsnest/ratsnest_data.h>
++#include <iterator>
+ #include <functional>
+ using namespace std::placeholders;
+ 
+--- pcbnew/router/pns_item.cpp.orig
++++ pcbnew/router/pns_item.cpp
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "pns_node.h"
++#include <iterator>
+ #include "pns_item.h"
+ #include "pns_line.h"
+ #include "pns_router.h"
+--- pcbnew/router/router_tool.cpp.orig
++++ pcbnew/router/router_tool.cpp
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include <wx/filedlg.h>
++#include <iterator>
+ #include <wx/hyperlink.h>
+ #include <advanced_config.h>
+ #include <kiplatform/ui.h>
+--- pcbnew/tools/multichannel_tool.cpp.orig
++++ pcbnew/tools/multichannel_tool.cpp
+@@ -23,6 +23,7 @@
+ 
+ 
+ #include <board_commit.h>
++#include <iterator>
+ #include <tools/pcb_actions.h>
+ #include <tools/pcb_selection.h>
+ 
+--- pcbnew/widgets/pcb_net_inspector_panel.cpp.orig
++++ pcbnew/widgets/pcb_net_inspector_panel.cpp
+@@ -18,6 +18,7 @@
+  */
+ 
+ #include <properties/property.h>
++#include <iterator>
+ #include <widgets/pcb_net_inspector_panel.h>
+ #include <widgets/pcb_net_inspector_panel_data_model.h>
+ 
+--- qa/tests/pcbnew/test_component_classes.cpp.orig
++++ qa/tests/pcbnew/test_component_classes.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <qa_utils/wx_utils/unit_test_utils.h>
++#include <iterator>
+ #include <pcbnew_utils/board_test_utils.h>
+ #include <board.h>
+ #include <board_design_settings.h>
