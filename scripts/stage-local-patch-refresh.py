@@ -27,6 +27,7 @@ import re
 import shlex
 import stat
 import subprocess
+import tempfile
 
 MAX_STAGE_ARCHIVE_BYTES = 512 * 1024 * 1024
 
@@ -44,6 +45,52 @@ def stable_read(paths, path):
                 'file changed while reading: ' + str(path))
     paths.verify_stable(str(path), before)
     return data
+
+
+def phase_identities(paths, work, base, version, current):
+    """Capture existing phase identities before changing any verified source."""
+    pattern = re.compile(re.escape(base + '-' + version) + r'(?:nb[0-9]+)?\Z')
+    require(pattern.fullmatch(current), 'selected phase identity differs from source version')
+    result = {}
+    for name in ('.extract_done', '.configure_done'):
+        path = work / name
+        if not os.path.lexists(path):
+            continue
+        info = paths.regular_file(str(path))
+        data = stable_read(paths, path)
+        require(pattern.fullmatch(data.decode('utf-8').strip()),
+                'retained phase identity differs from source version: ' + name)
+        result[name] = (data, info)
+    return result
+
+
+def refresh_phase_identities(paths, work, identities, current):
+    """Advance existing compatible phases; never assert that a new phase ran."""
+    replacement = (current + '\n').encode('utf-8')
+    for name, (before, info) in identities.items():
+        path = work / name
+        if not os.path.lexists(path):
+            require(name == '.configure_done', 'extract identity disappeared during refresh')
+            continue  # configure-clean deliberately invalidated this phase.
+        data = stable_read(paths, path)
+        require(data in (before, replacement), 'phase identity changed during refresh: ' + name)
+        if data == replacement:
+            continue
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=work, prefix='.phase-identity-', delete=False) as out:
+                temporary = Path(out.name)
+                out.write(replacement)
+                out.flush()
+                os.fchmod(out.fileno(), stat.S_IMODE(info.st_mode))
+                # Only the package identity changed: extraction/configuration
+                # did not run again. In particular, do not make .extract_done
+                # newer than .patch_done and trigger another patch application.
+                os.utime(out.fileno(), ns=(info.st_atime_ns, info.st_mtime_ns))
+            os.replace(temporary, path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
 
 def selected_values(command, fields):
@@ -1075,6 +1122,11 @@ def main():
     work = Path(v['WRKDIR']); source = Path(v['WRKSRC'])
     require(paths.canonical_existing(str(work)) == paths.canonical_existing(str(a.expected_work)),
             'selected WRKDIR differs from locked stage')
+    identities = {}
+    current_identity = None
+    if os.path.lexists(work / '.extract_done'):
+        current_identity = selected_values(cmd, ['PKGNAME'])[0]
+        identities = phase_identities(paths, work, v['PKGBASE'], v['PKGVERSION_NOREV'], current_identity)
     require(source.name == v['DISTNAME'] and source.parent == work, 'unsupported archive layout')
     patch_args = shlex.split(v['PATCH_ARGS'])
     require(patch_args[:2] == ['-d', str(source)], 'unexpected patch destination')
@@ -1500,6 +1552,11 @@ def main():
                     require(stable_read(paths, path) == contents,
                             'recipe input changed before configure invalidation: ' + str(path))
             subprocess.run(cmd + ['configure-clean' if (a.subst_class or a.previous_recipe) else 'build-clean'], check=True)
+            if a.reconfigure:
+                # The caller explicitly accepted the changed recipe configuration.
+                # Do not leave its old dependency graph in front of the next
+                # ordinary bulk/SDK build; objects and source stay in place.
+                subprocess.run(cmd + ['depends-clean', '_package-clean'], check=True)
             if a.refresh_subst:
                 for name, (_files, cookie_path, live_cookie) in existing_substs.items():
                     require(stable_read(paths, cookie_path) == live_cookie,
@@ -1517,6 +1574,8 @@ def main():
                                       'subst-' + a.subst_class], check=True)
                 require(stable_read(paths, Path(subst_cookie)) == b'',
                         'pkgsrc SUBST did not record the expected no-op result')
+            if identities:
+                refresh_phase_identities(paths, work, identities, current_identity)
         if a.previous_recipe:
             for path, contents in observed_recipe_inputs.items():
                 require(stable_read(paths, path) == contents,

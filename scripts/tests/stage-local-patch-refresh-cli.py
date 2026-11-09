@@ -19,12 +19,16 @@ with tempfile.TemporaryDirectory() as d:
  b=f'SHA1 (patch-b) = {hashlib.sha1(old).hexdigest()}\n';c=f'SHA1 (patch-a) = {hashlib.sha1(new).hexdigest()}\n'
  old_info=('$NetBSD$\n\n'+lines+b).encode();(recipe/'distinfo').write_text('$NetBSD$\n\n'+lines+c+b)
  (work/'.patch_done').write_text(str(patches/'patch-b')+'\n')
+ (work/'.extract_done').write_text('demo-1nb1\n')
+ (work/'.configure_done').write_text('demo-1nb1\n')
+ identity_times = {name: (work/name).stat().st_mtime_ns for name in ('.extract_done', '.configure_done')}
  db=root/'sys/usr/pkg/pkgdb/demo-1nb1';db.mkdir(parents=True)
  (db/'+BUILD_VERSION').write_text('cat/demo/patches/patch-b: '+hashlib.sha256(old).hexdigest()+'\ncat/demo/distinfo: '+hashlib.sha256(old_info).hexdigest()+'\n')
  values={'WRKDIR':str(work),'WRKSRC':str(src),'PATCH':str(a.patch),'PATCH_ARGS':f'-d {src} -E -p0 --batch --forward -V simple -z .orig','DISTDIR':str(root),'DIST_SUBDIR':'','DISTFILES':archive.name,'DISTNAME':'demo-1','PKG_DBDIR':'/usr/pkg/pkgdb','CROSS_DESTDIR':str(root/'sys'),'PKGBASE':'demo','PKGVERSION_NOREV':'1','PATCHFILES':'','PATCHDIR':str(patches),'DISTINFO_FILE':str(recipe/'distinfo'),'EXTRACT_ONLY':archive.name,'LOCALPATCHES':'','META_PACKAGE':'','SUBST_CLASSES':'','SUBST_FILES.rewrite':'second','.MAKE.MAKEFILES':'Makefile'}
+ values['PKGNAME'] = 'demo-1nb2'
  fake=root/'bmake';fake.write_text('#!'+sys.executable+'\nimport json,sys,pathlib\nv='+repr(values)+'\nfor x in sys.argv:\n if x.startswith("VARNAMES="):\n  print("\\n".join(v[n] for n in x[9:].split()));sys.exit(0)\nif "build-clean" in sys.argv:pathlib.Path('+repr(str(root/'clean'))+').write_text("yes")\n');fake.chmod(0o755)
  cmd=[sys.executable,'-B',str(helper),'--sdk-source',str(a.sdk_source),'--bmake',str(fake),'--recipe',str(recipe),'--expected-work',str(work)]
- wrong=subprocess.run(cmd[:-1]+[str(root)],capture_output=True,text=True);assert wrong.returncode and 'differs from locked stage' in wrong.stderr
+ wrong=subprocess.run(cmd[:-1]+[str(root)],capture_output=True,text=True);assert wrong.returncode and 'differs from locked stage' in wrong.stderr, wrong.stderr
  original=fake.read_text();intersect=original.replace("'SUBST_CLASSES': ''", "'SUBST_CLASSES': 'rewrite'")
  fake.write_text(intersect)
  blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'needs substitution refresh' in blocked.stderr
@@ -63,4 +67,12 @@ with tempfile.TemporaryDirectory() as d:
  fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'libxslt.pc.in libexslt.pc.in'"))
  subprocess.run(cmd,check=True);assert (src/'second').read_text()=='D\n' and (src/'second').stat().st_mode & 0o777 == 0o640 and (root/'clean').read_text()=='yes'
  assert (work/'.patch_done').read_text()==str(patches/'patch-a')+'\n'+str(patches/'patch-b')+'\n'
+ # A successful verified refresh must be accepted by ordinary bulk/SDK builds.
+ # Identity metadata does not mean that extraction/configure ran again.
+ for name, when in identity_times.items():
+  assert (work/name).read_text() == 'demo-1nb2\n'
+  assert (work/name).stat().st_mtime_ns == when
+ guard = helper.parent/'cross-bulk-workdir.py'
+ result = subprocess.run([sys.executable, str(guard), str(work), 'demo', '1', 'demo-1nb2'], capture_output=True, text=True)
+ assert result.returncode == 0 and result.stdout.strip() == 'same', result.stderr
 print('stage-local CLI validates locked stage and refreshes selected patch series')

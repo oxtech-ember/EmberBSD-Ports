@@ -333,8 +333,12 @@ with `CROSS_BULK_PATCH_REFRESH_RECONFIGURE=yes` and
 This explicit mode accepts new local includes and configure hooks. It verifies
 the source preimages and invalidates configuration while retaining
 objects. It rejects changes to the source archive, toolchain, ABI and compiler
-flags. Then resume `package` or `package-install` to run normal configuration
-and incremental compilation. Without this selector, new includes remain
+flags. It clears the accepted old dependency/package metadata and advances
+existing compatible phase identities to the current package revision, without
+creating a configure/build completion cookie. Identity-only updates retain
+phase timestamps so make does not reapply already verified patches.
+Then resume the ordinary SDK install/bulk build, or `package` / `package-install`,
+to run normal configuration and incremental compilation. Without this selector, new includes remain
 restricted to revision metadata with unchanged build inputs and commands.
 
 An unfinished first build has no installed package metadata. With the explicit

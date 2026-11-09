@@ -99,6 +99,8 @@ if '-d' in args:
  print('Parsing ' + ''' + repr(str(previous / 'Makefile.common')) + ''' + ':1: do-extract:',file=sys.stderr)
  print('ParseDependency(do-extract:)',file=sys.stderr);sys.exit()
 if 'pre-patch' in args or 'post-patch' in args or 'pre-extract' in args or 'post-extract' in args:sys.exit()
+if 'depends-clean' in args:
+ pathlib.Path(''' + repr(str(base / 'depends-clean')) + ''').write_text(' '.join(args));sys.exit()
 if 'configure-clean' in args:
  flag=pathlib.Path(''' + repr(str(base / 'fail-clean')) + ''')
  if flag.exists():
@@ -319,6 +321,7 @@ sys.exit(3)
     assert result.returncode == 0, result.stderr
     assert (source / 'input').read_bytes() == b'new /prefix\n'
     assert (base / 'configure-clean').is_file()
+    assert '_package-clean' in (base / 'depends-clean').read_text()
     assert (source / 'sibling.o').read_bytes() == b'object'
     assert (source / 'sibling.o').stat().st_mtime_ns == stamp
     for field in ('MACHINE_GNU_PLATFORM', 'ABI', 'CC', 'CFLAGS', 'LDFLAGS', 'EMBERBSD_CROSS_SYSROOT'):
