@@ -131,6 +131,15 @@ Cppcheck 2.22 cannot preprocess the actual Graphene ARM SIMD header, and its
 Clang-import path asserts in `token.cpp`; these are analyzer limitations.
 This header correction does not add GL rendering/runtime acceptance.
 
+The GTK4 GL implementation leaves `wxGLApp` RTTI registration to the shared
+`src/common/glcmn.cpp`, as the existing EGL/GLX ports do. Its former duplicate
+registration failed the actual target shared-library link. Removing that one
+registration, recompiling the GTK4 GL translation unit and relinking against
+the same remaining objects succeeds; Clang analysis also passes. The
+`InitGLVisual` implementation and Canvas/Context RTTI remain unchanged. The
+previous Cppcheck Graphene parser limitation still applies. This link check
+does not establish EGL rendering or context-lifetime acceptance.
+
 # GTK4 status bar and checklist contract
 
 `patch-gtk4-statusbar` draws the resize grip with the existing wxDC/theme pens

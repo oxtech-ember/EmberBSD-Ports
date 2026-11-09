@@ -6,6 +6,7 @@ Keeps native context identity, framebuffer zero and compatibility-profile GL.
 Presentation is buffered; the pbuffer itself is single-buffered. Mesa maps
 BACK names to its FRONT storage. Context resources share GTK's display group.
 See tests/README.md for the precise contract and pending runtime acceptance.
+wxGLApp RTTI remains owned by the shared src/common/glcmn.cpp implementation.
 https://docs.gtk.org/gdk4/class.GLTextureBuilder.html
 https://registry.khronos.org/EGL/specs/eglspec.1.5.pdf
 
@@ -99,7 +100,7 @@ https://registry.khronos.org/EGL/specs/eglspec.1.5.pdf
  
 --- /dev/null
 +++ src/gtk/glcanvas_gtk4.inc
-@@ -0,0 +1,655 @@
+@@ -0,0 +1,654 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// GTK4 GL canvas: native EGL contexts/pbuffers, GPU-only GTK texture presentation.
 +// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
@@ -392,7 +393,6 @@ https://registry.khronos.org/EGL/specs/eglspec.1.5.pdf
 +
 +wxIMPLEMENT_CLASS(wxGLContext, wxObject);
 +wxIMPLEMENT_CLASS(wxGLCanvas, wxWindow);
-+wxIMPLEMENT_DYNAMIC_CLASS(wxGLApp, wxApp);
 +
 +wxGLContext::wxGLContext(wxGLCanvas* win, const wxGLContext* other, const wxGLContextAttrs* attrs)
 +    : m_gtkGL(new wxGTKGLContextData)
