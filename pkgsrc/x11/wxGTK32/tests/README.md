@@ -692,3 +692,67 @@ python3 tests/pkgconfig-sysroot.py --source /prepared/wxWidgets \
   --shell /native/bin/mksh --pkg-config /native/bin/pkg-config \
   --work-parent /work/tmp
 ```
+
+# Common Scintilla/Lexilla provider contract
+
+The wx 3.2 public STC interface is retained while its frontend consumes the
+common `devel/scintilla-core` and `devel/lexilla` packages. Scintilla 5.6.9 is a
+PIC toolkit-neutral core archive; wx supplies the window, font, surface and
+completion-list implementations. Lexilla 5.5.5 supplies the shared lexer
+catalogue and its common PIC loadable-lexer access helper. Both Autoconf and
+CMake require these installed providers; embedded Scintilla/lexer source is
+not compiled or linked. The private core headers and archive must have the
+same version and compiler/runtime ABI.
+
+The public numeric/name lexer methods select current ILexer5 instances. Plugin
+loading uses upstream LexillaAccess; plugins must implement the current Lexilla
+interface. Modern style bytes always have eight bits, independently of
+indicators; the retained `SetStyleBits` method therefore has no effect and both
+style-bit queries return eight. Generated wx 3.2 public methods are maintained
+as part of this adapter; automatic regeneration from a newer Scintilla protocol
+is disabled because it would remove existing wx public APIs.
+
+```sh
+python3 tests/scintilla-selection.py --source /prepared/wxWidgets \
+  --shell /native/bin/mksh --pkg-config /native/bin/pkg-config \
+  --work-parent /work/tmp
+```
+
+This runs the actual generated-configure provider selection with real pkg-config
+metadata. Native and target sysroot cases, either missing provider and explicitly
+disabled STC are distinct cases. The ordinary static wx-config link path carries
+the provider libraries through `WXCONFIG_LIBS_STC`, while full sysroot search
+paths remain in build-only `EXTRALIBS_STC`. Installed `wx-config --prefix`
+resolves the common providers in the selected prefix. Static/shared and
+monolithic variants are covered. Base-only consumers do not gain editor link
+dependencies. A shared wx consumer links the wx STC DSO.
+
+The optional CMake static export discovers ScintillaCore and Lexilla with
+`find_dependency`; shared and STC-disabled exports do not require their
+development targets. This config-consumer fixture uses the real package
+config template and imported-target fixtures, without compiling libraries:
+
+```sh
+python3 tests/stc-cmake-config.py --cmake /native/bin/cmake \
+  --template /prepared/wxWidgets/build/cmake/wxWidgetsConfig.cmake.in \
+  --work /work/tmp/wx-cmake-config
+```
+
+The `stc4-contract` GUI target checks UTF-8 offsets/undo, numeric and named lexer
+selection, real Python keyword styling, completion notification data, calltips
+and repeated popup creation/destruction. Run it on the matching GTK4 target with
+a real display; the CTest timeout is 20 seconds. It does not establish shaped
+bidirectional text, external plugin compatibility, interactive IME, printing or
+complete KiCad acceptance. Memory-instrumented execution is a separate run.
+
+The three adapted frontend translation units and the GUI fixture pass target
+Clang syntax checking against the new provider headers. Clang Static Analyzer
+and Cppcheck 2.22 completed for the bridge; successful tool execution does not
+mean there were no diagnostics. CSA reported six pre-existing buffer paths
+whose realloc branch is unreachable with the getters' allocated `len+1`
+capacity. Cppcheck reported wx hash-map macro, union-storage reference and
+trait-selected movable-vector diagnostics, plus existing API/style warnings;
+review established no new actionable bridge defect. The old wx 3.2 bridge
+cannot serve as a compiling baseline against GTK4 headers. These checks do not
+replace runtime memory checks. Full wx package acceptance and execution of the
+GUI fixture remain pending.
