@@ -409,3 +409,18 @@ NetworkSession API. Retain Wayland pointer constraints and native GTK printing.
  
      if( !context )
          return false;
+
+--- common/kicad_gl/gl_context_mgr.cpp.orig
++++ common/kicad_gl/gl_context_mgr.cpp
+@@ -85,7 +85,10 @@
+     wxGLCanvas* canvas = aCanvas ? aCanvas : m_glContexts.at( aContext );
+     bool        current = false;
+ 
+-#ifdef __WXGTK__
++#if defined( __WXGTK4__ )
++    // GTK4 uses an EGL pbuffer; only the public SetCurrent visibility precondition applies.
++    if( canvas->IsShown() )
++#elif defined( __WXGTK__ )
+     // Prevent assertion failure in wxGLContext::SetCurrent during GAL teardown
+     if( canvas->GTKGetDrawingWindow() )
+ #endif // __WXGTK__

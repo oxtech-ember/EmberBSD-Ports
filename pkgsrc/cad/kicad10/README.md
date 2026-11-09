@@ -60,9 +60,9 @@ The focused consumers in [tests](tests/shared-libraries/README.md) exercise shar
 interfaces and parser behavior. They do not replace building the complete
 package or running CAD workflows on EmberBSD.
 
-Full application configuration, linking and CAD runtime acceptance remain
-pending the common GTK4 wxWidgets/WebKit stack. The recipe and focused consumer
-checks are not evidence of a completed KiCad binary package.
+Full application configuration passes against the common GTK4 wxWidgets/WebKit
+stack. Compilation, linking and CAD runtime acceptance remain in progress;
+focused consumer checks are not evidence of a completed KiCad binary package.
 
 The runtime includes the common DejaVu TrueType fonts so that a minimal target
 can render text, including Cyrillic. Type 1 fonts alone do not satisfy current
@@ -106,3 +106,13 @@ python3 tests/ui4-contract.py \
 Build it with the selected target wx/GTK4 and KiCad platform headers; run it on
 the target with a display and `GDK_SCALE=2`. Full GUI acceptance, Wayland pointer
 constraints and asynchronous WebKit cookie completion remain pending.
+
+The GL context manager uses the public wx canvas visibility precondition on
+GTK4. Its EGL pbuffer does not require the removed GTK3 drawing-window accessor.
+`tests/gl-context4.cpp`, linked with the actual
+`common/kicad_gl/gl_context_mgr.cpp`, the prepared KiCad headers and installed
+target wx GL/core/base and EGL libraries, checks hidden/shown canvases, repeated
+lock/unlock, an alternate canvas and a hidden parent. Run it on a target display
+with a bounded timeout and fatal GTK criticals. This focused lifecycle check
+reuses the wx GL backend acceptance; it does not establish full CAD rendering
+or physical GPU support.
