@@ -10,6 +10,8 @@
 # EMBERBSD_VERSION_DEPENDENTS lists PKGPATHs that the exporter removes too:
 # each one needs a removed version, and no kept package needs it. Port one
 # onto the kept version to bring it back.
+# KiCad 10 replaces the unversioned upstream KiCad 8 recipe.
+EMBERBSD_VERSION_FAMILIES+=	cad/kicad=cad/kicad10
 EMBERBSD_VERSION_FAMILIES+=	lang/python[0-9]*=lang/python315
 EMBERBSD_VERSION_FAMILIES+=	lang/gcc[0-9]*=lang/gcc16*
 EMBERBSD_VERSION_FAMILIES+=	lang/go[0-9]*=lang/go127

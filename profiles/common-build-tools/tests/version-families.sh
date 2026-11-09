@@ -6,13 +6,13 @@ set -eu
 pkgsrc=$1 work=$2
 bmake=${BMAKE:-bmake}
 mkdir "$work"
-for kept in lang/python315 lang/lua55 lang/gcc16-libs lang/go127 lang/php85 \
+for kept in cad/kicad10 lang/python315 lang/lua55 lang/gcc16-libs lang/go127 lang/php85 \
     lang/ruby40 lang/openjdk21 databases/postgresql18-client \
     databases/mariadb118-client security/openssl lang/tcl x11/tk print/poppler-qt6 \
     graphics/opencv graphics/opencv-contrib; do
     [ -d "$pkgsrc/$kept" ] || { echo "Missing kept $kept" >&2; exit 1; }
 done
-for old in lang/python314 lang/lua54 lang/gcc10-libs lang/go126 lang/php84 \
+for old in cad/kicad lang/python314 lang/lua54 lang/gcc10-libs lang/go126 lang/php84 \
     lang/ruby34 lang/openjdk17 databases/postgresql17-client \
     databases/mariadb114-client databases/mysql80-client security/libressl \
     lang/tcl90 x11/tk90 print/poppler-qt5 local-robotics/opencv5 \
@@ -27,13 +27,14 @@ printf 'BSD_PKG_MK=\tyes\n.include "%s/EMBERBSD-DEFAULTS-MK.CONF"\nall:\n' "$pkg
 reason() {
     "$bmake" -f "$work/Makefile" PKGPATH="$1" -v PKG_FAIL_REASON
 }
-for old in lang/python314 lang/lua54 lang/gcc15 databases/postgresql17-client \
+for old in cad/kicad lang/python314 lang/lua54 lang/gcc15 databases/postgresql17-client \
     databases/mysql80-client security/libressl lang/go126 lang/php84 lang/tcl90 \
     x11/tk90 print/poppler-qt5 local-robotics/opencv5 graphics/opencv-contrib-face; do
     reason "$old" | grep -Fq 'EmberBSD keeps only' ||
         { echo "Guard accepted $old" >&2; exit 1; }
 done
-for kept in lang/python315 lang/lua55 lang/gcc16-libs databases/postgresql18-server \
+for kept in cad/kicad10 cad/kicad-symbols cad/kicad-footprints cad/kicad-templates \
+    cad/kicad-packages3d lang/python315 lang/lua55 lang/gcc16-libs databases/postgresql18-server \
     databases/mariadb118-server net/wireshark lang/go127 lang/go-bin lang/php85 \
     lang/tcl x11/tk lang/tclx x11/tktable graphics/opencv graphics/opencv-contrib; do
     [ -z "$(reason "$kept")" ] || { echo "Guard rejected $kept" >&2; exit 1; }

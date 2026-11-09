@@ -11,6 +11,10 @@ python3 scripts/packages.py --config /path/to/sdk-client.json \
     install --package cad/kicad10
 ```
 
+The shared version-family rule removes the older upstream `cad/kicad` recipe
+from exports and rejects it as a build root. The resource packages keep their
+unversioned paths; there is one current application recipe, `cad/kicad10`.
+
 Run that command from the SDK checkout with the selected SDK host Python.
 The SDK configuration selects the host tools, target, compiler and sysroot;
 the KiCad recipe does not choose a board or require a target build machine.
