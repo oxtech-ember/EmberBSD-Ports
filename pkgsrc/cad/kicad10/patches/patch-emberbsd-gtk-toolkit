@@ -1,0 +1,44 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use the common GTK4 provider and share its pkg-config usage requirements
+with the native-print QA consumer through one imported target.
+
+--- libs/kiplatform/CMakeLists.txt.orig
++++ libs/kiplatform/CMakeLists.txt
+@@ -18,16 +18,9 @@
+         )
+ 
+     find_package(PkgConfig REQUIRED)
+-    pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
++    pkg_check_modules(KICAD_GTK REQUIRED IMPORTED_TARGET GLOBAL gtk4)
+ 
+-    # Detect GTK3 and configure it
+-    set( PLATFORM_LIBS
+-        ${GTK3_LIBRARIES}
+-        )
+-
+-    include_directories( SYSTEM ${GTK3_INCLUDE_DIRS} )
+-    link_directories( ${GTK3_LIBRARY_DIRS} )
+-    add_definitions( ${GTK3_CFLAGS_OTHER} )
++    set( PLATFORM_LIBS PkgConfig::KICAD_GTK )
+ endif()
+ 
+ 
+--- qa/tests/common/CMakeLists.txt.orig
++++ qa/tests/common/CMakeLists.txt
+@@ -210,12 +210,9 @@
+     add_dependencies( qa_common api_schema_build_copy )
+ endif()
+ 
+-# The print-to-file reset test reaches into the native GtkPrintSettings on GTK builds.
+-# The GTK3 libraries themselves propagate transitively through kiplatform.
++# Native printing tests use the same GTK ABI selected for kiplatform.
+ if( KICAD_WX_PORT STREQUAL "gtk" )
+-    find_package( PkgConfig REQUIRED )
+-    pkg_check_modules( GTK3 REQUIRED gtk+-3.0 )
+-    target_include_directories( qa_common SYSTEM PRIVATE ${GTK3_INCLUDE_DIRS} )
++    target_link_libraries( qa_common PkgConfig::KICAD_GTK )
+ endif()
+ 
+ include_directories(
