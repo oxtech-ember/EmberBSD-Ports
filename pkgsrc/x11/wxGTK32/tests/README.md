@@ -17,11 +17,12 @@ The previous producer fails this regression. A dry run with the actual wx makefi
 accepts the bmake include loop and preserves the already updated GL canvas object.
 Keep dependency files along with compatible objects.
 
-The normal aarch64 SDK install of `wxGTK32-3.2.12nb18` passed with bmake.
-It reused 225 packages, downloaded none, and preserved the compiled C++ objects.
-The staged `make` resolved to native bmake; the old gmake wrapper was removed.
-The generated makefiles retained 743 compiler dependency files. This package
-build does not establish GUI runtime acceptance.
+The normal aarch64 SDK build of `wxGTK32-3.2.12nb20` passed with bmake.
+The combined KiCad install plan reused 269 packages and downloaded none; wx
+recompiled only four affected C++ objects and retained compatible objects.
+The staged `make` resolves to native bmake, with compiler dependency files
+preserved for subsequent incremental builds. This package build alone does
+not establish GUI runtime acceptance.
 
 ```sh
 python3 tests/bmake-dependencies.py --source /prepared/wxWidgets \
@@ -65,6 +66,9 @@ Cppcheck `sys/endian.h` parser limitation still applies.
 The generic calendar now returns false when `SetDate` rejects a date outside
 its current range, preserving the date and the normal year-edit state reset.
 The existing `calendar4-contract` exposes the previous incorrect true result.
+It passes on the rebuilt aarch64 package. The hit-test check locates a date row,
+weekday column and selected date through three linear scans: a full pixel-grid
+scan repeatedly measured text and exceeded the unchanged runtime limit.
 
 The shared GTK4 clipboard/drop transport prefers advertised MIME formats before
 considering native GType serializers. GTK augments clipboard formats with
@@ -83,6 +87,10 @@ Clang analysis has no finding in `Match`; the unchanged `Receive` path produces
 the known wx shared-buffer reference-counting false positive. The target-header
 Cppcheck parser limitation described above still applies. This narrow fixture
 does not replace the full clipboard or interactive drag-and-drop contracts.
+The full `clipboard4-contract` also passes on the rebuilt aarch64 package.
+Window creation, the KiCad UI contract at scale 2 and the GL contract passed
+with the same stack. GL used Xvfb and explicitly allowed llvmpipe; hardware
+rendering, a window manager and interactive DnD are outside those results.
 
 # GTK4 AUI and top-level window hints
 

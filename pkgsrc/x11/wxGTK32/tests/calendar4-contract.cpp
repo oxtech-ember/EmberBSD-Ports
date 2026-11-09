@@ -76,14 +76,32 @@ class CalendarContract : public wxApp
 
             wxPoint dayPoint(-1, -1);
             const wxSize size = calendar->GetClientSize();
-            for (int y = 0; y < size.y && dayPoint.x < 0; y += 4)
-                for (int x = 0; x < size.x; x += 4)
-                {
-                    wxDateTime day;
-                    if (calendar->HitTest(wxPoint(x, y), &day) == wxCAL_HITTEST_DAY &&
-                        day == leap)
-                    { dayPoint = wxPoint(x, y); break; }
-                }
+            // HitTest recalculates text geometry. Locate a date row, the
+            // weekday column and then the date with linear scans, rather
+            // than measuring every pixel-grid point in the entire control.
+            int dateRow = -1, weekdayColumn = -1;
+            for (int y = 0; y < size.y; y += 4)
+            {
+                wxDateTime day;
+                if (calendar->HitTest(wxPoint(size.x / 2, y), &day) == wxCAL_HITTEST_DAY)
+                { dateRow = y; break; }
+            }
+            Check(dateRow >= 0, "mapped calendar exposes a date row");
+            for (int x = 0; x < size.x; x += 4)
+            {
+                wxDateTime day;
+                if (calendar->HitTest(wxPoint(x, dateRow), &day) == wxCAL_HITTEST_DAY &&
+                    day.GetWeekDay() == leap.GetWeekDay())
+                { weekdayColumn = x; break; }
+            }
+            Check(weekdayColumn >= 0, "mapped calendar exposes the weekday column");
+            for (int y = 0; y < size.y; y += 4)
+            {
+                wxDateTime day;
+                if (calendar->HitTest(wxPoint(weekdayColumn, y), &day) == wxCAL_HITTEST_DAY &&
+                    day == leap)
+                { dayPoint = wxPoint(weekdayColumn, y); break; }
+            }
             Check(dayPoint.x >= 0, "mapped calendar exposes the leap-day cell");
             wxMouseEvent click(wxEVT_LEFT_DCLICK);
             click.SetPosition(dayPoint);
