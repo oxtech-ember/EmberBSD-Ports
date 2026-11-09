@@ -44,6 +44,11 @@ adaptation preserves parser diagnostics and parse-tree ownership. Header-only
 dependencies are build dependencies; compiled libraries remain ordinary runtime
 packages. Lemon runs on the host. Python generators use the host interpreter,
 while embedding and the `pcbnew` extension use target headers and libraries.
+Embedding consumers use the shared `pybind11::embed` CMake target, including its
+transitive headers and Python link requirements. KiCad does not extract a global
+include path from the provider's internal target layout.
+Cross builds retain the selected target Python headers and libraries instead of
+letting pybind11 replace them with the native generator interpreter's paths.
 
 The existing pkgsrc choice `KICAD_SCRIPTING_WXPYTHON=OFF` is retained. Core Python
 embedding, the SWIG module, IPC, WebView, translations and the selected SPICE

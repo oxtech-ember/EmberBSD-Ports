@@ -1,0 +1,35 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use the shared pybind11 CMake targets, including transitive include paths.
+Preserve selected target Python inputs when the interpreter runs on the host.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1018,9 +1018,11 @@
+ 
+ # Keep native Python for generators and target Python for embedding.
+ set( PYBIND11_USE_CROSSCOMPILING TRUE )
++if( CMAKE_CROSSCOMPILING )
++    # Retain Python headers/libraries selected for the target, not the host interpreter.
++    set( PYBIND11_PYTHONLIBS_OVERWRITE OFF )
++endif()
+ find_package( pybind11 3.1.0 CONFIG REQUIRED )
+-get_target_property( PYBIND11_INCLUDE_DIR pybind11::headers INTERFACE_INCLUDE_DIRECTORIES )
+-include_directories( BEFORE SYSTEM ${PYBIND11_INCLUDE_DIR} )
+ 
+ # Infrequently needed headers go at end of search paths, append to INC_AFTER which
+ # although is used for all components, should be a harmless hit for something like eeschema
+--- common/CMakeLists.txt.orig
++++ common/CMakeLists.txt
+@@ -404,8 +404,8 @@
+    	${HarfBuzz_LIBRARIES}
+ 	${Fontconfig_LIBRARIES}
+ 
+-    # needed because of python_scripting.cpp
+-    ${PYTHON_LIBRARIES}
++    # Python embedding headers and link requirements for python_scripting.cpp.
++    pybind11::embed
+     )
+ 
+ 

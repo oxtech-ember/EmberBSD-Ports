@@ -25,3 +25,4 @@ SHA1 (patch-plugins_3d_vrml_CMakeLists.txt) = ea6942a953432c5c0124c57e9afb01f8a5
 SHA1 (patch-emberbsd-wxgtk4) = 331eeb3267fc5c2a5a835bceea758a7c049eb2a9
 SHA1 (patch-emberbsd-gtk-toolkit) = 7a69b0bda895ffdcf5ccce0c671450d97f3c0c4d
 SHA1 (patch-emberbsd-gtk4-platform) = bc698a1af010160f28837e492e4f6e2141284e51
+SHA1 (patch-zz-pybind11-targets) = 88087bfad7aadd37a020fc38d3d223997bb9c2a9
