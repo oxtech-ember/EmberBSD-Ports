@@ -49,6 +49,10 @@ with tempfile.TemporaryDirectory() as temp:
                               env=dict(os.environ, **resolved))
     # The function resolves the classifier alongside $0.
     (root / 'cross-bulk-workdir.py').write_bytes(classifier.read_bytes())
+    def classify(current, *mode, directory=work, package='fixture', upstream='1.0'):
+        return subprocess.run([sys.executable, str(root / 'cross-bulk-workdir.py'),
+                               str(directory), package, upstream, current, *mode],
+                              capture_output=True, text=True)
     obj.unlink()
     assert run(None, 'fixture-1.0nb2', '1.0').returncode == 0
     obj.write_bytes(b'object')
@@ -62,14 +66,47 @@ with tempfile.TemporaryDirectory() as temp:
         patch_cookie.write_text(applied)
         assert run('fixture-1.0nb1', 'fixture-1.0nb1', '1.0').returncode == 0
         assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
-        assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode != 0
+        # Without a planned rebuild, a revision-only difference still stops.
+        refused = classify('fixture-1.0nb2')
+        assert refused.returncode != 0 and 'revision changed' in refused.stderr, refused.stderr
+        assert refused.stdout.strip() == ''
         assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
-    assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode != 0
+    refused = classify('fixture-1.0nb2')
+    assert refused.returncode != 0 and (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    # The controller already selected the new revision. Retire this workdir.
+    retired = run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0')
+    assert retired.returncode == 0, retired.stderr
+    assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
+    (root / 'work.retired').rename(work)
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     (work / '.build_done').write_text('fixture-1.0nb2\n')
     assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode == 0
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     assert run(None, 'fixture-1.0nb2', '1.0').returncode != 0 and obj.exists()
+    assert run('other-9.9', 'fixture-1.0nb2', '1.0').returncode != 0 and obj.exists()
+    assert not (root / 'work.retired').exists()
+    (work / '.package_done').write_text('not-an-identity\n')
+    ambiguous = run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0')
+    assert ambiguous.returncode != 0 and work.exists() and 'revision changed' in ambiguous.stderr, ambiguous.stderr
+    assert not (root / 'work.retired').exists()
+    (work / '.package_done').unlink()
+    css = root / 'cssparser'
+    css.mkdir()
+    (css / '.extract_done').write_text('cxx-rust-cssparser-0.1.0nb4\n')
+    (css / '.package_done').write_text('cxx-rust-cssparser-0.1.0nb4\n')
+    planned = classify('cxx-rust-cssparser-0.1.0nb5', 'planned', directory=css,
+                       package='cxx-rust-cssparser', upstream='0.1.0')
+    assert planned.returncode == 0 and planned.stdout.strip() == 'incompatible', planned.stderr
+    reused = classify('cxx-rust-cssparser-0.1.0nb4', directory=css,
+                      package='cxx-rust-cssparser', upstream='0.1.0')
+    assert reused.returncode == 0 and reused.stdout.strip() == 'same', reused.stderr
+    outside = classify('cxx-rust-cssparser-0.1.0nb5', directory=css,
+                       package='cxx-rust-cssparser', upstream='0.1.0')
+    assert outside.returncode != 0 and 'revision changed' in outside.stderr
+    (css / '.extract_done').write_text('not a package identity\n')
+    unknown = classify('cxx-rust-cssparser-0.1.0nb5', 'planned', directory=css,
+                       package='cxx-rust-cssparser', upstream='0.1.0')
+    assert unknown.returncode != 0 and 'unknown package identity' in unknown.stderr
     assert not (rundir / 'bmk-args').exists()
     # A kept WRKDIR whose dependencies pkgsrc listed and resolved is kept
     # only while the same bmake arguments still list and resolve them alike.
@@ -141,4 +178,4 @@ with tempfile.TemporaryDirectory() as temp:
     resolved.pop('FIXTURE_CMP', None)
     assert run('fixture-1.0nb2', 'fixture-2.0', '2.0').returncode == 0
     assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
-print('PASS: retry preserves objects, unknown fails closed, dependency changes preserve and stop, incompatible version retires')
+print('PASS: retry preserves the same revision, a planned revision change retires, unknown and unplanned differences stay refused, dependency changes preserve and stop, incompatible version retires')

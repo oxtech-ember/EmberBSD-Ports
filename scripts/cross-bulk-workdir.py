@@ -6,7 +6,10 @@ import re
 import sys
 from pathlib import Path
 
-root, base, version, current = Path(sys.argv[1]), *sys.argv[2:]
+if len(sys.argv) not in (5, 6) or (len(sys.argv) == 6 and sys.argv[5] != 'planned'):
+    sys.exit('cross-bulk: work directory check needs a directory, package base, version, and name')
+planned = len(sys.argv) == 6
+root, base, version, current = Path(sys.argv[1]), *sys.argv[2:5]
 def fail(message):
     sys.exit('cross-bulk: cannot safely reuse work directory: ' + message +
              '; inspect it and explicitly clean if incompatible')
@@ -35,5 +38,13 @@ else:
         if phase.is_file():
             latest = phase.read_text(encoding='utf-8').strip()
     if latest != current:
-        fail('revision changed; explicitly reconfigure/rebuild or use metadata package-install')
-    print('same')
+        # A planned rebuild already selected this package. Same upstream
+        # version and a different nbN is retired like a version change.
+        # An identity that does not parse, and any check that is not a
+        # planned rebuild, still requires an explicit decision.
+        changed = pattern.fullmatch(latest)
+        if not (planned and changed and changed.group(1) == version):
+            fail('revision changed; explicitly reconfigure/rebuild or use metadata package-install')
+        print('incompatible')
+    else:
+        print('same')
