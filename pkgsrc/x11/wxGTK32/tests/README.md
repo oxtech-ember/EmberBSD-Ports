@@ -1,3 +1,14 @@
+# Incremental Autoconf builds
+
+The Autoconf recipe selects the common native GNU make. pkgsrc binds both
+configure's `make` alias and the build command to that tool; the CMake option
+keeps its existing build-system selection. Bakefile only includes the compiler's
+`.deps/*.d` files after detecting GNU make. With BSD make those files were
+generated but ignored, allowing an object to survive a change to its included
+GTK4 implementation. A dry run against the real object and depfile reproduces
+the missed update with the include disabled and schedules the affected compile
+with it enabled. Preserve the dependency files along with compatible objects.
+
 # GTK4 AUI and top-level window hints
 
 `patch-gtk4-window-hints` draws AUI sashes through the existing native splitter

@@ -2,7 +2,7 @@
 
 DISTNAME=	wxWidgets-3.2.12
 PKGNAME=	${DISTNAME:S/wxWidgets/wxGTK32/}
-PKGREVISION=	16
+PKGREVISION=	17
 CATEGORIES=	x11
 MASTER_SITES=	${MASTER_SITE_GITHUB:=wxWidgets/}
 GITHUB_PROJECT=	wxWidgets
@@ -88,6 +88,9 @@ SUBST_SED.unwrap+=	-e 's,echo.*/${CXX} -o",echo "${CXX} -o",'
 .else # empty(PKG_OPTIONS:Mcmake)
 
 GNU_CONFIGURE=		yes
+# Bakefile enables compiler-generated dependencies only with GNU make.
+# Select the same native tool for configure's probe and incremental builds.
+USE_TOOLS+=		gmake
 PLIST_SRC+=		PLIST.configure
 
 # Use pkgsrc build/host tuples for cross builds. Keep native autodetection.
@@ -142,10 +145,7 @@ SUBST_SED.wx-rpath+=	-e 's,is_installed || \[ -n ,\[ -n ,g'
 
 post-build:
 	${RM} ${WRKSRC}/locale/*.mo
-	# We could do this:
-	# ${GMAKE} -C ${WRKSRC}/locale MSGFMT=${TOOLS_PATH.msgfmt:Q} allmo
-	# But that seems to bring an unnecessary build dependency on gmake
-	# So instead, we do:
+	# Use the same selected msgfmt for both Autoconf and CMake builds.
 	for f in ${WRKSRC}/locale/*.po; do \
 	  lang=`basename $${f} .po`; \
 	  ${TOOLS_PATH.msgfmt} -c -o "${WRKSRC}/locale/$${lang}.mo" "$${f}"; \
