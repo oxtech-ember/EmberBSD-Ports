@@ -7,3 +7,4 @@ SHA1 (patch-src_libinput_openbsd.c) = a9734de9b027e55080e33604a413c68ac03123f5
 SHA1 (patch-src_wscons.c) = a7f723ab75c96644391330ad4221a85e8172b2a6
 SHA1 (patch-src_wscons.h) = a0ae65e1c8735b85f19d15fa4dfad99c059f5663
 SHA1 (patch-wscons-absolute-pointer) = 7988d71e4641c787597253969c7b85629a2068b8
+SHA1 (patch-wscons-send-events-udev) = 35972eb53acbc6a004c319a4c2a5a0cc5df8ff4e

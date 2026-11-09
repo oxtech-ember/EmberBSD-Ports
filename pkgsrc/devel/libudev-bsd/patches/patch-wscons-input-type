@@ -1,0 +1,147 @@
+Origin: EmberBSD, AI-assisted. Local patch; not submitted upstream.
+
+Classify NetBSD wscons pointer nodes by their kernel driver.
+
+wsmouse(4) reports the same type for a mouse and a precision touchpad.
+Read the autoconf parent through drvctl(4) and set ID_INPUT_TOUCHPAD for
+imt(4) nodes and ID_INPUT_TOUCHSCREEN for gt9xx(4) nodes. Compositors use
+ID_INPUT_TOUCHPAD to select the devices that a touchpad toggle controls.
+A gt9xx node no longer carries ID_INPUT_MOUSE.
+
+--- udev-dev.c.orig
++++ udev-dev.c
+@@ -47,7 +47,9 @@
+ #include <pthread.h>
+ #include <sys/queue.h>
+ #include <sys/ioctl.h>
++#include <sys/drvctlio.h>
+ #include <dev/usb/usb.h>
++#include <prop/proplib.h>
+ #endif
+ 
+ #ifdef HAVE_DEV_HID_HIDRAW_H
+@@ -935,11 +937,98 @@
+ }
+ #endif
+ 
++#if defined(__NetBSD__)
++/*
++ * Read the autoconf parent of a device, for example "imt0" for
++ * wsmouse1, through the drvctl(4) get-properties command.
++ */
++static int
++netbsd_device_parent(const char *sysname, char *parent, size_t parentlen)
++{
++	prop_dictionary_t command, args, results = NULL, data;
++	const char *value;
++	int fd, error, ret = -1;
++
++	fd = open("/dev/drvctl", O_RDONLY | O_CLOEXEC);
++	if (fd < 0)
++		return (-1);
++
++	command = prop_dictionary_create();
++	args = prop_dictionary_create();
++	if (command == NULL || args == NULL)
++		goto out;
++	if (!prop_dictionary_set_string_nocopy(command, "drvctl-command",
++	    "get-properties") ||
++	    !prop_dictionary_set_string(args, "device-name", sysname))
++		goto out;
++	/* set_and_rel releases args on both success and failure. */
++	error = prop_dictionary_set_and_rel(command, "drvctl-arguments", args);
++	args = NULL;
++	if (!error)
++		goto out;
++
++	if (prop_dictionary_sendrecv_ioctl(command, fd, DRVCTLCOMMAND,
++	    &results) != 0)
++		goto out;
++	if (prop_dictionary_get_int(results, "drvctl-error", &error) &&
++	    error != 0)
++		goto out_results;
++	data = prop_dictionary_get(results, "drvctl-result-data");
++	if (data != NULL &&
++	    prop_dictionary_get_string(data, "device-parent", &value) &&
++	    strlcpy(parent, value, parentlen) < parentlen)
++		ret = 0;
++
++out_results:
++	prop_object_release(results);
++out:
++	if (args != NULL)
++		prop_object_release(args);
++	if (command != NULL)
++		prop_object_release(command);
++	close(fd);
++	return (ret);
++}
++
++/*
++ * wsmouse(4) does not tell a touchpad from a mouse. Classify the
++ * node by the kernel driver that feeds it.
++ */
++static int
++netbsd_wsmouse_input_type(const char *sysname)
++{
++	static const struct {
++		const char *driver;
++		int input_type;
++	} drivers[] = {
++		{ "imt", IT_TOUCHPAD },		/* I2C HID precision touchpad */
++		{ "gt9xx", IT_TOUCHSCREEN },	/* Goodix touch panel */
++	};
++	char parent[32];
++	size_t i, len;
++
++	if (netbsd_device_parent(sysname, parent, sizeof(parent)) != 0)
++		return (IT_MOUSE);
++
++	for (i = 0; i < nitems(drivers); i++) {
++		len = strlen(drivers[i].driver);
++		if (strncmp(parent, drivers[i].driver, len) == 0 &&
++		    parent[len] >= '0' && parent[len] <= '9')
++			return (drivers[i].input_type);
++	}
++	return (IT_MOUSE);
++}
++#endif
++
+ void
+ create_mouse_handler(struct udev_device *ud)
+ {
++	int input_type = IT_MOUSE;
+ 
+-	set_input_device_type(ud, IT_MOUSE);
++#if defined(__NetBSD__)
++	input_type = netbsd_wsmouse_input_type(_udev_device_get_sysname(ud));
++#endif
++	set_input_device_type(ud, input_type);
+ 	set_parent(ud);
+ }
+ 
+--- meson.build.orig
++++ meson.build
+@@ -41,6 +41,12 @@
+ #include <sys/socket.h>
+ '''
+ 
++# NetBSD: drvctl(4) property lists classify wscons input devices.
++prop_dep = dependency('', required: false)
++if host_machine.system() == 'netbsd'
++	prop_dep = cc.find_library('prop')
++endif
++
+ procstat_dep = cc.find_library('procstat', required: false)
+ if procstat_dep.found()
+ 	if cc.has_header_symbol('libprocstat.h', 'procstat_open_sysctl', prefix : procstat_inc)
+@@ -134,7 +140,8 @@
+ deps_libudevbsd = [
+ 	thread_dep,
+ 	devinfo_dep,
+-	procstat_dep
++	procstat_dep,
++	prop_dep
+ ]
+ 
+ lib_libudevbsd = shared_library('udev',

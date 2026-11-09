@@ -1,0 +1,284 @@
+Origin: EmberBSD, AI-assisted. Local patch; not submitted upstream.
+
+Add send-events configuration and the libudev view to wscons devices.
+
+A consumer disables a pointer with LIBINPUT_CONFIG_SEND_EVENTS_DISABLED.
+The disabled device drains its queue, reports nothing and releases the
+buttons that were held down. Keyboards keep no send-events configuration.
+libinput_device_get_udev_device() returns the libudev-bsd device for the
+node, so consumers read ID_INPUT_* properties as they do on Linux. Path
+contexts share the udev context layout.
+
+--- src/wscons.h.orig
++++ src/wscons.h
+@@ -19,6 +19,14 @@
+ 	enum libinput_device_capability capability;
+ 	struct TransMapRec *scanCodeMap;
+ 	int old_value;
++	/* The libudev view of this device node; NULL for path contexts. */
++	struct udev_device *udev_device;
++	struct {
++		struct libinput_device_config_send_events config;
++		enum libinput_config_send_events_mode mode;
++		/* wscons button numbers that are held down. */
++		uint32_t pressed;
++	} sendevents;
+ 	struct {
+ 		struct wsmouse_calibcoords bounds;
+ 		struct device_coords point;
+@@ -44,6 +52,7 @@
+ 	return container_of(device, struct wscons_device, base);
+ }
+ extern int wscons_keyboard_init(struct wscons_device *);
++extern void wscons_device_destroy(struct wscons_device *);
+ extern uint32_t wskey_transcode(struct TransMapRec *, int);
+ extern void post_device_event(struct libinput_device *, usec_t ,
+     enum libinput_event_type , struct libinput_event *);
+--- src/wscons.c.orig
++++ src/wscons.c
+@@ -191,6 +191,101 @@
+ 	}
+ }
+ 
++/* Map a wscons button number to the Linux button code. */
++static uint32_t
++wscons_button_code(int value)
++{
++	switch (value) {
++	case 1:
++		return BTN_MIDDLE;
++	case 2:
++		return BTN_RIGHT;
++	default:
++		return value + BTN_LEFT;
++	}
++}
++
++/*
++ * Release the buttons that are still held down. A disabled device
++ * must not leave a pressed button in the compositor.
++ */
++static void
++wscons_release_buttons(struct libinput_device *device)
++{
++	struct wscons_device *dev = wscons_device(device);
++	struct timespec ts;
++	usec_t time;
++	int value;
++
++	if (dev->sendevents.pressed == 0)
++		return;
++
++	clock_gettime(CLOCK_REALTIME, &ts);
++	time = usec_from_timespec(&ts);
++	for (value = 0; value < 32; value++) {
++		if (!(dev->sendevents.pressed & bit(value)))
++			continue;
++		pointer_notify_button(device, time,
++		    button_code_from_uint32_t(wscons_button_code(value)),
++		    LIBINPUT_BUTTON_STATE_RELEASED);
++	}
++	dev->sendevents.pressed = 0;
++}
++
++static uint32_t
++wscons_sendevents_get_modes(struct libinput_device *device)
++{
++	return LIBINPUT_CONFIG_SEND_EVENTS_DISABLED;
++}
++
++static enum libinput_config_status
++wscons_sendevents_set_mode(struct libinput_device *device,
++    enum libinput_config_send_events_mode mode)
++{
++	struct wscons_device *dev = wscons_device(device);
++
++	if (mode == dev->sendevents.mode)
++		return LIBINPUT_CONFIG_STATUS_SUCCESS;
++
++	switch (mode) {
++	case LIBINPUT_CONFIG_SEND_EVENTS_ENABLED:
++		break;
++	case LIBINPUT_CONFIG_SEND_EVENTS_DISABLED:
++		wscons_release_buttons(device);
++		dev->absolute.pending = false;
++		break;
++	default:
++		return LIBINPUT_CONFIG_STATUS_UNSUPPORTED;
++	}
++
++	dev->sendevents.mode = mode;
++	return LIBINPUT_CONFIG_STATUS_SUCCESS;
++}
++
++static enum libinput_config_send_events_mode
++wscons_sendevents_get_mode(struct libinput_device *device)
++{
++	return wscons_device(device)->sendevents.mode;
++}
++
++static enum libinput_config_send_events_mode
++wscons_sendevents_get_default_mode(struct libinput_device *device)
++{
++	return LIBINPUT_CONFIG_SEND_EVENTS_ENABLED;
++}
++
++static void
++wscons_device_init_sendevents(struct wscons_device *device)
++{
++	device->sendevents.mode = LIBINPUT_CONFIG_SEND_EVENTS_ENABLED;
++	device->sendevents.config.get_modes = wscons_sendevents_get_modes;
++	device->sendevents.config.set_mode = wscons_sendevents_set_mode;
++	device->sendevents.config.get_mode = wscons_sendevents_get_mode;
++	device->sendevents.config.get_default_mode =
++	    wscons_sendevents_get_default_mode;
++	device->base.config.sendevents = &device->sendevents.config;
++}
++
+ static void
+ wscons_process(struct libinput_device *device, struct wscons_event *wsevent)
+ {
+@@ -233,22 +328,20 @@
+ 
+ 	case WSCONS_EVENT_MOUSE_UP:
+ 	case WSCONS_EVENT_MOUSE_DOWN:
+-		/* button to Linux events */
+-		switch (wsevent->value) {
+-		case 1:
+-			button = BTN_MIDDLE;
+-			break;
+-		case 2:
+-			button = BTN_RIGHT;
+-			break;
+-		default:
+-			button = wsevent->value + BTN_LEFT;
+-			break;
+-		}
+-		if (wsevent->type == WSCONS_EVENT_MOUSE_UP)
++		button = wscons_button_code(wsevent->value);
++		if (wsevent->type == WSCONS_EVENT_MOUSE_UP) {
+ 			bstate = LIBINPUT_BUTTON_STATE_RELEASED;
+-		else
++			if ((unsigned int)wsevent->value < 32) {
++				/* The press was not reported; drop the release. */
++				if (!(dev->sendevents.pressed & bit(wsevent->value)))
++					break;
++				dev->sendevents.pressed &= ~bit(wsevent->value);
++			}
++		} else {
+ 			bstate = LIBINPUT_BUTTON_STATE_PRESSED;
++			if ((unsigned int)wsevent->value < 32)
++				dev->sendevents.pressed |= bit(wsevent->value);
++		}
+ 		pointer_notify_button(device, time, button_code_from_uint32_t(button), bstate);
+ 		break;
+ 
+@@ -358,6 +451,11 @@
+ 	if (len <= 0 || (len % sizeof(struct wscons_event)) != 0)
+ 		return;
+ 
++	/* A disabled device drains its queue and reports nothing. */
++	if (wscons_device(device)->sendevents.mode ==
++	    LIBINPUT_CONFIG_SEND_EVENTS_DISABLED)
++		return;
++
+ 	count = len / sizeof(struct wscons_event);
+ 	for (i = 0; i < count; i++) {
+ 		wscons_process(device, &wsevents[i]);
+@@ -467,18 +565,19 @@
+ libinput_path_create_context(const struct libinput_interface *interface,
+      void *user_data)
+ {
+-	struct libinput *libinput;
++	struct udev_input *input;
+ 
+-	libinput = calloc(1, sizeof(*libinput));
+-	if (libinput == NULL)
++	/* Share the context layout with udev contexts; udev stays NULL. */
++	input = calloc(1, sizeof(*input));
++	if (input == NULL)
+ 		return NULL;
+ 
+-	if (libinput_init(libinput, interface, &interface_backend, user_data) != 0) {
+-		free(libinput);
++	if (libinput_init(&input->base, interface, &interface_backend, user_data) != 0) {
++		free(input);
+ 		return NULL;
+ 	}
+ 
+-	return libinput;
++	return &input->base;
+ }
+ 
+ static double
+@@ -640,16 +739,37 @@
+ 	}
+ }
+ 
++/* Release the per-device resources that outlive the open node. */
++void
++wscons_device_destroy(struct wscons_device *wscons_device)
++{
++	if (wscons_device->udev_device != NULL) {
++		udev_device_unref(wscons_device->udev_device);
++		wscons_device->udev_device = NULL;
++	}
++}
++
+ static int
+ wscons_device_init(struct wscons_device *wscons_device)
+ {
+ 	struct libinput_device *device = &wscons_device->base;
++	struct udev_input *input = (struct udev_input *)device->seat->libinput;
+ 
+ 	wscons_device->old_value = -1;
+ 
++	/*
++	 * libudev-bsd names a wscons node by its /dev path and
++	 * supplies the ID_INPUT_* properties that consumers read.
++	 */
++	if (input->udev != NULL)
++		wscons_device->udev_device =
++		    udev_device_new_from_syspath(input->udev, device->devname);
++
+ 	if (strncmp(device->devname, "/dev/wsmouse", 12) == 0) {
+ 		/* XXX handle tablets and touchpanel */
+ 		wscons_device->capability = LIBINPUT_DEVICE_CAP_POINTER;
++		/* Only pointers can be disabled; keys have no release path. */
++		wscons_device_init_sendevents(wscons_device);
+ 		/* ums reports HID logical bounds through the calibration ioctl. */
+ 		if (ioctl(device->fd, WSMOUSEIO_GCALIBCOORDS,
+ 		    &wscons_device->absolute.bounds) == 0) {
+@@ -728,6 +848,7 @@
+ 	} else if (fd >= 0) {
+ 		close_restricted(libinput, fd);
+ 	}
++	wscons_device_destroy(wscons_device);
+ 	free(wscons_device);
+ 	return NULL;
+ }
+--- src/libinput_openbsd.c.orig
++++ src/libinput_openbsd.c
+@@ -2103,7 +2103,7 @@
+ {
+ 	// TODO
+ 	assert(list_empty(&device->event_listeners));
+-	// wscons_device_destroy(evdev_device(device));
++	wscons_device_destroy(wscons_device(device));
+ }
+ 
+ LIBINPUT_EXPORT struct libinput_device *
+@@ -3327,7 +3327,12 @@
+ LIBINPUT_EXPORT struct udev_device *
+ libinput_device_get_udev_device(struct libinput_device *device)
+ {
+-	return NULL; // TODO
++	struct wscons_device *dev = wscons_device(device);
++
++	/* The caller owns one reference, as in libinput. */
++	if (dev->udev_device == NULL)
++		return NULL;
++	return udev_device_ref(dev->udev_device);
+ }
+ 
+ LIBINPUT_EXPORT void
