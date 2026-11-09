@@ -1,0 +1,280 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Include the public declarations used by each consumer with current libc++ and fmt.
+Do not rely on transitive standard headers or fmt/core.h to declare fmt::format.
+
+--- common/database/database_connection.cpp.orig
++++ common/database/database_connection.cpp
+@@ -20,7 +20,7 @@
+ 
+ #include <boost/algorithm/string.hpp>
+ #include <boost/locale.hpp>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <nanodbc/nanodbc.h>
+ 
+ // Some outdated definitions are used in sql.h
+--- common/eda_units.cpp.orig
++++ common/eda_units.cpp
+@@ -22,7 +22,7 @@
+  */
+ 
+ #include <eda_units.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <math/util.h>      // for KiROUND
+ #include <macros.h>
+ #include <charconv>
+--- common/http_lib/http_lib_connection.cpp.orig
++++ common/http_lib/http_lib_connection.cpp
+@@ -19,7 +19,7 @@
+  */
+ 
+ #include <wx/log.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <wx/translation.h>
+ #include <ctime>
+ 
+--- common/plotters/DXF_plotter.cpp.orig
++++ common/plotters/DXF_plotter.cpp
+@@ -31,7 +31,7 @@
+ #include <convert_basic_shapes_to_polygon.h>
+ #include <geometry/shape_rect.h>
+ #include <trigo.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <algorithm>
+ 
+ /**
+--- common/string_utils.cpp.orig
++++ common/string_utils.cpp
+@@ -30,7 +30,7 @@
+ #include <cmath>
+ #include <map>
+ #include <core/map_helpers.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <macros.h>
+ #include <string_utils.h>
+ #include <widgets/kistatusbar.h>
+--- eeschema/netlist_exporters/netlist_exporter_spice.cpp.orig
++++ eeschema/netlist_exporters/netlist_exporter_spice.cpp
+@@ -42,7 +42,7 @@
+ #include <ki_exception.h>
+ 
+ #include <dialogs/html_message_box.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <paths.h>
+ #include <wx/dir.h>
+ #include <wx/log.h>
+--- eeschema/sim/ngspice.cpp.orig
++++ eeschema/sim/ngspice.cpp
+@@ -28,7 +28,7 @@
+ #include <config.h>     // Needed for MSW compilation
+ #include <common.h>
+ #include <locale_io.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <paths.h>
+ #include <richio.h>
+ 
+--- eeschema/sim/sim_model_behavioral.cpp.orig
++++ eeschema/sim/sim_model_behavioral.cpp
+@@ -26,7 +26,7 @@
+ 
+ #include <boost/algorithm/string/replace.hpp>
+ #include <boost/algorithm/string/trim.hpp>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ 
+ 
+ std::string SPICE_GENERATOR_BEHAVIORAL::ModelLine( const SPICE_ITEM& aItem ) const
+--- eeschema/sim/sim_model_ibis.cpp.orig
++++ eeschema/sim/sim_model_ibis.cpp
+@@ -24,7 +24,7 @@
+ #include <sim/kibis/kibis.h>
+ #include <sim/sim_model_ibis.h>
+ #include <sim/sim_library_ibis.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <wx/filename.h>
+ #include <kiway.h>
+ #include <schematic.h>
+--- eeschema/sim/sim_model_ideal.cpp.orig
++++ eeschema/sim/sim_model_ideal.cpp
+@@ -24,7 +24,7 @@
+ 
+ #include <sim/sim_model_ideal.h>
+ #include <kicad_pegtl.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <wx/regex.h>
+ 
+ std::string SPICE_GENERATOR_IDEAL::ModelLine( const SPICE_ITEM& aItem ) const
+--- eeschema/sim/sim_model_ngspice.cpp.orig
++++ eeschema/sim/sim_model_ngspice.cpp
+@@ -25,7 +25,7 @@
+ #include "sim/sim_model_ngspice.h"
+ 
+ #include <boost/algorithm/string.hpp>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <ki_exception.h>
+ 
+ 
+--- eeschema/sim/sim_model_r_pot.cpp.orig
++++ eeschema/sim/sim_model_r_pot.cpp
+@@ -23,7 +23,7 @@
+  */
+ 
+ #include <sim/sim_model_r_pot.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ 
+ 
+ std::string SPICE_GENERATOR_R_POT::ModelLine( const SPICE_ITEM& aItem ) const
+--- eeschema/sim/sim_model_raw_spice.cpp.orig
++++ eeschema/sim/sim_model_raw_spice.cpp
+@@ -26,7 +26,7 @@
+ #include <sim/sim_model_serializer.h>
+ 
+ #include <boost/algorithm/string/predicate.hpp>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <kicad_pegtl.h>
+ 
+ 
+--- eeschema/sim/sim_model_serializer.cpp.orig
++++ eeschema/sim/sim_model_serializer.cpp
+@@ -25,7 +25,7 @@
+ #include "sim/sim_model_serializer.h"
+ 
+ #include <ki_exception.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <kicad_pegtl.h>
+ #include <boost/algorithm/string/case_conv.hpp>
+ #include <boost/algorithm/string/predicate.hpp>
+--- eeschema/sim/sim_model_source.cpp.orig
++++ eeschema/sim/sim_model_source.cpp
+@@ -26,7 +26,7 @@
+ 
+ #include <cctype>
+ #include <cstring>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ 
+ 
+ namespace
+--- eeschema/sim/sim_model_subckt.cpp.orig
++++ eeschema/sim/sim_model_subckt.cpp
+@@ -25,7 +25,7 @@
+ #include "sim/sim_model_subckt.h"
+ 
+ #include <ki_exception.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <kicad_pegtl.h>
+ #include <sim/spice_grammar.h>
+ 
+--- eeschema/sim/sim_model_switch.cpp.orig
++++ eeschema/sim/sim_model_switch.cpp
+@@ -23,7 +23,7 @@
+ 
+ #include <sim/sim_model_switch.h>
+ 
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ 
+ 
+ std::string SPICE_GENERATOR_SWITCH::ItemLine( const SPICE_ITEM& aItem ) const
+--- eeschema/sim/sim_model_tline.cpp.orig
++++ eeschema/sim/sim_model_tline.cpp
+@@ -24,7 +24,7 @@
+ 
+ #include <sim/sim_model_tline.h>
+ 
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ 
+ using SIMPARAM = SIM_MODEL::PARAM;
+ 
+--- eeschema/sim/sim_value.cpp.orig
++++ eeschema/sim/sim_value.cpp
+@@ -28,7 +28,7 @@
+ #include <ki_exception.h>
+ #include <locale_io.h>
+ #include <kicad_pegtl.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <math/util.h>
+ #include <wx/regex.h>
+ 
+--- eeschema/sim/spice_generator.cpp.orig
++++ eeschema/sim/spice_generator.cpp
+@@ -26,7 +26,7 @@
+ 
+ #include <boost/algorithm/string/predicate.hpp>
+ #include <boost/algorithm/string/trim.hpp>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ 
+ 
+ std::string SPICE_GENERATOR::ModelName( const SPICE_ITEM& aItem ) const
+--- libs/kinng/include/kinng.h.orig
++++ libs/kinng/include/kinng.h
+@@ -25,6 +25,7 @@
+ #include <condition_variable>
+ #include <functional>
+ #include <mutex>
++#include <string>
+ #include <thread>
+ 
+ 
+--- libs/sexpr/sexpr.cpp.orig
++++ libs/sexpr/sexpr.cpp
+@@ -23,7 +23,7 @@
+ #include <iomanip>
+ #include <sstream>
+ #include <wx/debug.h>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ 
+ namespace SEXPR
+ {
+--- pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.cpp.orig
++++ pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.cpp
+@@ -34,7 +34,7 @@
+ #include <component_classes/component_class.h>
+ #include <confirm.h>
+ #include <convert_basic_shapes_to_polygon.h> // for enum RECT_CHAMFER_POSITIONS definition
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <font/fontconfig.h>
+ #include <footprint.h>
+ #include <gestfich.h>
+--- qa/tests/common/test_database.cpp.orig
++++ qa/tests/common/test_database.cpp
+@@ -22,7 +22,7 @@
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ */
+ 
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <boost/test/unit_test.hpp>
+ 
+ #include <database/database_connection.h>
+--- qa/tests/spice/test_library_spice.cpp.orig
++++ qa/tests/spice/test_library_spice.cpp
+@@ -27,7 +27,7 @@
+ #include <sim/sim_model_spice_fallback.h>
+ 
+ #include <boost/algorithm/string/case_conv.hpp>
+-#include <fmt/core.h>
++#include <fmt/format.h>
+ #include <locale_io.h>
+ 
+ #include <map>
