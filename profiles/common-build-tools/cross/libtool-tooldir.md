@@ -83,8 +83,15 @@ The producer reuses a compatible context identified by effective recipe,
 compiler, wrapper, runtime and foundation inputs. An interrupted owned context
 is recreated in place. An incompatible or foreign entry is left untouched.
 After installation and package validation, the stable `TOOLDIR/bin/target-libtool`
-alias and returned target-tools directory select that context. These paths must
-stay within their TOOLDIR because libtool records its compiler and tool paths.
+alias selects that context. The returned `target_tools` value is that context's
+`target-tools` directory, the same string its `target.mk` records as
+`_EMBER_TARGET_TOOLS`. Pass that string as `EMBERBSD_CROSS_TOOLS`. The cross
+profile sets `TOOLDIR` from it and requires `TOOLDIR` to equal
+`_EMBER_TARGET_TOOLS`, just as `CROSS_DESTDIR` must equal `_EMBER_TARGET_SYSROOT`.
+The `current` link is only the stable libtool alias. `current/target-tools`
+reaches the same directory through that link, and that different spelling does
+not satisfy the guard. These paths must stay within their TOOLDIR because
+libtool records its compiler and tool paths.
 The context also exposes `target-tools/bin/target-libtool`. When this alias is
 present, the common cross profile selects it as `PKG_LIBTOOL` for target package
 builds; native dependency builds retain the host libtool. `EMBERBSD_CROSS_LIBTOOL`

@@ -420,6 +420,32 @@ class ContextTest(unittest.TestCase):
             self.assertEqual(alias.read_text(), 'foreign')
             self.assertEqual((root / 'current').resolve(), two.resolve())
 
+    def test_returned_target_tools_match_target_mk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / 'os-tools' / 'context'
+            context = root / ('context-' + ('ab' * 32))
+            tools = context / 'target-tools'
+            (tools / 'bin').mkdir(parents=True)
+            sysroot = root / 'sysroot'
+            (tools / 'target.mk').write_text(
+                '# Generated from the selected SDK compiler and runtime.\n'
+                '_EMBER_TARGET_SYSROOT:= ' + str(sysroot) + '\n'
+                '_EMBER_TARGET_TOOLS:= ' + str(tools) + '\n')
+            (root / 'current').symlink_to(context.name)
+            alias = root.parent / 'bin' / 'target-libtool'
+            result = producer.cross_libtool_result(alias, context, 'cross-libtool-base-1')
+            self.assertEqual(result['target_tools'], str(tools))
+            self.assertEqual(result['target_tools'],
+                             [line[len('_EMBER_TARGET_TOOLS:= '):]
+                              for line in (tools / 'target.mk').read_text().splitlines()
+                              if line.startswith('_EMBER_TARGET_TOOLS:= ')][0])
+            self.assertNotEqual(result['target_tools'], str(root / 'current' / 'target-tools'))
+            self.assertEqual(result['libtool'], str(alias))
+            (tools / 'target.mk').write_text(
+                '_EMBER_TARGET_TOOLS:= ' + str(root / 'current' / 'target-tools') + '\n')
+            with self.assertRaisesRegex(ValueError, 'selected context'):
+                producer.cross_libtool_result(alias, context, 'cross-libtool-base-1')
+
     def test_partial_context_with_unknown_files_is_not_removed(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / 'libtool'

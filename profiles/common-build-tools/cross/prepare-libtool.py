@@ -142,6 +142,35 @@ def claim_context(root, identity):
     return context, False
 
 
+def reported_target_tools(context):
+    """Return the tools directory target.mk records for this context.
+
+    The cross profile compares TOOLDIR with _EMBER_TARGET_TOOLS as strings,
+    the same way CROSS_DESTDIR must equal _EMBER_TARGET_SYSROOT. The current
+    alias reaches this directory but is a different spelling.
+    """
+    tools = Path(context) / 'target-tools'
+    record = tools / 'target.mk'
+    if tools.is_symlink() or record.is_symlink() or not record.is_file():
+        raise ValueError('prepared target tools record is missing')
+    recorded = None
+    prefix = '_EMBER_TARGET_TOOLS:= '
+    for line in record.read_text(encoding='utf-8').splitlines():
+        if not line.startswith(prefix):
+            continue
+        if recorded is not None:
+            raise ValueError('prepared target tools record is ambiguous')
+        recorded = line[len(prefix):]
+    if recorded != str(tools):
+        raise ValueError('prepared target tools differ from the selected context')
+    return recorded
+
+
+def cross_libtool_result(alias, context, package):
+    """Report the stable libtool alias and the tools path the guard accepts."""
+    return {'libtool': str(alias), 'target_tools': reported_target_tools(context), 'package': package}
+
+
 def activate_context(tooldir, root, context):
     """Switch the stable aliases only after a complete context is verified."""
     tooldir, root, context = Path(tooldir), Path(root), Path(context)
@@ -626,7 +655,7 @@ def main():
             if alias.resolve(strict=True) != tool.resolve(strict=True):
                 raise SDKError('cross-libtool alias resolves outside its installed tool')
             alias = activate_context(tooldir, output, context)
-            result = {'libtool': str(alias), 'target_tools': str(Path(output) / 'current/target-tools'), 'package': name}
+            result = cross_libtool_result(alias, context, name)
             print(json.dumps(result, sort_keys=True))
 
 
