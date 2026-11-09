@@ -267,6 +267,31 @@ def selected_host_database(database, prefix, sysroot):
     return database
 
 
+# pkgsrc tools.<OPSYS>.mk runs system sed and echo while bmake reads it.
+# The host prefix has gsed, not sed. The SDK show-vars PATH is the prefix
+# tool directories only; these system directories follow that prefix.
+_SYSTEM_COMMAND_PATH = ('/usr/bin', '/bin', '/usr/sbin', '/sbin')
+
+
+def show_vars_environment(env, prefix):
+    """Return the native MAKECONF query environment.
+
+    Prefix bin and sbin come first. The system command directories follow so
+    bmake can run sed and echo. Ambient package-database variables are removed.
+    """
+    query_env = dict(env)
+    query_env.pop('PKG_DBDIR', None)
+    query_env.pop('HOST_PKG_DBDIR', None)
+    query_env['PATH'] = os.pathsep.join((prefix + '/bin', prefix + '/sbin', *_SYSTEM_COMMAND_PATH))
+    return query_env
+
+
+def native_build_path(prefix):
+    """Return the PATH used for depends, the package build, and their queries."""
+    return os.pathsep.join((prefix + '/bin', prefix + '/gnu/bin', prefix + '/sbin',
+                            *_SYSTEM_COMMAND_PATH))
+
+
 def resolve_native_database(*, pkg_admin, process, env, prefix, sysroot,
                             native_makeconf=None, make=None, pkgsrc=None):
     """Select the host database from MAKECONF, or from pkg_admin when omitted."""
@@ -275,9 +300,7 @@ def resolve_native_database(*, pkg_admin, process, env, prefix, sysroot,
     if not make or not pkgsrc:
         raise ValueError('explicit native database requires the selected pkgsrc tree')
     # Ignore an ambient PKG_DBDIR. The selected file is the authority.
-    query_env = dict(env)
-    query_env.pop('PKG_DBDIR', None)
-    query_env.pop('HOST_PKG_DBDIR', None)
+    query_env = show_vars_environment(env, prefix)
     output = process.capture([
         make, '-C', os.path.join(pkgsrc, 'pkgtools/pkg_install'),
         'USE_CROSS_COMPILE=no', 'MAKECONF=' + native_makeconf,
@@ -412,7 +435,7 @@ def main():
         ports = Path(__file__).resolve().parents[3]
         cross = ports / 'profiles/common-build-tools/cross'
         env = process.sanitized_environment()
-        env['PATH'] = os.pathsep.join((prefix + '/bin', prefix + '/gnu/bin', prefix + '/sbin'))
+        env['PATH'] = native_build_path(prefix)
         env['TMPDIR'] = work
         python = native.tool('python')
         direct_export = None

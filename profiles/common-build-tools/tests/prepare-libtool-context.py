@@ -6,6 +6,7 @@
 import importlib.util
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -104,6 +105,57 @@ class ContextTest(unittest.TestCase):
             self.assertNotIn('PKG_DBDIR', calls[0][1])
             self.assertNotIn('HOST_PKG_DBDIR', calls[0][1])
             self.assertNotIn('config-var', calls[0][0])
+            self.assertEqual(calls[0][1]['PATH'], os.pathsep.join((
+                str(prefix / 'bin'), str(prefix / 'sbin'), '/usr/bin', '/bin', '/usr/sbin', '/sbin')))
+
+    def test_show_vars_environment_runs_system_sed_and_echo(self):
+        bmake = '/usr/bin/bmake'
+        if not (os.path.isfile(bmake) and os.access(bmake, os.X_OK)):
+            self.skipTest('no /usr/bin/bmake binary is installed')
+        with open(bmake, 'rb') as stream:
+            if stream.read(4) != b'\x7fELF':
+                self.skipTest('/usr/bin/bmake is not an ELF bmake binary')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            prefix = root / 'host'
+            (prefix / 'bin').mkdir(parents=True)
+            (prefix / 'sbin').mkdir()
+            gsed = prefix / 'bin' / 'gsed'
+            gsed.write_text('#!/bin/sh\nprintf gsed-not-sed\\n')
+            gsed.chmod(0o755)
+            stub = root / 'pkgtools' / 'pkg_install'
+            stub.mkdir(parents=True)
+            (stub / 'Makefile').write_text(
+                'ECHO_RESULT!= env echo ember-echo-ok\n'
+                'SED_RESULT!= env echo ember-sed-ok | env sed s/ember-//\n')
+            ready = producer.show_vars_environment(
+                {'PATH': '/blocked', 'PKG_DBDIR': '/wrong-db', 'HOST_PKG_DBDIR': '/wrong-host',
+                 'MAKECONF': '/dev/null', 'LC_ALL': 'C'}, str(prefix))
+            self.assertNotIn('PKG_DBDIR', ready)
+            self.assertNotIn('HOST_PKG_DBDIR', ready)
+            self.assertNotIn('/blocked', ready['PATH'])
+            self.assertEqual(ready['PATH'], os.pathsep.join((
+                str(prefix / 'bin'), str(prefix / 'sbin'), '/usr/bin', '/bin', '/usr/sbin', '/sbin')))
+            self.assertEqual(producer.native_build_path(str(prefix)), os.pathsep.join((
+                str(prefix / 'bin'), str(prefix / 'gnu/bin'), str(prefix / 'sbin'),
+                '/usr/bin', '/bin', '/usr/sbin', '/sbin')))
+            # This bmake may predate the show-vars target. -V evaluates the same
+            # makefile commands under the query environment.
+            probe = subprocess.run([bmake, '-r', '-C', str(stub), 'show-vars', 'VARNAMES=ECHO_RESULT SED_RESULT'],
+                                   env=ready, capture_output=True, text=True)
+            if probe.returncode == 0:
+                values = probe.stdout.splitlines()
+            else:
+                self.assertIn('show-vars', probe.stderr)
+                probe = subprocess.run([bmake, '-r', '-C', str(stub), '-V', 'ECHO_RESULT', '-V', 'SED_RESULT'],
+                                       env=ready, capture_output=True, text=True)
+                self.assertEqual(probe.returncode, 0, probe.stderr)
+                values = probe.stdout.splitlines()
+            self.assertEqual(values, ['ember-echo-ok', 'sed-ok'])
+            blocked = dict(ready, PATH=os.pathsep.join((str(prefix / 'bin'), str(prefix / 'sbin'))))
+            missed = subprocess.run([bmake, '-r', '-C', str(stub), '-V', 'ECHO_RESULT', '-V', 'SED_RESULT'],
+                                    env=blocked, capture_output=True, text=True)
+            self.assertNotIn('sed-ok', missed.stdout)
 
     def test_selected_makeconf_refuses_target_database_and_wrong_prefix(self):
         with tempfile.TemporaryDirectory() as tmp:

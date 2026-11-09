@@ -16,6 +16,16 @@ bmake -C PKGSRC/pkgtools/pkg_install USE_CROSS_COMPILE=no MAKECONF=FILE \
   show-vars VARNAMES=PREFIX PKG_DBDIR
 ```
 
+That query's `PATH` is the host prefix `bin` and `sbin`, then
+`/usr/bin:/bin:/usr/sbin:/sbin`. The SDK's own show-vars call sets `PATH` to
+the host prefix tool directories only. Those directories provide `gsed`, not
+`sed`, and do not provide `echo`. The pkgsrc platform tool makefile runs the
+system `sed` and `echo` while bmake reads it, so the system directories follow
+the prefix. `PKG_DBDIR` and `HOST_PKG_DBDIR` are still removed. The later
+`depends` and package steps use those same system directories after `bin`,
+`gnu/bin`, and `sbin`. `pkg_admin config-var` keeps the prefix `bin` and
+`sbin` only; that command does not run bmake.
+
 `PREFIX` must be the selected host prefix. `PKG_DBDIR` must be a real
 directory, not a symlink, outside the target sysroot. Every `@cwd` line in
 every installed `+CONTENTS` must name that host prefix. A plist may repeat
