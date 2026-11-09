@@ -2,7 +2,7 @@
 
 DISTNAME=	freetype-2.15.0
 PKGNAME=	${DISTNAME:S/-/2-/}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_SOURCEFORGE:=freetype/}
 MASTER_SITES+=	https://download.savannah.gnu.org/releases/freetype/

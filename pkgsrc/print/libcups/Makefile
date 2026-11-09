@@ -5,7 +5,7 @@ PKGREVISION= 2
 
 PKGNAME=	libcups-${CUPS_VERS}
 MASTER_SITES=	${MASTER_SITE_GITHUB:=OpenPrinting/}
-PKGREVISION=	1
+PKGREVISION=	2
 
 MAINTAINER=	sbd@NetBSD.org
 COMMENT=	Common UNIX Printing System library

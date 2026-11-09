@@ -3,4 +3,4 @@
 # Cross runtime and SDK identities are independent. Keep the exact dependency
 # and revision refusal checks derived from these declarations.
 QTBASE_RUNTIME_REVISION= 17
-QTBASE_DEVEL_REVISION= 20
+QTBASE_DEVEL_REVISION= 21

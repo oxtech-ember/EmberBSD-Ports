@@ -4,7 +4,7 @@
 
 DISTNAME=	ffmpeg-9.0.2
 # nb8: the libav*.pc files no longer name the build sysroot (target-pkgconfig.sh).
-PKGREVISION=	8
+PKGREVISION=	9
 # Both ffmpeg9 and ffplay9 include this after their early MAKECONF parsing.
 .if ${DISTNAME} != "ffmpeg-9.0.2"
 PKG_FAIL_REASON+= "The common media profile requires the FFmpeg 9.0.2 recipe"

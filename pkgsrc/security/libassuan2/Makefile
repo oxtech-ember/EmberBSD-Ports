@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.28 2025/03/03 21:32:27 nia Exp $
 
 DISTNAME=	libassuan-3.0.2
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	security
 MASTER_SITES=	${MASTER_SITE_GNUPG:=libassuan/}
 EXTRACT_SUFX=	.tar.bz2

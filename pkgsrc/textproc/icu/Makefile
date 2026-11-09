@@ -84,6 +84,7 @@ TEST_MAKE_FLAGS+= ICU_TEST_PYTHON=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
 PKG_FAIL_REASON+= "The ICU SDK role belongs to textproc/icu-devel"
 .endif
 PKGNAME= icu-devel-79.1
+PKGREVISION= 2
 COMMENT= ICU target SDK for the development-host sysroot
 DISTINFO_FILE= ${EMBERBSD_ICU_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_ICU_PKGDIR}/patches
