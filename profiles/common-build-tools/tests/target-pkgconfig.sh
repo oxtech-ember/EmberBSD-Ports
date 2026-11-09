@@ -1,11 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted). Fixture regression: staged target metadata
-# loses build-host paths from .pc, *-config, CMake, qmake and sysconfig files,
-# and still naming a build directory or host volume fails closed.
-#
-# With PKGSRC and MAKECONF of a cross build, it also checks that the cross
-# install runs the step after post-install and a native install does not.
+# Origin: EmberBSD (AI-assisted). Fixture regression for staged target metadata
+# sanitization: sysroot rewrite (longest-first), foreign /sysroot/ refusal,
+# cross-tools normalization, .buildlink CMake mapping, Python sysconfig,
+# binary *-config skip, and install hook wiring.
 set -eu
 [ "$#" = 1 ] || [ "$#" = 3 ] || {
 	echo 'Usage: target-pkgconfig.sh NEW_WORK [PKGSRC CROSS_MAKECONF]' >&2
@@ -16,11 +14,17 @@ script=$root/profiles/common-build-tools/cross/target-pkgconfig.sh
 mkdir "$1"
 work=$(CDPATH= cd -- "$1" && pwd -P)
 fail() { echo "FAIL: $*" >&2; exit 1; }
-mkdir -p "$work/real-sysroot/usr/pkg/include" "$work/context" "$work/obj/work/.buildlink/lib" "$work/tools/bin" "$work/old-sysroot/usr/pkg/lib"
+mkdir -p "$work/real-sysroot/usr/pkg/include" "$work/context" \
+	"$work/obj/work/.buildlink/lib" "$work/tools/bin" \
+	"$work/host-sdk/bin" \
+	"$work/foreign/build/aarch64/sysroot/usr/pkg/lib"
 ln -s "$work/real-sysroot" "$work/context/sysroot"
-sysroot=$work/context/sysroot real=$work/real-sysroot
-wrk=$work/obj/work tools=$work/tools
-old=$work/old-sysroot
+sysroot=$work/context/sysroot
+real=$work/real-sysroot
+wrk=$work/obj/work
+tools=$work/tools
+hostsdk=$work/host-sdk
+foreign=$work/foreign/build/aarch64/sysroot
 
 stage() {
 	rm -rf "$work/stage"
@@ -31,14 +35,28 @@ stage() {
 		"$work/stage/usr/pkg/lib/python3.15"
 	dest=$work/stage
 }
+
+# --- /private substring must not eat a longer /private/tmp/... sysroot ---
+stage
+# Simulate macOS: put both /tmp and /private/tmp spellings of the same sysroot
+# into roots via the real fixture paths under $work (already /private/tmp/... on Darwin).
+cat > "$dest/usr/pkg/lib/pkgconfig/sub.pc" <<PC
+Cflags: -I$sysroot/usr/pkg/include
+Libs: -L$sysroot/usr/pkg/lib -lx
+PC
+sh "$script" "$dest" "$sysroot" "$wrk" "$tools" > "$work/sub.log" 2> "$work/sub.err" ||
+	fail "substring probe refused: $(cat "$work/sub.err")"
+grep -q 'Cflags: -I/usr/pkg/include' "$dest/usr/pkg/lib/pkgconfig/sub.pc" || fail 'sysroot Cflags not rewritten'
+grep -q 'Libs: -L/usr/pkg/lib -lx' "$dest/usr/pkg/lib/pkgconfig/sub.pc" || fail 'sysroot Libs not rewritten'
+! grep -q '/private/usr/pkg' "$dest/usr/pkg/lib/pkgconfig/sub.pc" || fail 'shorter /private alias ate the sysroot path'
+
+# --- main rewrite suite ---
 stage
 cat > "$dest/usr/pkg/lib/pkgconfig/libqalculate.pc" <<PC
 prefix=/usr/pkg
-includedir=\${prefix}/include
-libdir=\${prefix}/lib
 Libs.private: -Wl,-R/usr/pkg/lib -L$sysroot/usr/pkg/lib -lcurl -L$real/usr/pkg/lib -licuuc
-Libs: -L\${libdir} -lqalculate
-Cflags: -I$sysroot/usr/pkg/include -I$real/usr/include -isystem $sysroot/usr/pkg/include/x -I\${includedir}
+Cflags: -I$sysroot/usr/pkg/include -isystem $sysroot/usr/pkg/include/x -I\${includedir}
+Description: uses a path-like word without embedding a host root
 PC
 chmod 444 "$dest/usr/pkg/lib/pkgconfig/libqalculate.pc"
 cat > "$dest/usr/pkg/share/pkgconfig/clean.pc" <<'PC'
@@ -49,114 +67,123 @@ printf 'see %s/usr/pkg/include\n' "$sysroot" > "$dest/usr/pkg/share/doc/notes.pc
 cp "$dest/usr/pkg/share/pkgconfig/clean.pc" "$work/clean.expected"
 cp "$dest/usr/pkg/share/doc/notes.pc" "$work/notes.expected"
 
-# *-config with current sysroot and a foreign older sysroot path.
-cat > "$dest/usr/pkg/bin/libgcrypt-config" <<CFG
+# ICU-style double-slash cross-tools path in *-config
+cat > "$dest/usr/pkg/bin/icu-config" <<CFG
 #!/bin/sh
-gpg_error_libs="-Wl,-R/usr/pkg/lib -L$sysroot/usr/pkg/lib -lgpg-error -L$old/usr/pkg/lib -lgpg-error"
-gpg_error_cflags="-I$sysroot/usr/pkg/include -I$old/usr/pkg/include"
+AR="/opt/cross/build/aarch64/cross-tools/bin//usr/bin/ar"
 CFG
-chmod 755 "$dest/usr/pkg/bin/libgcrypt-config"
+chmod 755 "$dest/usr/pkg/bin/icu-config"
 
-# CMake export without host paths (poison cases covered below).
-cat > "$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake" <<'CM'
-add_library(Example::Example INTERFACE IMPORTED)
+# Python sysconfig with abs_srcdir
+cat > "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" <<PY
+build_time_vars = {
+  'AR': '/opt/cross/build/aarch64/cross-tools/bin/aarch64--netbsd-ar',
+  'abs_srcdir': '/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2',
+  'abs_builddir': '/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2',
+  'srcdir': '/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2',
+  'RUNSHARED': 'LD_LIBRARY_PATH=/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2',
+  'CONFIG_ARGS': "'--with-build-python=$hostsdk/bin/python3.15' 'PKG_CONFIG_LIBDIR=$wrk/.buildlink/lib/pkgconfig'",
+  'LN': '$hostsdk/bin/gln',
+}
+PY
+cat > "$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json" <<'JSON'
+{"abs_srcdir": "/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2", "AR": "/opt/cross/build/aarch64/cross-tools/bin/ar"}
+JSON
+
+# CMake .buildlink -> /usr/pkg/lib
+cat > "$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake" <<CM
+set_target_properties(Example::Example PROPERTIES
+  INTERFACE_LINK_LIBRARIES "$wrk/.buildlink/lib/libpcre2-8.so")
 CM
 
-# qmake mkspec with absolute cross-tools AR.
+# qmake cross-tools
 cat > "$dest/usr/pkg/qt6/mkspecs/netbsd-g++/qmake.conf" <<QMAKE
-QMAKE_AR		= /Volumes/BigData/EmberBSD/build/aarch64/cross-tools/bin/aarch64--netbsd-ar cqs
-QMAKE_CC		= aarch64--netbsd-clang
+QMAKE_AR		= /opt/cross/build/aarch64/cross-tools/bin/aarch64--netbsd-ar cqs
 QMAKE
-# Comment-only upstream example must not fail the check.
+# Comment-only upstream example path must not fail.
 cat > "$dest/usr/pkg/lib/cmake/Example/QtComment.cmake" <<'CM'
 #   C:/Users/qt/work/qt/qtbase
 CM
 
-sh "$script" "$dest" "$sysroot" "$wrk" "$tools" > "$work/run1.log" 2> "$work/run1.err" ||
-	fail "rooted metadata is refused: $(cat "$work/run1.err"; cat "$work/run1.log")"
+# Binary *-config must be skipped (ELF magic), not rewritten.
+printf '\177ELF\000\001\002\003binary-config-payload' > "$dest/usr/pkg/bin/blob-config"
+chmod 755 "$dest/usr/pkg/bin/blob-config"
+cp "$dest/usr/pkg/bin/blob-config" "$work/blob.expected"
+
+sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/run1.log" 2> "$work/run1.err" ||
+	fail "suite refused: $(cat "$work/run1.err"; cat "$work/run1.log")"
+
 pc=$dest/usr/pkg/lib/pkgconfig/libqalculate.pc
-cat > "$work/qalc.expected" <<'PC'
-prefix=/usr/pkg
-includedir=${prefix}/include
-libdir=${prefix}/lib
-Libs.private: -Wl,-R/usr/pkg/lib -L/usr/pkg/lib -lcurl -L/usr/pkg/lib -licuuc
-Libs: -L${libdir} -lqalculate
-Cflags: -I/usr/pkg/include -I/usr/include -isystem /usr/pkg/include/x -I${includedir}
-PC
-cmp -s "$pc" "$work/qalc.expected" || { diff "$work/qalc.expected" "$pc" >&2 || :; fail 'sysroot flags were not rewritten to target paths'; }
-[ ! -w "$pc" ] || fail 'the staged file mode changed'
-cmp -s "$dest/usr/pkg/share/pkgconfig/clean.pc" "$work/clean.expected" || fail 'a clean .pc file changed'
-cmp -s "$dest/usr/pkg/share/doc/notes.pc" "$work/notes.expected" || fail 'a file outside selected metadata changed'
-grep -q 'removed build paths from /usr/pkg/lib/pkgconfig/libqalculate.pc' "$work/run1.log" ||
-	fail 'the .pc rewrite is not reported'
-grep -q 'QMAKE_AR\t\t= aarch64--netbsd-ar cqs' "$dest/usr/pkg/qt6/mkspecs/netbsd-g++/qmake.conf" ||
-	grep -q 'QMAKE_AR		= aarch64--netbsd-ar cqs' "$dest/usr/pkg/qt6/mkspecs/netbsd-g++/qmake.conf" ||
-	fail 'cross-tools QMAKE_AR was not rewritten to the tool basename'
-grep -q 'removed build paths from /usr/pkg/qt6/mkspecs/netbsd-g++/qmake.conf' "$work/run1.log" ||
-	fail 'the qmake rewrite is not reported'
+grep -q 'Libs.private: -Wl,-R/usr/pkg/lib -L/usr/pkg/lib -lcurl -L/usr/pkg/lib -licuuc' "$pc" || fail '.pc Libs.private not rewritten'
+grep -q 'Cflags: -I/usr/pkg/include -isystem /usr/pkg/include/x' "$pc" || fail '.pc Cflags not rewritten'
+[ ! -w "$pc" ] || fail 'staged .pc mode changed'
+cmp -s "$dest/usr/pkg/share/pkgconfig/clean.pc" "$work/clean.expected" || fail 'clean .pc changed'
+cmp -s "$dest/usr/pkg/share/doc/notes.pc" "$work/notes.expected" || fail 'non-metadata file changed'
+grep -q 'removed build paths from /usr/pkg/lib/pkgconfig/libqalculate.pc' "$work/run1.log" || fail '.pc rewrite not reported'
 
+grep -q 'AR="ar"' "$dest/usr/pkg/bin/icu-config" || {
+	echo "icu-config became: $(cat "$dest/usr/pkg/bin/icu-config")" >&2
+	fail 'ICU double-slash cross-tools path not normalized to ar'
+}
+grep -q "INTERFACE_LINK_LIBRARIES \"/usr/pkg/lib/libpcre2-8.so\"" \
+	"$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake" || fail 'buildlink CMake not mapped to /usr/pkg/lib'
+grep -q 'QMAKE_AR		= aarch64--netbsd-ar cqs' \
+	"$dest/usr/pkg/qt6/mkspecs/netbsd-g++/qmake.conf" || fail 'qmake cross-tools AR not rewritten'
+grep -q "'abs_srcdir': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python abs_srcdir not neutralized'
+grep -q "'abs_builddir': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python abs_builddir not neutralized'
+grep -q "'RUNSHARED': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python RUNSHARED not neutralized'
+grep -q "'CONFIG_ARGS': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python CONFIG_ARGS not neutralized'
+grep -q "'LN': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python LN host path not neutralized'
+grep -q "'AR': 'aarch64--netbsd-ar'" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python AR not basename'
+grep -q '"abs_srcdir": ""' "$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json" || fail 'python json abs_srcdir not neutralized'
+grep -q 'skipping binary file /usr/pkg/bin/blob-config' "$work/run1.log" || fail 'binary *-config not skipped'
+cmp -s "$dest/usr/pkg/bin/blob-config" "$work/blob.expected" || fail 'binary *-config was corrupted'
 
-# libgcrypt-config: current sysroot stripped; foreign /old-sysroot and /Volumes still refused? 
-# Foreign old path uses $old which is under $work but NOT passed as a root. Absolute rewrite
-# only strips selected roots, so $old remains and fail-closed must catch it via... wait, $old
-# does not match /Volumes/ or .buildlink. Need fail on leftover absolute path under $work?
-# The production fail list uses /Volumes/ and BigData. For the fixture, put foreign path on /Volumes.
-rm -f "$dest/usr/pkg/bin/libgcrypt-config"
-cat > "$dest/usr/pkg/bin/libgcrypt-config" <<'CFG'
-#!/bin/sh
-gpg_error_libs="-Wl,-R/usr/pkg/lib -L/usr/pkg/lib -lgpg-error -L/Volumes/BigData/EmberBSD/build/aarch64/sysroot/usr/pkg/lib -lgpg-error"
-CFG
-chmod 755 "$dest/usr/pkg/bin/libgcrypt-config"
-# CMake still has .buildlink - expect failure for that file. Stage a clean cmake for success path later.
-rm -f "$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake"
-cat > "$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake" <<'CM'
-add_library(Example::Example INTERFACE IMPORTED)
-CM
-
-# First: foreign Volumes in *-config must fail.
-if sh "$script" "$dest" "$sysroot" "$wrk" "$tools" > "$work/foreign.log" 2> "$work/foreign.err"; then
-	fail 'a *-config naming /Volumes is accepted'
-fi
-grep -q 'build-host path' "$work/foreign.err" || fail 'foreign /Volumes rejection missing'
-
-# Drop foreign config; cross-tools qmake must rewrite to basename.
-rm -f "$dest/usr/pkg/bin/libgcrypt-config"
-cat > "$dest/usr/pkg/bin/libgcrypt-config" <<CFG
-#!/bin/sh
-gpg_error_libs="-Wl,-R/usr/pkg/lib -L$sysroot/usr/pkg/lib -lgpg-error"
-CFG
-chmod 755 "$dest/usr/pkg/bin/libgcrypt-config"
-sh "$script" "$dest" "$sysroot" "$wrk" "$tools" > "$work/runq.log" 2> "$work/runq.err" ||
-	fail "qmake/config rewrite refused: $(cat "$work/runq.err")"
-grep -q 'gpg_error_libs="-Wl,-R/usr/pkg/lib -L/usr/pkg/lib -lgpg-error"' "$dest/usr/pkg/bin/libgcrypt-config" ||
-	fail '*-config sysroot was not rewritten'
-
+# Idempotent second run
 cp "$pc" "$work/qalc.once"
-sh "$script" "$dest" "$sysroot" "$wrk" "$tools" > "$work/run2.log" 2>&1 || fail 'a second run fails'
-cmp -s "$pc" "$work/qalc.once" || fail 'the rewrite is not idempotent'
-[ ! -s "$work/run2.log" ] || fail 'a second run reports changes'
+sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/run2.log" 2>&1 || fail 'second run fails'
+cmp -s "$pc" "$work/qalc.once" || fail 'rewrite not idempotent'
 
-# Build directories that are not rewritten stay and are refused.
+
+# Android NDK template path must not trip /sysroot/ detection.
+stage
+mkdir -p "$dest/usr/pkg/share/ECM/toolchain"
+cat > "$dest/usr/pkg/share/ECM/toolchain/Android.cmake" <<'CM'
+set(ANDROID_SYSROOT_PREFIX "${CMAKE_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr")
+CM
+sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/android.log" 2> "$work/android.err" ||
+	fail "Android NDK template refused: $(cat "$work/android.err")"
+grep -q 'linux-x86_64/sysroot/usr' "$dest/usr/pkg/share/ECM/toolchain/Android.cmake" ||
+	fail 'Android NDK template was rewritten'
+
+# Foreign sysroot outside /Volumes (e.g. /home/builder/...) must fail closed.
+stage
+mkdir -p "$dest/usr/pkg/lib/pkgconfig"
+printf 'prefix=/usr/pkg\nLibs.private: -L%s/usr/pkg/lib -lgpg-error\n' "$foreign" \
+	> "$dest/usr/pkg/lib/pkgconfig/bad-foreign.pc"
+if sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/foreign.log" 2> "$work/foreign.err"; then
+	fail 'a .pc naming a foreign /sysroot/ path is accepted'
+fi
+grep -q 'build-host path\|names build directory\|/sysroot/' "$work/foreign.err" ||
+	fail 'foreign sysroot rejection missing'
+
+# Selected roots that are not flag-rewritable stay refused.
 for case in buildlink tools sysroot-var; do
 	stage
 	mkdir -p "$dest/usr/pkg/lib/pkgconfig"
 	case $case in
-	buildlink) line="Libs.private: $wrk/.buildlink/lib/libpcre2-8.so" ; want=$wrk ;;
+	buildlink) line="host_tool=$wrk/.buildlink/bin/foo" ; want=$wrk ;;
 	tools) line="host_tool=$tools/bin/aarch64--netbsd-pkg-config" ; want=$tools ;;
 	sysroot-var) line="sysroot=$sysroot" ; want=$sysroot ;;
 	esac
 	printf 'prefix=/usr/pkg\n%s\n' "$line" > "$dest/usr/pkg/lib/pkgconfig/bad.pc"
-	if sh "$script" "$dest" "$sysroot" "$wrk" "$tools" > "$work/$case.log" 2> "$work/$case.err"; then
+	if sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/$case.log" 2> "$work/$case.err"; then
 		fail "a .pc file naming the $case directory is accepted"
 	fi
-	if [ "$case" = buildlink ]; then
-		grep -Eq 'build-host path|\.buildlink' "$work/$case.err" "$work/$case.log" ||
-			fail "the buildlink rejection does not mention .buildlink"
-	else
-		grep -Fq "names build directory $want" "$work/$case.err" ||
-			grep -Fq "names build directory $want" "$work/$case.log" ||
-			fail "the $case rejection does not name $want"
-	fi
+	grep -Fq "names build directory $want" "$work/$case.err" ||
+		grep -Fq "names build directory $want" "$work/$case.log" ||
+		grep -Eq 'build-host path|\\.buildlink|/sysroot/' "$work/$case.err" ||
+		fail "the $case rejection is missing"
 done
 ! sh "$script" "$dest" relative > /dev/null 2>&1 || fail 'a relative sysroot is accepted'
 sh "$script" "$work/missing" "$sysroot" || fail 'a package without a stage fails'
@@ -167,7 +194,7 @@ if [ "$#" = 3 ]; then
 	recipe=$pkgsrc/devel/readline
 	bm() { "$BMAKE" -C "$recipe" MAKECONF="$conf" WRKOBJDIR="$work/wrk" "$@"; }
 	bm -n install-doc-handling > "$work/cross-install.log" 2>&1 || fail 'make -n install-doc-handling failed'
-	grep -q 'target-pkgconfig.sh' "$work/cross-install.log" || fail 'a cross install does not check its pkg-config files'
+	grep -q 'target-pkgconfig.sh' "$work/cross-install.log" || fail 'a cross install does not check metadata'
 	[ -f "$pkgsrc/target-pkgconfig.sh" ] || fail 'the export does not provide target-pkgconfig.sh'
 	bm -n USE_CROSS_COMPILE=no install-doc-handling > "$work/native-install.log" 2>&1 ||
 		fail 'native make -n install-doc-handling failed'

@@ -84,7 +84,6 @@ TEST_MAKE_FLAGS+= ICU_TEST_PYTHON=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
 PKG_FAIL_REASON+= "The ICU SDK role belongs to textproc/icu-devel"
 .endif
 PKGNAME= icu-devel-79.1
-PKGREVISION= 2
 COMMENT= ICU target SDK for the development-host sysroot
 DISTINFO_FILE= ${EMBERBSD_ICU_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_ICU_PKGDIR}/patches
@@ -98,6 +97,9 @@ PKG_FAIL_REASON+= "The ICU SDK requires a NetBSD cross build; native builds keep
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 PKGREVISION= 1
+.if defined(EMBERBSD_ICU_DEVEL)
+PKGREVISION= 2
+.endif
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The ICU split requires a common AArch64 or amd64 target"
 .endif
