@@ -58,3 +58,18 @@ package or running CAD workflows on EmberBSD.
 Full application configuration, linking and CAD runtime acceptance remain
 pending the common GTK4 wxWidgets/WebKit stack. The recipe and focused consumer
 checks are not evidence of a completed KiCad binary package.
+
+Unix toolkit discovery selects the shared GTK4 provider. An explicit toolkit
+selection is retained. wxPython toolkit checks run only when wxPython is enabled.
+The causal check runs the actual CMake selection block, KiCad's find module and
+the installed target configuration script:
+
+```sh
+python3 tests/wx-toolkit.py --source /prepared/kicad \
+  --wx-config /sysroot/usr/pkg/lib/wx/config/aarch64--netbsd-gtk4-unicode-3.2 \
+  --prefix /sysroot/usr/pkg --cmake /native/bin/cmake --work /work/wx-toolkit
+```
+
+Use the selected SDK build PATH, including its host `sh` route. The check covers
+Unix default and explicit GTK4 selection, Apple provider selection, and matching
+or conflicting wxPython toolkits. It does not execute target programs.

@@ -1,0 +1,50 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Select the shared GTK4 toolkit and check wxPython only when enabled.
+Keep the provider's selected toolkit on other platforms.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1044,10 +1044,10 @@
+ 
+ endif()
+ 
+-# GTK3 is required on Linux
++# GTK4 is required on Unix desktops
+ if( UNIX AND NOT APPLE AND KICAD_SCRIPTING_WXPYTHON )
+-    if( NOT "${WXPYTHON_TOOLKIT}" STREQUAL "gtk3" )
+-        message( FATAL_ERROR "GTK3-based wxPython/Phoenix toolkit is required.")
++    if( NOT "${WXPYTHON_TOOLKIT}" STREQUAL "gtk4" )
++        message( FATAL_ERROR "GTK4-based wxPython/Phoenix toolkit is required.")
+     endif()
+ endif()
+ 
+@@ -1065,17 +1065,16 @@
+ string( REGEX MATCH "--toolkit=([a-zA-Z0-9]+)"
+     WXWIDGETS_REQUESTED_TOOLKIT "${wxWidgets_CONFIG_OPTIONS}" )
+ 
+-if( WXWIDGETS_REQUESTED_TOOLKIT
+-        AND NOT WXWIDGETS_REQUESTED_TOOLKIT STREQUAL "--toolkit=${WXPYTHON_TOOLKIT}" )
+-    message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
+-        "It will be fixed automatically if you skip the '--toolkit=xxx' "
+-        "wxWidgets_CONFIG_OPTIONS parameter.")
+-elseif( UNIX AND NOT APPLE )
+-    # Force the use of GTK3 on Linux
+-    set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
+-else()
+-    # Use the same toolkit as wxPython otherwise there will be a symbol conflict
+-    set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=${WXPYTHON_TOOLKIT}" )
++if( KICAD_SCRIPTING_WXPYTHON )
++    if( WXWIDGETS_REQUESTED_TOOLKIT
++            AND NOT WXWIDGETS_REQUESTED_TOOLKIT STREQUAL "--toolkit=${WXPYTHON_TOOLKIT}" )
++        message( FATAL_ERROR "wxWidgets and wxPython must use the same toolkit." )
++    elseif( NOT WXWIDGETS_REQUESTED_TOOLKIT )
++        set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=${WXPYTHON_TOOLKIT}" )
++    endif()
++elseif( UNIX AND NOT APPLE AND NOT WXWIDGETS_REQUESTED_TOOLKIT )
++    # Use the shared GTK4 provider. Other platforms keep wx-config's selection.
++    set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk4" )
+ endif()
+ 
+ # Require the same wxWidgets version as is used by wxPython
