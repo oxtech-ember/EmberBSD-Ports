@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Fixture regression for staged target metadata
 # sanitization: sysroot rewrite (longest-first), foreign /sysroot/ refusal,
-# cross-tools normalization, .buildlink CMake mapping, Python sysconfig,
-# binary *-config skip, and install hook wiring.
+# cross-tools normalization, token-safe .buildlink CMake mapping, Python
+# sysconfig via host python, --sysroot= without trailing slash, binary
+# *-config skip, and install hook wiring.
 set -eu
 [ "$#" = 1 ] || [ "$#" = 3 ] || {
 	echo 'Usage: target-pkgconfig.sh NEW_WORK [PKGSRC CROSS_MAKECONF]' >&2
@@ -36,15 +37,17 @@ stage() {
 	dest=$work/stage
 }
 
+run_hook() {
+	sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" "$@"
+}
+
 # --- /private substring must not eat a longer /private/tmp/... sysroot ---
 stage
-# Simulate macOS: put both /tmp and /private/tmp spellings of the same sysroot
-# into roots via the real fixture paths under $work (already /private/tmp/... on Darwin).
 cat > "$dest/usr/pkg/lib/pkgconfig/sub.pc" <<PC
 Cflags: -I$sysroot/usr/pkg/include
 Libs: -L$sysroot/usr/pkg/lib -lx
 PC
-sh "$script" "$dest" "$sysroot" "$wrk" "$tools" > "$work/sub.log" 2> "$work/sub.err" ||
+run_hook > "$work/sub.log" 2> "$work/sub.err" ||
 	fail "substring probe refused: $(cat "$work/sub.err")"
 grep -q 'Cflags: -I/usr/pkg/include' "$dest/usr/pkg/lib/pkgconfig/sub.pc" || fail 'sysroot Cflags not rewritten'
 grep -q 'Libs: -L/usr/pkg/lib -lx' "$dest/usr/pkg/lib/pkgconfig/sub.pc" || fail 'sysroot Libs not rewritten'
@@ -71,29 +74,36 @@ cp "$dest/usr/pkg/share/doc/notes.pc" "$work/notes.expected"
 cat > "$dest/usr/pkg/bin/icu-config" <<CFG
 #!/bin/sh
 AR="/opt/cross/build/aarch64/cross-tools/bin//usr/bin/ar"
+CC="aarch64--netbsd-clang --sysroot=$sysroot"
 CFG
 chmod 755 "$dest/usr/pkg/bin/icu-config"
 
-# Python sysconfig with abs_srcdir
+# Python sysconfig with abs_srcdir and host paths (helper uses host python)
 cat > "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" <<PY
 build_time_vars = {
   'AR': '/opt/cross/build/aarch64/cross-tools/bin/aarch64--netbsd-ar',
-  'abs_srcdir': '/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2',
-  'abs_builddir': '/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2',
-  'srcdir': '/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2',
-  'RUNSHARED': 'LD_LIBRARY_PATH=/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2',
+  'abs_srcdir': '$wrk/Python-3.15.2',
+  'abs_builddir': '$wrk/Python-3.15.2',
+  'srcdir': '$wrk/Python-3.15.2',
+  'RUNSHARED': 'LD_LIBRARY_PATH=$wrk/Python-3.15.2',
   'CONFIG_ARGS': "'--with-build-python=$hostsdk/bin/python3.15' 'PKG_CONFIG_LIBDIR=$wrk/.buildlink/lib/pkgconfig'",
   'LN': '$hostsdk/bin/gln',
+  'CC': 'aarch64--netbsd-clang --sysroot=$sysroot',
+  'CFLAGS': '-I$sysroot/usr/pkg/include',
 }
 PY
-cat > "$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json" <<'JSON'
-{"abs_srcdir": "/opt/cross/build/aarch64/obj/lang/python/work/Python-3.15.2", "AR": "/opt/cross/build/aarch64/cross-tools/bin/ar"}
+cat > "$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json" <<JSON
+{"abs_srcdir": "$wrk/Python-3.15.2", "AR": "/opt/cross/build/aarch64/cross-tools/bin/ar", "CC": "clang --sysroot=$sysroot"}
 JSON
 
-# CMake .buildlink -> /usr/pkg/lib
+# CMake .buildlink forms: quoted, unquoted if(...), and ;-separated list
 cat > "$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake" <<CM
 set_target_properties(Example::Example PROPERTIES
   INTERFACE_LINK_LIBRARIES "$wrk/.buildlink/lib/libpcre2-8.so")
+if($wrk/.buildlink/lib/libinotify.so)
+  message(STATUS "has inotify")
+endif()
+set(Example_LIBS "$wrk/.buildlink/lib/liba.so;$wrk/.buildlink/lib/libb.so")
 CM
 
 # qmake cross-tools
@@ -110,7 +120,7 @@ printf '\177ELF\000\001\002\003binary-config-payload' > "$dest/usr/pkg/bin/blob-
 chmod 755 "$dest/usr/pkg/bin/blob-config"
 cp "$dest/usr/pkg/bin/blob-config" "$work/blob.expected"
 
-sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/run1.log" 2> "$work/run1.err" ||
+run_hook > "$work/run1.log" 2> "$work/run1.err" ||
 	fail "suite refused: $(cat "$work/run1.err"; cat "$work/run1.log")"
 
 pc=$dest/usr/pkg/lib/pkgconfig/libqalculate.pc
@@ -125,25 +135,40 @@ grep -q 'AR="ar"' "$dest/usr/pkg/bin/icu-config" || {
 	echo "icu-config became: $(cat "$dest/usr/pkg/bin/icu-config")" >&2
 	fail 'ICU double-slash cross-tools path not normalized to ar'
 }
-grep -q "INTERFACE_LINK_LIBRARIES \"/usr/pkg/lib/libpcre2-8.so\"" \
-	"$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake" || fail 'buildlink CMake not mapped to /usr/pkg/lib'
+grep -q 'CC="aarch64--netbsd-clang"' "$dest/usr/pkg/bin/icu-config" || {
+	echo "icu-config became: $(cat "$dest/usr/pkg/bin/icu-config")" >&2
+	fail '--sysroot=<selected> without trailing slash not stripped from CC'
+}
+
+cm=$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake
+grep -q 'INTERFACE_LINK_LIBRARIES "/usr/pkg/lib/libpcre2-8.so"' "$cm" || fail 'quoted buildlink CMake not mapped'
+grep -q 'if(/usr/pkg/lib/libinotify.so)' "$cm" || {
+	echo "cmake became: $(cat "$cm")" >&2
+	fail 'unquoted if(buildlink) not mapped to if(/usr/pkg/lib/...)'
+}
+! grep -q 'if(/usr/pkg/lib/libinotify.so))' "$cm" || fail 'buildlink rewrite ate a parenthesis'
+grep -q 'set(Example_LIBS "/usr/pkg/lib/liba.so;/usr/pkg/lib/libb.so")' "$cm" || {
+	echo "cmake became: $(cat "$cm")" >&2
+	fail 'semicolon-separated buildlink list not mapped'
+}
+
 grep -q 'QMAKE_AR		= aarch64--netbsd-ar cqs' \
 	"$dest/usr/pkg/qt6/mkspecs/netbsd-g++/qmake.conf" || fail 'qmake cross-tools AR not rewritten'
-grep -q "'abs_srcdir': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python abs_srcdir not neutralized'
-grep -q "'abs_builddir': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python abs_builddir not neutralized'
-grep -q "'RUNSHARED': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python RUNSHARED not neutralized'
-grep -q "'CONFIG_ARGS': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python CONFIG_ARGS not neutralized'
-grep -q "'LN': ''" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python LN host path not neutralized'
-grep -q "'AR': 'aarch64--netbsd-ar'" "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" || fail 'python AR not basename'
-grep -q '"abs_srcdir": ""' "$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json" || fail 'python json abs_srcdir not neutralized'
+
+py=$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py
+python3 -c "import ast,pathlib; t=pathlib.Path(r'''$py''').read_text(); i=t.index('{'); d=ast.literal_eval(t[t.index('=')+1:].strip()); assert d['abs_srcdir']==''; assert d['AR']=='aarch64--netbsd-ar'; assert '--sysroot' not in d.get('CC',''); assert d['LN']=='gln'; assert '$wrk' not in str(d)" || {
+	echo "python sysconfig became: $(cat "$py")" >&2
+	fail 'python sysconfig not neutralized/reparsed'
+}
+python3 -c "import json,pathlib; d=json.loads(pathlib.Path(r'''$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json''').read_text()); assert d['abs_srcdir']==''; assert d['AR']=='ar'; assert '--sysroot' not in d.get('CC','')" || fail 'python json sysconfig not neutralized'
+
 grep -q 'skipping binary file /usr/pkg/bin/blob-config' "$work/run1.log" || fail 'binary *-config not skipped'
 cmp -s "$dest/usr/pkg/bin/blob-config" "$work/blob.expected" || fail 'binary *-config was corrupted'
 
 # Idempotent second run
 cp "$pc" "$work/qalc.once"
-sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/run2.log" 2>&1 || fail 'second run fails'
+run_hook > "$work/run2.log" 2>&1 || fail 'second run fails'
 cmp -s "$pc" "$work/qalc.once" || fail 'rewrite not idempotent'
-
 
 # Android NDK template path must not trip /sysroot/ detection.
 stage
@@ -151,7 +176,7 @@ mkdir -p "$dest/usr/pkg/share/ECM/toolchain"
 cat > "$dest/usr/pkg/share/ECM/toolchain/Android.cmake" <<'CM'
 set(ANDROID_SYSROOT_PREFIX "${CMAKE_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr")
 CM
-sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/android.log" 2> "$work/android.err" ||
+run_hook > "$work/android.log" 2> "$work/android.err" ||
 	fail "Android NDK template refused: $(cat "$work/android.err")"
 grep -q 'linux-x86_64/sysroot/usr' "$dest/usr/pkg/share/ECM/toolchain/Android.cmake" ||
 	fail 'Android NDK template was rewritten'
@@ -161,11 +186,33 @@ stage
 mkdir -p "$dest/usr/pkg/lib/pkgconfig"
 printf 'prefix=/usr/pkg\nLibs.private: -L%s/usr/pkg/lib -lgpg-error\n' "$foreign" \
 	> "$dest/usr/pkg/lib/pkgconfig/bad-foreign.pc"
-if sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/foreign.log" 2> "$work/foreign.err"; then
+if run_hook > "$work/foreign.log" 2> "$work/foreign.err"; then
 	fail 'a .pc naming a foreign /sysroot/ path is accepted'
 fi
 grep -q 'build-host path\|names build directory\|/sysroot/' "$work/foreign.err" ||
 	fail 'foreign sysroot rejection missing'
+
+# --sysroot=<foreign> without trailing slash must be refused.
+stage
+mkdir -p "$dest/usr/pkg/bin"
+printf '#!/bin/sh\nCC="clang --sysroot=%s"\n' "$foreign" > "$dest/usr/pkg/bin/bad-sysroot-config"
+chmod 755 "$dest/usr/pkg/bin/bad-sysroot-config"
+if run_hook > "$work/sysrootflag.log" 2> "$work/sysrootflag.err"; then
+	fail 'a *-config with --sysroot=<foreign> is accepted'
+fi
+grep -Eq 'build-host path|names build directory|--sysroot|/sysroot/' "$work/sysrootflag.err" ||
+	fail 'foreign --sysroot= rejection missing'
+
+# WRKOBJDIR/work path that is not rewritten must be refused.
+stage
+mkdir -p "$dest/usr/pkg/lib/pkgconfig"
+printf 'prefix=/usr/pkg\nhost_tool=%s/bin/foo\n' "$wrk" > "$dest/usr/pkg/lib/pkgconfig/bad-wrk.pc"
+if run_hook > "$work/wrk.log" 2> "$work/wrk.err"; then
+	fail 'a .pc naming WRKDIR is accepted'
+fi
+grep -Fq "names build directory $wrk" "$work/wrk.err" ||
+	grep -Fq "names build directory $wrk" "$work/wrk.log" ||
+	fail 'WRKDIR rejection missing'
 
 # Selected roots that are not flag-rewritable stay refused.
 for case in buildlink tools sysroot-var; do
@@ -177,7 +224,7 @@ for case in buildlink tools sysroot-var; do
 	sysroot-var) line="sysroot=$sysroot" ; want=$sysroot ;;
 	esac
 	printf 'prefix=/usr/pkg\n%s\n' "$line" > "$dest/usr/pkg/lib/pkgconfig/bad.pc"
-	if sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" > "$work/$case.log" 2> "$work/$case.err"; then
+	if run_hook > "$work/$case.log" 2> "$work/$case.err"; then
 		fail "a .pc file naming the $case directory is accepted"
 	fi
 	grep -Fq "names build directory $want" "$work/$case.err" ||

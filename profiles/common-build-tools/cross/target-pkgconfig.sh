@@ -111,33 +111,58 @@ sed_quote() {
 
 # Build sed edits: only sysroot spellings are rewritten to target paths.
 # Use anchored boundaries: start of string or a delimiter before the root.
+# Also handle --sysroot=<root> with or without a trailing slash.
 edit=
 for root in $sysroots; do
 	quoted=$(sed_quote "$root")
-	# Flag forms.
-	edit="$edit -e s#(^|[[:space:]=\"':,;])(-I|-L|-isystem[[:space:]]*)$quoted/#\\1\\2/#g"
-	# Absolute path after a delimiter or at line start (CMake, assignments).
-	edit="$edit -e s#(^|[[:space:]=\"':,;])$quoted/#\\1/#g"
+	# --sysroot=<root> first (with or without a trailing path) so a later
+	# exact-root rewrite cannot leave a dangling --sysroot=.
+	edit="$edit -e s#(^|[[:space:]])--sysroot=$quoted(/[^[:space:]\"]*)?##g"
+	# Flag forms (-I/-L/-isystem) with trailing slash.
+	edit="$edit -e s#(^|[[:space:]=\"':,;])(-I|-L|-isystem[[:space:]]*)$quoted/#\1\2/#g"
+	# Absolute path after a delimiter, with trailing slash.
+	edit="$edit -e s#(^|[[:space:]=\"':,;])$quoted/#\1/#g"
+	# Exact root token without trailing slash. Omit '=' from the leading
+	# delimiter class so --sysroot=<root> is not reduced to --sysroot=.
+	edit="$edit -e s#(^|[[:space:]\"':,;])$quoted(\"|[[:space:]]|$|[;',)])#\1\2#g"
 done
 # cross-tools wrappers, including the ICU double-slash form
 #   .../cross-tools/bin//usr/bin/ar  -> ar
 #   .../cross-tools/bin/aarch64--netbsd-ar -> aarch64--netbsd-ar
 edit="$edit -e s#/[^[:space:]\"]*/cross-tools/bin/+([^/[:space:]\"]+/)*([A-Za-z0-9._+-]+)#\\2#g"
 # .buildlink shared libraries -> /usr/pkg/lib/<soname> (target PREFIX layout).
-edit="$edit -e s#[^[:space:]\"]*/\\.buildlink/lib/(lib[A-Za-z0-9._+-]+\\.so[A-Za-z0-9._*]*)#/usr/pkg/lib/\\1#g"
-# Python sysconfig build-tree keys -> empty / neutral.
-edit="$edit -e s#('abs_srcdir':[[:space:]]*)'[^']*'#\1''#g"
-edit="$edit -e s#('abs_builddir':[[:space:]]*)'[^']*'#\1''#g"
-edit="$edit -e s#('srcdir':[[:space:]]*)'[^']*'#\1''#g"
-edit="$edit -e s#('COVERAGE_INFO':[[:space:]]*)'[^']*'#\1''#g"
-edit="$edit -e s#('COVERAGE_REPORT':[[:space:]]*)'[^']*'#\1''#g"
-edit="$edit -e s#('RUNSHARED':[[:space:]]*)'[^']*'#\1''#g"
-edit="$edit -e s#(\"abs_srcdir\":[[:space:]]*)\"[^\"]*\"#\1\"\"#g"
-edit="$edit -e s#(\"abs_builddir\":[[:space:]]*)\"[^\"]*\"#\1\"\"#g"
-edit="$edit -e s#(\"srcdir\":[[:space:]]*)\"[^\"]*\"#\1\"\"#g"
-edit="$edit -e s#(\"COVERAGE_INFO\":[[:space:]]*)\"[^\"]*\"#\1\"\"#g"
-edit="$edit -e s#(\"COVERAGE_REPORT\":[[:space:]]*)\"[^\"]*\"#\1\"\"#g"
-edit="$edit -e s#(\"RUNSHARED\":[[:space:]]*)\"[^\"]*\"#\1\"\"#g"
+# Match only the path token itself: stop at whitespace, quotes, (), ; so
+# unquoted if(/path/.buildlink/lib/libX.so) keeps the if( and trailing ).
+edit="$edit -e s#/[^[:space:]\"'();]*/\\.buildlink/lib/(lib[A-Za-z0-9._+-]+\\.so[A-Za-z0-9._*]*)#/usr/pkg/lib/\\1#g"
+
+# Host python for sysconfig transforms (fail closed if missing when needed).
+_tp_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+_tp_sysconfig_py=$_tp_dir/target-pkgconfig-sysconfig.py
+find_host_python() {
+	for cand in \
+		"${EMBERBSD_CROSS_HOST_PREFIX:+$EMBERBSD_CROSS_HOST_PREFIX/bin/python3.15}" \
+		"${EMBERBSD_CROSS_HOST_PREFIX:+$EMBERBSD_CROSS_HOST_PREFIX/bin/python3}" \
+		"${TOOLBASE:+$TOOLBASE/bin/python3.15}" \
+		"${TOOLBASE:+$TOOLBASE/bin/python3}" \
+		python3.15 \
+		python3
+	do
+		[ -n "$cand" ] || continue
+		if command -v "$cand" >/dev/null 2>&1; then
+			command -v "$cand"
+			return 0
+		fi
+		if [ -x "$cand" ]; then
+			printf '%s\n' "$cand"
+			return 0
+		fi
+	done
+	return 1
+}
+host_python=
+if ! host_python=$(find_host_python); then
+	host_python=
+fi
 
 status=0
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/target-pkgconfig.XXXXXX")
@@ -181,7 +206,7 @@ path_bearing_line() {
 	case "$1" in
 	*[Ll]ibs*=*|*[Cc]flags*=*|Libs.*:*|Cflags:*|Requires*:* ) return 0 ;;
 	*INTERFACE_*|*LINK_LIBRARIES*|*IMPORTED_LOCATION*|*QMAKE_* ) return 0 ;;
-	*AR=*|*CC=*|*CXX=*|*abs_srcdir*|*srcdir*|*host_tool=* ) return 0 ;;
+	*AR=*|*CC=*|*CXX=*|*abs_srcdir*|*srcdir*|*host_tool=*|*--sysroot=* ) return 0 ;;
 	*-I/*|*-L/*|*isystem* ) return 0 ;;
 	*.buildlink*|*cross-tools*|*sysroot* ) return 0 ;;
 	esac
@@ -196,55 +221,45 @@ while IFS= read -r file; do
 		echo "target-pkgconfig: skipping binary file ${file#"$destdir"}"
 		continue
 	fi
-	set -f
-	# shellcheck disable=SC2086
-	sed -E $edit "$file" > "$scratch/out"
-	set +f
-	if ! cmp -s "$scratch/out" "$file"; then
-		if [ -w "$file" ]; then
-			cat "$scratch/out" > "$file"
-		else
-			chmod u+w "$file"
-			cat "$scratch/out" > "$file"
-			chmod u-w "$file"
-		fi
-		echo "target-pkgconfig: removed build paths from ${file#"$destdir"}"
-	fi
-	# Python sysconfig: blank any remaining values that still name builder
-	# roots, /sysroot/, .buildlink or cross-tools. Line-oriented so nested
-	# quotes inside CONFIG_ARGS and similar keys are handled.
 	case "$file" in
 	*/_sysconfigdata*.py|*/_sysconfig_vars*.json)
-		: > "$scratch/sysout"
-		while IFS= read -r line || [ -n "$line" ]; do
-			poison=0
-			case "$line" in
-			*/sysroot/*|*.buildlink*|*/cross-tools/*) poison=1 ;;
-			esac
-			if [ "$poison" = 0 ]; then
-				for root in $all_check; do
-					case "$line" in
-					*"$root"*) poison=1; break ;;
-					esac
-				done
-			fi
-			if [ "$poison" = 1 ]; then
-				# Blank the value; keep trailing comma when present.
-				line=$(printf '%s\n' "$line" | sed -E \
-					-e "s/^([[:space:]]*['\"][[:alnum:]_]+['\"][[:space:]]*:[[:space:]]*).*(,[[:space:]]*)?$/\\1''\\2/" \
-					-e 's/^([[:space:]]*[[:alnum:]_]+[[:space:]]*:[[:space:]]*).*(,[[:space:]]*)?$/\\1""\\2/')
-			fi
-			printf '%s\n' "$line" >> "$scratch/sysout"
-		done < "$file"
-		if ! cmp -s "$scratch/sysout" "$file"; then
+		# Python sysconfig via host python helper only (no sed). Fail closed
+		# if the helper or host python is missing when a sysconfig file is staged.
+		if [ -z "$host_python" ] || [ ! -f "$_tp_sysconfig_py" ]; then
+			echo "target-pkgconfig: host python (or target-pkgconfig-sysconfig.py) required to sanitize ${file#"$destdir"}" >&2
+			status=1
+			continue
+		fi
+		sys_args=
+		for root in $sysroots; do
+			sys_args="$sys_args --sysroot $root"
+		done
+		for root in $builddirs; do
+			sys_args="$sys_args --builddir $root"
+		done
+		set -f
+		# shellcheck disable=SC2086
+		if ! "$host_python" "$_tp_sysconfig_py" "$file" $sys_args; then
+			echo "target-pkgconfig: python sysconfig sanitize failed for ${file#"$destdir"}" >&2
+			status=1
+			continue
+		fi
+		set +f
+		;;
+	*)
+		set -f
+		# shellcheck disable=SC2086
+		sed -E $edit "$file" > "$scratch/out"
+		set +f
+		if ! cmp -s "$scratch/out" "$file"; then
 			if [ -w "$file" ]; then
-				cat "$scratch/sysout" > "$file"
+				cat "$scratch/out" > "$file"
 			else
 				chmod u+w "$file"
-				cat "$scratch/sysout" > "$file"
+				cat "$scratch/out" > "$file"
 				chmod u-w "$file"
 			fi
-			echo "target-pkgconfig: neutralized python sysconfig paths in ${file#"$destdir"}"
+			echo "target-pkgconfig: removed build paths from ${file#"$destdir"}"
 		fi
 		;;
 	esac
@@ -255,8 +270,15 @@ while IFS= read -r file; do
 			: > "$scratch/root_hits.real"
 			while IFS= read -r hit; do
 				body=${hit#*:}
-				case "$body" in
-				[[:space:]]*'#'*) continue ;;
+				_cmt=$body
+				while [ -n "$_cmt" ]; do
+					case "$_cmt" in
+					[[:space:]]*) _cmt=${_cmt#?} ;;
+					*) break ;;
+					esac
+				done
+				case "$_cmt" in
+				\#*) continue ;;
 				esac
 				if path_bearing_line "$body"; then
 					printf '%s\n' "$hit" >> "$scratch/root_hits.real"
@@ -272,13 +294,20 @@ while IFS= read -r file; do
 	# Generic host/build markers. Require an absolute-path delimiter or
 	# -I/-L before the match so CMake templates like
 	# ${CMAKE_NDK_ROOT}/toolchains/.../sysroot stay quiet.
-	grep -nE "(^|[[:space:]=\"':,;]|-L|-I|-isystem[[:space:]]*)([^[:space:]\"]*/\.buildlink/|[^[:space:]\"]*/cross-tools/|/[^[:space:]\"]+/sysroot/)" "$file" > "$scratch/hits" || true
+	grep -nE "(^|[[:space:]=\"':,;]|-L|-I|-isystem[[:space:]]*)([^[:space:]\"]*/\.buildlink/|[^[:space:]\"]*/cross-tools/|/[^[:space:]\"]+/sysroot(/|[[:space:]\"';]|$))|--sysroot=/[^[:space:]\"]+" "$file" > "$scratch/hits" || true
 	if [ -s "$scratch/hits" ]; then
 		: > "$scratch/hits.real"
 		while IFS= read -r hit; do
 			body=${hit#*:}
-			case "$body" in
-			[[:space:]]*'#'*) continue ;;
+			_cmt=$body
+			while [ -n "$_cmt" ]; do
+				case "$_cmt" in
+				[[:space:]]*) _cmt=${_cmt#?} ;;
+				*) break ;;
+				esac
+			done
+			case "$_cmt" in
+			\#*) continue ;;
 			esac
 			if path_bearing_line "$body"; then
 				printf '%s\n' "$hit" >> "$scratch/hits.real"
