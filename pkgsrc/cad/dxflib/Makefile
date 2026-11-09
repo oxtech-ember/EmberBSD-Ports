@@ -2,6 +2,7 @@
 # Origin: QCAD dxflib 3.26.4 official source, mirrored by Debian.
 DISTNAME=	dxflib-3.26.4
 PKGNAME=	dxflib-3.26.4
+PKGREVISION=	1
 CATEGORIES=	cad
 MASTER_SITES=	https://deb.debian.org/debian/pool/main/d/dxflib/
 DISTFILES=	dxflib_3.26.4.orig.tar.gz

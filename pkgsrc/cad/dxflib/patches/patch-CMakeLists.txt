@@ -15,7 +15,7 @@ Build and install dxflib as a shared library with a relocatable CMake package.
 +    src/dl_writer_ascii.cpp
 +)
 +add_library(dxflib::dxflib ALIAS dxflib)
-+set_target_properties(dxflib PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION 3)
++set_target_properties(dxflib PROPERTIES VERSION 4.0.0 SOVERSION 4)
 +target_compile_features(dxflib PUBLIC cxx_std_11)
 +target_include_directories(dxflib PUBLIC
 +    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>

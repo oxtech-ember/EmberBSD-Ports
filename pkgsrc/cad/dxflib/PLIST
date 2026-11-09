@@ -15,6 +15,6 @@ lib/cmake/dxflib/dxflibConfigVersion.cmake
 lib/cmake/dxflib/dxflibTargets-noconfig.cmake
 lib/cmake/dxflib/dxflibTargets.cmake
 lib/libdxflib.so
-lib/libdxflib.so.3
-lib/libdxflib.so.3.26.4
+lib/libdxflib.so.4
+lib/libdxflib.so.4.0.0
 share/licenses/dxflib/LICENSE

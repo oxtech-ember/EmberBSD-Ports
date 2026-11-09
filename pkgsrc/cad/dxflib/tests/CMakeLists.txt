@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+cmake_minimum_required(VERSION 3.15)
+project(dxflib_parser_contract LANGUAGES CXX)
+find_package(dxflib 3.26.4 CONFIG REQUIRED)
+add_executable(parser-contract parser-contract.cpp)
+target_compile_features(parser-contract PRIVATE cxx_std_11)
+target_link_libraries(parser-contract PRIVATE dxflib::dxflib)
+enable_testing()
+add_test(NAME parser-contract COMMAND parser-contract "${CMAKE_CURRENT_BINARY_DIR}")
+set_tests_properties(parser-contract PROPERTIES TIMEOUT 15)
