@@ -1,0 +1,15 @@
+$NetBSD$
+
+Include the standard interfaces used by the curl wrapper.
+
+--- include/kicad_curl/kicad_curl_easy.h.orig
++++ include/kicad_curl/kicad_curl_easy.h
+@@ -40,6 +40,8 @@
+ #include <string>
+ #include <cstdint>
+ #include <shared_mutex>
++#include <utility>
++#include <vector>
+ 
+ typedef void CURL;
+ struct curl_slist;
