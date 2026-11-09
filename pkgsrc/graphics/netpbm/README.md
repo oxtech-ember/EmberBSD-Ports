@@ -36,3 +36,13 @@ behavior and target execution require their own acceptance.
 
 The existing native/cross generator and script checks move unchanged into
 `tests/netpbm-build-tools-cross.sh` and `tests/netpbm-cross-scripts.sh`.
+
+The relocation change in `lib/colorname.c` was compared with upstream using
+Cppcheck and Clang Static Analyzer. Both versions had the same findings:
+Cppcheck reported an `sscanf` without a field-width limit, reducible scope for
+`rc`, and that `rc` could be a pointer to const; Clang reported a possible null
+dereference of `srcCursor` and a possible leak of `color`. No new finding was
+introduced by the relocation change. An ASan/UBSan diagnostic run instrumented
+only the changed `colorname.c` translation unit, linked it with the ordinary
+remaining objects, and passed `tests/relative-rgb.py` for relocated dictionary
+lookup, overrides, and missing-file refusal.
