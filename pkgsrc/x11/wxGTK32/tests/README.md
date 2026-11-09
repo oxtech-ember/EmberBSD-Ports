@@ -17,6 +17,12 @@ The previous producer fails this regression. A dry run with the actual wx makefi
 accepts the bmake include loop and preserves the already updated GL canvas object.
 Keep dependency files along with compatible objects.
 
+The normal aarch64 SDK install of `wxGTK32-3.2.12nb18` passed with bmake.
+It reused 225 packages, downloaded none, and preserved the compiled C++ objects.
+The staged `make` resolved to native bmake; the old gmake wrapper was removed.
+The generated makefiles retained 743 compiler dependency files. This package
+build does not establish GUI runtime acceptance.
+
 ```sh
 python3 tests/bmake-dependencies.py --source /prepared/wxWidgets \
   --bmake /native/bin/bmake --autoconf /native/bin/autoconf \
@@ -283,9 +289,15 @@ cross-compiling; no target executable is run by configure.
 
 ```sh
 cmake -S tests -B /work/wx-webview-test \
-  -DwxWidgets_CONFIG_EXECUTABLE=/sdk/bin/wx-config
+  -DwxWidgets_CONFIG_EXECUTABLE=/sdk/bin/wx-config \
+  -DWX_SOURCE_DIR=/prepared/wxWidgets
 cmake --build /work/wx-webview-test
 ```
+
+The style, clipboard and overlay contracts use private headers. `WX_SOURCE_DIR`
+must select the Ports-patched sources used to build the installed library.
+Only those three targets receive this include directory. The other contracts
+use installed headers. No source path is needed when these contracts are disabled.
 
 Run `webkit6-contract` on the matching host/target with a real GTK4 display,
 WebKit web-process sandbox and its ordinary runtime dependencies. It uses local
