@@ -3,3 +3,4 @@ $NetBSD$
 BLAKE2s (thread-pool-5.1.0.tar.gz) = 1a86ea4a666fcd58ebf385ad8c134851432b1a798788f08d2de720d41b55983d
 SHA512 (thread-pool-5.1.0.tar.gz) = 8f0752962908b81b096f964729aa47e2bc6111a8458f6ec6f3db5970e0245c0ad5b2af2c3cc38bfeb59c9cffc5710613b977b943e51fc3f4ebb92c0b12d1804e
 Size (thread-pool-5.1.0.tar.gz) = 161528 bytes
+SHA1 (patch-netbsd-native) = 3cebcf91f10abc9aea98de8af873cb946fb42b2c

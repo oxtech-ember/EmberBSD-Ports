@@ -1,0 +1,237 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Support native NetBSD affinity, names and scheduling with explicit unsupported
+per-thread nice levels. Empty native affinity means unbound, not zero CPUs.
+
+--- include/BS_thread_pool.hpp.orig
++++ include/BS_thread_pool.hpp
+@@ -48,7 +48,7 @@
+             #define NOMINMAX
+         #endif
+         #include <windows.h>
+-    #elif defined(__linux__) || defined(__APPLE__)
++    #elif defined(__linux__) || defined(__APPLE__) || defined(__NetBSD__)
+         #include <pthread.h>
+         #include <sched.h>
+         #include <sys/resource.h>
+@@ -805,7 +805,7 @@
+     highest = THREAD_PRIORITY_HIGHEST,
+     realtime = THREAD_PRIORITY_TIME_CRITICAL
+ };
+-    #elif defined(__linux__) || defined(__APPLE__)
++    #elif defined(__linux__) || defined(__APPLE__) || defined(__NetBSD__)
+ /**
+  * @brief An enum containing pre-defined OS-specific process priority values for portability.
+  */
+@@ -833,6 +833,60 @@
+     realtime
+ };
+     #endif
++
++#ifdef __NetBSD__
++namespace detail
++{
++// Both native APIs use a dynamically allocated cpuset. An empty native mask
++// means unbound, not zero usable CPUs; let the caller use its normal CPU count.
++template <typename Query>
++std::optional<std::vector<bool>> get_netbsd_affinity(Query query)
++{
++    const long count = sysconf(_SC_NPROCESSORS_CONF);
++    if (count <= 0)
++        return std::nullopt;
++    const auto destroy = [](cpuset_t* set) { cpuset_destroy(set); };
++    std::unique_ptr<cpuset_t, decltype(destroy)> set(cpuset_create(), destroy);
++    if (!set || query(cpuset_size(set.get()), set.get()) != 0)
++        return std::nullopt;
++    std::vector<bool> affinity(static_cast<std::size_t>(count));
++    bool bound = false;
++    for (std::size_t i = 0; i < affinity.size(); ++i)
++    {
++        const int member = cpuset_isset(static_cast<cpuid_t>(i), set.get());
++        if (member < 0)
++            return std::nullopt;
++        affinity[i] = member != 0;
++        bound = bound || affinity[i];
++    }
++    return bound ? std::make_optional(std::move(affinity)) : std::nullopt;
++}
++
++template <typename Set>
++bool set_netbsd_affinity(const std::vector<bool>& affinity, Set apply)
++{
++    const long count = sysconf(_SC_NPROCESSORS_CONF);
++    if (count <= 0)
++        return false;
++    const auto destroy = [](cpuset_t* set) { cpuset_destroy(set); };
++    std::unique_ptr<cpuset_t, decltype(destroy)> set(cpuset_create(), destroy);
++    if (!set)
++        return false;
++    bool bound = false;
++    for (std::size_t i = 0; i < affinity.size(); ++i)
++    {
++        if (!affinity[i])
++            continue;
++        if (i >= static_cast<std::size_t>(count) ||
++            cpuset_set(static_cast<cpuid_t>(i), set.get()) != 0)
++            return false;
++        bound = true;
++    }
++    // Do not interpret an invalid empty selection as a request to clear binding.
++    return bound && apply(cpuset_size(set.get()), set.get()) == 0;
++}
++} // namespace detail
++#endif
+ 
+ /**
+  * @brief Get the processor affinity of the current process using the current platform's native API. This should work on Windows and Linux, but is not possible on macOS as the native API does not allow it.
+@@ -873,6 +927,9 @@
+     for (std::size_t i = 0; i < affinity.size(); ++i)
+         affinity[i] = CPU_ISSET(i, &cpu_set);
+     return affinity;
++    #elif defined(__NetBSD__)
++    return detail::get_netbsd_affinity([](std::size_t size, cpuset_t* set)
++        { return sched_getaffinity_np(getpid(), size, set); });
+     #elif defined(__APPLE__)
+     return std::nullopt;
+     #endif
+@@ -900,6 +957,9 @@
+             CPU_SET(i, &cpu_set);
+     }
+     return sched_setaffinity(getpid(), sizeof(cpu_set_t), &cpu_set) == 0;
++    #elif defined(__NetBSD__)
++    return detail::set_netbsd_affinity(affinity, [](std::size_t size, cpuset_t* set)
++        { return sched_setaffinity_np(getpid(), size, set); });
+     #elif defined(__APPLE__)
+     return false;
+     #endif
+@@ -918,7 +978,7 @@
+     if (priority == 0)
+         return std::nullopt;
+     return static_cast<os_process_priority>(priority);
+-    #elif defined(__linux__) || defined(__APPLE__)
++    #elif defined(__linux__) || defined(__APPLE__) || defined(__NetBSD__)
+     // On Linux/macOS there is no direct analogue of `GetPriorityClass()` on Windows, so instead we get the "nice" value. The usual range is -20 to 19 or 20, with higher values corresponding to lower priorities. However, we are only using 6 pre-defined values for portability, so if the value was set via any means other than `BS::set_os_process_priority()`, it may not match one of our pre-defined values. Note that `getpriority()` returns -1 on error, but since this does not correspond to any of our pre-defined values, this function will return `std::nullopt` anyway.
+     const int nice_val = getpriority(PRIO_PROCESS, static_cast<id_t>(getpid()));
+     switch (nice_val)
+@@ -952,7 +1012,7 @@
+     #if defined(_WIN32)
+     // On Windows, this is straightforward.
+     return SetPriorityClass(GetCurrentProcess(), static_cast<DWORD>(priority)) != 0;
+-    #elif defined(__linux__) || defined(__APPLE__)
++    #elif defined(__linux__) || defined(__APPLE__) || defined(__NetBSD__)
+     // On Linux/macOS there is no direct analogue of `SetPriorityClass()` on Windows, so instead we set the "nice" value. The usual range is -20 to 19 or 20, with higher values corresponding to lower priorities. However, we are only using 6 pre-defined values for portability. Note that the "nice" values are only relevant for the `SCHED_OTHER` policy, but we do not set that policy here, as it is per-thread rather than per-process.
+     // Also, it's important to note that a non-root user cannot decrease the nice value (i.e. increase the process priority), only increase it. This can cause confusing behavior. For example, if the current priority is `BS::os_process_priority::normal` and the user sets it to `BS::os_process_priority::idle`, they cannot change it back `BS::os_process_priority::normal`.
+     return setpriority(PRIO_PROCESS, static_cast<id_t>(getpid()), static_cast<int>(priority)) == 0;
+@@ -1034,6 +1094,9 @@
+         for (std::size_t i = 0; i < affinity.size(); ++i)
+             affinity[i] = CPU_ISSET(i, &cpu_set);
+         return affinity;
++    #elif defined(__NetBSD__)
++        return detail::get_netbsd_affinity([](std::size_t size, cpuset_t* set)
++            { return pthread_getaffinity_np(pthread_self(), size, set); });
+     #else
+         return std::nullopt;
+     #endif
+@@ -1061,6 +1124,9 @@
+                 CPU_SET(i, &cpu_set);
+         }
+         return pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpu_set) == 0;
++    #elif defined(__NetBSD__)
++        return detail::set_netbsd_affinity(affinity, [](std::size_t size, cpuset_t* set)
++            { return pthread_setaffinity_np(pthread_self(), size, set); });
+     #else
+         return false;
+     #endif
+@@ -1093,10 +1159,12 @@
+         if (result == 0)
+             return std::nullopt;
+         return name;
+-    #elif defined(__linux__) || defined(__APPLE__)
++    #elif defined(__linux__) || defined(__APPLE__) || defined(__NetBSD__)
+         #ifdef __linux__
+         // On Linux thread names are limited to 16 characters, including the null terminator.
+         constexpr std::size_t buffer_size = 16;
++        #elif defined(__NetBSD__)
++        constexpr std::size_t buffer_size = PTHREAD_MAX_NAMELEN_NP;
+         #else
+         // On macOS thread names are limited to 64 characters, including the null terminator.
+         constexpr std::size_t buffer_size = 64;
+@@ -1129,6 +1197,9 @@
+     #elif defined(__linux__)
+         // On Linux this is straightforward.
+         return pthread_setname_np(pthread_self(), name.data()) == 0;
++    #elif defined(__NetBSD__)
++        // NetBSD takes a printf format and one argument, not a literal name.
++        return pthread_setname_np(pthread_self(), "%s", const_cast<char*>(name.c_str())) == 0;
+     #elif defined(__APPLE__)
+         // On macOS, unlike Linux, a thread can only set a name for itself, so the signature is different.
+         return pthread_setname_np(name.data()) == 0;
+@@ -1193,6 +1264,29 @@
+             default:
+                 return std::nullopt;
+             }
++        }
++        return std::nullopt;
++    #elif defined(__NetBSD__)
++        int policy = 0;
++        struct sched_param param = {};
++        if (pthread_getschedparam(pthread_self(), &policy, &param) != 0)
++            return std::nullopt;
++        // SCHED_OTHER priorities are dynamic and cannot be set per thread.
++        if (policy == SCHED_OTHER)
++            return os_thread_priority::normal;
++        if (policy == SCHED_FIFO)
++        {
++            const int maximum = sched_get_priority_max(policy);
++            if (maximum >= 0 && param.sched_priority == maximum)
++                return os_thread_priority::realtime;
++        }
++        if (policy == SCHED_RR)
++        {
++            const int minimum = sched_get_priority_min(policy);
++            const int maximum = sched_get_priority_max(policy);
++            if (minimum >= 0 && maximum >= minimum &&
++                param.sched_priority == minimum + (maximum - minimum) / 2)
++                return os_thread_priority::highest;
+         }
+         return std::nullopt;
+     #elif defined(__APPLE__)
+@@ -1294,6 +1388,37 @@
+         if (nice_val.has_value())
+             success = success && (setpriority(PRIO_PROCESS, static_cast<id_t>(syscall(SYS_gettid)), nice_val.value()) == 0);
+         return success;
++    #elif defined(__NetBSD__)
++        int policy = SCHED_OTHER;
++        struct sched_param param = {};
++        switch (priority)
++        {
++        case os_thread_priority::normal:
++            // NetBSD requires PRI_NONE for its dynamic time-sharing scheduler.
++            param.sched_priority = sched_get_priority_min(SCHED_OTHER);
++            break;
++        case os_thread_priority::highest:
++        {
++            policy = SCHED_RR;
++            const int minimum = sched_get_priority_min(policy);
++            const int maximum = sched_get_priority_max(policy);
++            if (minimum < 0 || maximum < minimum)
++                return false;
++            param.sched_priority = minimum + (maximum - minimum) / 2;
++            break;
++        }
++        case os_thread_priority::realtime:
++            policy = SCHED_FIFO;
++            param.sched_priority = sched_get_priority_max(policy);
++            if (param.sched_priority < 0)
++                return false;
++            break;
++        default:
++            // Per-thread nice levels are unavailable. Never change process nice
++            // to emulate them: that would also change the caller's UI thread.
++            return false;
++        }
++        return pthread_setschedparam(pthread_self(), policy, &param) == 0;
+     #elif defined(__APPLE__)
+         // On macOS, unlike Linux, the "nice" value is per-process, not per-thread (in compliance with the POSIX standard). However, unlike Linux, `SCHED_OTHER` on macOS does have a range of priorities. So for `realtime` and `highest` priorities we use `SCHED_FIFO` and `SCHED_RR` respectively as for Linux, but for the other priorities we use `SCHED_OTHER` with a priority in the range given by `sched_get_priority_min(SCHED_OTHER)` to `sched_get_priority_max(SCHED_OTHER)`.
+         int policy = 0;

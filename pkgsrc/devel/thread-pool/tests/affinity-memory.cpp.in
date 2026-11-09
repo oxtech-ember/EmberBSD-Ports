@@ -1,0 +1,84 @@
+// Origin: EmberBSD contributors (AI-assisted). SPDX-License-Identifier: MIT
+// Actual provider helpers, with a controlled cpuset API for host sanitizers.
+#include <algorithm>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
+#include <optional>
+#include <vector>
+#include <unistd.h>
+
+using cpuid_t = unsigned int;
+struct cpuset_t { unsigned int bits = 0; };
+static int live = 0, applied = 0;
+static long cpu_count = 4;
+static bool allocation_failure = false, set_failure = false;
+static long fake_sysconf(int) { return cpu_count; }
+static cpuset_t* cpuset_create()
+{
+    if (allocation_failure) return nullptr;
+    ++live;
+    return new cpuset_t;
+}
+static void cpuset_destroy(cpuset_t* set) { --live; delete set; }
+static std::size_t cpuset_size(const cpuset_t*) { return sizeof(unsigned int); }
+static int cpuset_set(cpuid_t cpu, cpuset_t* set)
+{
+    if (cpu >= 4 || set_failure) return -1;
+    set->bits |= 1U << cpu;
+    return 0;
+}
+static int cpuset_isset(cpuid_t cpu, const cpuset_t* set)
+{
+    if (cpu >= 4) return -1;
+    return (set->bits & (1U << cpu)) != 0;
+}
+#define sysconf fake_sysconf
+@HELPERS@
+#undef sysconf
+
+static void check(bool ok, const char* message)
+{
+    if (!ok || live != 0)
+    {
+        std::fprintf(stderr, "FAIL: %s (live=%d)\n", message, live);
+        std::exit(1);
+    }
+}
+int main()
+{
+    const auto query = [](std::size_t, cpuset_t* set) { set->bits = 5; return 0; };
+    const auto apply = [](std::size_t, cpuset_t* set) { applied = set->bits; return 0; };
+    const std::vector<bool> selection = {true, false, true, false};
+    cpu_count = -1;
+    check(!detail::get_netbsd_affinity(query), "CPU count failure");
+    check(!detail::set_netbsd_affinity(selection, apply), "setter CPU count failure");
+    cpu_count = 4;
+    allocation_failure = true;
+    check(!detail::get_netbsd_affinity(query), "allocation failure");
+    check(!detail::set_netbsd_affinity(selection, apply), "setter allocation failure");
+    allocation_failure = false;
+    check(!detail::get_netbsd_affinity([](std::size_t, cpuset_t*) { return -1; }), "query failure");
+    check(!detail::get_netbsd_affinity([](std::size_t, cpuset_t*) { return 0; }), "unbound mask");
+    cpu_count = 5;
+    check(!detail::get_netbsd_affinity(query), "invalid membership is not true");
+    cpu_count = 4;
+    check(detail::get_netbsd_affinity(query) == selection, "mask conversion");
+    check(!detail::set_netbsd_affinity({}, apply) && applied == 0, "empty selection");
+    check(!detail::set_netbsd_affinity({false, false, false, false, true}, apply) && applied == 0,
+          "out-of-range selection");
+    set_failure = true;
+    check(!detail::set_netbsd_affinity(selection, apply) && applied == 0, "cpuset_set failure");
+    set_failure = false;
+    check(!detail::set_netbsd_affinity(selection, [](std::size_t, cpuset_t*) { return -1; }),
+          "native apply failure");
+    check(detail::set_netbsd_affinity(selection, apply) && applied == 5, "native apply success");
+    try
+    {
+        detail::get_netbsd_affinity([](std::size_t, cpuset_t*) -> int { throw 7; });
+        std::abort();
+    }
+    catch (int) { check(true, "exception cleanup"); }
+    std::puts("Actual NetBSD affinity helper allocation/error contracts PASS");
+}
