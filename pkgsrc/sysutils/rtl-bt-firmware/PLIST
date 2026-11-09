@@ -1,0 +1,5 @@
+@comment $NetBSD$
+libdata/firmware/rtl_bt/rtl8821c_config.bin
+libdata/firmware/rtl_bt/rtl8821c_fw.bin
+share/doc/rtl-bt-firmware/WHENCE
+share/licenses/rtl-bt-firmware/LICENCE.rtlwifi_firmware.txt

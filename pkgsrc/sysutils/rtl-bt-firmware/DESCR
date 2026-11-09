@@ -1,0 +1,5 @@
+This package provides the pinned Realtek Bluetooth patch firmware from
+linux-firmware for controllers that rtlbtfw(8) supports. It installs the
+RTL8821C patch and config files into libdata/firmware/rtl_bt together with
+the original firmware license and WHENCE provenance file. The EmberBSD
+bluetooth rc.d script loads the patch when bluetooth_firmware=YES.
