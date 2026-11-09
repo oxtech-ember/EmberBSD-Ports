@@ -582,3 +582,4 @@ textproc/libspelling
 x11/gtksourceview5
 graphics/netpbm
 sysutils/upower
+graphics/potrace

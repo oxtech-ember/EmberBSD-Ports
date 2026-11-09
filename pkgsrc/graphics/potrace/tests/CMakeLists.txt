@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+cmake_minimum_required(VERSION 3.18)
+project(potrace_bitmap_contract LANGUAGES C)
+find_path(POTRACE_INCLUDE_DIR NAMES potrace/bitmap.h REQUIRED)
+find_library(POTRACE_LIBRARY NAMES potrace REQUIRED)
+add_executable(bitmap-contract bitmap-contract.c)
+target_include_directories(bitmap-contract PRIVATE "${POTRACE_INCLUDE_DIR}")
+target_link_libraries(bitmap-contract PRIVATE "${POTRACE_LIBRARY}")
+enable_testing()
+add_test(NAME bitmap-contract COMMAND bitmap-contract)
+set_tests_properties(bitmap-contract PROPERTIES TIMEOUT 15)
