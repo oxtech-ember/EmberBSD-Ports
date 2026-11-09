@@ -300,6 +300,10 @@ tool, documentation or packaging change, use the existing scoped `package` /
 compiler changes require rebuilding the affected objects; the dependency
 check does not silently accept them or clean the whole stage.
 
+Selecting a package for a source build does not establish that its retained
+objects are incompatible. A change of `nbN` alone preserves the work directory
+and stops for the scoped recovery described here; it does not authorize a clean.
+
 The explicit stage-local `package` and `package-install` commands also compare
 retained dependency metadata with the current resolution. A change refreshes
 only dependency and package metadata through `depends-clean` and `_package-clean`,

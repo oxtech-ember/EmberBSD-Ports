@@ -49,9 +49,9 @@ with tempfile.TemporaryDirectory() as temp:
                               env=dict(os.environ, **resolved))
     # The function resolves the classifier alongside $0.
     (root / 'cross-bulk-workdir.py').write_bytes(classifier.read_bytes())
-    def classify(current, *mode, directory=work, package='fixture', upstream='1.0'):
+    def classify(current, *, directory=work, package='fixture', upstream='1.0'):
         return subprocess.run([sys.executable, str(root / 'cross-bulk-workdir.py'),
-                               str(directory), package, upstream, current, *mode],
+                               str(directory), package, upstream, current],
                               capture_output=True, text=True)
     obj.unlink()
     assert run(None, 'fixture-1.0nb2', '1.0').returncode == 0
@@ -66,18 +66,20 @@ with tempfile.TemporaryDirectory() as temp:
         patch_cookie.write_text(applied)
         assert run('fixture-1.0nb1', 'fixture-1.0nb1', '1.0').returncode == 0
         assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
-        # Without a planned rebuild, a revision-only difference still stops.
+        # A revision change alone cannot establish object incompatibility.
         refused = classify('fixture-1.0nb2')
         assert refused.returncode != 0 and 'revision changed' in refused.stderr, refused.stderr
         assert refused.stdout.strip() == ''
         assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     refused = classify('fixture-1.0nb2')
     assert refused.returncode != 0 and (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
-    # The controller already selected the new revision. Retire this workdir.
-    retired = run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0')
-    assert retired.returncode == 0, retired.stderr
-    assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
-    (root / 'work.retired').rename(work)
+    # Exercise the real controller path, not just the classifier. Selecting
+    # this package for a build must not silently turn an nbN bump into a clean.
+    refused = run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0')
+    assert refused.returncode != 0 and 'revision changed' in refused.stderr, refused.stderr
+    assert work.is_dir() and obj.read_bytes() == b'object'
+    assert not (root / 'work.retired').exists()
+    assert not (rundir / 'bmk-args').exists()
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     (work / '.build_done').write_text('fixture-1.0nb2\n')
     assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode == 0
@@ -94,17 +96,20 @@ with tempfile.TemporaryDirectory() as temp:
     css.mkdir()
     (css / '.extract_done').write_text('cxx-rust-cssparser-0.1.0nb4\n')
     (css / '.package_done').write_text('cxx-rust-cssparser-0.1.0nb4\n')
-    planned = classify('cxx-rust-cssparser-0.1.0nb5', 'planned', directory=css,
-                       package='cxx-rust-cssparser', upstream='0.1.0')
-    assert planned.returncode == 0 and planned.stdout.strip() == 'incompatible', planned.stderr
+    css_object = css / 'kept.o'
+    css_object.write_bytes(b'compiled object')
+    css_saved = {p: (p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns)
+                 for p in css.iterdir()}
     reused = classify('cxx-rust-cssparser-0.1.0nb4', directory=css,
                       package='cxx-rust-cssparser', upstream='0.1.0')
     assert reused.returncode == 0 and reused.stdout.strip() == 'same', reused.stderr
     outside = classify('cxx-rust-cssparser-0.1.0nb5', directory=css,
                        package='cxx-rust-cssparser', upstream='0.1.0')
     assert outside.returncode != 0 and 'revision changed' in outside.stderr
+    assert {p: (p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns)
+            for p in css.iterdir()} == css_saved
     (css / '.extract_done').write_text('not a package identity\n')
-    unknown = classify('cxx-rust-cssparser-0.1.0nb5', 'planned', directory=css,
+    unknown = classify('cxx-rust-cssparser-0.1.0nb5', directory=css,
                        package='cxx-rust-cssparser', upstream='0.1.0')
     assert unknown.returncode != 0 and 'unknown package identity' in unknown.stderr
     assert not (rundir / 'bmk-args').exists()
@@ -178,4 +183,4 @@ with tempfile.TemporaryDirectory() as temp:
     resolved.pop('FIXTURE_CMP', None)
     assert run('fixture-1.0nb2', 'fixture-2.0', '2.0').returncode == 0
     assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
-print('PASS: retry preserves the same revision, a planned revision change retires, unknown and unplanned differences stay refused, dependency changes preserve and stop, incompatible version retires')
+print('PASS: retry preserves objects, revision-only and unknown changes preserve and stop, dependency changes preserve and stop, incompatible upstream version retires')

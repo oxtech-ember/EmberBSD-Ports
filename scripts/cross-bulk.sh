@@ -992,9 +992,7 @@ prepare_wrkdir()
     clean=clean
     prepare_wrkdir_error=
     if [ -e "$1" ] || [ -L "$1" ]; then
-        # planned: this build already selected $name. A revision-only workdir
-        # is incompatible and uses the retire/clean path below.
-        work_identity=$("$host_python" -B -E -S "$(dirname "$0")/cross-bulk-workdir.py" "$1" "$base" "$version" "$name" planned) || return 1
+        work_identity=$("$host_python" -B -E -S "$(dirname "$0")/cross-bulk-workdir.py" "$1" "$base" "$version" "$name") || return 1
         case "$work_identity" in
         same)
             # Dependency names alone cannot establish object compatibility.
