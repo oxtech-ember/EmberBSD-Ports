@@ -1,0 +1,114 @@
+Origin: EmberBSD (AI-assisted). Use the selected Darwin linker for YJIT,
+preserve Ruby and YJIT public exports, and flatten the Rust archive into
+static libruby. Revision advances lang/ruby40 for the changed outputs.
+Not submitted upstream.
+
+--- a/lang/ruby40/Makefile
++++ b/lang/ruby40/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	${RUBY_DISTNAME}
+ PKGNAME=	${RUBY_PKGPREFIX}-${RUBY_VERSION}
++PKGREVISION=	1
+ CATEGORIES=	lang ruby
+ MASTER_SITES=	${MASTER_SITE_RUBY}
+ 
+--- a/lang/ruby40/distinfo
++++ b/lang/ruby40/distinfo
+@@ -6,6 +6,7 @@
+ SHA1 (patch-.bundle_gems_rdoc-7.0.4_lib_rdoc_encoding.rb) = 896fc0825d59174b508bcfc5d17727f0d0b1050f
+ SHA1 (patch-common.mk) = c23eed58427b2fd4ba8fdb3692f609701a666c6d
+ SHA1 (patch-configure) = ff1b1e659ddc7cb1d62a71e1447df55f1f7b07c2
++SHA1 (patch-defs_jit.mk) = 44a09f7f87308265e42b8b7ce4c71cc2bf573acc
+ SHA1 (patch-include_ruby_internal_static__assert.h) = 7d5c3ae7ff674b9b34639924fcf08237164de9f8
+ SHA1 (patch-lib_mkmf.rb) = ea66bc4e42d2b15edfcd8ceefa9b94d07a3cdd0f
+ SHA1 (patch-lib_rubygems.rb) = bea18f991525d7ed72d8a5a64539e6fd247e1d30
+@@ -16,7 +17,7 @@
+ SHA1 (patch-lib_rubygems_installer.rb) = 68a43121b4faab060afa4e352e1603f9d6630a47
+ SHA1 (patch-lib_rubygems_platform.rb) = 6bd2e1c5c3064f9d694508169a5bf0a594d7bbef
+ SHA1 (patch-lib_rubygems_specification.rb) = f543cab6b56fec0f7195d4eabddedc080c18688c
+-SHA1 (patch-template_Makefile.in) = 3cf5d612ef725dc64d6a90d377b191a29ebfdf17
++SHA1 (patch-template_Makefile.in) = 6b967133835031ba424ad3975bccbc505791bef9
+ SHA1 (patch-test_rubygems_test__gem.rb) = 32f7c7d7f8a024c045d78c2bce93944fc3113d04
+ SHA1 (patch-thread__pthread.c) = 7c1231933a2d6ce9d56891ab512371841697fbca
+ SHA1 (patch-tool_ifchange) = 1803bb6a1836e232dcabcf38f11c9881dbf726ea
+--- /dev/null
++++ b/lang/ruby40/patches/patch-defs_jit.mk
+@@ -0,0 +1,42 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted). Keep YJIT in final Ruby links and merge its
++archive members into static libruby without unsupported relocatable linking.
++
++--- defs/jit.mk.orig
+++++ defs/jit.mk
++@@ -63,10 +63,32 @@
++ endif # ifneq ($(JIT_CARGO_SUPPORT),no)
++ 
++ RUST_LIB_SYMBOLS = $(RUST_LIB:.a=).symbols
+++RUST_LIB_EXPORTS = $(RUST_LIB:.a=).exports
+++RUST_LIB_MERGE = :
+++RUST_LIB_LINK_FLAGS =
++ $(RUST_LIBOBJ): $(RUST_LIB)
++-	$(ECHO) 'partial linking $(RUST_LIB) into $@'
+++	$(ECHO) 'preparing $(RUST_LIB) for final Ruby links'
++ ifneq ($(findstring darwin,$(target_os)),)
++-	$(Q) $(CC) -nodefaultlibs -r -o $@ -exported_symbols_list $(RUST_LIB_SYMBOLS) $(RUST_LIB)
+++	$(Q) $(CC) -x c -c /dev/null -o $@
+++ifneq ($(strip $(RUST_LIB)),)
+++RUST_LIB_MERGE = printf 'create %s.tmp\naddlib %s\naddlib %s\nsave\nend\n' "$@" "$@" "$(RUST_LIB)" | $(AR) -M && $(MV) -f "$@.tmp" "$@"
+++# The marker object is needed by Ruby's normal LIBRUBY_A_OBJS list; the archive
+++# members themselves are merged below, and the shared link force-loads them.
+++RUST_LIB_FORCE_LOAD_FLAGS = -Wl,-force_load,$(RUST_LIB)
+++RUST_LIB_LINK_FLAGS = $(RUST_LIB_FORCE_LOAD_FLAGS) -Wl,-exported_symbols_list,$(RUST_LIB_EXPORTS)
+++$(LIBRUBY_SO): $(RUST_LIB_EXPORTS)
+++$(RUST_LIB_EXPORTS): $(RUST_LIB_SYMBOLS) $(OBJS) $(DLDOBJS)
+++	$(NM) -m $(OBJS) $(DLDOBJS) > $@.nm && \
+++	{ printf '#!\n'; \
+++	  while IFS= read -r line; do \
+++	    case "$$line" in *" external "*) \
+++	      case "$$line" in *"private external"*|*"(undefined)"*) continue;; esac; \
+++	      set -f; set -- $$line; for symbol do :; done; printf '%s\n' "$$symbol";; \
+++	    esac; \
+++	  done < $@.nm; \
+++	  cat $(RUST_LIB_SYMBOLS); \
+++	} > $@.tmp && $(MV) -f $@.tmp $@ && $(RM) $@.nm
+++endif
++ else
++ 	$(Q) $(LD) -r -o $@ --whole-archive $(RUST_LIB)
++ 	-$(Q) $(OBJCOPY) --wildcard --keep-global-symbol='$(SYMBOL_PREFIX)rb_*' $(@)
+--- a/lang/ruby40/patches/patch-template_Makefile.in
++++ b/lang/ruby40/patches/patch-template_Makefile.in
+@@ -10,6 +10,32 @@
+ 
+ --- template/Makefile.in.orig	2026-05-07 20:25:14.644318083 +0000
+ +++ template/Makefile.in
++@@ -307,7 +307,7 @@
++ miniruby$(EXEEXT):
++ 		@-if test -f $@; then $(MV) -f $@ $@.old; $(RM) $@.old; fi
++ 		$(ECHO) linking $@
++-		$(Q) $(PURIFY) $(CC) $(EXE_LDFLAGS) $(XLDFLAGS) $(NORMALMAINOBJ) $(MINIOBJS) $(COMMONOBJS) $(MAINLIBS) $(OUTFLAG)$@
+++		$(Q) $(PURIFY) $(CC) $(EXE_LDFLAGS) $(XLDFLAGS) $(NORMALMAINOBJ) $(MINIOBJS) $(COMMONOBJS) $(MAINLIBS) $(RUST_LIB_FORCE_LOAD_FLAGS) $(OUTFLAG)$@
++ 		$(Q) $(POSTLINK)
++ 
++ $(PROGRAM):
++@@ -328,6 +328,7 @@
++ 		@-[ -z "$(EXTSTATIC)" ] || $(PRE_LIBRUBY_UPDATE)
++ 		$(ECHO) linking static-library $@
++ 		$(Q) $(AR) $(ARFLAGS) $@ $(LIBRUBY_A_OBJS) $(INITOBJS)
+++		$(Q) $(RUST_LIB_MERGE)
++ 		@-$(RANLIB) $@ 2> /dev/null || true
++ 
++ verify-static-library: $(LIBRUBY_A)
++@@ -338,7 +339,7 @@
++ $(LIBRUBY_SO):
++ 		@-[ -n "$(EXTSTATIC)" ] || $(PRE_LIBRUBY_UPDATE)
++ 		$(ECHO) linking shared-library $@
++-		$(Q) $(LDSHARED) $(DLDFLAGS) $(OBJS) $(DLDOBJS) $(SOLIBS) $(EXTSOLIBS) $(OUTFLAG)$@
+++		$(Q) $(LDSHARED) $(DLDFLAGS) $(OBJS) $(DLDOBJS) $(SOLIBS) $(EXTSOLIBS) $(RUST_LIB_LINK_FLAGS) $(OUTFLAG)$@
++ 		-$(Q) $(OBJCOPY) -w -L '$(SYMBOL_PREFIX)Init_*' -L '$(SYMBOL_PREFIX)InitVM_*' \
++ 			-L '$(SYMBOL_PREFIX)ruby_static_id_*' \
++ 			-L '$(SYMBOL_PREFIX)*_threadptr_*' -L '$(SYMBOL_PREFIX)*_ec_*' $@
+ @@ -523,7 +523,7 @@ probes.stamp: $(DTRACE_REBUILD_OBJS)
+  
+  probes.stamp: $(DTRACE_REBUILD_OBJS)

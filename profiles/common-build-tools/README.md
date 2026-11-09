@@ -293,6 +293,15 @@ The export keeps only Ruby 4.0. Its `rubyversion.mk` supports, accepts and
 defaults to 4.0 alone, so no profile sets its own Ruby default and builds
 without a profile, such as the Darwin bootstrap, also select `lang/ruby40`.
 Recursive host generators use native Ruby and `ruby40-asciidoctor`.
+On Darwin, Ruby links YJIT with the selected linker without a relocatable
+`ld -r` step: final executable/shared links retain the Rust archive, while
+LLVM ar merges its members into static libruby. No-JIT builds keep empty
+JIT link flags. `tests/ruby-jit-link-flags.py --make /absolute/host/bin/gmake
+--jit-mk /absolute/prepared/ruby/defs/jit.mk` checks the prepared rules for
+Darwin and ELF with JIT enabled and disabled; it does not replace runtime
+acceptance. `tests/ruby-bundle-plist-order.py --bmake /absolute/host/bin/bmake
+--awk /absolute/host/bin/nawk` checks longest-first gem substitutions without
+external tools during metadata parsing.
 The [selection check](tests/ruby-selection.py) queries actual pkgsrc metadata
 without a profile, native, for each prepared cross target and for host
 recursion. It also requires that `RUBY_VERSION_DEFAULT=34` is rejected and that
