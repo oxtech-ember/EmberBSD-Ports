@@ -35,6 +35,7 @@ SHA1 (patch-gtk4-timer) = 669417477958d4e731dff64993da02005b710dbe
 SHA1 (patch-gtk4-toolbar) = f6f305161117c8512ce045c1113896aae01c5ef0
 SHA1 (patch-gtk4-toplevel) = bc0fbb82e2ff82ec53bf47141ed42bbc8763ba3c
 SHA1 (patch-gtk4-transfer) = bc89f593c6ac67e433982689b6bb22efec4d4fb5
+SHA1 (patch-gtk4-utilsx11) = 2c432c2e3b6e1378b16d682e260410ca5f4b43e5
 SHA1 (patch-gtk4-webview) = 0394ddef8d1549e6e0602b589657aa6a151ae9fe
 SHA1 (patch-gtk4-window) = 6fb750eb544be26f7c5bbc47e064261d71eb3b4f
 SHA1 (patch-gtk4-wx-controls) = 196e0bffa8ca0f4e1fe404058b2c014acf963b15

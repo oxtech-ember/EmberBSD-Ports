@@ -1,3 +1,37 @@
+# GTK4 Unix utilities contract
+
+`patch-gtk4-utilsx11` uses GTK4's keyboard device state, matches X11 window
+manager queries to their supplied display, and uses the shared GIO URI launcher.
+The launch context follows the top-level window's display, falling back to the
+default display when no window exists. The existing `wxGtkObject` owner releases
+the context on both success and failure; failure reaches the existing browser
+fallback. No new library or private launcher is introduced.
+
+```sh
+python3 tests/utilsx11-gtk4.py \
+  --source /prepared/wxWidgets/src/unix/utilsx11.cpp \
+  --wx-include /prepared/wxWidgets/include \
+  --cxx /native/bin/clang++ --work-parent /work/tmp
+```
+
+The harness extracts the actual WM and keyboard functions and the URI function
+up to its existing fallback boundary. Only external GTK/GDK/GIO/Xlib calls are
+mocked; the production `wxGtkObject` template supplies ownership. It covers
+absent devices, modifier and lock states, display selection, missing atom names,
+URI success/failure and exactly-once resource release. It never launches a real
+browser. Native ASan/UBSan execution passes; supply diagnostic flags with repeated
+`--cxx-flag` arguments (`-fsanitize=address,undefined`,
+`-fno-sanitize-recover=all`, `-fno-omit-frame-pointer`). Target compilation and
+static analysis cover the full TU;
+real GTK display, WM, browser and full wx GUI execution remain separate checks.
+
+The target compiler reports three GTK X11 API deprecations in the hint
+query, with those APIs still available in GTK 4.24. Cppcheck's
+`dangerousTypeCast` at the timestamp call is a false positive: the existing
+`wxGtkObject<T>::operator T*()` returns the same pointer type required by GDK.
+Unchanged wx hash-map/`wxAny` header reports retain their earlier classification;
+the full-TU Clang analyzer reports no finding in this change.
+
 # GTK4 WebView contract
 
 The shared `patch-gtk4-webview` keeps wxWidgets 3.2.12 public WebView APIs and
