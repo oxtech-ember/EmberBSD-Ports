@@ -77,3 +77,27 @@ python3 tests/wx-toolkit.py --source /prepared/kicad \
 Use the selected SDK build PATH, including its host `sh` route. The check covers
 Unix default and explicit GTK4 selection, Apple provider selection, and matching
 or conflicting wxPython toolkits. It does not execute target programs.
+
+The platform and native-print QA targets share one GTK4 pkg-config target.
+The Unix platform adapter uses the common wx native theme and GtkComboBoxText
+model, GdkSurface coordinates and the existing Wayland pointer-constraints
+protocol. It does not query removed GTK3 settings or use the old GtkMenu/ATK
+choice workaround. WebKit6 cookie deletion submits an asynchronous request via
+the view's NetworkSession; submission does not establish completion. Remote
+file dialogs still need a local filename, such as a mounted remote filesystem.
+
+Both platform translation units pass target syntax checks with Wayland enabled.
+WebView's Clang Static Analyzer check is clean; UI retains an unchanged wx trace
+formatting finding outside the adapter changes. The known Cppcheck target-header
+parser limitation remains. `tests/ui4-contract.py` extracts the actual theme,
+choice, scale and icon methods into a focused runtime fixture:
+
+```sh
+python3 tests/ui4-contract.py \
+  --source /prepared/kicad/libs/kiplatform/port/wxgtk/ui.cpp \
+  --output /work/ui4-contract.cpp
+```
+
+Build it with the selected target wx/GTK4 and KiCad platform headers; run it on
+the target with a display and `GDK_SCALE=2`. Full GUI acceptance, Wayland pointer
+constraints and asynchronous WebKit cookie completion remain pending.

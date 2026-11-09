@@ -1,0 +1,411 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use the shared wx GTK4 widget model, native GdkSurface coordinates and WebKit6
+NetworkSession API. Retain Wayland pointer constraints and native GTK printing.
+
+--- libs/kiplatform/port/wxgtk/ui.cpp.orig
++++ libs/kiplatform/port/wxgtk/ui.cpp
+@@ -32,11 +32,11 @@
+ #include <gdk/gdk.h>
+ 
+ #ifdef GDK_WINDOWING_X11
+-#include <gdk/gdkx.h>
++#include <gdk/x11/gdkx.h>
+ #endif
+ 
+ #ifdef GDK_WINDOWING_WAYLAND
+-#include <gdk/gdkwayland.h>
++#include <gdk/wayland/gdkwayland.h>
+ #endif
+ 
+ #ifdef KICAD_WAYLAND
+@@ -68,57 +68,9 @@
+ 
+ void KIPLATFORM::UI::GetInfoBarColours( wxColour& aFgColour, wxColour& aBgColour )
+ {
+-    // The GTK3.24 way of getting the colours is to use the style context
+-    // Earlier GTKs should be able to use the system settings
+-#if( GTK_CHECK_VERSION( 3, 24, 0 ) )
+-    GdkRGBA*         rgba;
+-    GtkWidgetPath*   path = gtk_widget_path_new();
+-    GtkStyleContext* sc = gtk_style_context_new();
+-
+-    gtk_widget_path_append_type( path, GTK_TYPE_WINDOW );
+-    gtk_widget_path_iter_set_object_name( path, -1, "infobar" );
+-    gtk_widget_path_iter_add_class( path, -1, "info" );
+-
+-    gtk_style_context_set_path( sc, path );
+-    gtk_style_context_set_state( sc, GTK_STATE_FLAG_NORMAL );
+-
+-    gtk_style_context_get( sc, GTK_STATE_FLAG_NORMAL, "background-color", &rgba, NULL );
+-    aBgColour = wxColour( *rgba );
+-    gdk_rgba_free( rgba );
+-
+-    gtk_style_context_get( sc, GTK_STATE_FLAG_NORMAL, "color", &rgba, NULL );
+-    aFgColour = wxColour( *rgba );
+-    gdk_rgba_free( rgba );
+-
+-    // Some GTK themes use the plain infobar style, but if they don't, the background alpha
+-    // is generally 0. In this case, try the revealer and box as these are used for Adwaita
+-    // and other themes.
+-    if( aBgColour.Alpha() == 0 )
+-    {
+-        gtk_widget_path_append_type( path, G_TYPE_NONE );
+-        gtk_widget_path_iter_set_object_name( path, -1, "revealer" );
+-        gtk_widget_path_append_type( path, G_TYPE_NONE );
+-        gtk_widget_path_iter_set_object_name( path, -1, "box" );
+-
+-        gtk_style_context_set_path( sc, path );
+-        gtk_style_context_set_state( sc, GTK_STATE_FLAG_NORMAL );
+-
+-        gtk_style_context_get( sc, GTK_STATE_FLAG_NORMAL, "background-color", &rgba, NULL );
+-        aBgColour = wxColour( *rgba );
+-        gdk_rgba_free( rgba );
+-
+-        gtk_style_context_get( sc, GTK_STATE_FLAG_NORMAL, "color", &rgba, NULL );
+-        aFgColour = wxColour( *rgba );
+-        gdk_rgba_free( rgba );
+-    }
+-
+-    gtk_widget_path_free( path );
+-    g_object_unref( sc );
+-
+-#else
++    // The common wx GTK4 theme provider uses real native style widgets.
+     aBgColour = wxSystemSettings::GetColour( wxSYS_COLOUR_INFOBK );
+     aFgColour = wxSystemSettings::GetColour( wxSYS_COLOUR_INFOTEXT );
+-#endif
+ 
+ }
+ 
+@@ -199,42 +151,11 @@
+ }
+ 
+ 
+-/**
+- * The following two functions are based on the "hack" contained in the attached patch at
+- * https://gitlab.gnome.org/GNOME/gtk/-/issues/1910 which is supposed to speed up creation of
+- * GTK choice boxes.
+- *
+- * The basic idea is to disable some of the event handlers on the menus for the choice box to
+- * prevent them from running, which will speed up the creation of the choice box and its popup menu.
+- */
+-static void disable_area_apply_attributes_cb( GtkWidget* pItem, gpointer userdata )
+-{
+-    // GTK needs this enormous chain to get the actual type of item that we want
+-    GtkMenuItem*   pMenuItem   = GTK_MENU_ITEM( pItem );
+-    GtkWidget*     child       = gtk_bin_get_child( GTK_BIN( pMenuItem ) );
+-    GtkCellView*   pCellView   = GTK_CELL_VIEW( child );
+-    GtkCellLayout* pCellLayout = GTK_CELL_LAYOUT( pCellView );
+-    GtkCellArea*   pCellArea   = gtk_cell_layout_get_area( pCellLayout );
+-
+-    g_signal_handlers_block_matched( pCellArea, G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, userdata );
+-}
+-
+-
+ void KIPLATFORM::UI::LargeChoiceBoxHack( wxChoice* aChoice )
+ {
+-    AtkObject* atkObj = gtk_combo_box_get_popup_accessible( GTK_COMBO_BOX( aChoice->m_widget ) );
+-
+-    if( !atkObj || !GTK_IS_ACCESSIBLE( atkObj ) )
+-        return;
+-
+-    GtkWidget* widget = gtk_accessible_get_widget( GTK_ACCESSIBLE( atkObj ) );
+-
+-    if( !widget || !GTK_IS_MENU( widget ) )
+-        return;
+-
+-    GtkMenu* menu = GTK_MENU( widget );
+-
+-    gtk_container_foreach( GTK_CONTAINER( menu ), disable_area_apply_attributes_cb, menu );
++    // GTK4's wxChoice uses GtkComboBoxText, but its popup is no longer the
++    // GtkMenu/ATK hierarchy targeted by the GTK3 performance workaround.
++    (void) aChoice;
+ }
+ 
+ 
+@@ -250,7 +171,10 @@
+     GtkCellRenderer* cell = (GtkCellRenderer*) cells->data;
+ 
+     if( !cell )
++    {
++        g_list_free( cells );
+         return;
++    }
+ 
+     g_object_set( G_OBJECT( cell ), "ellipsize", PANGO_ELLIPSIZE_END, nullptr );
+ 
+@@ -265,7 +189,7 @@
+ 
+     GtkWidget* widget = static_cast<GtkWidget*>( aWindow->GetHandle() );
+ 
+-    if( widget && gtk_check_version( 3, 10, 0 ) == nullptr )
++    if( widget )
+         val = gtk_widget_get_scale_factor( widget );
+ 
+     return val;
+@@ -295,11 +219,8 @@
+ 
+ bool KIPLATFORM::UI::AllowIconsInMenus()
+ {
+-    gboolean allowed = 1;
+-
+-    g_object_get( gtk_settings_get_default(), "gtk-menu-images", &allowed, NULL );
+-
+-    return !!allowed;
++    // GTK4 removed gtk-menu-images; the menu model supplies its icons.
++    return true;
+ }
+ 
+ 
+@@ -315,9 +236,41 @@
+ }
+ 
+ 
++static GdkSurface* native_surface( GtkWidget* aWidget )
++{
++    GtkNative* native = aWidget ? gtk_widget_get_native( aWidget ) : nullptr;
++    return native ? gtk_native_get_surface( native ) : nullptr;
++}
++
++
++static bool widget_to_surface( GtkWidget* aWidget, double& aX, double& aY )
++{
++    GtkNative* native = aWidget ? gtk_widget_get_native( aWidget ) : nullptr;
++
++    if( !native || !gtk_native_get_surface( native ) )
++        return false;
++
++    const graphene_point_t input = GRAPHENE_POINT_INIT( static_cast<float>( aX ),
++                                                       static_cast<float>( aY ) );
++    graphene_point_t output;
++
++    if( !gtk_widget_compute_point( aWidget, GTK_WIDGET( native ), &input, &output ) )
++        return false;
++
++    double dx, dy;
++    gtk_native_get_surface_transform( native, &dx, &dy );
++    // GTK rendering adds this transform; event dispatch subtracts it.
++    // Match the actual snapshot/input implementation for widget-to-surface.
++    aX = output.x + dx;
++    aY = output.y + dy;
++    return true;
++}
++
++
+ #if defined( GDK_WINDOWING_WAYLAND ) && defined( KICAD_WAYLAND )
+ 
+-static bool wayland_warp_pointer( GtkWidget* aWidget, GdkDisplay* aDisplay, GdkWindow* aWindow,
++static bool wayland_warp_pointer( GtkWidget* aWidget, GdkDisplay* aDisplay,
++                                  GdkSurface* aWindow,
+                                   GdkDevice* aPtrDev, int aX, int aY );
+ 
+ // GDK doesn't know if we've moved the cursor using Wayland pointer constraints.
+@@ -362,13 +315,17 @@
+ 
+         GdkDisplay* disp = gtk_widget_get_display( widget );
+         GdkSeat*    seat = gdk_display_get_default_seat( disp );
+-        GdkDevice*  ptrdev = gdk_seat_get_pointer( seat );
++        GdkDevice*  ptrdev = seat ? gdk_seat_get_pointer( seat ) : nullptr;
++        if( !ptrdev )
++            return false;
+ 
+ #if defined( GDK_WINDOWING_WAYLAND ) && defined( KICAD_WAYLAND )
+         if( GDK_IS_WAYLAND_DISPLAY( disp ) )
+         {
+             wxPoint    initialPos = wxGetMousePosition();
+-            GdkWindow* win = aWindow->GTKGetDrawingWindow();
++            GdkSurface* win = native_surface( widget );
++            if( !win )
++                return false;
+ 
+             if( wayland_warp_pointer( widget, disp, win, ptrdev, aX, aY ) )
+             {
+@@ -389,16 +346,19 @@
+ #ifdef GDK_WINDOWING_X11
+         if( GDK_IS_X11_DISPLAY( disp ) )
+         {
+-            GdkWindow* win = gdk_device_get_window_at_position( ptrdev, nullptr, nullptr );
+-            GdkCursor* blank_cursor = gdk_cursor_new_for_display( disp, GDK_BLANK_CURSOR );
+-            GdkCursor* cur_cursor = gdk_window_get_cursor( win );
++            GdkSurface* win = ptrdev ? gdk_device_get_surface_at_position( ptrdev, nullptr, nullptr )
++                                    : nullptr;
++            if( !win )
++                return false;
++            GdkCursor* blank_cursor = gdk_cursor_new_from_name( "none", nullptr );
++            GdkCursor* cur_cursor = gdk_surface_get_cursor( win );
+ 
+             if( cur_cursor )
+                 g_object_ref( cur_cursor );
+ 
+-            gdk_window_set_cursor( win, blank_cursor );
++            gdk_surface_set_cursor( win, blank_cursor );
+             aWindow->WarpPointer( aX, aY );
+-            gdk_window_set_cursor( win, cur_cursor );
++            gdk_surface_set_cursor( win, cur_cursor );
+ 
+             if( cur_cursor )
+                 g_object_unref( cur_cursor );
+@@ -447,10 +407,10 @@
+ 
+ void KIPLATFORM::UI::AllowNetworkFileSystems( wxDialog* aDialog )
+ {
+-    GtkWidget* widget = static_cast<GtkWidget*>( aDialog->GetHandle() );
+-
+-    if( widget && GTK_IS_FILE_CHOOSER( widget ) )
+-        gtk_file_chooser_set_local_only( GTK_FILE_CHOOSER( widget ), FALSE );
++    // GTK4 choosers support remote GFiles by default and removed local-only.
++    // wx's filename-returning dialog still requires a local path (e.g. a GVfs
++    // mount); this does not make arbitrary non-file URIs usable as filenames.
++    (void) aDialog;
+ }
+ 
+ 
+@@ -599,11 +559,15 @@
+ 
+             GdkDisplay* disp = gtk_widget_get_display( widget );
+             GdkSeat*    seat = gdk_display_get_default_seat( disp );
+-            GdkDevice*  ptrdev = gdk_seat_get_pointer( seat );
+-            GdkWindow*  window = gtk_widget_get_window( widget );
++            GdkDevice*  ptrdev = seat ? gdk_seat_get_pointer( seat ) : nullptr;
++            if( !ptrdev )
++                return;
++            GdkSurface* window = native_surface( widget );
++            if( !window )
++                return;
+ 
+             wl_display* wldisp = gdk_wayland_display_get_wl_display( disp );
+-            wl_surface* wlsurf = gdk_wayland_window_get_wl_surface( window );
++            wl_surface* wlsurf = gdk_wayland_surface_get_wl_surface( window );
+             wl_pointer* wlptr = gdk_wayland_device_get_wl_pointer( ptrdev );
+ 
+             s_wl_confined_pointer = zwp_pointer_constraints_v1_confine_pointer(
+@@ -616,11 +580,15 @@
+ }
+ 
+ 
+-static bool wayland_warp_pointer( GtkWidget* aWidget, GdkDisplay* aDisplay, GdkWindow* aWindow,
++static bool wayland_warp_pointer( GtkWidget* aWidget, GdkDisplay* aDisplay,
++                                  GdkSurface* aWindow,
+                                   GdkDevice* aPtrDev, int aX, int aY )
+ {
++    double surfaceX = aX, surfaceY = aY;
++    if( !aWindow || !aPtrDev || !widget_to_surface( aWidget, surfaceX, surfaceY ) )
++        return false;
+     wl_display* wldisp = gdk_wayland_display_get_wl_display( aDisplay );
+-    wl_surface* wlsurf = gdk_wayland_window_get_wl_surface( aWindow );
++    wl_surface* wlsurf = gdk_wayland_surface_get_wl_surface( aWindow );
+     wl_pointer* wlptr = gdk_wayland_device_get_wl_pointer( aPtrDev );
+ 
+     if( s_after_paint_handler_id )
+@@ -631,6 +599,8 @@
+     }
+ 
+     initialize_wayland( wldisp );
++    if( !s_wl_pointer_constraints || !wlsurf || !wlptr )
++        return false;
+ 
+     if( s_wl_locked_pointer )
+     {
+@@ -643,7 +613,7 @@
+ 
+     // wl_surface_commit causes an assert on GNOME, but has to be called on KDE
+     // before destroying the locked pointer, so wait until GDK commits the surface.
+-    GdkFrameClock* frame_clock = gdk_window_get_frame_clock( aWindow );
++    GdkFrameClock* frame_clock = gdk_surface_get_frame_clock( aWindow );
+     s_after_paint_handler_id = g_signal_connect_after(
+             frame_clock, "after-paint", G_CALLBACK( on_frame_clock_after_paint ), aWidget );
+ 
+@@ -663,11 +633,8 @@
+ 
+     zwp_locked_pointer_v1_add_listener(s_wl_locked_pointer, &locked_pointer_listener, NULL);
+ 
+-    gint wx, wy;
+-    gtk_widget_translate_coordinates( aWidget, gtk_widget_get_toplevel( aWidget ), 0, 0, &wx, &wy );
+-
+-    zwp_locked_pointer_v1_set_cursor_position_hint( s_wl_locked_pointer, wl_fixed_from_int( aX + wx ),
+-                                                    wl_fixed_from_int( aY + wy ) );
++    zwp_locked_pointer_v1_set_cursor_position_hint( s_wl_locked_pointer,
++            wl_fixed_from_double( surfaceX ), wl_fixed_from_double( surfaceY ) );
+ 
+     // Don't call wl_surface_commit, wait for GDK because of an assert on GNOME.
+     wl_display_roundtrip( wldisp ); // To receive "locked" event.
+@@ -693,17 +660,24 @@
+         }
+ 
+         GdkSeat*   seat = gdk_display_get_default_seat( disp );
+-        GdkDevice* ptrdev = gdk_seat_get_pointer( seat );
+-        GdkWindow* win = aWindow->GTKGetDrawingWindow();
++        GdkDevice* ptrdev = seat ? gdk_seat_get_pointer( seat ) : nullptr;
++        GdkSurface* win = native_surface( widget );
++        if( !win || !ptrdev )
++            return false;
+ 
+         wl_display* wldisp = gdk_wayland_display_get_wl_display( disp );
+-        wl_surface* wlsurf = gdk_wayland_window_get_wl_surface( win );
++        wl_surface* wlsurf = gdk_wayland_surface_get_wl_surface( win );
+         wl_pointer* wlptr = gdk_wayland_device_get_wl_pointer( ptrdev );
+ 
+         initialize_wayland( wldisp );
++        if( !s_wl_pointer_constraints || !s_wl_compositor || !wlsurf || !wlptr )
++            return false;
+ 
+         gint x, y, width, height;
+-        gdk_window_get_geometry( gdk_window_get_toplevel( win ), &x, &y, &width, &height );
++        // Pointer-constraint regions are surface-local, not desktop coordinates.
++        x = y = 0;
++        width = gdk_surface_get_width( win );
++        height = gdk_surface_get_height( win );
+ 
+         wxLogTrace( traceWayland, wxS( "Confine region: %d %d %d %d" ), x, y, width, height );
+ 
+--- libs/kiplatform/port/wxgtk/webview.cpp.orig
++++ libs/kiplatform/port/wxgtk/webview.cpp
+@@ -33,7 +33,7 @@
+ 
+ // Opaque types
+ typedef struct _WebKitWebView WebKitWebView;
+-typedef struct _WebKitWebContext WebKitWebContext;
++typedef struct _WebKitNetworkSession WebKitNetworkSession;
+ typedef struct _WebKitWebsiteDataManager WebKitWebsiteDataManager;
+ 
+ // Constants
+@@ -42,8 +42,8 @@
+ } WebKitWebsiteDataTypes;
+ 
+ // Function pointers
+-typedef WebKitWebContext* (*webkit_web_view_get_context_t)(WebKitWebView*);
+-typedef WebKitWebsiteDataManager* (*webkit_web_context_get_website_data_manager_t)(WebKitWebContext*);
++typedef WebKitNetworkSession* (*webkit_web_view_get_network_session_t)(WebKitWebView*);
++typedef WebKitWebsiteDataManager* (*webkit_network_session_get_website_data_manager_t)(WebKitNetworkSession*);
+ typedef void (*webkit_website_data_manager_clear_t)(WebKitWebsiteDataManager*, WebKitWebsiteDataTypes, int64_t, void*, void*, void*);
+ 
+ bool SaveCookies( wxWebView* aWebView, const wxString& aTargetFile )
+@@ -68,19 +68,21 @@
+     if( !nativeBackend )
+         return false;
+ 
+-    // Load symbols
+-    auto get_context = (webkit_web_view_get_context_t) dlsym(RTLD_DEFAULT, "webkit_web_view_get_context");
+-    auto get_data_manager = (webkit_web_context_get_website_data_manager_t) dlsym( RTLD_DEFAULT, "webkit_web_context_get_website_data_manager" );
++    // Load symbols from the WebKit API used by the shared wx backend.
++    auto get_session = (webkit_web_view_get_network_session_t) dlsym(
++            RTLD_DEFAULT, "webkit_web_view_get_network_session" );
++    auto get_data_manager = (webkit_network_session_get_website_data_manager_t) dlsym(
++            RTLD_DEFAULT, "webkit_network_session_get_website_data_manager" );
+     auto clear_data = (webkit_website_data_manager_clear_t) dlsym( RTLD_DEFAULT, "webkit_website_data_manager_clear" );
+ 
+-    if( !get_context || !get_data_manager || !clear_data )
++    if( !get_session || !get_data_manager || !clear_data )
+     {
+         wxLogTrace( "webview", "Failed to load WebKit symbols" );
+         return false;
+     }
+ 
+     WebKitWebView* webView = (WebKitWebView*) nativeBackend;
+-    WebKitWebContext* context = get_context(webView);
++    WebKitNetworkSession* context = get_session(webView);
+ 
+     if( !context )
+         return false;

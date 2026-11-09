@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Origin: EmberBSD contributors (AI-assisted).
+// Selected unchanged-extraction KiCad method bodies are inserted below.
+#include <kiplatform/ui.h>
+#include <wx/app.h>
+#include <wx/frame.h>
+#include <wx/choice.h>
+#include <wx/settings.h>
+#include <gtk/gtk.h>
+#include <cstdio>
+#include <stdexcept>
+
+@METHODS@
+
+static void Check(bool ok, const char* message)
+{
+    if(!ok) throw std::runtime_error(message);
+}
+
+class PlatformContract : public wxApp
+{
+    wxFrame* frame = nullptr;
+    int result = 1;
+    GLogLevelFlags previous;
+public:
+    bool OnInit() override
+    {
+        previous = g_log_set_always_fatal(static_cast<GLogLevelFlags>(G_LOG_FATAL_MASK));
+        g_log_set_always_fatal(static_cast<GLogLevelFlags>(previous | G_LOG_LEVEL_CRITICAL));
+        try
+        {
+            frame = new wxFrame(nullptr, wxID_ANY, "KiCad GTK4 platform contract");
+            wxArrayString items;
+            items.Add("A deliberately long selectable choice label");
+            wxChoice* choice = new wxChoice(frame, wxID_ANY, wxDefaultPosition,
+                                            wxDefaultSize, items);
+            GtkWidget* widget = static_cast<GtkWidget*>(choice->GetHandle());
+            Check(GTK_IS_COMBO_BOX_TEXT(widget), "shared wxChoice model changed");
+            GList* cells = gtk_cell_layout_get_cells(GTK_CELL_LAYOUT(widget));
+            GtkCellRenderer* renderer = cells ? GTK_CELL_RENDERER(cells->data) : nullptr;
+            g_list_free(cells);
+            Check(renderer != nullptr, "choice renderer missing");
+            g_object_set(renderer, "ellipsize", PANGO_ELLIPSIZE_NONE, nullptr);
+            KIPLATFORM::UI::LargeChoiceBoxHack(choice);
+            KIPLATFORM::UI::EllipsizeChoiceBox(choice);
+            int ellipsize = -1;
+            g_object_get(renderer, "ellipsize", &ellipsize, nullptr);
+            Check(ellipsize == PANGO_ELLIPSIZE_END, "choice must retain ellipsization");
+            choice->SetSelection(0);
+            Check(choice->GetSelection() == 0, "choice selection must work without GTK3 hack");
+            const int scale = gtk_widget_get_scale_factor(widget);
+            Check(scale == 2, "run with GDK_SCALE=2 for a causal scale check");
+            Check(KIPLATFORM::UI::GetPixelScaleFactor(choice) == scale,
+                  "GTK4 scale must not be rejected by a GTK3 version check");
+            wxColour fg, bg;
+            KIPLATFORM::UI::GetInfoBarColours(fg, bg);
+            Check(fg.IsOk() && bg.IsOk(), "native information colours must be valid");
+            Check(KIPLATFORM::UI::AllowIconsInMenus(), "GTK4 menu icons remain allowed");
+            result = 0;
+        }
+        catch(const std::exception& e) { std::fprintf(stderr, "%s\n", e.what()); }
+        return true;
+    }
+    int OnRun() override
+    {
+        delete frame;
+        g_log_set_always_fatal(previous);
+        if(!result) std::puts("KiCad GTK4 choice/theme/scale contract PASS");
+        return result;
+    }
+};
+wxIMPLEMENT_APP(PlatformContract);
