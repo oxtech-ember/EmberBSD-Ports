@@ -122,6 +122,7 @@ BUILDLINK_API_DEPENDS.glm+=	glm>=0.9.9.8
 .include "../../textproc/sundown/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"
 .include "../../x11/libspnav/buildlink3.mk"
+BUILDLINK_API_DEPENDS.wxGTK32+=	wxGTK32>=3.2.12nb19
 .include "../../x11/wxGTK32/buildlink3.mk"
 # needs 64-bit CAS for std::atomic<size_t>
 .include "../../mk/atomic64.mk"
