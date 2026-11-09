@@ -104,3 +104,9 @@ SDK holds the TOOLDIR for the whole run, so a reused context reaches the
 current stage and renaming a stage does not force a rebuild. The real headers
 and libraries the context was configured with (`lib`, `usr/include`,
 `usr/lib`) remain part of its key.
+
+The generated `target.mk` therefore records this link as both
+`_EMBER_TARGET_SYSROOT` and, for a sysroot runtime, `_EMBER_TARGET_RUNTIME_ROOT`.
+The cross libtool check in `mk/cwrappers.mk` accepts that one non-canonical
+runtime root because it is the selected `CROSS_DESTDIR`; any other runtime root
+must be its own real path, and search paths through other links stay rejected.

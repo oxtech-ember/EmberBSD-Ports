@@ -22,7 +22,7 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/mk/cwrappers.mk
 +++ b/mk/cwrappers.mk
-@@ -152,6 +152,70 @@
+@@ -152,6 +152,72 @@
  
  do-wrapper: generate-cwrappers
  
@@ -69,7 +69,9 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 +			${ERROR_MSG} "Selected target runtime root is missing: $$runtime"; exit 1; \
 +		fi; \
 +		runtime_real=`CDPATH= cd "$$runtime" && pwd -P` || exit 1; \
-+		if [ "$$runtime_real" != "$$runtime" ]; then \
++		if [ "$$runtime_real" != "$$runtime" ] && \
++		    { [ "${_EMBER_TARGET_RUNTIME_KIND:U}" != sysroot ] || \
++		      [ "$$runtime" != "${CROSS_DESTDIR}" ]; }; then \
 +			${ERROR_MSG} "Selected target runtime root is not canonical: $$runtime"; exit 1; \
 +		fi; \
 +	fi; \
