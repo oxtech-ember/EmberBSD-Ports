@@ -39,7 +39,7 @@ BUILD_ONLY_KEYS = {
 }
 
 CROSS_TOOLS_BIN = re.compile(
-    r"/[^\s\"]*/cross-tools/bin/+?(?:[^/\s\"]+/)*([A-Za-z0-9._+-]+)"
+    r"/[^\s\"]*/(?:cross|target)-tools/bin/+?(?:[^/\s\"]+/)*([A-Za-z0-9._+-]+)"
 )
 BUILDLINK_LIB = re.compile(
     r"/[^\s\"'();]*/\.buildlink/lib/(lib[A-Za-z0-9._+-]+\.so[A-Za-z0-9._*]*)"
@@ -67,7 +67,7 @@ def transform_string(value: str, sysroots: List[str], builddirs: List[str]) -> s
     # .buildlink libs -> /usr/pkg/lib/<soname>
     out = BUILDLINK_LIB.sub(r"/usr/pkg/lib/\1", out)
 
-    # cross-tools wrappers -> basename
+    # cross-tools / target-tools wrappers -> basename
     out = CROSS_TOOLS_BIN.sub(r"\1", out)
 
     # Selected sysroot spellings: drop the root; keep a trailing path suffix.

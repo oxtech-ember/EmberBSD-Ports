@@ -38,7 +38,11 @@ stage() {
 }
 
 run_hook() {
-	sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" "$@"
+	extra=
+	if [ -d "$work/os-tools/target-tools" ]; then
+		extra=$work/os-tools/target-tools
+	fi
+	sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" $extra "$@"
 }
 
 # --- /private substring must not eat a longer /private/tmp/... sysroot ---
@@ -77,6 +81,26 @@ AR="/opt/cross/build/aarch64/cross-tools/bin//usr/bin/ar"
 CC="aarch64--netbsd-clang --sysroot=$sysroot"
 CFG
 chmod 755 "$dest/usr/pkg/bin/icu-config"
+
+# Same ICU form via os-tools stage-handoff target-tools (fr1 libtool6 failure).
+mkdir -p "$dest/usr/pkg/lib/icu/79.1" "$work/os-tools/target-tools/bin"
+tt=$work/os-tools/target-tools
+cat > "$dest/usr/pkg/bin/icu-target-config" <<CFG
+#!/bin/sh
+AR="$tt/bin//usr/bin/ar"
+RANLIB="$tt/bin//usr/bin/ranlib"
+CFG
+chmod 755 "$dest/usr/pkg/bin/icu-target-config"
+cat > "$dest/usr/pkg/lib/icu/79.1/Makefile.inc" <<INC
+# ICU Makefile.inc ships tool paths for consumers.
+AR = $tt/bin//usr/bin/ar
+RANLIB = $tt/bin//usr/bin/ranlib
+CC = /usr/pkg/bin/clang
+INC
+cat > "$dest/usr/pkg/lib/icu/79.1/pkgdata.inc" <<INC
+AR=$tt/bin//usr/bin/ar
+RANLIB=$tt/bin//usr/bin/ranlib
+INC
 
 # Python sysconfig with abs_srcdir and host paths (helper uses host python)
 cat > "$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py" <<PY
@@ -138,6 +162,30 @@ grep -q 'AR="ar"' "$dest/usr/pkg/bin/icu-config" || {
 grep -q 'CC="aarch64--netbsd-clang"' "$dest/usr/pkg/bin/icu-config" || {
 	echo "icu-config became: $(cat "$dest/usr/pkg/bin/icu-config")" >&2
 	fail '--sysroot=<selected> without trailing slash not stripped from CC'
+}
+grep -q 'AR="ar"' "$dest/usr/pkg/bin/icu-target-config" || {
+	echo "icu-target-config became: $(cat "$dest/usr/pkg/bin/icu-target-config")" >&2
+	fail 'ICU double-slash target-tools path not normalized to ar'
+}
+grep -q 'RANLIB="ranlib"' "$dest/usr/pkg/bin/icu-target-config" || {
+	echo "icu-target-config became: $(cat "$dest/usr/pkg/bin/icu-target-config")" >&2
+	fail 'ICU double-slash target-tools RANLIB not normalized to ranlib'
+}
+grep -Eq '^AR = ar$' "$dest/usr/pkg/lib/icu/79.1/Makefile.inc" || {
+	echo "Makefile.inc became: $(cat "$dest/usr/pkg/lib/icu/79.1/Makefile.inc")" >&2
+	fail 'ICU Makefile.inc target-tools AR not normalized'
+}
+grep -Eq '^RANLIB = ranlib$' "$dest/usr/pkg/lib/icu/79.1/Makefile.inc" || {
+	echo "Makefile.inc became: $(cat "$dest/usr/pkg/lib/icu/79.1/Makefile.inc")" >&2
+	fail 'ICU Makefile.inc target-tools RANLIB not normalized'
+}
+grep -Eq '^AR=ar$' "$dest/usr/pkg/lib/icu/79.1/pkgdata.inc" || {
+	echo "pkgdata.inc became: $(cat "$dest/usr/pkg/lib/icu/79.1/pkgdata.inc")" >&2
+	fail 'ICU pkgdata.inc target-tools AR not normalized'
+}
+grep -Eq '^RANLIB=ranlib$' "$dest/usr/pkg/lib/icu/79.1/pkgdata.inc" || {
+	echo "pkgdata.inc became: $(cat "$dest/usr/pkg/lib/icu/79.1/pkgdata.inc")" >&2
+	fail 'ICU pkgdata.inc target-tools RANLIB not normalized'
 }
 
 cm=$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake

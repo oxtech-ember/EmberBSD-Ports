@@ -126,10 +126,11 @@ for root in $sysroots; do
 	# delimiter class so --sysroot=<root> is not reduced to --sysroot=.
 	edit="$edit -e s#(^|[[:space:]\"':,;])$quoted(\"|[[:space:]]|$|[;',)])#\1\2#g"
 done
-# cross-tools wrappers, including the ICU double-slash form
-#   .../cross-tools/bin//usr/bin/ar  -> ar
+# cross-tools and target-tools wrappers, including the ICU double-slash form
+#   .../cross-tools/bin//usr/bin/ar   -> ar
+#   .../target-tools/bin//usr/bin/ar  -> ar  (os-tools stage handoff)
 #   .../cross-tools/bin/aarch64--netbsd-ar -> aarch64--netbsd-ar
-edit="$edit -e s#/[^[:space:]\"]*/cross-tools/bin/+([^/[:space:]\"]+/)*([A-Za-z0-9._+-]+)#\\2#g"
+edit="$edit -e s#/[^[:space:]\"]*/(cross|target)-tools/bin/+([^/[:space:]\"]+/)*([A-Za-z0-9._+-]+)#\\3#g"
 # .buildlink shared libraries -> /usr/pkg/lib/<soname> (target PREFIX layout).
 # Match only the path token itself: stop at whitespace, quotes, (), ; so
 # unquoted if(/path/.buildlink/lib/libX.so) keeps the if( and trailing ).
@@ -176,7 +177,9 @@ find "$destdir" -type f \( \
 	-path '*/mkspecs/*/qmake.conf' -o \
 	-name '_sysconfigdata*.py' -o \
 	-name '_sysconfig_vars*.json' -o \
-	-path '*/bin/*-config' \
+	-path '*/bin/*-config' -o \
+	-name 'Makefile.inc' -o \
+	-name 'pkgdata.inc' \
 \) | sort > "$scratch/list"
 
 # Return 0 if file looks like text metadata; 1 if binary (skip, leave alone).
@@ -198,7 +201,7 @@ path_bearing_line() {
 	case "$1" in
 	Description:*|Name:*|Comment:*|URL:*|Homepage:*)
 		case "$1" in
-		*-I/*|*-L/*|*isystem*|*.buildlink*|*cross-tools*|*sysroot*) return 0 ;;
+		*-I/*|*-L/*|*isystem*|*.buildlink*|*cross-tools*|*target-tools*|*sysroot*) return 0 ;;
 		esac
 		return 1
 		;;
@@ -208,7 +211,7 @@ path_bearing_line() {
 	*INTERFACE_*|*LINK_LIBRARIES*|*IMPORTED_LOCATION*|*QMAKE_* ) return 0 ;;
 	*AR=*|*CC=*|*CXX=*|*abs_srcdir*|*srcdir*|*host_tool=*|*--sysroot=* ) return 0 ;;
 	*-I/*|*-L/*|*isystem* ) return 0 ;;
-	*.buildlink*|*cross-tools*|*sysroot* ) return 0 ;;
+	*.buildlink*|*cross-tools*|*target-tools*|*sysroot* ) return 0 ;;
 	esac
 	# Absolute path after = or whitespace/quotes without using nested quotes in patterns.
 	printf '%s\n' "$1" | grep -Eq "(^|[[:space:]\"'=])/(usr|opt|home|Volumes|private|tmp|Users|build)" && return 0
@@ -294,7 +297,7 @@ while IFS= read -r file; do
 	# Generic host/build markers. Require an absolute-path delimiter or
 	# -I/-L before the match so CMake templates like
 	# ${CMAKE_NDK_ROOT}/toolchains/.../sysroot stay quiet.
-	grep -nE "(^|[[:space:]=\"':,;]|-L|-I|-isystem[[:space:]]*)([^[:space:]\"]*/\.buildlink/|[^[:space:]\"]*/cross-tools/|/[^[:space:]\"]+/sysroot(/|[[:space:]\"';]|$))|--sysroot=/[^[:space:]\"]+" "$file" > "$scratch/hits" || true
+	grep -nE "(^|[[:space:]=\"':,;]|-L|-I|-isystem[[:space:]]*)([^[:space:]\"]*/\.buildlink/|[^[:space:]\"]*/(cross|target)-tools/|/[^[:space:]\"]+/sysroot(/|[[:space:]\"';]|$))|--sysroot=/[^[:space:]\"]+" "$file" > "$scratch/hits" || true
 	if [ -s "$scratch/hits" ]; then
 		: > "$scratch/hits.real"
 		while IFS= read -r hit; do
