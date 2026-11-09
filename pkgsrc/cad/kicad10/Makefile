@@ -16,6 +16,8 @@ LICENSE=	gnu-gpl-v3
 TOOL_DEPENDS+=	swig4-[0-9]*:../../devel/swig4
 TOOL_DEPENDS+=	lemon-[0-9]*:../../devel/lemon
 DEPENDS+=	git-base-[0-9]*:../../devel/git-base
+# A minimal target needs a font format supported by Pango, including Cyrillic.
+DEPENDS+=	dejavu-ttf-[0-9]*:../../fonts/dejavu-ttf
 # Ship the default tables, matching libraries, templates, and 3D models.
 DEPENDS+=	kicad-symbols-${V}{,nb*}:../../cad/kicad-symbols
 DEPENDS+=	kicad-footprints-${V}{,nb*}:../../cad/kicad-footprints

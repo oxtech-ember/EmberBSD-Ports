@@ -59,6 +59,10 @@ Full application configuration, linking and CAD runtime acceptance remain
 pending the common GTK4 wxWidgets/WebKit stack. The recipe and focused consumer
 checks are not evidence of a completed KiCad binary package.
 
+The runtime includes the common DejaVu TrueType fonts so that a minimal target
+can render text, including Cyrillic. Type 1 fonts alone do not satisfy current
+Pango's font loader.
+
 Unix toolkit discovery selects the shared GTK4 provider. An explicit toolkit
 selection is retained. wxPython toolkit checks run only when wxPython is enabled.
 The causal check runs the actual CMake selection block, KiCad's find module and
