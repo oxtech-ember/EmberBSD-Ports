@@ -1,0 +1,25 @@
+$NetBSD$
+
+Use the GTK4 TreeViewColumn size signature without the removed cell area.
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- src/gtk/checklst.cpp.orig
++++ src/gtk/checklst.cpp
+@@ -140,10 +140,15 @@
+     wxCHECK_MSG( m_treeview != NULL, 0, wxT("invalid listbox"));
+ 
+     gint height;
++#if GTK_CHECK_VERSION(4, 0, 0)
+     gtk_tree_view_column_cell_get_size(
+         gtk_tree_view_get_column(m_treeview, 0),
+-                                       NULL, NULL, NULL, NULL,
+-                                       &height);
++        NULL, NULL, NULL, &height);
++#else
++    gtk_tree_view_column_cell_get_size(
++        gtk_tree_view_get_column(m_treeview, 0),
++        NULL, NULL, NULL, NULL, &height);
++#endif
+     return height;
+ }
+ 

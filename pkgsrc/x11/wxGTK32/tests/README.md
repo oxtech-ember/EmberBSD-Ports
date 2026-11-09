@@ -1,3 +1,42 @@
+# GTK4 status bar and checklist contract
+
+`patch-gtk4-statusbar` draws the resize grip with the existing wxDC/theme pens
+and starts native GDK toplevel operations from the event already owned by the
+window dispatcher. The native device, button, surface coordinates and timestamp
+are retained; unrelated surfaces or missing input cause the wx event to be
+skipped. Logical grip coordinates mirror with the rest of wx's RTL content,
+while the physical resize edge selects south-west or south-east. Pointer-emulating
+touch can resize; right-button move keeps its actual native button number.
+
+```sh
+python3 tests/statusbar-gtk4.py \
+  --source /prepared/wxWidgets/src/generic/statusbr.cpp \
+  --cxx /native/bin/clang++ --work-parent /work/tmp
+```
+
+The regression extracts the actual helper, event handlers, grip rectangle and
+paint method. Mock external calls check missing input, surface translation,
+native event identity, touch, RTL hit geometry and in-bounds logical drawing.
+Strict native ASan/UBSan execution passes with `--cxx-flag=-fsanitize=address,undefined`,
+`--cxx-flag=-fno-sanitize-recover=all` and `--cxx-flag=-fno-omit-frame-pointer`.
+The button-only candidate fails its touch case. Real pointer delivery, window
+manager interaction and rendered pixels require the separate GUI acceptance.
+The full status-bar TU passes target syntax and Clang Static Analyzer. Cppcheck
+2.22 reports unchanged callback/cast/style warnings, the existing GTK-version
+condition and inherited event-handler naming; none points into the new grip or
+drag code. Its included wx header reports retain their earlier classification.
+
+`patch-gtk4-checklist` adapts `GetItemHeight()` to GTK4's five-argument
+`gtk_tree_view_column_cell_get_size` without the removed cell-area argument.
+The original TU fails this API check in the actual target build; the patched
+TU compiles against the selected GTK4 headers. The older-toolkit signature is
+preserved in its existing upstream build branch.
+
+The checklist TU passes target syntax checking and Clang Static Analyzer.
+Cppcheck 2.22 reports the unchanged wx hash-map macro/`wxAny` header findings and
+older casts outside the changed getter; no new finding points into the adapted
+call. GTK4's existing TreeView APIs still emit deprecation warnings.
+
 # GTK4 Unix utilities contract
 
 `patch-gtk4-utilsx11` uses GTK4's keyboard device state, matches X11 window

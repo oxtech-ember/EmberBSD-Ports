@@ -1,0 +1,122 @@
+$NetBSD$
+
+Keep the status-bar resize grip and native move/resize events on GTK4.
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- src/generic/statusbr.cpp.orig
++++ src/generic/statusbr.cpp
+@@ -43,6 +43,52 @@
+ 
+ // Margin between the field text and the field rect
+ #define wxFIELD_TEXT_MARGIN 2
++
++#ifdef __WXGTK4__
++// The window event dispatcher owns this event for the synchronous wx callback.
++// Use its native device, surface coordinates and serial-bearing timestamp.
++extern GdkEvent* g_lastMouseEvent;
++
++static bool wxGTKBeginStatusDrag(GtkWidget* widget, bool rtl, bool resize)
++{
++    GdkEvent* event = g_lastMouseEvent;
++    const int button = resize ? 1 : 3;
++    if (!event)
++        return false;
++    const GdkEventType type = gdk_event_get_event_type(event);
++    if (type == GDK_BUTTON_PRESS)
++    {
++        if (gdk_button_event_get_button(event) != unsigned(button))
++            return false;
++    }
++    else if (!resize || type != GDK_TOUCH_BEGIN ||
++             !gdk_touch_event_get_emulating_pointer(event))
++        return false;
++
++    GtkRoot* root = gtk_widget_get_root(widget);
++    if (!root || !GTK_IS_NATIVE(root))
++        return false;
++    GdkSurface* surface = gtk_native_get_surface(GTK_NATIVE(root));
++    GdkSurface* source = gdk_event_get_surface(event);
++    GdkDevice* device = gdk_event_get_device(event);
++    double x, y;
++    if (!surface || !GDK_IS_TOPLEVEL(surface) || !source || !device ||
++        !gdk_event_get_position(event, &x, &y))
++        return false;
++    if (source != surface &&
++        !gdk_surface_translate_coordinates(source, surface, &x, &y))
++        return false;
++
++    if (resize)
++        gdk_toplevel_begin_resize(GDK_TOPLEVEL(surface),
++            rtl ? GDK_SURFACE_EDGE_SOUTH_WEST : GDK_SURFACE_EDGE_SOUTH_EAST,
++            device, button, x, y, gdk_event_get_time(event));
++    else
++        gdk_toplevel_begin_move(GDK_TOPLEVEL(surface), device, button,
++                               x, y, gdk_event_get_time(event));
++    return true;
++}
++#endif
+ 
+ // ----------------------------------------------------------------------------
+ // GTK+ signal handler
+@@ -410,7 +456,21 @@
+     if ( ShowsSizeGrip() )
+     {
+         const wxRect& rc = GetSizeGripRect();
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++        // wxDC mirrors these logical coordinates for RTL layouts, just as it
++        // mirrors the field text. GTK4 no longer supplies a resize-grip widget.
++        const int step = FromDIP(3);
++        const int extent = wxMin(rc.width, rc.height);
++        for (int offset = step; offset < extent; offset += step)
++        {
++            dc.SetPen(m_hilightPen);
++            dc.DrawLine(rc.GetRight() - offset, rc.GetBottom(),
++                        rc.GetRight(), rc.GetBottom() - offset);
++            dc.SetPen(m_mediumShadowPen);
++            dc.DrawLine(rc.GetRight() - offset + 1, rc.GetBottom(),
++                        rc.GetRight(), rc.GetBottom() - offset + 1);
++        }
++#elif defined(__WXGTK3__)
+         GtkWidget* toplevel = gtk_widget_get_toplevel(m_widget);
+         GdkRectangle rect;
+         wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+@@ -464,6 +524,12 @@
+ #ifdef __WXGTK20__
+ void wxStatusBarGeneric::OnLeftDown(wxMouseEvent& event)
+ {
++#ifdef __WXGTK4__
++    if (!ShowsSizeGrip() || !GetSizeGripRect().Contains(event.GetPosition()) ||
++        !wxGTKBeginStatusDrag(m_widget,
++            GetLayoutDirection() == wxLayout_RightToLeft, true))
++        event.Skip();
++#else
+     int width, height;
+     GetClientSize(&width, &height);
+ 
+@@ -510,10 +576,17 @@
+     {
+         event.Skip( true );
+     }
++#endif
+ }
+ 
+ void wxStatusBarGeneric::OnRightDown(wxMouseEvent& event)
+ {
++#ifdef __WXGTK4__
++    if (!ShowsSizeGrip() || !GetSizeGripRect().Contains(event.GetPosition()) ||
++        !wxGTKBeginStatusDrag(m_widget,
++            GetLayoutDirection() == wxLayout_RightToLeft, false))
++        event.Skip();
++#else
+     int width, height;
+     GetClientSize(&width, &height);
+ 
+@@ -547,6 +620,7 @@
+     {
+         event.Skip( true );
+     }
++#endif
+ }
+ #endif // __WXGTK20__
+ 
