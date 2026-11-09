@@ -1014,7 +1014,8 @@ def main():
     p.add_argument('--previous-recipe', type=Path, help='installed recipe preimage directory')
     p.add_argument('--recover-applied-patches', action='store_true',
                    help='replay only the locked work-tree cookie after a failed source stage')
-    p.add_argument('--refresh-subst', help='one existing substitution before configure')
+    p.add_argument('--refresh-subst', action='append', default=[],
+                   help='existing substitution before configure (repeat for multiple classes)')
     p.add_argument('--reconfigure', action='store_true',
                    help='explicitly accept new recipe configuration with the previous recipe')
     a = p.parse_args()
@@ -1040,7 +1041,9 @@ def main():
     require(not a.refresh_subst or (a.previous_recipe and not a.previous_makefile and not a.subst_class),
             'existing substitution refresh requires previous recipe only')
     if a.refresh_subst:
-        require(re.fullmatch(r'[A-Za-z0-9_-]+', a.refresh_subst), 'invalid SUBST class')
+        require(all(re.fullmatch(r'[A-Za-z0-9_-]+', name) for name in a.refresh_subst),
+                'invalid SUBST class')
+        require(len(set(a.refresh_subst)) == len(a.refresh_subst), 'duplicate existing SUBST class')
     require(not (a.previous_recipe and (a.previous_makefile or a.subst_class)),
             'previous recipe and added substitution modes are exclusive')
     require(bool(a.previous_makefile) == bool(a.subst_class),
@@ -1277,21 +1280,28 @@ def main():
         require(stable_read(paths, previous_makefile) == previous_data,
                 'previous Makefile changed during verification')
     if a.refresh_subst:
-        require(a.refresh_subst in subst_metadata,
-                'existing SUBST class not uniquely present')
-        stage, files, variables, sed, filter_cmd, skip, noop, subst_cookie = subst_metadata[a.refresh_subst]
-        subst_stage = stage
-        subst_files = shlex.split(files)
-        require(stage in ('pre-configure', 'do-configure-pre-hook') and subst_files and
-                len(set(subst_files)) == len(subst_files) and
-                all(re.fullmatch(r'[A-Za-z0-9_./+-]+', name) and not name.startswith('/') and
-                    all(part not in ('', '.', '..') for part in name.split('/')) for name in subst_files),
-                'unsupported existing SUBST files or stage')
-        require(filter_cmd and (sed or variables), 'unsupported existing SUBST transformation')
-        require(Path(subst_cookie) == work / ('.subst_' + a.refresh_subst + '_done'),
-                'unexpected existing SUBST cookie')
-        live_subst_cookie = stable_read(paths, Path(subst_cookie))
-        require(not os.path.lexists(subst_cookie + '.tmp'), 'unexpected pending existing SUBST cookie')
+        existing_substs = {}
+        # pkgsrc mk/subst.mk attaches same-stage prerequisites in :O:u order.
+        # CLI argument order must not change the recipe's transformation order.
+        for name in sorted(a.refresh_subst):
+            require(name in subst_metadata, 'existing SUBST class not uniquely present')
+            stage, files, variables, sed, filter_cmd, skip, noop, cookie_path = subst_metadata[name]
+            selected_files = shlex.split(files)
+            require(stage in ('pre-configure', 'do-configure-pre-hook') and selected_files and
+                    len(set(selected_files)) == len(selected_files) and
+                    all(re.fullmatch(r'[A-Za-z0-9_./+-]+', file) and not file.startswith('/') and
+                        all(part not in ('', '.', '..') for part in file.split('/')) for file in selected_files),
+                    'unsupported existing SUBST files or stage')
+            require(subst_stage is None or subst_stage == stage,
+                    'existing SUBST classes use different stages')
+            subst_stage = stage
+            require(filter_cmd and (sed or variables), 'unsupported existing SUBST transformation')
+            require(Path(cookie_path) == work / ('.subst_' + name + '_done'),
+                    'unexpected existing SUBST cookie')
+            live_cookie = stable_read(paths, Path(cookie_path))
+            require(not os.path.lexists(cookie_path + '.tmp'), 'unexpected pending existing SUBST cookie')
+            existing_substs[name] = (selected_files, Path(cookie_path), live_cookie)
+        subst_files = sorted({file for files, _, _ in existing_substs.values() for file in files})
         subst_candidates = {}
     all_subst_classes = shlex.split(v['SUBST_CLASSES'])
     require(len(all_subst_classes) == len(set(all_subst_classes)) and
@@ -1323,19 +1333,20 @@ def main():
                                   'subst-' + a.subst_class], check=True)
             require(scratch_cookie.is_file(), 'pkgsrc SUBST did not create its cookie')
         def existing_transform(label, command, candidate, affected):
-            for name in subst_files:
-                path = _entry(paths, candidate, name)
-                paths.regular_file(str(path))
-                require(not os.path.lexists(str(path) + '.subst.sav'),
-                        'unexpected existing SUBST temporary file')
-            scratch_cookie = Path(scratch) / ('existing-subst-' + label)
-            subprocess.run(command + ['WRKSRC=' + str(candidate),
-                                      '_SUBST_COOKIE.' + a.refresh_subst + '=' + str(scratch_cookie),
-                                      'subst-' + a.refresh_subst], check=True)
-            require(stable_read(paths, scratch_cookie) == live_subst_cookie,
-                    'existing SUBST cookie differs from replay')
-            require(all(not os.path.lexists(str(_entry(paths, candidate, name)) + '.subst.sav')
-                        for name in subst_files), 'existing SUBST temporary file remains')
+            for name, (files, _cookie_path, live_cookie) in existing_substs.items():
+                for file in files:
+                    path = _entry(paths, candidate, file)
+                    paths.regular_file(str(path))
+                    require(not os.path.lexists(str(path) + '.subst.sav'),
+                            'unexpected existing SUBST temporary file')
+                scratch_cookie = Path(scratch) / ('existing-subst-' + label + '-' + name)
+                subprocess.run(command + ['WRKSRC=' + str(candidate),
+                                          '_SUBST_COOKIE.' + name + '=' + str(scratch_cookie),
+                                          'subst-' + name], check=True)
+                require(stable_read(paths, scratch_cookie) == live_cookie,
+                        'existing SUBST cookie differs from replay: ' + name)
+                require(all(not os.path.lexists(str(_entry(paths, candidate, file)) + '.subst.sav')
+                            for file in files), 'existing SUBST temporary file remains')
         def replace_interpreters(label, command, candidate, affected):
             selected = {}
             for name, (patterns, _old, _new) in interpreter_metadata.items():
@@ -1403,7 +1414,7 @@ def main():
                     require(stable_read(paths, _entry(paths, source, name)) == subst_candidates['old'][name],
                             'unchanged existing SUBST input differs: ' + name)
         classes = [name for name in shlex.split(v['SUBST_CLASSES'])
-                   if name not in (a.subst_class, a.refresh_subst)]
+                   if name != a.subst_class and name not in a.refresh_subst]
         if classes:
             values = [subst_files_by_class[name] for name in classes]
             changed = {row[0] for row in changes}
@@ -1432,8 +1443,9 @@ def main():
                             'recipe input changed before configure invalidation: ' + str(path))
             subprocess.run(cmd + ['configure-clean' if (a.subst_class or a.previous_recipe) else 'build-clean'], check=True)
             if a.refresh_subst:
-                require(stable_read(paths, Path(subst_cookie)) == live_subst_cookie,
-                        'existing SUBST cookie changed')
+                for name, (_files, cookie_path, live_cookie) in existing_substs.items():
+                    require(stable_read(paths, cookie_path) == live_cookie,
+                            'existing SUBST cookie changed: ' + name)
                 for name in subst_files:
                     require(stable_read(paths, _entry(paths, source, name)) == subst_candidates['new'][name],
                             'existing SUBST result differs: ' + name)

@@ -2011,7 +2011,11 @@ package_install_one()
             *) echo 'CROSS_BULK_PATCH_REFRESH_RECOVER_APPLIED_PATCHES must be yes or no' >&2; return 2 ;;
         esac
         if [ -n "${CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST:-}" ]; then
-            set -- "$@" --refresh-subst "$CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST"
+            set -f
+            for subst_class in $CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST; do
+                set -- "$@" --refresh-subst "$subst_class"
+            done
+            set +f
         fi
         if [ -n "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:-}${CROSS_BULK_PATCH_REFRESH_SUBST_CLASS:-}" ]; then
             : "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:?select the installed Makefile preimage}"

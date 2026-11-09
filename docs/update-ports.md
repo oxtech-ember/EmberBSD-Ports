@@ -352,6 +352,14 @@ write. Then refresh applies the complete current series, preserving unchanged
 source and object timestamps. No package database entry is created. Without a
 previous recipe, ordinary refresh still requires valid installed provenance.
 
+For already applied substitutions, set
+`CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST='fix-paths wx-rpath'` with the previous
+recipe selector. The helper accepts repeated `--refresh-subst CLASS` arguments.
+Selected classes replay in pkgsrc's lexical class order, regardless of argument
+order, and retain their individual cookies. Multiple selected classes must share
+one supported stage; mixed stages are refused. Unselected substitutions retain
+their existing source-intersection checks.
+
 Candidate replay follows pkgsrc stage order: `SUBST_STAGE=pre-configure` runs
 before the `replace-interpreter` configure hook; for `do-configure-pre-hook`,
 bmake runs the already-declared interpreter prerequisite before a later SUBST
