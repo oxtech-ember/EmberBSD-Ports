@@ -28,6 +28,8 @@ with tempfile.TemporaryDirectory(prefix='buildlink-refresh-test-') as t:
 import os,pathlib,sys
 args=sys.argv[1:]; cfg=''' + repr(str(root)) + '''
 r=pathlib.Path(cfg); live=r/'work/.buildlink'; prefix=r/'cross/usr/pkg'; vals={'WRKDIR':str(r/'work'),'BUILDLINK_DIR':str(live),'BUILDLINK_X11_DIR':str(live),'USE_BUILTIN.demo':'no','BUILDLINK_PREFIX.demo':'/usr/pkg','TOOLS_CROSS_DESTDIR':str(r/'cross'),'BUILDLINK_PKGNAME.demo':'demo-2','_BLNK_COOKIE.demo':str(live/'.buildlink_demo_done'),'_BLNK_PKG_INFO.demo':sys.executable+' '+str(r/'pkginfo.py'),'_BLNK_FILES_CMD.demo':'printf dummy','GREP':'/selected/grep'}
+if '_MAKEVARS_MK=defined' not in args:
+ vals['BUILDLINK_PKGNAME.demo']='demo-1'
 if '-V' in args:
  for i,x in enumerate(args):
   if x=='-V': print(vals[args[i+1][2:-1]])
@@ -44,13 +46,16 @@ if d!=live:(d/'lib/demo.la').write_text("libdir='"+str(d)+"/lib'\\n")
 cookie.write_text(str(common)+' -> '+str(prefix/'include/common.h')+'\\n'+str(link)+' -> '+str(prefix/'include/new.h')+'\\n')
 ''')
     fake.chmod(0o755)
-    (root/'pkginfo.py').write_text("print('File: include/new.h')\n")
+    # The retained makevars cache names demo-1, but pkgdb only has its
+    # replacement demo-2. Refresh must query the live installed provider.
+    (root/'pkginfo.py').write_text("import sys\nif sys.argv[-1] != 'demo-2':\n sys.exit('missing installed package: ' + sys.argv[-1])\nprint('File: include/new.h')\n")
     la_stat = (live/'lib/demo.la').stat()
     obj_stat = (work/'retained.o').stat()
     cmd=[a.python,'-B',str(helper),'--bmake',str(fake),'--recipe',str(recipe),'--expected-work',str(work),'--provider','demo']
     (root/'fail').touch()
-    assert subprocess.run(cmd,capture_output=True).returncode
-    assert 'old.h' in cookie.read_text() and not (live/'include/common.h').exists()
+    interrupted = subprocess.run(cmd,capture_output=True)
+    assert interrupted.returncode
+    assert 'old.h' in cookie.read_text() and not (live/'include/common.h').exists(), interrupted.stderr.decode()
     subprocess.run(cmd,check=True,capture_output=True)
     assert not (live/'include/old.h').exists() and (live/'include/new.h').is_symlink() and (live/'include/common.h').is_symlink()
     assert (work/'retained.o').read_bytes()==b'object'

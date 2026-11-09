@@ -652,7 +652,9 @@ For an existing stage whose installed dependency has added buildlink files,
 `CROSS_BULK_BUILDLINK_PROVIDER=NAME cross-bulk.sh buildlink-refresh PKGPATH[@native] STATE`
 uses the normal provider factory under the stage lock. It checks package inventory,
 existing links and collisions, preserves compatible objects and retries interrupted
-link updates. Existing libtool `.la` outputs must exactly match the current factory
+link updates. Provider metadata is read from the installed package database instead
+of retained phase caches, which may name the replaced package revision.
+Existing libtool `.la` outputs must exactly match the current factory
 output after relocating only its temporary buildlink root; new or changed `.la`
 outputs are unsupported and cause refusal. The live factory does not rewrite them.
 

@@ -54,7 +54,10 @@ def main():
     p.add_argument('--native', action='store_true')
     a = p.parse_args()
     require(re.fullmatch(r'[A-Za-z0-9_+-]+', a.provider), 'invalid provider')
-    cmd = [a.bmake, '-C', str(a.recipe), '_PKGSRC_BARRIER=yes', *a.make_arg]
+    # A retained phase cache can name an uninstalled provider revision. Query
+    # and run the factory against pkgdb, without rewriting the stage caches.
+    cmd = [a.bmake, '-C', str(a.recipe), '_PKGSRC_BARRIER=yes',
+           '_MAKEVARS_MK=defined', *a.make_arg]
     fields = ['WRKDIR', 'BUILDLINK_DIR', 'BUILDLINK_X11_DIR', 'USE_BUILTIN.' + a.provider,
               'BUILDLINK_PREFIX.' + a.provider, 'TOOLS_CROSS_DESTDIR', 'BUILDLINK_PKGNAME.' + a.provider,
               '_BLNK_COOKIE.' + a.provider, '_BLNK_PKG_INFO.' + a.provider,
