@@ -676,3 +676,19 @@ remain pending the shared wxGTK4 build.
 
 Primary references: [GtkPopover](https://docs.gtk.org/gtk4/class.Popover.html),
 [GTK4 migration](https://docs.gtk.org/gtk4/migrating-3to4.html).
+
+# Cross pkg-config sysroot selection
+
+`pkgconfig-sysroot.py` executes wx configure's cross-root block with the
+selected real pkg-config executable and conflicting host/target `.pc` files.
+It checks native selection, preservation of an explicit `PKG_CONFIG_PATH`,
+legacy linker-root fallback without a declared sysroot, and target metadata
+selection when a cross SDK declares `PKG_CONFIG_SYSROOT_DIR` but leaves
+`PKG_CONFIG_PATH` empty. The latter catches host linker paths shadowing target
+pkg-config metadata.
+
+```sh
+python3 tests/pkgconfig-sysroot.py --source /prepared/wxWidgets \
+  --shell /native/bin/mksh --pkg-config /native/bin/pkg-config \
+  --work-parent /work/tmp
+```

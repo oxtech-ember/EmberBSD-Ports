@@ -3,8 +3,8 @@ $NetBSD: distinfo,v 1.22 2026/07/08 07:28:58 adam Exp $
 BLAKE2s (wxWidgets-3.2.12.tar.bz2) = 373211e47878fe0e75709c484030f2cea20b6f81359fd4c33ee43a436a0c124f
 SHA512 (wxWidgets-3.2.12.tar.bz2) = c3be2f2933dae1a2d7b05fa38fee11a0bde16ccb4afb0bbb90c3875e667261937751659e14d3da4af2479441378b016e360be715361ba06141b66bc281c3b135
 Size (wxWidgets-3.2.12.tar.bz2) = 27550987 bytes
-SHA1 (patch-configure) = 256efcd0a7a82d407527964402960474f2906d76
-SHA1 (patch-configure.in) = c8d2aa4596b575e2b704a7fe7a1728c5c1a98377
+SHA1 (patch-configure) = 33508ee1e3a77d529b856e6b3a5581b37c2bea62
+SHA1 (patch-configure.in) = 5439f47230a08184f7de00f8729865d7e9db5e60
 SHA1 (patch-gtk4-about) = f359166a9852b6f755328715fc27fbcb5cbe3655
 SHA1 (patch-gtk4-art) = b2f4f062548be201f88aeb0bb43f646a7c8d9ba3
 SHA1 (patch-gtk4-calendar) = a8447e80e92e1a9be5646dc853afd6500ca42e05

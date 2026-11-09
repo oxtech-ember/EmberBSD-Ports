@@ -4,6 +4,7 @@ Use standard sonames on SunOS.
 
 AI-assisted adaptation: permit an explicit library suffix for a target prefix.
 Keep cross detection, tool prefixes and the upstream default suffix.
+Do not infer target paths from a host linker when the SDK supplies a sysroot.
 
 --- configure.orig
 +++ configure
@@ -16,7 +17,18 @@ Keep cross detection, tool prefixes and the upstream default suffix.
  else
      HOST_PREFIX=
      HOST_SUFFIX=
-@@ -44587,7 +44587,8 @@ fi
+@@ -25496,7 +25496,9 @@
+ 
+ SEARCH_LIB="`echo "$SEARCH_INCLUDE" | sed s@include@$wx_cv_std_libpath@g` $wx_cv_std_libfullpath"
+ 
+-if test "$build" != "$host" -a "$GCC" = yes; then
++# A sysroot SDK's linker runs on the host; its prefix is not a target root.
++if test "$build" != "$host" -a "$GCC" = yes &&
++   test -z "$PKG_CONFIG_SYSROOT_DIR"; then
+                     if cross_root=`$CC -print-prog-name=ld 2>/dev/null`; then
+         cross_root=`dirname $cross_root`
+         cross_root=`dirname $cross_root`
+@@ -44587,7 +44589,8 @@ fi
        *-*-solaris2* )
          SONAME_FLAG="-h "
          USE_SOVERSION=1

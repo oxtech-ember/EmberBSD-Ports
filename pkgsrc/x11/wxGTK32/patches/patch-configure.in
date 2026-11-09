@@ -2,6 +2,7 @@ $NetBSD$
 
 Allow a target package prefix to select native library link names.
 AI-assisted adaptation. Keep cross detection, tool prefixes and default names.
+Respect SDK sysroot metadata instead of guessing target paths from the linker.
 
 --- configure.in.orig
 +++ configure.in
@@ -14,3 +15,14 @@ AI-assisted adaptation. Keep cross detection, tool prefixes and default names.
  else
      HOST_PREFIX=
      HOST_SUFFIX=
+@@ -2282,7 +2282,9 @@
+ SEARCH_LIB="`echo "$SEARCH_INCLUDE" | sed s@include@$wx_cv_std_libpath@g` $wx_cv_std_libfullpath"
+ 
+ dnl Cross compiling with gcc?
+-if test "$build" != "$host" -a "$GCC" = yes; then
++dnl A sysroot SDK's linker runs on the host; its prefix is not a target root.
++if test "$build" != "$host" -a "$GCC" = yes &&
++   test -z "$PKG_CONFIG_SYSROOT_DIR"; then
+     dnl for gcc cross-compilers "$CC -print-prog-name=ld" prints the path to
+     dnl the linker. Stripping off the trailing '/bin/ld' gives us a candiate
+     dnl for a 'root' below which libraries and headers for the target system
