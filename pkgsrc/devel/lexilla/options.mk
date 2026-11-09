@@ -1,0 +1,11 @@
+# $NetBSD$
+PKG_OPTIONS_VAR=	PKG_OPTIONS.lexilla
+PKG_SUPPORTED_OPTIONS=	tests
+.include "../../mk/bsd.options.mk"
+.if !empty(PKG_OPTIONS:Mtests)
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=ON
+TEST_TARGET=		test
+USE_CXX_FEATURES+=	c++20
+.else
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
+.endif

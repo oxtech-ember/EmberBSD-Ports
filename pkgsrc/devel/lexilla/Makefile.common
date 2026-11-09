@@ -1,0 +1,20 @@
+# $NetBSD$
+# Origin: EmberBSD contributors (AI-assisted), official lexilla release.
+# Source, patches and preparation files belong to this provider for all frontends.
+LEXILLA_VERSION=	5.5.5
+DISTNAME=	lexilla${LEXILLA_VERSION:S/.//g}
+CATEGORIES=	devel
+MASTER_SITES=	https://www.scintilla.org/
+EXTRACT_SUFX=	.tgz
+WRKSRC=		${WRKDIR}/lexilla
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://www.scintilla.org/Lexilla.html
+LICENSE=	hpnd
+
+DISTINFO_FILE=	${.CURDIR}/../../devel/lexilla/distinfo
+PATCHDIR=	${.CURDIR}/../../devel/lexilla/patches
+FILESDIR=	${.CURDIR}/../../devel/lexilla/files
+USE_LANGUAGES=	c++
+USE_CXX_FEATURES=	c++17
+CMAKE_CONFIGURE_ARGS+=	-DLEXILLA_VERSION=${LEXILLA_VERSION}

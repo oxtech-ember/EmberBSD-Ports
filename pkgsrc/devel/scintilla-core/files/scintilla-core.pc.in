@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: Scintilla core
+Description: PIC editing core; the frontend implements the platform methods
+Version: @PROJECT_VERSION@
+Requires: scintilla-headers = @PROJECT_VERSION@
+Libs: -L${libdir} -lscintilla-core @CMAKE_THREAD_LIBS_INIT@
+Cflags: -I${includedir}/scintilla-core/private

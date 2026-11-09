@@ -1,0 +1,4 @@
+Lexilla provides syntax lexers through Scintilla's ILexer5 interface.
+This package builds the complete upstream lexer catalogue as a shared library,
+using public headers from the common Scintilla core provider. It has no GUI
+backend dependency. CMake and pkg-config exports support direct linking.

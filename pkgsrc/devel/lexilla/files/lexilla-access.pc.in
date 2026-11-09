@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: Lexilla access
+Description: Common loadable-lexer access layer
+Version: @PROJECT_VERSION@
+Requires: lexilla = @PROJECT_VERSION@
+Libs: -L${libdir} -llexilla-access@LEXILLA_DL_LIBS@
+Cflags: -I${includedir}/lexilla

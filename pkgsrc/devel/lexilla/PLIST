@@ -1,0 +1,15 @@
+@comment $NetBSD$
+include/lexilla/LexicalStyles.iface
+include/lexilla/Lexilla.h
+include/lexilla/LexillaAccess.h
+include/lexilla/SciLexer.h
+lib/liblexilla-access.a
+lib/${LEXILLA_LIB}
+lib/${LEXILLA_SONAME}
+lib/${LEXILLA_VERSIONED}
+lib/cmake/Lexilla/LexillaConfig.cmake
+lib/cmake/Lexilla/LexillaConfigVersion.cmake
+lib/cmake/Lexilla/LexillaTargets.cmake
+lib/pkgconfig/lexilla-access.pc
+lib/pkgconfig/lexilla.pc
+share/licenses/lexilla/License.txt

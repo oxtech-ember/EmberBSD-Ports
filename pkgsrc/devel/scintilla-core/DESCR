@@ -1,0 +1,4 @@
+Scintilla's editing core, without a GTK, Qt, Windows or wx widget backend.
+The position-independent archive links into a frontend providing Platform.h
+methods. Public interface headers and exact-version private frontend headers
+are installed separately. CMake and pkg-config exports select the common core.

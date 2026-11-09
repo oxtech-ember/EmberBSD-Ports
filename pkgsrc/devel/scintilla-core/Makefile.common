@@ -1,0 +1,20 @@
+# $NetBSD$
+# Origin: EmberBSD contributors (AI-assisted), official scintilla release.
+# Source, patches and preparation files belong to this provider for all frontends.
+SCINTILLA_VERSION=	5.6.9
+DISTNAME=	scintilla${SCINTILLA_VERSION:S/.//g}
+CATEGORIES=	devel
+MASTER_SITES=	https://www.scintilla.org/
+EXTRACT_SUFX=	.tgz
+WRKSRC=		${WRKDIR}/scintilla
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://www.scintilla.org/ScintillaDoc.html
+LICENSE=	hpnd
+
+DISTINFO_FILE=	${.CURDIR}/../../devel/scintilla-core/distinfo
+PATCHDIR=	${.CURDIR}/../../devel/scintilla-core/patches
+FILESDIR=	${.CURDIR}/../../devel/scintilla-core/files
+USE_LANGUAGES=	c++
+USE_CXX_FEATURES=	c++17
+CMAKE_CONFIGURE_ARGS+=	-DSCINTILLA_VERSION=${SCINTILLA_VERSION}

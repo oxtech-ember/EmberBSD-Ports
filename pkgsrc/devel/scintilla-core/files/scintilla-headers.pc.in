@@ -1,0 +1,7 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: Scintilla public interfaces
+Description: Public message, document and lexer interfaces without a GUI library
+Version: @PROJECT_VERSION@
+Cflags: -I${includedir}/scintilla-core

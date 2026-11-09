@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: Lexilla
+Description: Complete ILexer5 lexer catalogue, without a GUI backend
+Version: @PROJECT_VERSION@
+Requires: scintilla-headers >= 5.0
+Libs: -L${libdir} -llexilla
+Cflags: -I${includedir}/lexilla

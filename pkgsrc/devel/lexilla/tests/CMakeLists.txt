@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: BSD-2-Clause
+cmake_minimum_required(VERSION 3.16)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    project(LexillaContract LANGUAGES CXX)
+    find_package(Lexilla CONFIG REQUIRED)
+    enable_testing()
+endif()
+add_executable(lexilla-contract lexer-contract.cpp)
+target_link_libraries(lexilla-contract PRIVATE Lexilla::Access)
+add_test(NAME lexilla-contract COMMAND lexilla-contract)
