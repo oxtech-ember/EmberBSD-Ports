@@ -30,9 +30,9 @@ of carrying their own loader copy. Its upstream direct-call mode uses the linked
 searching a producer path. This does not
 change upstream plugin lifetime, namespace or semicolon-separated path rules.
 
-`Makefile.common` owns source selection and patch/preparation paths. This
-preparation does not yet migrate wx, Scintilla's old GTK widget recipe, or SciTE;
-their consumer adaptations and package acceptance remain separate work.
+`Makefile.common` owns source selection and patch/preparation paths.
+`x11/wxGTK32` consumes the shared catalogue and access helper alongside the
+common Scintilla core; no lexer or loader implementation is copied into wx.
 
 ## Source and verification
 
@@ -56,5 +56,9 @@ Archive integrity and source-set inspection are checked. The native source
 build with the selected Clang 23.1.4 passed, as did the provider contract and
 upstream lexer corpus. Installed CMake and pkg-config consumers compiled and
 linked; both ran against the staged prefix with its library directory on the
-loader path. These are diagnostic source-build checks, not a Ports package
-install. Target package builds and frontend/GUI acceptance remain pending.
+loader path. The normal SDK client also built and installed the aarch64 Ports
+package. The standalone CMake consumer was cross-built against that installed
+provider and passed in an EmberBSD/NetBSD 11 aarch64 guest. The test staged the
+selected sysroot C++ runtime and Lexilla DSO in a temporary guest directory,
+without installing development tools. The package kept its default tests-off
+setting; this focused target contract does not establish wx GUI acceptance.

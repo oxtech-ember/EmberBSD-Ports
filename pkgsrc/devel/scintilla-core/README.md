@@ -43,8 +43,8 @@ an incompatible core change; this is not a stable private C++ ABI promise.
 
 `Makefile.common` owns the version, archive, distinfo, patches and preparation
 files for future frontend recipes. New consumers must reuse it, not download
-another Scintilla source copy. The existing Scintilla/SciTE recipes and bundled
-wx core have not been switched by this preparation step.
+another Scintilla source copy. `x11/wxGTK32` consumes this core and the shared
+Lexilla provider; this core package does not supply a GTK widget frontend.
 
 ## Source and verification
 
@@ -67,6 +67,10 @@ The native source build with the selected Clang 23.1.4 passed. The opt-in
 Unicode/PIC contract passed both in the build tree and through an installed
 CMake consumer; the installed pkg-config consumer also compiled, linked and ran
 with the staged library directory on the loader path. These are diagnostic
-source-build checks, not a Ports package install. Target builds and real wx
-frontend linkage/GUI behavior remain pending; the Unicode/PIC contract does
-not establish complete editor or backend acceptance.
+source-build checks. The normal SDK client also built and installed the aarch64
+Ports package. Its standalone CMake consumer was cross-built against that
+installed provider and passed in an EmberBSD/NetBSD 11 aarch64 guest, including
+the real PIC DSO link and Unicode checks. The test used the selected sysroot
+C++ runtime in a temporary guest directory; it did not install development
+tools on the guest. The package retained its default tests-off setting.
+These focused contracts do not establish full wx frontend/GUI acceptance.
