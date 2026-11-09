@@ -366,6 +366,13 @@ bmake runs the already-declared interpreter prerequisite before a later SUBST
 prerequisite. The transaction journal stores the selected interpreter replay
 state, so an ordinary retry can reproduce those rewrites after `configure-clean`
 removes the configure cookie.
+For GNU-configured packages, the same completed-configure evidence also replays
+only `configure-scripts-override` and `configure-scripts-osdep`, before interpreter
+replacement. Their selected framework definitions and script selectors must agree
+between recipes. Other configure prerequisites, including autoreconf, are not run.
+The common override recognizes the exact existing two-line `--recheck` guard and
+leaves an unchanged script's bytes, mode and timestamp intact on repeat configure.
+Unrelated live edits still fail the transaction's exact preimage comparison.
 
 For an explicitly failed source stage whose saved `.patch_done` cookie is an
 ordered subset of the selected previous recipe's complete patch inventory, use

@@ -1,0 +1,48 @@
+# Keep the exact --recheck guard stable across incremental configure runs.
+--- a/mk/configure/gnu-configure.mk
++++ b/mk/configure/gnu-configure.mk
+@@ -141,17 +141,33 @@
+ ###
+ do-configure-pre-hook: configure-scripts-override
+ 
+-_SCRIPT.configure-scripts-override=					\
+-	${AWK} '/ *-recheck *\| *--recheck.*\)/ {			\
+-			print;						\
+-			print "	: Avoid regenerating within pkgsrc";	\
+-			print "	exit 0";				\
+-			next;						\
+-		}							\
+-		{ print }' $$file > $$file.override;			\
+-	${CHMOD} +x $$file.override;					\
+-	${TOUCH} -r $$file $$file.override;				\
+-	${MV} -f $$file.override $$file
++_SCRIPT.configure-scripts-override= \
++	${AWK} 'function guard() { \
++		print "\t: Avoid regenerating within pkgsrc"; print "\texit 0"; \
++	} { \
++		if (waiting == 2) { \
++			if ($$0 == "\texit 0") { \
++				print "\t: Avoid regenerating within pkgsrc"; \
++				print; waiting = 0; next; \
++			} \
++			guard(); print "\t: Avoid regenerating within pkgsrc"; waiting = 0; \
++		} else if (waiting == 1) { \
++			if ($$0 == "\t: Avoid regenerating within pkgsrc") { waiting = 2; next; } \
++			guard(); waiting = 0; \
++		} \
++		print; \
++		if ($$0 ~ / *-recheck *\| *--recheck.*\)/) waiting = 1; \
++	} END { \
++		if (waiting) guard(); \
++		if (waiting == 2) print "\t: Avoid regenerating within pkgsrc"; \
++	}' $$file > $$file.override; \
++	if ${CMP} -s $$file.override $$file; then \
++		${RM} -f $$file.override; \
++	else \
++		${CHMOD} +x $$file.override; \
++		${TOUCH} -r $$file $$file.override; \
++		${MV} -f $$file.override $$file; \
++	fi
+ 
+ OVERRIDE_DIRDEPTH.configure?=	${OVERRIDE_DIRDEPTH}
+ 

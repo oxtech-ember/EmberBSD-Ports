@@ -11,7 +11,7 @@ are exactly the added patch targets. Unchanged patch hooks must be bounded
 timestamp copies. The selected pkgsrc SUBST generates the verified candidate
 and records a verified no-op in the live stage before the journal is cleared.
 The previous-recipe mode binds complete old patch inputs to the installed
-package, replays replacement patches and an unchanged existing SUBST class,
+package, replays replacement patches and selected unchanged existing SUBST classes,
 and verifies omitted old-cookie targets without rewriting their source files.
 For an unfinished first build without installed metadata, an explicit previous
 recipe and the actual cookie define the old replay. All patch targets must
@@ -1154,6 +1154,7 @@ def main():
     subst_metadata = {}
     interpreter_metadata = {}
     interpreter_ready = False
+    gnu_metadata = None
     if a.previous_recipe:
         package = '/'.join(a.recipe.parts[-2:])
         previous_makefile = a.previous_recipe / 'Makefile'
@@ -1273,6 +1274,35 @@ def main():
             interpreter_ready = saved_replay_state['interpreter_applied']
         else:
             interpreter_ready = configure_cookie_present
+        # GNU configure hooks are prerequisites of the same completed configure
+        # stage as interpreter replacement. Reuse its cookie/journal evidence.
+        gnu_framework = (a.recipe.parents[1] / 'mk/configure/gnu-configure.mk').resolve()
+        prior_gnu_framework = (a.previous_recipe.parents[1] / 'mk/configure/gnu-configure.mk').resolve()
+        def loaded_gnu(makefiles):
+            return any((a.recipe / item).resolve() in (gnu_framework, prior_gnu_framework)
+                       for item in shlex.split(makefiles))
+        require(loaded_gnu(old_makefiles) == loaded_gnu(v['.MAKE.MAKEFILES']),
+                'previous GNU configure selection changed')
+        if interpreter_ready and loaded_gnu(v['.MAKE.MAKEFILES']):
+            fields = ['GNU_CONFIGURE', 'CONFIGURE_SCRIPT', 'CONFIGURE_SCRIPTS_OVERRIDE',
+                      'OVERRIDE_DIRDEPTH.configure', '_SCRIPT.configure-scripts-override',
+                      '_SCRIPT.configure-scripts-osdep']
+            before, after = selected_values(oldcmd, fields), selected_values(cmd, fields)
+            require(before == after, 'previous GNU configure hooks changed')
+            _gnu, script, override, depth, _rewrite, osdep = after
+            basename = Path(script).name
+            require(re.fullmatch(r'[A-Za-z0-9_+.-]+', basename) and basename not in ('.', '..') and
+                    re.fullmatch(r'[0-9]+', depth), 'unsupported GNU configure script selection')
+            explicit = [item.removeprefix('./') for item in shlex.split(override)]
+            require(all(re.fullmatch(r'[A-Za-z0-9_./+-]+', item) and not item.startswith('/') and
+                        all(part not in ('', '.', '..') for part in item.split('/')) for item in explicit),
+                    'unsupported explicit GNU configure scripts')
+            gnu_metadata = (basename, explicit, int(depth), bool(osdep))
+            observed_recipe_inputs[gnu_framework] = stable_read(paths, gnu_framework)
+            for target in ('configure-scripts-override', 'configure-scripts-osdep'):
+                validate_active_target(paths, oldcmd, a.recipe, old_makefiles, {gnu_framework}, target,
+                                       previous_recipe=a.previous_recipe, observed=observed_recipe_inputs)
+                validate_active_target(paths, cmd, a.recipe, v['.MAKE.MAKEFILES'], {gnu_framework}, target)
         replay_state = interpreter_replay_state(interpreter_metadata, interpreter_ready)
         if saved_replay_state is not None:
             require(saved_replay_state == replay_state,
@@ -1347,7 +1377,35 @@ def main():
                         'existing SUBST cookie differs from replay: ' + name)
                 require(all(not os.path.lexists(str(_entry(paths, candidate, file)) + '.subst.sav')
                             for file in files), 'existing SUBST temporary file remains')
-        def replace_interpreters(label, command, candidate, affected):
+        def configure_pre_hooks(label, command, candidate, affected):
+            if gnu_metadata is not None:
+                basename, explicit, depth, osdep = gnu_metadata
+                names = set(explicit)
+                if not explicit or osdep:
+                    for level in range(depth + 1):
+                        names.update(path.relative_to(candidate).as_posix()
+                                     for path in candidate.glob('*/' * level + basename))
+                present = []
+                for name in names:
+                    parent = candidate
+                    for part in name.split('/')[:-1]:
+                        parent = parent / part
+                        if paths.entry(str(parent)) is None:
+                            break
+                        paths.real_directory(str(parent))
+                    else:
+                        path = _entry(paths, candidate, name)
+                        if paths.entry(str(path)) is not None:
+                            paths.regular_file(str(path))
+                        present.append(name)
+                        require(not os.path.lexists(str(path) + '.override'),
+                                'unexpected GNU configure temporary file: ' + name)
+                subprocess.run(command + ['WRKSRC=' + str(candidate),
+                                          'configure-scripts-override', 'configure-scripts-osdep'], check=True)
+                for name in present:
+                    path = _entry(paths, candidate, name)
+                    require(not os.path.lexists(str(path) + '.override'),
+                            'GNU configure temporary file remains: ' + name)
             selected = {}
             for name, (patterns, _old, _new) in interpreter_metadata.items():
                 files = sorted(path for path in affected
@@ -1398,9 +1456,9 @@ def main():
                                              extra_components=archive_subst_inputs + archive_interpreter_inputs,
                                              extra_transform_targets=(subst_files if a.refresh_subst else ()),
                                              subst_before_pre_transform=(subst_stage == 'pre-configure'),
-                                             pre_transform=(lambda candidate, affected: replace_interpreters('new', cmd, candidate, affected))
+                                             pre_transform=(lambda candidate, affected: configure_pre_hooks('new', cmd, candidate, affected))
                                                            if a.previous_recipe and interpreter_ready else None,
-                                             old_pre_transform=(lambda candidate, affected: replace_interpreters('old', oldcmd, candidate, affected))
+                                             old_pre_transform=(lambda candidate, affected: configure_pre_hooks('old', oldcmd, candidate, affected))
                                                                if a.previous_recipe and interpreter_ready else None)
         if a.refresh_subst:
             for label in ('old', 'new'):
