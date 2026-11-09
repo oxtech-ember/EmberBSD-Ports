@@ -27,6 +27,13 @@ PLIST.dbus=	yes
 MESON_ARGS+=			-Duse_systemd=false
 MESON_ARGS+=			-Ddefault_bus=dbus-daemon
 
+# The daemon path is embedded in the launcher at configure time.  A cross
+# build must name the target's logical prefix, not the host tool found by
+# Meson's default search.
+.if ${USE_CROSS_COMPILE:tl} == "yes"
+MESON_ARGS+=			-Ddbus_daemon=${PREFIX}/bin/dbus-daemon
+.endif
+
 #
 # These files only get installed when dbus is in use.
 #

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.76 2026/09/02 19:05:09 wiz Exp $
 
 DISTNAME=	gtk-4.24.1
-PKGREVISION=	2
+PKGREVISION=	3
 PKGNAME=	${DISTNAME:S/gtk/gtk4/}
 CATEGORIES=	x11
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gtk/${PKGVERSION_NOREV:R}/}
@@ -11,6 +11,10 @@ MAINTAINER=	ryoon@NetBSD.org
 HOMEPAGE=	https://www.gtk.org/
 COMMENT=	Multi-platform toolkit for creating GUIs, version 4
 LICENSE=	gnu-lgpl-v2.1
+
+# GTK enables its AT-SPI backend on Unix and can activate this service at
+# runtime.
+DEPENDS+=	at-spi2-core>=2.62.1nb4:../../devel/at-spi2-core
 
 TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
 # TEST_DEPENDS, but meson fails if it's not found
