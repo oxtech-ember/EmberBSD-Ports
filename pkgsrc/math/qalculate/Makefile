@@ -2,6 +2,8 @@
 
 DISTNAME=	libqalculate-5.13.1
 PKGNAME=	qalculate-5.13.2
+# nb1: libqalculate.pc no longer names the build sysroot (target-pkgconfig.sh).
+PKGREVISION=	1
 CATEGORIES=	math
 MASTER_SITES=	${MASTER_SITE_GITHUB:=Qalculate/}
 GITHUB_PROJECT=	libqalculate
