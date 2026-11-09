@@ -1,0 +1,56 @@
+$NetBSD$
+
+Populate enum choices through the shared argparse public single-choice API.
+
+--- kicad/cli/command_pcb_render.cpp.orig
++++ kicad/cli/command_pcb_render.cpp
+@@ -87,10 +87,8 @@
+ 
+ 
+ template <typename T>
+-static std::vector<std::string> enumChoices()
+-{
+-    std::vector<std::string> out;
+-
++static argparse::Argument& addEnumChoices( argparse::Argument& aArgument )
++{
+     for( auto& strView : magic_enum::enum_names<T>() )
+     {
+         std::string name = { strView.begin(), strView.end() };
+@@ -101,10 +99,10 @@
+                             return std::tolower( c );
+                         } );
+ 
+-        out.emplace_back( name );
+-    }
+-
+-    return out;
++        aArgument.add_choice( name );
++    }
++
++    return aArgument;
+ }
+ 
+ 
+@@ -232,9 +230,8 @@
+             .metavar( "HEIGHT" )
+             .help( UTF8STDSTR( _( "Image height" ) ) );
+ 
+-    m_argParser.add_argument( ARG_SIDE )
++    addEnumChoices<JOB_PCB_RENDER::SIDE>( m_argParser.add_argument( ARG_SIDE ) )
+             .default_value( std::string( "top" ) )
+-            .add_choices( enumChoices<JOB_PCB_RENDER::SIDE>() )
+             .metavar( "SIDE" )
+             .help( UTF8STDSTR( wxString::Format( _( "Render from side. Options: %s" ),
+                                                  enumString<JOB_PCB_RENDER::SIDE>() ) ) );
+@@ -246,9 +243,8 @@
+                                                  enumString<JOB_PCB_RENDER::BG_STYLE>() ) ) )
+             .metavar( "BG" );
+ 
+-    m_argParser.add_argument( ARG_QUALITY )
++    addEnumChoices<JOB_PCB_RENDER::QUALITY>( m_argParser.add_argument( ARG_QUALITY ) )
+             .default_value( std::string( "basic" ) )
+-            .add_choices( enumChoices<JOB_PCB_RENDER::QUALITY>() )
+             .metavar( "QUALITY" )
+             .help( UTF8STDSTR( wxString::Format( _( "Render quality. Options: %s" ),
+                                                  enumString<JOB_PCB_RENDER::QUALITY>() ) ) );
