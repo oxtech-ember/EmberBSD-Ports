@@ -1,0 +1,176 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Include atomic types and memory-order declarations where KiCad uses them.
+Do not rely on future, mutex or other headers to provide <atomic> transitively.
+
+--- common/git/kigit_orphan_registry.cpp.orig
++++ common/git/kigit_orphan_registry.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include "kigit_orphan_registry.h"
++#include <atomic>
+ 
+ 
+ KIGIT_ORPHAN_REGISTRY::KIGIT_ORPHAN_REGISTRY() = default;
+--- common/libraries/library_manager.cpp.orig
++++ common/libraries/library_manager.cpp
+@@ -19,6 +19,7 @@
+  */
+ 
+ #include <chrono>
++#include <atomic>
+ #include <common.h>
+ #include <env_vars.h>
+ #include <list>
+--- common/local_history.cpp.orig
++++ common/local_history.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <local_history.h>
++#include <atomic>
+ #include <dialogs/dialog_restore_local_history.h>
+ #include <history_lock.h>
+ #include <paths.h>
+--- common/tool/tool_manager.cpp.orig
++++ common/tool/tool_manager.cpp
+@@ -25,6 +25,7 @@
+  */
+ 
+ #include <core/kicad_algo.h>
++#include <atomic>
+ #include <optional>
+ #include <map>
+ #include <stack>
+--- eeschema/eeschema.cpp.orig
++++ eeschema/eeschema.cpp
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include <core/json_serializers.h>
++#include <atomic>
+ #include <pgm_base.h>
+ #include <kiface_base.h>
+ #include <background_jobs_monitor.h>
+--- eeschema/sim/ngspice.cpp.orig
++++ eeschema/sim/ngspice.cpp
+@@ -26,6 +26,7 @@
+  */
+ 
+ #include <config.h>     // Needed for MSW compilation
++#include <atomic>
+ #include <common.h>
+ #include <locale_io.h>
+ #include <fmt/format.h>
+--- include/libraries/library_manager.h.orig
++++ include/libraries/library_manager.h
+@@ -21,6 +21,7 @@
+ #ifndef LIBRARY_MANAGER_H
+ #define LIBRARY_MANAGER_H
+ 
++#include <atomic>
+ #include <future>
+ #include <memory>
+ #include <mutex>
+--- include/pgm_base.h.orig
++++ include/pgm_base.h
+@@ -31,6 +31,7 @@
+ #ifndef  PGM_BASE_H_
+ #define  PGM_BASE_H_
+ 
++#include <atomic>
+ #include <kicommon.h>
+ #include <singleton.h>
+ #include <exception>
+--- include/widgets/wx_progress_reporters.h.orig
++++ include/widgets/wx_progress_reporters.h
+@@ -27,6 +27,7 @@
+ #ifndef WX_PROGRESS_REPORTERS_H
+ #define WX_PROGRESS_REPORTERS_H
+ 
++#include <atomic>
+ #include <wx/progdlg.h>
+ #include <wx/gauge.h>
+ #include <wx/appprogress.h>
+--- pcbnew/connectivity/topo_match.cpp.orig
++++ pcbnew/connectivity/topo_match.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <cstdio>
++#include <atomic>
+ #include <cstdlib>
+ #include <cmath>
+ #include <string>
+--- pcbnew/drc/drc_cache_generator.cpp.orig
++++ pcbnew/drc/drc_cache_generator.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <common.h>
++#include <atomic>
+ #include <board_design_settings.h>
+ #include <pad.h>
+ #include <pcb_board_outline.h>
+--- pcbnew/drc/drc_test_provider_copper_clearance.cpp.orig
++++ pcbnew/drc/drc_test_provider_copper_clearance.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <common.h>
++#include <atomic>
+ #include <board_design_settings.h>
+ #include <footprint.h>
+ #include <layer_range.h>
+--- pcbnew/drc/drc_test_provider_solder_mask.cpp.orig
++++ pcbnew/drc/drc_test_provider_solder_mask.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <common.h>
++#include <atomic>
+ #include <board_design_settings.h>
+ #include <board_connected_item.h>
+ #include <footprint.h>
+--- pcbnew/drc/drc_test_provider_zone_connections.cpp.orig
++++ pcbnew/drc/drc_test_provider_zone_connections.cpp
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include <board.h>
++#include <atomic>
+ #include <board_design_settings.h>
+ #include <connectivity/connectivity_data.h>
+ #include <zone.h>
+--- pcbnew/pcbnew.cpp.orig
++++ pcbnew/pcbnew.cpp
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include <pcbnew_scripting_helpers.h>
++#include <atomic>
+ #include <pgm_base.h>
+ #include <eda_pattern_match.h>
+ #include <background_jobs_monitor.h>
+--- pcbnew/tools/multichannel_tool.cpp.orig
++++ pcbnew/tools/multichannel_tool.cpp
+@@ -23,6 +23,7 @@
+ 
+ 
+ #include <board_commit.h>
++#include <atomic>
+ #include <iterator>
+ #include <tools/pcb_actions.h>
+ #include <tools/pcb_selection.h>
+--- pcbnew/zone.cpp.orig
++++ pcbnew/zone.cpp
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include <advanced_config.h>
++#include <atomic>
+ #include <bitmaps.h>
+ #include <geometry/geometry_utils.h>
+ #include <geometry/shape_null.h>

@@ -28,3 +28,4 @@ SHA1 (patch-emberbsd-gtk4-platform) = bc698a1af010160f28837e492e4f6e2141284e51
 SHA1 (patch-zz-pybind11-targets) = 88087bfad7aadd37a020fc38d3d223997bb9c2a9
 SHA1 (patch-zz-required-headers) = f5a57ab095c55c617b24eee25ffe1e8d971c7bf4
 SHA1 (patch-zz-standard-iterator) = 997cd4e86bffc8d53d73782d25c592507ee3cfae
+SHA1 (patch-zzz-standard-atomic) = d6f99ba71e22862a565f43de76235a12855ebec5
