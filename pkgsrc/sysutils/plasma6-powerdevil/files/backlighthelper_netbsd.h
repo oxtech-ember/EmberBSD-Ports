@@ -28,8 +28,11 @@ private:
     int readBrightness() const;
     bool writeBrightness(int brightness) const;
 
-    bool m_isSupported = false;
+    enum class Backend { None, Wsdisplay, AcpiSysctl };
+
+    Backend m_backend = Backend::None;
     QByteArray m_sysctlName;
+    int m_minBrightness = 0;
     int m_maxBrightness = 100;
 };
 

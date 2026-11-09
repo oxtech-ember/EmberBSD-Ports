@@ -1,29 +1,44 @@
 /*
  * SPDX-License-Identifier: LGPL-2.0-only
  *
- * NetBSD exposes the panel brightness as hw.acpi.acpioutN.brightness.
- * There is no separate maximum node. The live panel uses the range 0..100.
+ * NetBSD panel brightness.
+ *
+ * The panel driver exposes its backlight as the wsdisplay(4) brightness
+ * parameter on /dev/ttyE0 (WSDISPLAYIO_GETPARAM / WSDISPLAYIO_SETPARAM
+ * with WSDISPLAYIO_PARAM_BRIGHTNESS). When the kernel has no such
+ * parameter, ACPI _BCM is the fallback: hw.acpi.acpioutN.brightness in the
+ * range 0..100.
+ *
+ * EmberBSD (AI-assisted).
  */
 
 #include "backlighthelper_netbsd.h"
 
 #include <powerdevil_debug.h>
 
+#include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <sys/types.h>
+
+#include <dev/wscons/wsconsio.h>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <QByteArray>
 #include <QtGlobal>
 
 namespace
 {
+const char *const wsdisplayPath = "/dev/ttyE0";
+
 bool readSysctl(const char *name, int *value)
 {
     size_t length = sizeof(*value);
     return sysctlbyname(name, value, &length, nullptr, 0) == 0 && length == sizeof(*value);
 }
 
-QByteArray firstOutput()
+QByteArray firstAcpiOutput()
 {
     for (int index = 0; index < 8; ++index) {
         const QByteArray name = QByteArrayLiteral("hw.acpi.acpiout") + QByteArray::number(index) + QByteArrayLiteral(".brightness");
@@ -35,16 +50,38 @@ QByteArray firstOutput()
     }
     return {};
 }
+
+bool wsdisplayParam(unsigned long request, wsdisplay_param *param)
+{
+    const int fd = open(wsdisplayPath, O_RDWR | O_CLOEXEC);
+    if (fd < 0) {
+        return false;
+    }
+    param->param = WSDISPLAYIO_PARAM_BRIGHTNESS;
+    const int result = ioctl(fd, request, param);
+    close(fd);
+    return result == 0;
+}
 }
 
 BacklightHelper::BacklightHelper(QObject *parent)
     : QObject(parent)
 {
-    m_sysctlName = firstOutput();
-    m_isSupported = !m_sysctlName.isEmpty();
-    if (!m_isSupported) {
-        qCWarning(POWERDEVIL) << "no NetBSD ACPI output brightness node found";
+    wsdisplay_param param{};
+    if (wsdisplayParam(WSDISPLAYIO_GETPARAM, &param) && param.max > param.min) {
+        m_backend = Backend::Wsdisplay;
+        m_minBrightness = param.min;
+        m_maxBrightness = param.max;
+        return;
     }
+    m_sysctlName = firstAcpiOutput();
+    if (!m_sysctlName.isEmpty()) {
+        m_backend = Backend::AcpiSysctl;
+        m_minBrightness = 0;
+        m_maxBrightness = 100;
+        return;
+    }
+    qCWarning(POWERDEVIL) << "no wsdisplay brightness parameter and no ACPI output brightness node";
 }
 
 ActionReply BacklightHelper::brightness(const QVariantMap &args)
@@ -62,7 +99,7 @@ ActionReply BacklightHelper::brightness(const QVariantMap &args)
 ActionReply BacklightHelper::brightnessmax(const QVariantMap &args)
 {
     Q_UNUSED(args);
-    if (!m_isSupported) {
+    if (m_backend == Backend::None) {
         return ActionReply::HelperErrorReply();
     }
     ActionReply reply;
@@ -72,7 +109,7 @@ ActionReply BacklightHelper::brightnessmax(const QVariantMap &args)
 
 ActionReply BacklightHelper::setbrightness(const QVariantMap &args)
 {
-    if (!m_isSupported) {
+    if (m_backend == Backend::None) {
         return ActionReply::HelperErrorReply();
     }
     const int value = args.value(QStringLiteral("brightness")).toInt();
@@ -90,24 +127,46 @@ ActionReply BacklightHelper::syspath(const QVariantMap &args)
 
 int BacklightHelper::readBrightness() const
 {
-    if (!m_isSupported) {
-        return -1;
+    switch (m_backend) {
+    case Backend::Wsdisplay: {
+        wsdisplay_param param{};
+        if (!wsdisplayParam(WSDISPLAYIO_GETPARAM, &param)) {
+            return -1;
+        }
+        return param.curval;
     }
-    int value = -1;
-    if (!readSysctl(m_sysctlName.constData(), &value)) {
-        return -1;
+    case Backend::AcpiSysctl: {
+        int value = -1;
+        if (!readSysctl(m_sysctlName.constData(), &value)) {
+            return -1;
+        }
+        return value;
     }
-    return value;
+    case Backend::None:
+        break;
+    }
+    return -1;
 }
 
 bool BacklightHelper::writeBrightness(int brightness) const
 {
-    if (!m_isSupported) {
-        return false;
+    const int value = qBound(m_minBrightness, brightness, m_maxBrightness);
+    switch (m_backend) {
+    case Backend::Wsdisplay: {
+        wsdisplay_param param{};
+        param.min = m_minBrightness;
+        param.max = m_maxBrightness;
+        param.curval = value;
+        return wsdisplayParam(WSDISPLAYIO_SETPARAM, &param);
     }
-    const int value = qBound(0, brightness, m_maxBrightness);
-    size_t length = sizeof(value);
-    return sysctlbyname(m_sysctlName.constData(), nullptr, nullptr, const_cast<int *>(&value), length) == 0;
+    case Backend::AcpiSysctl: {
+        size_t length = sizeof(value);
+        return sysctlbyname(m_sysctlName.constData(), nullptr, nullptr, const_cast<int *>(&value), length) == 0;
+    }
+    case Backend::None:
+        break;
+    }
+    return false;
 }
 
 KAUTH_HELPER_MAIN("org.kde.powerdevil.backlighthelper", BacklightHelper)
