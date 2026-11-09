@@ -2,11 +2,15 @@ $NetBSD$
 
 --- a/devel/py-gi-docgen/Makefile.orig
 +++ b/devel/py-gi-docgen/Makefile
-@@ -3,3 +3,4 @@
+@@ -2,7 +2,8 @@
+ 
  DISTNAME=	gi_docgen-2026.1
  PKGNAME=	${PYPKGPREFIX}-${DISTNAME:S/gi_/gi-/}
 +PKGREVISION=	1
  CATEGORIES=	devel python
+ MASTER_SITES=	${MASTER_SITE_PYPI:=g/gi_docgen/}
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
 --- a/devel/py-gi-docgen/PLIST.orig
 +++ b/devel/py-gi-docgen/PLIST
 @@ -52,6 +52,9 @@
