@@ -643,3 +643,24 @@ Use shared Ports libraries and the native Lemon generator.
 -target_include_directories( markdown_lib PRIVATE md_parser html_formatter )
 +add_library( markdown_lib STATIC markdown2html.cpp )
 +target_link_libraries( markdown_lib PRIVATE sundown::sundown )
+
+--- include/singleton.h.orig
++++ include/singleton.h
+@@ -20,16 +20,9 @@
+ #ifndef KICAD_SINGLETON_H
+ #define KICAD_SINGLETON_H
+ 
+-#include <cstdint>
++#include <BS_thread_pool.hpp>
+ 
+ class GL_CONTEXT_MANAGER;
+-namespace BS
+-{
+-template <std::uint8_t>
+-class thread_pool;
+-
+-using priority_thread_pool = thread_pool<1>;
+-}
+ 
+ class KICAD_SINGLETON
+ {
