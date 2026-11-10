@@ -6,9 +6,24 @@ links Qt QML through KF6 Kirigami. EmberBSD keeps one FFmpeg recipe
 qt6-qtdeclarative as a direct runtime dependency so the shared-library
 check accepts the package.
 
+Qt Multimedia prefers the GStreamer plugin. On EmberBSD that plugin
+segfaults in QMediaPlayer::setAudioOutput when gst-plugins1-good is
+absent (no autoaudiosink). Install a thin wrapper that selects the
+FFmpeg Qt media backend, which already links the shared ffmpeg9.
+Bump PKGREVISION so pkg_add replaces the crashing binary package.
+
 --- a/multimedia/dragon/Makefile
 +++ b/multimedia/dragon/Makefile
-@@ -16,9 +16,10 @@
+@@ -7,6 +7,8 @@
+ COMMENT=	Simple video player for KDE
+ LICENSE=	gnu-gpl-v2
+ 
++PKGREVISION=	1
++
+ .include "../../meta-pkgs/kde/applications.mk"
+ 
+ TOOL_DEPENDS+=	kf6-kdoctools>=6.18.0:../../devel/kf6-kdoctools
+@@ -16,9 +18,23 @@
  .include "../../devel/kf6-kio/buildlink3.mk"
  .include "../../devel/kf6-kparts/buildlink3.mk"
  .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
@@ -19,4 +34,26 @@ check accepts the package.
  .include "../../x11/kf6-kirigami/buildlink3.mk"
 +.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
  .include "../../x11/qt6-qtbase/buildlink3.mk"
++
++INSTALLATION_DIRS+=	libexec
++
++# Menu, CLI and Dolphin "Open with" all call bin/dragon. Keep the real
++# binary in libexec and select the FFmpeg Qt media backend by default.
++post-install:
++	${MV} ${DESTDIR}${PREFIX}/bin/dragon \
++		${DESTDIR}${PREFIX}/libexec/dragon-bin
++	${PRINTF} '%s\n' '#!/bin/sh' 'export QT_MEDIA_BACKEND=$${QT_MEDIA_BACKEND:-ffmpeg}' \
++		'exec ${PREFIX}/libexec/dragon-bin "$$@"' \
++		> ${DESTDIR}${PREFIX}/bin/dragon
++	${CHMOD} ${BINMODE} ${DESTDIR}${PREFIX}/bin/dragon
++
  .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/dragon/PLIST
++++ b/multimedia/dragon/PLIST
+@@ -1,5 +1,6 @@
+ @comment $NetBSD: PLIST,v 1.6 2025/12/21 14:50:32 markd Exp $
+ bin/dragon
++libexec/dragon-bin
+ qt6/qml/org/kde/dragon/AboutPage.qml
+ qt6/qml/org/kde/dragon/ControlsBar.qml
+ qt6/qml/org/kde/dragon/IconToolButton.qml
