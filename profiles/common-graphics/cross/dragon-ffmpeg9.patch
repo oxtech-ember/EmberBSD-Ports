@@ -1,0 +1,17 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+Dragon Player consumes the shared FFmpeg of the common media stack.
+EmberBSD keeps one FFmpeg recipe (ffmpeg9); replace the upstream ffmpeg8
+buildlink so the player links the same libraries as PlutoSky and Plasma.
+
+--- a/multimedia/dragon/Makefile
++++ b/multimedia/dragon/Makefile
+@@ -16,7 +16,7 @@
+ .include "../../devel/kf6-kio/buildlink3.mk"
+ .include "../../devel/kf6-kparts/buildlink3.mk"
+ .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
+-.include "../../multimedia/ffmpeg8/buildlink3.mk"
++.include "../../multimedia/ffmpeg9/buildlink3.mk"
+ .include "../../multimedia/qt6-qtmultimedia/buildlink3.mk"
+ .include "../../sysutils/desktop-file-utils/desktopdb.mk"
+ .include "../../x11/kf6-kirigami/buildlink3.mk"
