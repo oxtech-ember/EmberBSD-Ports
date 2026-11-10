@@ -3,7 +3,7 @@
 .include "dist.mk"
 
 PKGNAME=	python315-${PY_DISTVERSION}
-PKGREVISION=	6
+PKGREVISION=	7
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"

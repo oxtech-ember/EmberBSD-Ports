@@ -160,6 +160,35 @@ find_host_python() {
 	done
 	return 1
 }
+
+# Interpreter whose version matches a staged lib/pythonX.Y tree (for pyc).
+find_matching_python() {
+	ver=$1
+	[ -n "$ver" ] || return 1
+	for cand in \
+		"${EMBERBSD_CROSS_HOST_PREFIX:+$EMBERBSD_CROSS_HOST_PREFIX/bin/python$ver}" \
+		"${TOOLBASE:+$TOOLBASE/bin/python$ver}" \
+		"python$ver" \
+		"${EMBERBSD_CROSS_HOST_PREFIX:+$EMBERBSD_CROSS_HOST_PREFIX/bin/python3}" \
+		"${TOOLBASE:+$TOOLBASE/bin/python3}" \
+		python3
+	do
+		[ -n "$cand" ] || continue
+		resolved=
+		if command -v "$cand" >/dev/null 2>&1; then
+			resolved=$(command -v "$cand")
+		elif [ -x "$cand" ]; then
+			resolved=$cand
+		else
+			continue
+		fi
+		if "$resolved" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == tuple(map(int, '$ver'.split('.'))) else 1)"; then
+			printf '%s\n' "$resolved"
+			return 0
+		fi
+	done
+	return 1
+}
 host_python=
 if ! host_python=$(find_host_python); then
 	host_python=
@@ -179,7 +208,8 @@ find "$destdir" -type f \( \
 	-name '_sysconfig_vars*.json' -o \
 	-path '*/bin/*-config' -o \
 	-name 'Makefile.inc' -o \
-	-name 'pkgdata.inc' \
+	-name 'pkgdata.inc' -o \
+	-path '*/lib/python*/config-*/Makefile' \
 \) | sort > "$scratch/list"
 
 # Return 0 if file looks like text metadata; 1 if binary (skip, leave alone).
@@ -225,9 +255,14 @@ while IFS= read -r file; do
 		continue
 	fi
 	case "$file" in
-	*/_sysconfigdata*.py|*/_sysconfig_vars*.json)
-		# Python sysconfig via host python helper only (no sed). Fail closed
-		# if the helper or host python is missing when a sysconfig file is staged.
+	*/_sysconfigdata*.py|*/_sysconfig_vars*.json|*/lib/python*/config-*/Makefile)
+		# Python sysconfig and lib/python*/config-*/Makefile via host
+		# python helper only (no sed). Fail closed if the helper or host
+		# python is missing when a sysconfig file is staged. After a
+		# successful _sysconfigdata*.py sanitize, regenerate leftover
+		# __pycache__ bytecode from the cleaned .py (plist-python.awk
+		# lists those .pyc/.pyo files). A failed sanitize does not
+		# rewrite or delete bytecode; the stage fails.
 		if [ -z "$host_python" ] || [ ! -f "$_tp_sysconfig_py" ]; then
 			echo "target-pkgconfig: host python (or target-pkgconfig-sysconfig.py) required to sanitize ${file#"$destdir"}" >&2
 			status=1
@@ -248,6 +283,25 @@ while IFS= read -r file; do
 			continue
 		fi
 		set +f
+		case "$file" in
+		*/_sysconfigdata*.py)
+			_sc_ver=${file##*/lib/python}
+			_sc_ver=${_sc_ver%%/*}
+			_sc_py=
+			if ! _sc_py=$(find_matching_python "$_sc_ver"); then
+				echo "target-pkgconfig: matching host python $_sc_ver required to regenerate sysconfig bytecode for ${file#"$destdir"}" >&2
+				status=1
+			else
+				set -f
+				# shellcheck disable=SC2086
+				if ! "$_sc_py" "$_tp_sysconfig_py" --recompile-pyc "$file" --destdir "$destdir" $sys_args; then
+					echo "target-pkgconfig: python sysconfig bytecode regenerate failed for ${file#"$destdir"}" >&2
+					status=1
+				fi
+				set +f
+			fi
+			;;
+		esac
 		;;
 	*)
 		set -f

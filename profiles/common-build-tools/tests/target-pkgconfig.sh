@@ -3,8 +3,9 @@
 # Origin: EmberBSD (AI-assisted). Fixture regression for staged target metadata
 # sanitization: sysroot rewrite (longest-first), foreign /sysroot/ refusal,
 # cross-tools normalization, token-safe .buildlink CMake mapping, Python
-# sysconfig via host python, --sysroot= without trailing slash, binary
-# *-config skip, and install hook wiring.
+# sysconfig via host python, Python lib/python*/config-*/Makefile,
+# regenerated _sysconfigdata bytecode, --sysroot= without trailing slash,
+# binary *-config skip, and install hook wiring.
 set -eu
 [ "$#" = 1 ] || [ "$#" = 3 ] || {
 	echo 'Usage: target-pkgconfig.sh NEW_WORK [PKGSRC CROSS_MAKECONF]' >&2
@@ -37,11 +38,29 @@ stage() {
 	dest=$work/stage
 }
 
+# Matching python3.15 is required to regenerate _sysconfigdata bytecode.
+_tp_py315=
+for cand in \
+	"${EMBERBSD_CROSS_HOST_PREFIX:+$EMBERBSD_CROSS_HOST_PREFIX/bin/python3.15}" \
+	"${TOOLBASE:+$TOOLBASE/bin/python3.15}"
+do
+	[ -n "$cand" ] && [ -x "$cand" ] || continue
+	_tp_py315=$cand
+	break
+done
+if [ -z "$_tp_py315" ] && command -v python3.15 >/dev/null 2>&1; then
+	_tp_py315=$(command -v python3.15)
+fi
+[ -n "$_tp_py315" ] || fail 'python3.15 is required to regenerate sysconfig bytecode'
+ln -sf "$_tp_py315" "$hostsdk/bin/python3.15"
+
 run_hook() {
 	extra=
 	if [ -d "$work/os-tools/target-tools" ]; then
 		extra=$work/os-tools/target-tools
 	fi
+	EMBERBSD_CROSS_HOST_PREFIX=$hostsdk
+	export EMBERBSD_CROSS_HOST_PREFIX
 	sh "$script" "$dest" "$sysroot" "$wrk" "$tools" "$hostsdk" $extra "$@"
 }
 
@@ -112,13 +131,70 @@ build_time_vars = {
   'RUNSHARED': 'LD_LIBRARY_PATH=$wrk/Python-3.15.2',
   'CONFIG_ARGS': "'--with-build-python=$hostsdk/bin/python3.15' 'PKG_CONFIG_LIBDIR=$wrk/.buildlink/lib/pkgconfig'",
   'LN': '$hostsdk/bin/gln',
+  'INSTALL': '$hostsdk/bin/bsdinstall -c -o smolev -g staff',
+  'INSTALL_PROGRAM': '$hostsdk/bin/bsdinstall -c -s -g staff -o smolev',
   'CC': 'aarch64--netbsd-clang --sysroot=$sysroot',
   'CFLAGS': '-I$sysroot/usr/pkg/include',
 }
 PY
 cat > "$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json" <<JSON
-{"abs_srcdir": "$wrk/Python-3.15.2", "AR": "/opt/cross/build/aarch64/cross-tools/bin/ar", "CC": "clang --sysroot=$sysroot"}
+{"abs_srcdir": "$wrk/Python-3.15.2", "AR": "/opt/cross/build/aarch64/cross-tools/bin/ar", "CC": "clang --sysroot=$sysroot", "INSTALL": "$hostsdk/bin/bsdinstall -c -o smolev -g staff", "INSTALL_SCRIPT": "$hostsdk/bin/bsdinstall -c -g staff -o smolev"}
 JSON
+
+# Consumer-facing CPython config Makefile plus leftover sysconfig bytecode.
+mkdir -p "$dest/usr/pkg/lib/python3.15/config-3.15" \
+	"$dest/usr/pkg/lib/python3.15/__pycache__"
+cat > "$dest/usr/pkg/lib/python3.15/config-3.15/Makefile" <<MAKE
+prefix=		/usr/pkg
+srcdir=		.
+abs_srcdir=	$wrk/Python-3.15.2
+abs_builddir=	$wrk/Python-3.15.2
+AR=		$tt/bin/aarch64--netbsd-ar
+CC=		aarch64--netbsd-clang --sysroot=$sysroot
+LN=		$hostsdk/bin/gln
+INSTALL=	$hostsdk/bin/bsdinstall -c -o smolev -g staff
+INSTALL_PROGRAM=$hostsdk/bin/bsdinstall -c -s -g staff -o smolev -m 755
+MKDIR_P=	$hostsdk/bin/gmkdir -p
+RUNSHARED=       LD_LIBRARY_PATH=$wrk/Python-3.15.2
+CONFIG_ARGS=	 '--prefix=/usr/pkg' \\
+		 '--with-openssl=$sysroot/usr' \\
+		 'PKG_CONFIG_LIBDIR=$wrk/.buildlink/lib/pkgconfig'
+CFLAGS=		-I$sysroot/usr/pkg/include
+SOMEFLAGS=	-I$sysroot/usr/pkg/include \\
+		-L$sysroot/usr/pkg/lib \\
+		-lfoo
+LIBSUBDIRS=	collections \\
+		compression \\
+		concurrent
+MODULE_OBJS=	Modules/config.o \\
+		Modules/main.o
+MAKE
+# Stale dirty bytecode must be regenerated (plist-python.awk lists these).
+printf 'HOSTPATH=%s\n' "$wrk/Python-3.15.2" > \
+	"$dest/usr/pkg/lib/python3.15/__pycache__/_sysconfigdata_netbsd11.cpython-315.pyc"
+printf 'HOSTPATH=%s\n' "$wrk/Python-3.15.2" > \
+	"$dest/usr/pkg/lib/python3.15/__pycache__/_sysconfigdata_netbsd11.cpython-315.opt-1.pyc"
+
+# A non-Python config-*/Makefile must be left untouched (not in the find list).
+mkdir -p "$dest/usr/pkg/share/example/config-extra"
+cat > "$dest/usr/pkg/share/example/config-extra/Makefile" <<MAKE
+# not a CPython config makefile
+AR = $tt/bin/aarch64--netbsd-ar
+LIBSUBDIRS=	collections \\
+		compression
+MAKE
+cp "$dest/usr/pkg/share/example/config-extra/Makefile" "$work/nonpython-makefile.expected"
+python3 - "$dest/usr/pkg/lib/python3.15/config-3.15/Makefile" "$work/untouched-make.expected" <<'PY'
+from pathlib import Path
+import sys
+t = Path(sys.argv[1]).read_text()
+i = t.index("LIBSUBDIRS=")
+j = t.index("MODULE_OBJS=")
+n = t.find("\n", j)
+n2 = t.find("\n", n + 1)
+Path(sys.argv[2]).write_text(t[i:n2 + 1])
+PY
+
 
 # CMake .buildlink forms: quoted, unquoted if(...), and ;-separated list
 cat > "$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake" <<CM
@@ -204,11 +280,76 @@ grep -q 'QMAKE_AR		= aarch64--netbsd-ar cqs' \
 	"$dest/usr/pkg/qt6/mkspecs/netbsd-g++/qmake.conf" || fail 'qmake cross-tools AR not rewritten'
 
 py=$dest/usr/pkg/lib/python3.15/_sysconfigdata_netbsd11.py
-python3 -c "import ast,pathlib; t=pathlib.Path(r'''$py''').read_text(); i=t.index('{'); d=ast.literal_eval(t[t.index('=')+1:].strip()); assert d['abs_srcdir']==''; assert d['AR']=='aarch64--netbsd-ar'; assert '--sysroot' not in d.get('CC',''); assert d['LN']=='gln'; assert '$wrk' not in str(d)" || {
+python3 -c "import ast,pathlib; t=pathlib.Path(r'''$py''').read_text(); d=ast.literal_eval(t[t.index('=')+1:].strip()); assert d['abs_srcdir']==''; assert d['AR']=='aarch64--netbsd-ar'; assert '--sysroot' not in d.get('CC',''); assert d['LN']=='gln'; assert d['INSTALL']=='bsdinstall -c'; assert d['INSTALL_PROGRAM']=='bsdinstall -c -s'; assert '$wrk' not in str(d)" || {
 	echo "python sysconfig became: $(cat "$py")" >&2
 	fail 'python sysconfig not neutralized/reparsed'
 }
-python3 -c "import json,pathlib; d=json.loads(pathlib.Path(r'''$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json''').read_text()); assert d['abs_srcdir']==''; assert d['AR']=='ar'; assert '--sysroot' not in d.get('CC','')" || fail 'python json sysconfig not neutralized'
+python3 -c "import json,pathlib; d=json.loads(pathlib.Path(r'''$dest/usr/pkg/lib/python3.15/_sysconfig_vars_netbsd11.json''').read_text()); assert d['abs_srcdir']==''; assert d['AR']=='ar'; assert '--sysroot' not in d.get('CC',''); assert d['INSTALL']=='bsdinstall -c'; assert d['INSTALL_SCRIPT']=='bsdinstall -c'" || fail 'python json sysconfig not neutralized'
+
+mf=$dest/usr/pkg/lib/python3.15/config-3.15/Makefile
+grep -Eq '^srcdir=[[:space:]]*\.' "$mf" || {
+	echo "config Makefile became: $(cat "$mf")" >&2
+	fail 'python config Makefile srcdir=. was emptied'
+}
+grep -Eq '^abs_srcdir=$' "$mf" || {
+	echo "config Makefile became: $(cat "$mf")" >&2
+	fail 'python config Makefile abs_srcdir not neutralized'
+}
+grep -Eq '^abs_builddir=$' "$mf" || fail 'python config Makefile abs_builddir not neutralized'
+grep -Eq '^CONFIG_ARGS=$' "$mf" || fail 'python config Makefile CONFIG_ARGS not neutralized'
+grep -Eq '^RUNSHARED=$' "$mf" || fail 'python config Makefile RUNSHARED not neutralized'
+grep -Eq '^AR=[[:space:]]*aarch64--netbsd-ar$' "$mf" || {
+	echo "config Makefile became: $(cat "$mf")" >&2
+	fail 'python config Makefile target-tools AR not normalized'
+}
+grep -Eq '^LN=[[:space:]]*gln$' "$mf" || fail 'python config Makefile host LN not normalized'
+grep -Eq '^INSTALL=[[:space:]]*bsdinstall -c$' "$mf" || {
+	echo "config Makefile became: $(cat "$mf")" >&2
+	fail 'python config Makefile INSTALL not normalized'
+}
+grep -Eq '^INSTALL_PROGRAM=[[:space:]]*bsdinstall -c -s -m 755$' "$mf" || {
+	echo "config Makefile became: $(cat "$mf")" >&2
+	fail 'python config Makefile INSTALL_PROGRAM -g/-o order not normalized'
+}
+grep -Eq '^MKDIR_P=[[:space:]]*gmkdir -p$' "$mf" || fail 'python config Makefile MKDIR_P not normalized'
+grep -Eq '^CFLAGS=[[:space:]]*-I/usr/pkg/include$' "$mf" || fail 'python config Makefile CFLAGS sysroot not rewritten'
+grep -Eq '^SOMEFLAGS=[[:space:]]*-I/usr/pkg/include -L/usr/pkg/lib -lfoo$' "$mf" || {
+	echo "config Makefile became: $(cat "$mf")" >&2
+	fail 'python config Makefile continued list was not space-separated'
+}
+if ! python3 - "$mf" "$work/untouched-make.expected" <<'PY'
+from pathlib import Path
+import sys
+t = Path(sys.argv[1]).read_text()
+exp = Path(sys.argv[2]).read_text()
+if exp not in t:
+    raise SystemExit("untouched assignments changed")
+PY
+then
+	echo "config Makefile became: $(cat "$mf")" >&2
+	fail 'untouched continued Makefile assignments were not kept byte-identical'
+fi
+
+! grep -F "$wrk" "$mf" || fail 'python config Makefile still names WRKDIR'
+! grep -F "$sysroot" "$mf" || fail 'python config Makefile still names the sysroot'
+! grep -F "$hostsdk" "$mf" || fail 'python config Makefile still names the host prefix'
+! grep -q 'smolev' "$mf" || fail 'python config Makefile still names the build user'
+cmp -s "$dest/usr/pkg/share/example/config-extra/Makefile" "$work/nonpython-makefile.expected" || \
+	fail 'non-python config-*/Makefile was rewritten'
+pyc=$dest/usr/pkg/lib/python3.15/__pycache__/_sysconfigdata_netbsd11.cpython-315.pyc
+opt=$dest/usr/pkg/lib/python3.15/__pycache__/_sysconfigdata_netbsd11.cpython-315.opt-1.pyc
+[ -f "$pyc" ] || fail 'sysconfig pyc was not regenerated'
+[ -f "$opt" ] || fail 'sysconfig opt-1 pyc was not regenerated'
+! grep -a -F "$wrk" "$pyc" "$opt" || fail 'regenerated sysconfig pyc still names WRKDIR'
+! grep -a -F "$sysroot" "$pyc" "$opt" || fail 'regenerated sysconfig pyc still names the sysroot'
+! grep -a -F "$hostsdk" "$pyc" "$opt" || fail 'regenerated sysconfig pyc still names the host prefix'
+! grep -a -F HOSTPATH "$pyc" "$opt" || fail 'regenerated sysconfig pyc still has the dirty fixture text'
+! grep -a -e /Volumes/ -e /Users/ -e .buildlink -e work.NetBSD "$pyc" "$opt" || \
+	fail 'regenerated sysconfig pyc still names a host path'
+grep -q 'regenerated python sysconfig bytecode' "$work/run1.log" || \
+	fail 'sysconfig bytecode regeneration was not reported'
+! grep -q 'removed stale python sysconfig bytecode' "$work/run1.log" || \
+	fail 'sysconfig bytecode was deleted instead of regenerated'
 
 grep -q 'skipping binary file /usr/pkg/bin/blob-config' "$work/run1.log" || fail 'binary *-config not skipped'
 cmp -s "$dest/usr/pkg/bin/blob-config" "$work/blob.expected" || fail 'binary *-config was corrupted'
