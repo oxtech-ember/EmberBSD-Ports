@@ -8,6 +8,12 @@ so the common media profile accepts the package.
 Plasma on EmberBSD uses Qt6. Leave the optional Qt5 UI available, but do
 not suggest it. Prefer X11 output and VA-API on platforms that provide it.
 
+Cross builds compile Lua scripts with the host luac, build fourcc_gen with
+NATIVE_CC, and run host protoc for Chromecast protobuf sources. Include
+<new> for std::nothrow under current libc++. Disable fluidsynth (its
+pkg-config pulls SDL3 outside the default VLC closure) and create an empty
+plugins.dat when vlc-cache-gen cannot run on the build host.
+
 --- a/multimedia/vlc/Makefile
 +++ b/multimedia/vlc/Makefile
 @@ -1,7 +1,7 @@
@@ -19,6 +25,62 @@ not suggest it. Prefer X11 output and VA-API on platforms that provide it.
  CATEGORIES=		multimedia
  MASTER_SITES=		https://download.videolan.org/pub/videolan/vlc/${PKGVERSION_NOREV}/
  EXTRACT_SUFX=		.tar.xz
+@@ -31,11 +31,27 @@
+ # wrong, because packages may require later language versions.
+ FORCE_CXX_STD=		c++17
+ 
++# libc++ no longer pulls <new> transitively for std::nothrow.
++CXXFLAGS+=		-include new
++
+ .include "../../mk/bsd.prefs.mk"
+ .include "options.mk"
+ 
++# fourcc_gen runs on the build host during the target build.
++.if ${USE_CROSS_COMPILE:U:tl} == "yes"
++CONFIGURE_ENV+=		BUILDCC=${NATIVE_CC:Q}
++.else
+ CONFIGURE_ENV+=		BUILDCC=${CC:Q}
++.endif
++# Cross builds compile Lua scripts with the host luac from TOOLBASE
++# and generate Chromecast protobuf sources with the host protoc.
++.if ${USE_CROSS_COMPILE:U:tl} == "yes"
++TOOL_DEPENDS+=		lua55-[0-9]*:../../lang/lua55
++CONFIGURE_ENV+=		LUAC=${TOOLBASE}/bin/luac${_LUA_DOT_VERSION}
++CONFIGURE_ENV+=		PROTOC=${TOOLBASE}/bin/protoc
++.else
+ CONFIGURE_ENV+=		LUAC=${LUA_COMPILER}
++.endif
+ 
+ # Avoid codec duplication with ffmpeg, etc
+ 
+@@ -53,6 +69,7 @@
+ CONFIGURE_ARGS+=	--disable-faad
+ CONFIGURE_ARGS+=	--disable-freerdp
+ CONFIGURE_ARGS+=	--disable-fluidlite
++CONFIGURE_ARGS+=	--disable-fluidsynth
+ CONFIGURE_ARGS+=	--disable-goom
+ CONFIGURE_ARGS+=	--disable-gst-decode
+ CONFIGURE_ARGS+=	--disable-libplacebo
+@@ -152,6 +169,11 @@
+ 
+ post-install:
+ 	${INSTALL_DATA} ${WRKSRC}/doc/vlc.1 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man1
++# Cross builds skip vlc-cache-gen; VLC recreates the cache on first run.
++.if ${USE_CROSS_COMPILE:U:tl} == "yes"
++	${MKDIR} ${DESTDIR}${PREFIX}/lib/vlc/plugins
++	${TOUCH} ${DESTDIR}${PREFIX}/lib/vlc/plugins/plugins.dat
++.endif
+ 
+ # Let's use dejavu-ttf as it has nice unicode support
+ #
+@@ -192,7 +214,6 @@
+ 			configure > configure.sed && ${MV} configure.sed configure
+ 
+ .include "../../audio/flac/buildlink3.mk"
+-.include "../../audio/fluidsynth/buildlink3.mk"
+ .include "../../audio/libcddb/buildlink3.mk"
+ .include "../../audio/libmodplug/buildlink3.mk"
+ .include "../../audio/libopus/buildlink3.mk"
 --- a/multimedia/vlc/options.mk
 +++ b/multimedia/vlc/options.mk
 @@ -3,7 +3,9 @@
@@ -53,3 +115,13 @@ not suggest it. Prefer X11 output and VA-API on platforms that provide it.
  .endif
  
  ## VDPAU support
+--- a/multimedia/vlc/PLIST
++++ b/multimedia/vlc/PLIST
+@@ -230,7 +230,6 @@
+ lib/vlc/plugins/codec/libdvbsub_plugin.la
+ lib/vlc/plugins/codec/libedummy_plugin.la
+ lib/vlc/plugins/codec/libflac_plugin.la
+-lib/vlc/plugins/codec/libfluidsynth_plugin.la
+ lib/vlc/plugins/codec/libg711_plugin.la
+ lib/vlc/plugins/codec/libjpeg_plugin.la
+ lib/vlc/plugins/codec/libkate_plugin.la
