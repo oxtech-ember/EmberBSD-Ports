@@ -1,0 +1,16 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+Dolphin links libQt6Qml through KF6 KCMUtils and KF6 NewStuff. Declare
+qt6-qtdeclarative as a direct runtime dependency so the shared-library
+check accepts the package.
+
+--- a/sysutils/dolphin/Makefile
++++ b/sysutils/dolphin/Makefile
+@@ -25,6 +25,7 @@
+ .include "../../devel/kf6-knotifications/buildlink3.mk"
+ .include "../../devel/kf6-kparts/buildlink3.mk"
+ .include "../../graphics/kf6-kiconthemes/buildlink3.mk"
++.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
+ .include "../../misc/kf6-kuserfeedback/buildlink3.mk"
+ .include "../../net/kf6-knewstuff/buildlink3.mk"
+ .include "../../sysutils/desktop-file-utils/desktopdb.mk"
