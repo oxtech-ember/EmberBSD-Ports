@@ -1,0 +1,12 @@
+Upstream: https://github.com/microsoft/onnxruntime
+Release: v1.31.0 (2026-10-09)
+Revision: 402979ac1bef89dcd55add41eaa7277c407599eb
+Archive SHA256: a7e84230b5d509e48fbd6b73c2453a56345ccb22da34a46dac1f0cb4a2d6507b
+Primary license: MIT, Microsoft Corporation and contributors.
+Internal dependency licenses: copied from the actual _deps sources and
+upstream ThirdPartyNotices.txt. Internal libraries do not publish a second SDK.
+Local adaptations: EmberBSD (AI-assisted), not submitted upstream.
+Common Eigen 5.0.1 remains a separate provider.
+Eigen header code is compiled into this library. Its unchanged COPYING files
+and exact current source pin are retained under share/licenses/onnxruntime/eigen5.
+See probes/onnxruntime/PROVENANCE.md for patch origin and validation boundaries.

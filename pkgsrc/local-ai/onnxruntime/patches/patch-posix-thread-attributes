@@ -1,0 +1,11 @@
+--- a/onnxruntime/core/platform/posix/env.cc
++++ b/onnxruntime/core/platform/posix/env.cc
+@@ -311,6 +311,8 @@
+         auto [err_no, err_msg] = GetErrnoInfo();
+         ORT_THROW("pthread_attr_init failed, error code: ", err_no, " error msg: ", err_msg);
+       }
++      auto destroy_attr = [](pthread_attr_t* value) { pthread_attr_destroy(value); };
++      std::unique_ptr<pthread_attr_t, decltype(destroy_attr)> attr_guard(&attr, destroy_attr);
+ 
+       size_t stack_size = thread_options.stack_size;
+       if (stack_size > 0) {

@@ -1,0 +1,11 @@
+--- a/cmake/external/onnxruntime_external_deps.cmake
++++ b/cmake/external/onnxruntime_external_deps.cmake
+@@ -600,7 +600,7 @@
+                  "protobuf version: ${Protobuf_VERSION}")
+ endif()
+ 
+-if(onnxruntime_USE_VCPKG)
++if(onnxruntime_USE_VCPKG OR onnxruntime_USE_PREINSTALLED_EIGEN)
+   find_package(Eigen3 CONFIG REQUIRED)
+ else()
+   include(external/eigen.cmake)

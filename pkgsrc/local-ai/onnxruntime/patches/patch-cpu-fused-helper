@@ -1,0 +1,14 @@
+--- a/cmake/onnxruntime_providers_cpu.cmake
++++ b/cmake/onnxruntime_providers_cpu.cmake
+@@ -48,6 +48,11 @@
+   # add using ONNXRUNTIME_ROOT so they show up under the 'contrib_ops' folder in Visual Studio
+   source_group(TREE ${ONNXRUNTIME_ROOT} FILES ${onnxruntime_cpu_contrib_ops_srcs})
+   list(APPEND onnxruntime_providers_src ${onnxruntime_cpu_contrib_ops_srcs})
++else()
++  # Standard CPU FP16 Conv also needs this helper; it registers no contrib operators.
++  list(APPEND onnxruntime_providers_src
++    "${ONNXRUNTIME_ROOT}/contrib_ops/cpu/fused_activation.cc"
++  )
+ endif()
+ 
+ if (onnxruntime_ENABLE_TRAINING_OPS AND NOT onnxruntime_ENABLE_TRAINING)
