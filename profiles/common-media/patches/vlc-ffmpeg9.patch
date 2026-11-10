@@ -1,27 +1,24 @@
 Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
 
 EmberBSD keeps one FFmpeg recipe (ffmpeg9). Apply after
-pkgsrc-kept-version-consumers.patch. VLC upstream pkgsrc still selects
-ffmpeg8, or ffmpeg4 when VA-API is enabled. Point both paths at ffmpeg9
-so the common media profile accepts the package.
-
-Plasma on EmberBSD uses Qt6. Leave the optional Qt5 UI available, but do
-not suggest it. Prefer X11 output and VA-API on platforms that provide it.
-
-Cross builds compile Lua scripts with the host luac, build fourcc_gen with
-NATIVE_CC, and run host protoc for Chromecast protobuf sources. Include
-<new> for std::nothrow under current libc++. Disable fluidsynth (its
-pkg-config pulls SDL3 outside the default VLC closure) and create an empty
-plugins.dat when vlc-cache-gen cannot run on the build host.
+pkgsrc-kept-version-consumers.patch. Upgrade VLC to 3.0.24 (latest
+stable) and enable the Qt6 GUI that matches Plasma. Cross builds use
+host luac/protoc/NATIVE_CC and host Qt6 qmake6/moc/rcc/uic with a
+qt.conf that points Prefix at the cross sysroot. Disable fluidsynth
+(SDL3 outside the default closure) and seed plugins.dat when
+vlc-cache-gen cannot run on the build host. PLIST drops youtube.lua,
+librist and schroedinger (not in the default closure) and records the
+share/applications open-* desktop files from 3.0.24.
 
 --- a/multimedia/vlc/Makefile
 +++ b/multimedia/vlc/Makefile
 @@ -1,7 +1,7 @@
  # $NetBSD: Makefile,v 1.325 2026/09/02 19:03:50 wiz Exp $
  
- DISTNAME=		vlc-3.0.23
+-DISTNAME=		vlc-3.0.23
 -PKGREVISION=		9
-+PKGREVISION=		10
++DISTNAME=		vlc-3.0.24
++PKGREVISION=		1
  CATEGORIES=		multimedia
  MASTER_SITES=		https://download.videolan.org/pub/videolan/vlc/${PKGVERSION_NOREV}/
  EXTRACT_SUFX=		.tar.xz
@@ -83,26 +80,89 @@ plugins.dat when vlc-cache-gen cannot run on the build host.
  .include "../../audio/libopus/buildlink3.mk"
 --- a/multimedia/vlc/options.mk
 +++ b/multimedia/vlc/options.mk
-@@ -3,7 +3,9 @@
+@@ -2,8 +2,8 @@
+ 
  PKG_OPTIONS_VAR=		PKG_OPTIONS.vlc
  PKG_SUPPORTED_OPTIONS=		alsa avahi dbus debug dts jack pulseaudio
- PKG_SUPPORTED_OPTIONS+=		vlc-skins qt5 x11
+-PKG_SUPPORTED_OPTIONS+=		vlc-skins qt5 x11
 -PKG_SUGGESTED_OPTIONS=		dbus qt5
-+# EmberBSD Plasma ships Qt6. VLC 3 still offers only a Qt5 UI; keep that
-+# option available, but do not pull the retired Qt5 stack by default.
-+PKG_SUGGESTED_OPTIONS=		dbus
++PKG_SUPPORTED_OPTIONS+=		vlc-skins qt6 x11
++PKG_SUGGESTED_OPTIONS=		dbus qt6
  PKG_SUGGESTED_OPTIONS.Linux+=	alsa
  
  .include "../../mk/bsd.fast.prefs.mk"
-@@ -16,6 +18,7 @@
- .include "../../multimedia/libva/available.mk"
- .if ${VAAPI_AVAILABLE} == "yes"
- PKG_SUPPORTED_OPTIONS+= vaapi
-+PKG_SUGGESTED_OPTIONS+= vaapi
+@@ -111,14 +111,53 @@
+ CONFIGURE_ARGS+=	--disable-skins2
  .endif
  
- ### Add VDPAU if it is available
-@@ -159,10 +162,10 @@
+-## QT5 frontend
+-
+-PLIST_VARS+=		qt5
+-.if !empty(PKG_OPTIONS:Mqt5)
+-.include "../../x11/qt5-qtbase/buildlink3.mk"
+-.include "../../x11/qt5-qtsvg/buildlink3.mk"
+-PLIST.qt5=		yes
++## QT6 frontend (VLC 3.0.24 qt6.pro / qmake6)
++## Cross builds run host qmake6 with a qt.conf that points target
++## Prefix at the cross sysroot and Host* at the native Qt tools.
++
++PLIST_VARS+=		qt6
++.if !empty(PKG_OPTIONS:Mqt6)
++.include "../../x11/qt6-qtbase/buildlink3.mk"
++.include "../../graphics/qt6-qtsvg/buildlink3.mk"
++PLIST.qt6=		yes
+ CONFIGURE_ARGS+=	--enable-qt
++QT6_HOST_PREFIX=	${EMBERBSD_HOST_PREFIX:U${TOOLBASE}}/qt6
++.if ${USE_CROSS_COMPILE:U:tl} == "yes"
++QT6_TARGET_PREFIX=	${EMBERBSD_CROSS_SYSROOT}${PREFIX}/qt6
++.else
++QT6_TARGET_PREFIX=	${PREFIX}/qt6
++.endif
++# pkgsrc wrappers strip PATH; pass absolute QMAKE6 and qt.conf.
++CONFIGURE_ENV+=		QMAKE6=${QT6_HOST_PREFIX}/bin/qmake6
++CONFIGURE_ENV+=		MOC=${QT6_HOST_PREFIX}/libexec/moc
++CONFIGURE_ENV+=		RCC=${QT6_HOST_PREFIX}/libexec/rcc
++CONFIGURE_ENV+=		UIC=${QT6_HOST_PREFIX}/libexec/uic
++CONFIGURE_ARGS+=	--with-qtconf=${WRKDIR}/target_qt.conf
++pre-configure: generate-vlc-qtconf
++.PHONY: generate-vlc-qtconf
++generate-vlc-qtconf:
++	${MKDIR} ${WRKDIR}
++	${PRINTF} '%s\n' \
++		'[Paths]' \
++		'Prefix=${QT6_TARGET_PREFIX}' \
++		'Headers=${QT6_TARGET_PREFIX}/include' \
++		'Libraries=${QT6_TARGET_PREFIX}/lib' \
++		'LibraryExecutables=${QT6_TARGET_PREFIX}/libexec' \
++		'Binaries=${QT6_TARGET_PREFIX}/bin' \
++		'Plugins=${QT6_TARGET_PREFIX}/plugins' \
++		'QmlImports=${QT6_TARGET_PREFIX}/qml' \
++		'Data=${QT6_TARGET_PREFIX}' \
++		'ArchData=${QT6_TARGET_PREFIX}' \
++		'HostPrefix=${QT6_HOST_PREFIX}' \
++		'HostData=${QT6_HOST_PREFIX}' \
++		'HostBinaries=${QT6_HOST_PREFIX}/bin' \
++		'HostLibraries=${QT6_HOST_PREFIX}/lib' \
++		'HostLibraryExecutables=${QT6_HOST_PREFIX}/libexec' \
++		'Sysroot=' \
++		'SysrootifyPrefix=false' \
++		'TargetSpec=netbsd-g++' \
++		'HostSpec=macx-clang' \
++		> ${WRKDIR}/target_qt.conf
+ .else
+ CONFIGURE_ARGS+=	--disable-qt
+ .endif
+@@ -138,9 +177,6 @@
+ CONFIGURE_ARGS+=	--disable-xvideo
+ .endif
+ 
+-.if !empty(PKG_OPTIONS:Mx11) && !empty(PKG_OPTIONS:Mqt5)
+-.include "../../x11/qt5-qtx11extras/buildlink3.mk"
+-.endif
+ 
+ ## DTS support (libdca is non-redistributable)
+ 
+@@ -159,10 +195,10 @@
  CONFIGURE_ARGS+=	--enable-libva
  PLIST.vaapi=		yes
  .include "../../multimedia/libva/buildlink3.mk"
@@ -117,7 +177,39 @@ plugins.dat when vlc-cache-gen cannot run on the build host.
  ## VDPAU support
 --- a/multimedia/vlc/PLIST
 +++ b/multimedia/vlc/PLIST
-@@ -230,7 +230,6 @@
+@@ -1,6 +1,6 @@
+ @comment $NetBSD: PLIST,v 1.79 2026/01/10 16:08:56 ryoon Exp $
+ bin/cvlc
+-${PLIST.qt5}bin/qvlc
++${PLIST.qt6}bin/qvlc
+ bin/rvlc
+ ${PLIST.vlc-skins}bin/svlc
+ bin/vlc
+@@ -143,7 +143,6 @@
+ lib/vlc/lua/playlist/twitch.luac
+ lib/vlc/lua/playlist/vimeo.luac
+ lib/vlc/lua/playlist/vocaroo.luac
+-lib/vlc/lua/playlist/youtube.luac
+ lib/vlc/lua/sd/icecast.luac
+ lib/vlc/lua/sd/jamendo.luac
+ ${PLIST.alsa}lib/vlc/plugins/access/libaccess_alsa_plugin.la
+@@ -166,7 +165,6 @@
+ lib/vlc/plugins/access/libimem_plugin.la
+ lib/vlc/plugins/access/liblibbluray_plugin.la
+ ${PLIST.pulseaudio}lib/vlc/plugins/access/libpulsesrc_plugin.la
+-lib/vlc/plugins/access/librist_plugin.la
+ lib/vlc/plugins/access/librtp_plugin.la
+ lib/vlc/plugins/access/libsatip_plugin.la
+ lib/vlc/plugins/access/libsdp_plugin.la
+@@ -181,7 +179,6 @@
+ lib/vlc/plugins/access_output/libaccess_output_file_plugin.la
+ lib/vlc/plugins/access_output/libaccess_output_http_plugin.la
+ lib/vlc/plugins/access_output/libaccess_output_livehttp_plugin.la
+-lib/vlc/plugins/access_output/libaccess_output_rist_plugin.la
+ lib/vlc/plugins/access_output/libaccess_output_shout_plugin.la
+ lib/vlc/plugins/access_output/libaccess_output_udp_plugin.la
+ ${PLIST.neon}lib/vlc/plugins/arm_neon/libchroma_yuv_neon_plugin.la
+@@ -230,7 +227,6 @@
  lib/vlc/plugins/codec/libdvbsub_plugin.la
  lib/vlc/plugins/codec/libedummy_plugin.la
  lib/vlc/plugins/codec/libflac_plugin.la
@@ -125,3 +217,84 @@ plugins.dat when vlc-cache-gen cannot run on the build host.
  lib/vlc/plugins/codec/libg711_plugin.la
  lib/vlc/plugins/codec/libjpeg_plugin.la
  lib/vlc/plugins/codec/libkate_plugin.la
+@@ -242,7 +238,6 @@
+ lib/vlc/plugins/codec/libpng_plugin.la
+ lib/vlc/plugins/codec/librawvideo_plugin.la
+ lib/vlc/plugins/codec/librtpvideo_plugin.la
+-lib/vlc/plugins/codec/libschroedinger_plugin.la
+ lib/vlc/plugins/codec/libscte18_plugin.la
+ lib/vlc/plugins/codec/libscte27_plugin.la
+ lib/vlc/plugins/codec/libspdif_plugin.la
+@@ -271,7 +266,7 @@
+ lib/vlc/plugins/control/libmotion_plugin.la
+ lib/vlc/plugins/control/libnetsync_plugin.la
+ lib/vlc/plugins/control/liboldrc_plugin.la
+-${PLIST.qt5}${PLIST.x11}lib/vlc/plugins/control/libxcb_hotkeys_plugin.la
++${PLIST.qt6}${PLIST.x11}lib/vlc/plugins/control/libxcb_hotkeys_plugin.la
+ lib/vlc/plugins/demux/libadaptive_plugin.la
+ lib/vlc/plugins/demux/libaiff_plugin.la
+ lib/vlc/plugins/demux/libasf_plugin.la
+@@ -318,7 +313,7 @@
+ lib/vlc/plugins/demux/libvoc_plugin.la
+ lib/vlc/plugins/demux/libwav_plugin.la
+ lib/vlc/plugins/demux/libxa_plugin.la
+-${PLIST.qt5}lib/vlc/plugins/gui/libqt_plugin.la
++${PLIST.qt6}lib/vlc/plugins/gui/libqt_plugin.la
+ ${PLIST.vlc-skins}lib/vlc/plugins/gui/libskins2_plugin.la
+ lib/vlc/plugins/keystore/libfile_keystore_plugin.la
+ ${PLIST.dbus}lib/vlc/plugins/keystore/libkwallet_plugin.la
+@@ -501,6 +496,10 @@
+ man/man1/vlc-wrapper.1
+ man/man1/vlc.1
+ share/applications/vlc.desktop
++share/applications/vlc-openvcd.desktop
++share/applications/vlc-opendvd.desktop
++share/applications/vlc-opencda.desktop
++share/applications/vlc-openbd.desktop
+ share/doc/vlc/fortunes.txt
+ share/doc/vlc/libvlc/CMakeLists.txt
+ share/doc/vlc/libvlc/QtPlayer/LICENSE
+@@ -526,7 +525,6 @@
+ share/doc/vlc/lua/meta/reader/filename.lua
+ share/doc/vlc/lua/playlist/README.txt
+ share/doc/vlc/lua/playlist/liveleak.lua
+-share/doc/vlc/lua/playlist/youtube.lua
+ share/doc/vlc/lua/sd/README.txt
+ share/doc/vlc/lua/sd/icast.lua
+ share/doc/vlc/lua/sd/icecast.lua
+--- a/multimedia/vlc/distinfo
++++ b/multimedia/vlc/distinfo
+@@ -1,9 +1,9 @@
+-$NetBSD: distinfo,v 1.94 2026/01/10 16:08:56 ryoon Exp $
++$NetBSD$
+ 
+-BLAKE2s (vlc-3.0.23.tar.xz) = 3873e239ce1a4ef77288bb8f9dfbef007b601a6ea59148a7ee4cfc64704e3fc0
+-SHA512 (vlc-3.0.23.tar.xz) = 557e4ac76a17158877a4a86f27c9a5bc189b7ac559687552117dc8b44961d1172cf93bf8e1eb70fecb05999bdfc3f69ab79b55126c71486fe3a8cdfbf92e6df6
+-Size (vlc-3.0.23.tar.xz) = 26486988 bytes
+-SHA1 (patch-compat_Makefile.am) = 1c3e0a7c4610c55c3ec9ba80d66b9959661139b3
++BLAKE2s (vlc-3.0.24.tar.xz) = d085773535c453cc82c68d4f6e640995e36752449e0d4ef7a42ddf902fb26cd9
++SHA512 (vlc-3.0.24.tar.xz) = 3654e6b6205932e6389d0a7a58dfdd014ae24212ec192f11625b92b41b18d57b4afc4e72ccdfd6b402f31bafd71fd82e976dc7697c58f07a10be848047335265
++Size (vlc-3.0.24.tar.xz) = 27620304 bytes
++SHA1 (patch-compat_Makefile.am) = 8719500cf07b616ed7babb862b971e7fe3c81e7e
+ SHA1 (patch-configure.ac) = d30a00fe67c95f42f9838a7d5c1a5b694b44a91c
+ SHA1 (patch-lib_core.c) = 8ec5557424e6ddc05cc365aacd1ec847d9a94605
+ SHA1 (patch-lib_video.c) = 362aaf7977c264bb70a79e98cf18da923ae62e39
+--- a/multimedia/vlc/patches/patch-compat_Makefile.am
++++ b/multimedia/vlc/patches/patch-compat_Makefile.am
+@@ -1,11 +1,12 @@
+-$NetBSD: patch-compat_Makefile.am,v 1.2 2019/07/02 20:52:13 nia Exp $
++$NetBSD$
+ 
+ libcompat must be prebuilt with PIC properties in order to be linked
+-into PIC libraries.
++into PIC libraries. Refresh for VLC 3.0.24 (new stdckdint header line).
+ 
+---- compat/Makefile.am.orig	2018-03-14 22:07:38.000000000 +0000
++--- compat/Makefile.am.orig
+ +++ compat/Makefile.am
+-@@ -1,7 +1,7 @@
++@@ -1,8 +1,8 @@
++ noinst_HEADERS = stdckdint/stdckdint.h
+ -pkglib_LTLIBRARIES = libcompat.la
+ +noinst_LTLIBRARIES = libcompat.la
+  libcompat_la_SOURCES = dummy.c
