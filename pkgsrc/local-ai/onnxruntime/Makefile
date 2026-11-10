@@ -55,13 +55,16 @@ CMAKE_CONFIGURE_ARGS+=	-Donnxruntime_CMAKE_DEPS_MIRROR_DIR=${WRKDIR}/dependencie
 
 # The matching protoc runs on the build host. Native NetBSD builds it from
 # the same pinned protobuf source; cross builds supply it explicitly.
+# Keep this out of PKG_FAIL_REASON so DEPENDS can resolve a prebuilt binary
+# package without a host protoc on the consumer machine.
 .include "../../mk/bsd.prefs.mk"
-.if !empty(USE_CROSS_COMPILE:M[yY][eE][sS])
-.if !defined(ONNXRUNTIME_NATIVE_PROTOC)
-PKG_FAIL_REASON+=	"Set ONNXRUNTIME_NATIVE_PROTOC to a native protobuf 33.6 protoc"
-.else
+.if !empty(USE_CROSS_COMPILE:M[yY][eE][sS]) && defined(ONNXRUNTIME_NATIVE_PROTOC)
 CMAKE_CONFIGURE_ARGS+=	-DONNX_CUSTOM_PROTOC_EXECUTABLE=${ONNXRUNTIME_NATIVE_PROTOC}
 .endif
+
+pre-configure:
+.if !empty(USE_CROSS_COMPILE:M[yY][eE][sS]) && !defined(ONNXRUNTIME_NATIVE_PROTOC)
+	${FAIL_MSG} "Set ONNXRUNTIME_NATIVE_PROTOC to a native protobuf 33.6 protoc"
 .endif
 
 post-extract:
