@@ -5,10 +5,10 @@ pkgsrc-kept-version-consumers.patch. Upgrade VLC to 3.0.24 (latest
 stable) and enable the Qt6 GUI that matches Plasma. Cross builds use
 host luac/protoc/NATIVE_CC and host Qt6 qmake6/moc/rcc/uic with a
 qt.conf that points Prefix at the cross sysroot. Disable fluidsynth
-(SDL3 outside the default closure) and seed plugins.dat when
-vlc-cache-gen cannot run on the build host. PLIST drops youtube.lua,
-librist and schroedinger (not in the default closure) and records the
-share/applications open-* desktop files from 3.0.24.
+(SDL3 outside the default closure). Do not ship an empty plugins.dat:
+PLIST @exec runs vlc-cache-gen on the target after pkg_add. PLIST drops
+youtube.lua, librist and schroedinger and records share/applications
+open-* desktop files from 3.0.24.
 
 --- a/multimedia/vlc/Makefile
 +++ b/multimedia/vlc/Makefile
@@ -58,19 +58,18 @@ share/applications open-* desktop files from 3.0.24.
  CONFIGURE_ARGS+=	--disable-goom
  CONFIGURE_ARGS+=	--disable-gst-decode
  CONFIGURE_ARGS+=	--disable-libplacebo
-@@ -152,6 +169,11 @@
+@@ -152,6 +169,10 @@
  
  post-install:
  	${INSTALL_DATA} ${WRKSRC}/doc/vlc.1 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man1
-+# Cross builds skip vlc-cache-gen; VLC recreates the cache on first run.
-+.if ${USE_CROSS_COMPILE:U:tl} == "yes"
-+	${MKDIR} ${DESTDIR}${PREFIX}/lib/vlc/plugins
-+	${TOUCH} ${DESTDIR}${PREFIX}/lib/vlc/plugins/plugins.dat
-+.endif
++# Cross builds cannot run target vlc-cache-gen. Do not ship an empty
++# plugins.dat: upstream only rewrites the cache with CACHE_WRITE_FILE
++# (vlc --reset-plugins-cache) or vlc-cache-gen. The INSTALL script
++# regenerates a real cache on the target after pkg_add.
  
  # Let's use dejavu-ttf as it has nice unicode support
  #
-@@ -192,7 +214,6 @@
+@@ -192,7 +213,6 @@
  			configure > configure.sed && ${MV} configure.sed configure
  
  .include "../../audio/flac/buildlink3.mk"
@@ -243,7 +242,19 @@ share/applications open-* desktop files from 3.0.24.
  ${PLIST.vlc-skins}lib/vlc/plugins/gui/libskins2_plugin.la
  lib/vlc/plugins/keystore/libfile_keystore_plugin.la
  ${PLIST.dbus}lib/vlc/plugins/keystore/libkwallet_plugin.la
-@@ -501,6 +496,10 @@
+@@ -365,7 +360,6 @@
+ lib/vlc/plugins/packetizer/libpacketizer_mpegaudio_plugin.la
+ lib/vlc/plugins/packetizer/libpacketizer_mpegvideo_plugin.la
+ lib/vlc/plugins/packetizer/libpacketizer_vc1_plugin.la
+-lib/vlc/plugins/plugins.dat
+ lib/vlc/plugins/services_discovery/libmediadirs_plugin.la
+ lib/vlc/plugins/services_discovery/libmicrodns_plugin.la
+ lib/vlc/plugins/services_discovery/libmtp_plugin.la
+@@ -497,10 +491,13 @@
+ lib/vlc/plugins/video_splitter/libwall_plugin.la
+ lib/vlc/plugins/visualization/libglspectrum_plugin.la
+ lib/vlc/plugins/visualization/libvisual_plugin.la
+-lib/vlc/vlc-cache-gen
  man/man1/vlc-wrapper.1
  man/man1/vlc.1
  share/applications/vlc.desktop
@@ -254,7 +265,7 @@ share/applications open-* desktop files from 3.0.24.
  share/doc/vlc/fortunes.txt
  share/doc/vlc/libvlc/CMakeLists.txt
  share/doc/vlc/libvlc/QtPlayer/LICENSE
-@@ -526,7 +525,6 @@
+@@ -526,7 +523,6 @@
  share/doc/vlc/lua/meta/reader/filename.lua
  share/doc/vlc/lua/playlist/README.txt
  share/doc/vlc/lua/playlist/liveleak.lua
@@ -262,6 +273,12 @@ share/applications open-* desktop files from 3.0.24.
  share/doc/vlc/lua/sd/README.txt
  share/doc/vlc/lua/sd/icast.lua
  share/doc/vlc/lua/sd/icecast.lua
+@@ -719,3 +715,5 @@
+ share/vlc/utils/gnome-vlc-default.sh
+ share/vlc/utils/video-vlc-default.sh
+ share/vlc/vlc.ico
++lib/vlc/vlc-cache-gen
++@exec %D/lib/vlc/vlc-cache-gen %D/lib/vlc/plugins
 --- a/multimedia/vlc/distinfo
 +++ b/multimedia/vlc/distinfo
 @@ -1,9 +1,9 @@
@@ -279,6 +296,21 @@ share/applications open-* desktop files from 3.0.24.
  SHA1 (patch-configure.ac) = d30a00fe67c95f42f9838a7d5c1a5b694b44a91c
  SHA1 (patch-lib_core.c) = 8ec5557424e6ddc05cc365aacd1ec847d9a94605
  SHA1 (patch-lib_video.c) = 362aaf7977c264bb70a79e98cf18da923ae62e39
+--- a/multimedia/vlc/INSTALL
++++ b/multimedia/vlc/INSTALL
+@@ -0,0 +1,12 @@
++# $NetBSD$
++#
++# Generate a real plugins.dat on the target. An empty placeholder does not
++# get rewritten by a normal VLC start (CacheSave needs CACHE_WRITE_FILE).
++#
++case ${STAGE} in
++POST-INSTALL)
++	if [ -x ${PKG_PREFIX}/lib/vlc/vlc-cache-gen ]; then
++		${PKG_PREFIX}/lib/vlc/vlc-cache-gen ${PKG_PREFIX}/lib/vlc/plugins || true
++	fi
++	;;
++esac
 --- a/multimedia/vlc/patches/patch-compat_Makefile.am
 +++ b/multimedia/vlc/patches/patch-compat_Makefile.am
 @@ -1,11 +1,12 @@
