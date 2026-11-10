@@ -6,11 +6,44 @@ commands. A frame counts as finished when its fence has signaled. Work that
 code outside QRhi submits on its own queue with a buffer's native handle is
 not covered by the frame fences; such buffers must not use this opt-in.
 
+Allow an opt-in VMA block size for small heaps (QT_VULKAN_VMA_BLOCK_MB).
+VMA otherwise uses heap/8, 128 MiB blocks on a 1 GiB unified-memory board.
+
 Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
 
 --- src/gui/rhi/qrhivulkan.cpp.orig
 +++ src/gui/rhi/qrhivulkan.cpp
-@@ -3082,6 +3082,8 @@
+@@ -10,6 +10,19 @@
+ #define VMA_STATIC_VULKAN_FUNCTIONS 0
+ #define VMA_RECORDING_ENABLED 0
+ #define VMA_DEDICATED_ALLOCATION 0
++// VMA sizes memory blocks as heap/8 for heaps up to 1 GiB: 128 MiB on a
++// board with 1 GiB of unified memory, mostly unused. QT_VULKAN_VMA_BLOCK_MB
++// (opt-in, 1..1024) turns that rule off and uses the given block size instead.
++// Read once for the process.
++static unsigned long long qt_vmaBlockBytes()
++{
++    static const unsigned long long bytes = [] {
++        const int mb = QT_PREPEND_NAMESPACE(qEnvironmentVariableIntValue)("QT_VULKAN_VMA_BLOCK_MB");
++        return mb > 0 && mb <= 1024 ? (unsigned long long)mb * 1024 * 1024 : 0ULL;
++    }();
++    return bytes;
++}
++#define VMA_SMALL_HEAP_MAX_SIZE (qt_vmaBlockBytes() ? 0ULL : 1024ULL * 1024 * 1024)
+ QT_BEGIN_NAMESPACE
+ Q_STATIC_LOGGING_CATEGORY(QRHI_LOG_VMA, "qt.rhi.vma")
+ QT_END_NAMESPACE
+@@ -1123,6 +1136,9 @@
+         allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_0;
+ #endif
+ 
++        if (const unsigned long long blockBytes = qt_vmaBlockBytes())
++            allocatorInfo.preferredLargeHeapBlockSize = VkDeviceSize(blockBytes);
++
+         VmaAllocator vmaallocator;
+         VkResult err = vmaCreateAllocator(&allocatorInfo, &vmaallocator);
+         if (err != VK_SUCCESS) {
+@@ -3082,6 +3098,8 @@
  
      prepareNewFrame(cbWrapper);
      ofr.active = true;
@@ -19,7 +52,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
  
      if (ofr.timestampQueryIndex[currentFrameSlot] >= 0) {
          quint64 timestamp[2] = { 0, 0 };
-@@ -4266,6 +4268,46 @@
+@@ -4266,6 +4284,46 @@
  #endif // VK_EXT_device_fault
  }
  
@@ -66,7 +99,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
  void QRhiVulkan::enqueueResourceUpdates(QVkCommandBuffer *cbD, QRhiResourceUpdateBatch *resourceUpdates)
  {
      QRhiResourceUpdateBatchPrivate *ud = QRhiResourceUpdateBatchPrivate::get(resourceUpdates);
-@@ -4285,6 +4327,13 @@
+@@ -4285,6 +4343,13 @@
              Q_ASSERT(bufD->m_type != QRhiBuffer::Dynamic);
              Q_ASSERT(u.offset + u.data.size() <= bufD->m_size);
  
@@ -80,7 +113,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
              if (!bufD->stagingBuffers[currentFrameSlot]) {
                  VkBufferCreateInfo bufferInfo = {};
                  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-@@ -4340,6 +4389,8 @@
+@@ -4340,6 +4405,8 @@
  
              bufD->lastActiveFrameSlot = currentFrameSlot;
  
@@ -89,7 +122,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
              if (bufD->m_type == QRhiBuffer::Immutable) {
                  QRhiVulkan::DeferredReleaseEntry e;
                  e.type = QRhiVulkan::DeferredReleaseEntry::StagingBuffer;
-@@ -4409,6 +4460,8 @@
+@@ -4409,6 +4476,8 @@
  
                  bufD->lastActiveFrameSlot = currentFrameSlot;
  
@@ -98,7 +131,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
                  activeBufferReadbacks.append(readback);
              }
          }
-@@ -5976,6 +6029,8 @@
+@@ -5976,6 +6045,8 @@
                  executeBufferHostWritesForSlot(bufD, currentFrameSlot);
  
              bufD->lastActiveFrameSlot = currentFrameSlot;
@@ -107,7 +140,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
              trackedRegisterBuffer(&passResTracker, bufD, bufD->m_type == QRhiBuffer::Dynamic ? currentFrameSlot : 0,
                                    QRhiPassResourceTracker::BufUniformRead,
                                    QRhiPassResourceTracker::toPassTrackerBufferStage(b->stage));
-@@ -6086,6 +6141,8 @@
+@@ -6086,6 +6157,8 @@
                  executeBufferHostWritesForSlot(bufD, currentFrameSlot);
  
              bufD->lastActiveFrameSlot = currentFrameSlot;
@@ -116,7 +149,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
              QRhiPassResourceTracker::BufferAccess access;
              if (b->type == QRhiShaderResourceBinding::BufferLoad)
                  access = QRhiPassResourceTracker::BufStorageLoad;
-@@ -6220,6 +6277,7 @@
+@@ -6220,6 +6293,7 @@
          QVkBuffer *bufD = QRHI_RES(QVkBuffer, bindings[i].first);
          Q_ASSERT(bufD->m_usage.testFlag(QRhiBuffer::VertexBuffer));
          bufD->lastActiveFrameSlot = currentFrameSlot;
@@ -124,7 +157,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
          if (bufD->m_type == QRhiBuffer::Dynamic)
              executeBufferHostWritesForSlot(bufD, currentFrameSlot);
  
-@@ -6265,6 +6323,7 @@
+@@ -6265,6 +6339,7 @@
          QVkBuffer *ibufD = QRHI_RES(QVkBuffer, indexBuf);
          Q_ASSERT(ibufD->m_usage.testFlag(QRhiBuffer::IndexBuffer));
          ibufD->lastActiveFrameSlot = currentFrameSlot;
@@ -132,7 +165,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
          if (ibufD->m_type == QRhiBuffer::Dynamic)
              executeBufferHostWritesForSlot(ibufD, currentFrameSlot);
  
-@@ -6507,6 +6566,7 @@
+@@ -6507,6 +6582,7 @@
  
      QVkBuffer *indirectBufD = QRHI_RES(QVkBuffer, indirectBuffer);
      indirectBufD->lastActiveFrameSlot = currentFrameSlot;
@@ -140,7 +173,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
      if (indirectBufD->m_type == QRhiBuffer::Dynamic)
          executeBufferHostWritesForSlot(indirectBufD, currentFrameSlot);
      const int indirectBufSlot = indirectBufD->m_type == QRhiBuffer::Dynamic ? currentFrameSlot : 0;
-@@ -6561,6 +6621,7 @@
+@@ -6561,6 +6637,7 @@
  
      QVkBuffer *indirectBufD = QRHI_RES(QVkBuffer, indirectBuffer);
      indirectBufD->lastActiveFrameSlot = currentFrameSlot;
@@ -148,7 +181,7 @@ Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
      if (indirectBufD->m_type == QRhiBuffer::Dynamic)
          executeBufferHostWritesForSlot(indirectBufD, currentFrameSlot);
      const int indirectBufSlot = indirectBufD->m_type == QRhiBuffer::Dynamic ? currentFrameSlot : 0;
-@@ -6703,6 +6764,10 @@
+@@ -6703,6 +6780,10 @@
  
  void QRhiVulkan::beginExternal(QRhiCommandBuffer *cb)
  {
