@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Betaflight Configurator
+GenericName=Flight controller configuration
+Comment=Configure Betaflight flight controllers (Web Serial over system Electron)
+Exec=@PREFIX@/bin/betaflight-configurator
+Icon=org.betaflight.configurator
+Terminal=false
+Categories=Utility;HamRadio;Electronics;
+StartupNotify=true

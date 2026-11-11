@@ -1,0 +1,9 @@
+Betaflight Configurator for EmberBSD.
+
+Desktop UI for the Betaflight flight-controller firmware
+(https://github.com/betaflight/betaflight). Upstream ships a Tauri app;
+this port packages the Vite web UI with the system Electron runtime and
+Web Serial so it runs on EmberBSD Plasma.
+
+Built from betaflight-configurator 2026.6.2. Native Tauri/serialplugin
+is not used; USB links use Chromium Web Serial.

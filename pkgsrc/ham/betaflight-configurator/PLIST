@@ -1,0 +1,5 @@
+bin/betaflight-configurator
+lib/betaflight-configurator/app.asar
+share/applications/org.betaflight.configurator.desktop
+share/icons/hicolor/128x128/apps/org.betaflight.configurator.png
+share/doc/betaflight-configurator/DESCR
