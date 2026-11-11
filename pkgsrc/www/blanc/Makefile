@@ -5,7 +5,7 @@
 
 DISTNAME=	blanc-1.46.0
 PKGNAME=	ember-browser-1.46.0
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	www
 BLANC_SOURCE=	v1.46.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
