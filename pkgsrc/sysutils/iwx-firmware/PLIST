@@ -1,0 +1,5 @@
+@comment $NetBSD$
+libdata/firmware/if_iwx/iwx-gl-c0-fm-c0-100
+libdata/firmware/if_iwx/iwx-gl-c0-fm-c0.pnvm
+share/doc/iwx-firmware/WHENCE
+share/licenses/iwx-firmware/LICENCE.iwlwifi_firmware

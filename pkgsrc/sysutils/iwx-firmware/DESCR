@@ -1,0 +1,4 @@
+This package provides the pinned firmware and PNVM images for the Intel
+Wi-Fi 7 BE200 adapter (PCI 8086:272b, GL MAC with FM radio) used by the
+EmberBSD iwx(4) driver. It installs the original firmware license and
+WHENCE provenance file with the images. It does not enable WLAN by itself.
