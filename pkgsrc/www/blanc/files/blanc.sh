@@ -12,4 +12,105 @@ if [ -z "${ELECTRON_OZONE_PLATFORM_HINT}" ]; then
 	export ELECTRON_OZONE_PLATFORM_HINT
 fi
 
+# Keep this process on X11/XWayland. Leaving Wayland session variables set
+# lets Chromium mix Ozone X11 with Wayland display state and drop the window.
+XDG_SESSION_TYPE=x11
+export XDG_SESSION_TYPE
+unset WAYLAND_DISPLAY
+
+# Force Ozone X11 and software compositing unless the caller already set them.
+ozone_platform_set=no
+disable_gpu_set=no
+in_process_gpu_set=no
+for arg in "$@"; do
+	case "${arg}" in
+	--ozone-platform|--ozone-platform=*)
+		ozone_platform_set=yes
+		;;
+	--disable-gpu|--disable-gpu=*)
+		disable_gpu_set=yes
+		;;
+	--in-process-gpu|--in-process-gpu=*)
+		in_process_gpu_set=yes
+		;;
+	esac
+done
+if [ "${ozone_platform_set}" = "no" ]; then
+	set -- --ozone-platform=x11 "$@"
+fi
+
+# AMDGPU DRM under XWayland ends with invalid window bounds and a quick exit.
+# Software compositing keeps the Ember Browser window alive on Nick.
+if [ "${disable_gpu_set}" = "no" ]; then
+	set -- --disable-gpu --disable-gpu-compositing "$@"
+fi
+if [ "${in_process_gpu_set}" = "no" ]; then
+	set -- --in-process-gpu "$@"
+fi
+
+config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
+app_config="${config_home}/Ember Browser"
+local_state="${app_config}/Local State"
+crash_ledger="${app_config}/crash-ledger.json"
+
+# Stale GPU/Dawn caches recreate invalid bounds after Ozone/XWayland crashes.
+# Drop only those caches; keep bookmarks, settings and session files.
+for d in GPUCache GPUPersistentCache DawnGraphiteCache DawnWebGPUCache; do
+	if [ -e "${app_config}/${d}" ]; then
+		rm -rf "${app_config}/${d}"
+	fi
+done
+
+# Drop invalid Electron windowStates. Zero-sized or inverted bounds make the
+# window vanish and Blanc exit; recoveryPending requests a fresh geometry.
+py="@PREFIX@/bin/python3.15"
+if [ -f "${local_state}" ] && [ -x "${py}" ]; then
+	EMBER_BROWSER_LOCAL_STATE="${local_state}" \
+	EMBER_BROWSER_CRASH_LEDGER="${crash_ledger}" \
+	"${py}" -c '
+import json, os
+from pathlib import Path
+
+path = Path(os.environ["EMBER_BROWSER_LOCAL_STATE"])
+ledger_path = Path(os.environ.get("EMBER_BROWSER_CRASH_LEDGER", ""))
+try:
+    data = json.loads(path.read_text())
+except Exception:
+    raise SystemExit(0)
+
+states = data.get("windowStates")
+if not isinstance(states, dict) or not states:
+    raise SystemExit(0)
+
+def invalid(st):
+    if not isinstance(st, dict):
+        return True
+    try:
+        width = int(st.get("right", 0)) - int(st.get("left", 0))
+        height = int(st.get("bottom", 0)) - int(st.get("top", 0))
+    except Exception:
+        return True
+    return width <= 0 or height <= 0
+
+bad = any(invalid(st) for st in states.values())
+recover = False
+if ledger_path.is_file():
+    try:
+        ledger = json.loads(ledger_path.read_text())
+    except Exception:
+        ledger = {}
+    if ledger.get("recoveryPending") is True:
+        recover = True
+
+if not (bad or recover):
+    raise SystemExit(0)
+
+backup = path.with_name(path.name + ".bak-ozone-x11")
+if not backup.exists():
+    backup.write_text(path.read_text())
+del data["windowStates"]
+path.write_text(json.dumps(data, separators=(",", ":")))
+'
+fi
+
 exec "@PREFIX@/bin/electron" "@PREFIX@/lib/ember-browser/app.asar" "$@"
