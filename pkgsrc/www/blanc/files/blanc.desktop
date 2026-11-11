@@ -2,7 +2,7 @@
 Type=Application
 Name=Ember Browser
 Comment=Desktop browser
-Exec=@PREFIX@/bin/ember-browser --ozone-platform=x11 --disable-gpu --disable-gpu-compositing --in-process-gpu %U
+Exec=@PREFIX@/bin/ember-browser --ozone-platform=x11 --in-process-gpu %U
 Icon=org.emberbsd.browser
 Terminal=false
 Categories=Network;WebBrowser;

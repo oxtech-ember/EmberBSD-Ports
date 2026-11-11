@@ -18,17 +18,14 @@ XDG_SESSION_TYPE=x11
 export XDG_SESSION_TYPE
 unset WAYLAND_DISPLAY
 
-# Force Ozone X11 and software compositing unless the caller already set them.
+# Force Ozone X11 and keep the GPU process in-tree unless the caller set them.
+# Hardware GL stays on: ANGLE binds Mesa radeonsi under XWayland on Nick.
 ozone_platform_set=no
-disable_gpu_set=no
 in_process_gpu_set=no
 for arg in "$@"; do
 	case "${arg}" in
 	--ozone-platform|--ozone-platform=*)
 		ozone_platform_set=yes
-		;;
-	--disable-gpu|--disable-gpu=*)
-		disable_gpu_set=yes
 		;;
 	--in-process-gpu|--in-process-gpu=*)
 		in_process_gpu_set=yes
@@ -37,12 +34,6 @@ for arg in "$@"; do
 done
 if [ "${ozone_platform_set}" = "no" ]; then
 	set -- --ozone-platform=x11 "$@"
-fi
-
-# AMDGPU DRM under XWayland ends with invalid window bounds and a quick exit.
-# Software compositing keeps the Ember Browser window alive on Nick.
-if [ "${disable_gpu_set}" = "no" ]; then
-	set -- --disable-gpu --disable-gpu-compositing "$@"
 fi
 if [ "${in_process_gpu_set}" = "no" ]; then
 	set -- --in-process-gpu "$@"
