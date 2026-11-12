@@ -18,5 +18,5 @@ def query(role):
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return out.stdout.splitlines()
 assert query('no') == ['Darwin', '6']
-assert query('yes') == ['NetBSD', '5']
-print('PASS Darwin native nb6 and target nb5')
+assert query('yes') == ['NetBSD', '6']
+print('PASS Darwin native nb6 and target nb6')

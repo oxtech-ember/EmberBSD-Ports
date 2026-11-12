@@ -1,13 +1,14 @@
+The source patch changes the installed xsltconfig.h on all targets;
+bump the common package revision although behavior changes on Darwin.
+
 --- a/textproc/libxslt/Makefile
 +++ b/textproc/libxslt/Makefile
-@@ -20,6 +20,10 @@
+@@ -2,7 +2,7 @@
  
- .include "../../mk/bsd.prefs.mk"
+ .include "Makefile.common"
  
-+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+-PKGREVISION=	5
 +PKGREVISION=	6
-+.endif
-+
- BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,-M rm:-Wl,./libxslt.syms
  
- .if ${USE_CROSS_COMPILE:tl} == "yes"
+ TOOL_DEPENDS+=	docbook-xml-[0-9]*:../../textproc/docbook-xml
+ TOOL_DEPENDS+=	docbook-xsl-[0-9]*:../../textproc/docbook-xsl
