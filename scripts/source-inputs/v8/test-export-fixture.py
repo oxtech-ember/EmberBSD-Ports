@@ -16,6 +16,8 @@ for arg in ('archive', 'sdk-source', 'git', 'patch', 'work-dir'):
     parser.add_argument('--' + arg, required=True, type=Path)
 a = parser.parse_args()
 ports = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(a.sdk_source / "src"))
+from emberbsd_sdk.sourceprep import PREPARED_TREE_RECEIPT
 
 
 def run(argv, success=True):
@@ -43,13 +45,15 @@ with tempfile.TemporaryDirectory(prefix='v8-export-test-', dir=a.work_dir) as di
         shutil.copy2(ports / name, dest)
     shutil.copytree(ports / 'pkgsrc/lang/v8', root / 'pkgsrc/lang/v8')
     (root / 'pkgsrc/lang/llvm/Makefile').write_text('DISTNAME= llvm-fixture\n')
-    (root / 'pkgsrc/export.conf').write_text('file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n')
+    (root / 'pkgsrc/export.conf').write_text(
+        'file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n'
+        'file\tscripts/source-inputs/v8/source.py\tEMBERBSD-SOURCE-IDENTITY/v8-source.py\n')
     (root / 'pkgsrc/replaces').write_text('# fixture\n')
     run([a.git, '-C', root, 'init', '-q'])
     run([a.git, '-C', root, 'add', 'pkgsrc/export.conf'])
     run([a.git, '-C', root, 'update-index', '--add', '--cacheinfo',
          f'160000,{revision},upstream/pkgsrc'])
-    archive = work / 'v8-15.6.75.31-5467f0a017e04ff016021a01687868c90af198e5.tar.gz'
+    archive = work / 'v8-15.6.75.50-6500240d220d9eaba51ea0012f60e926fe4b6472.tar.gz'
     shutil.copyfile(a.archive, archive)
     owner = root / 'scripts/source-inputs/v8/source.py'
     command = [sys.executable, '-B', '-I', '-S', owner, '--sdk-source', a.sdk_source,
@@ -72,6 +76,16 @@ with tempfile.TemporaryDirectory(prefix='v8-export-test-', dir=a.work_dir) as di
          '--sdk-source', a.sdk_source, '--source', package_tree, '--pkgsrc-root', baseline])
     run([*command, 'verify-payload', '--source', package_tree])
     run([*command, 'verify-source', '--source', package_tree, '--pkgsrc-root', baseline])
+    # A stamped package must bind the same producer as the source CLI.
+    import json
+    receipt = package_tree / PREPARED_TREE_RECEIPT
+    saved = receipt.read_bytes()
+    forged = json.loads(saved)
+    forged['identity']['owner_sha256'] = '0' * 64
+    receipt.write_text(json.dumps(forged))
+    assert 'V8 source producer changed' in run(
+        [*command, 'verify-source', '--source', package_tree, '--pkgsrc-root', baseline], False).stderr
+    receipt.write_bytes(saved)
     run([*command, 'prepare', '--archive', archive, '--patch', a.patch, '--output', output], False)
     unrelated = root / 'pkgsrc/devel/unrelated/Makefile'
     unrelated.parent.mkdir(parents=True)

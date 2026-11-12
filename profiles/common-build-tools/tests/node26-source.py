@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import sysconfig
 import tarfile
 
 sys.dont_write_bytecode = True
@@ -22,11 +23,11 @@ subprocess.run([sys.executable, '-B', '-I', '-S', str(a.gyp_pkgsrc / 'devel/gyp/
 work = a.work.resolve()
 assert not work.exists(), 'work directory must be new'
 with archive.open('rb') as stream:
-    assert hashlib.file_digest(stream, 'sha256').hexdigest() == '263f639ecfa7a17b49438d76cdbf9aff73179e3c7cb789da69b900718427fa2e'
+    assert hashlib.file_digest(stream, 'sha256').hexdigest() == 'a7f6204ff63b6a2cd274d48903285abb86ed53a99070e532d4c2fd787457d9e6'
 work.mkdir(parents=True)
 with tarfile.open(archive) as stream:
     stream.extractall(work, filter='data')
-source = work / 'node-v26.13.0'
+source = work / 'node-v26.13.1'
 distinfo = (recipe / 'distinfo').read_text()
 patches = sorted((recipe / 'patches').glob('patch-*'))
 assert patches, 'no package patches'
@@ -45,6 +46,13 @@ assert 'GYP_LIBTOOL' in (gyp / 'pylib/gyp/generator/make.py').read_text()
 hash_header = (source / 'deps/v8/src/base/hashing.h').read_text()
 assert not re.search(r'namespace std\s*\{\s*template\s*<typename T>\s*requires', hash_header)
 assert 'base::hash<CanonicalGroup>' in (source / 'deps/v8/src/wasm/canonical-types.h').read_text()
+# -S disables site initialization; use only the selected interpreter's
+# installed dependencies needed by the selected GYP source.
+site = Path(sysconfig.get_path('purelib')).resolve(strict=True)
+assert site.is_relative_to(Path(sys.prefix).resolve()), site
+sys.path.insert(0, str(site))
+import packaging
+assert Path(packaging.__file__).resolve().is_relative_to(site)
 sys.path.insert(0, str(gyp / 'pylib'))
 from gyp.input import CheckedEval, GypError
 # Abseil contains both Darwin and Windows conditions; duplicate keys would
@@ -72,4 +80,4 @@ result = subprocess.run([sys.executable, '-B', '-I', '-c', unsupported, str(sour
 assert result.returncode != 0 and 'Please use' in result.stderr, result.stderr
 subprocess.run([sys.executable, '-B', '-I', '-S', str(a.gyp_pkgsrc / 'devel/gyp/files/verify-source.py'),
                 '--sdk-source', str(a.sdk_source), '--source', str(gyp), '--pkgsrc-root', str(a.gyp_pkgsrc)], check=True)
-print(f'Node 26.13.0 checksum and {len(patches)} patches; GYP parser, Darwin inputs and V8 contracts: PASS')
+print(f'Node 26.13.1 checksum and {len(patches)} patches; GYP parser, Darwin inputs and V8 contracts: PASS')

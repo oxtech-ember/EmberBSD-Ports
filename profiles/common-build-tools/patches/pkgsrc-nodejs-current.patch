@@ -1,4 +1,4 @@
-# Update the common Node provider to Node 26.13.0.
+# Update the common Node provider to Node 26.13.1.
 # Origin: EmberBSD (AI-assisted), existing pkgsrc patch authors retained.
 
 --- a/lang/nodejs/Makefile
@@ -7,14 +7,14 @@
  # $NetBSD: Makefile,v 1.360 2026/09/10 07:44:25 adam Exp $
  
 -DISTNAME=	node-v26.8.2
-+DISTNAME=	node-v26.13.0
-+PKGREVISION=	3
++DISTNAME=	node-v26.13.1
++PKGREVISION=	1
  EXTRACT_SUFX=	.tar.xz
  
  USE_CXX_FEATURES=	c++20 charconv
  USE_LANGUAGES=		c c++
 +TOOL_DEPENDS+=		bsdtar-[0-9]*:../../archivers/bsdtar
-+TOOL_DEPENDS+=		v8-source-15.6.75.31{,nb[0-9]*}:../../lang/v8
++TOOL_DEPENDS+=		v8-source-15.6.75.50{,nb[0-9]*}:../../lang/v8
 +TOOL_DEPENDS+=		inspector-protocol-[0-9]*:../../devel/inspector-protocol
 +TOOL_DEPENDS+=		llvm-libc-source>=23.1.4:../../lang/llvm-libc-source
 +TOOL_DEPENDS+=		clang-python-bindings>=23.1.4:../../lang/clang-python-bindings
@@ -176,7 +176,7 @@
  MAKE_ENV+=	LD_LIBRARY_PATH=${PREFIX}/lib
  
 +# Use the common Undici provider for the built-in fetch implementation.
-+DEPENDS+=	undici>=8.12.3nb1:../../www/undici
++DEPENDS+=	undici>=8.12.4:../../www/undici
 +CONFIGURE_ARGS+=	--shared-builtin-undici/undici-path=${PREFIX:Q}/lib/node_modules/undici/loader.js
 +
 +CONFIGURE_ARGS+=	--shared-abseil
@@ -305,9 +305,9 @@
 +
 +
 +
-+BLAKE2s (node-v26.13.0.tar.xz) = 53ee857343785aca9e6b227094b78f6791b027d21db3a08f85d88b323fa1ca0f
-+SHA512 (node-v26.13.0.tar.xz) = b26477a172f99513c03ec9bb32f7f72bf88c05443acc2383a6c4bc28f796061ba81f78358353bc4aeaf77d7e2de818746503ac287a2ff74032ee1d261d0388e6
-+Size (node-v26.13.0.tar.xz) = 62562048
++BLAKE2s (node-v26.13.1.tar.xz) = 9facf21ca8cbaad4483ba9a9e43226ab403039f27caf84dcea1eb44a3545097f
++SHA512 (node-v26.13.1.tar.xz) = 149fd201f1b99c67484daacdb2f6b0dbfc742c9f71f120b5b7160b389b04d6e0b1c17b228c5e27dd0194bc42076fb16909756d021ab0eb0054dacba1a589131a
++Size (node-v26.13.1.tar.xz) = 63411840
 +SHA1 (patch-common.gypi) = be39449298522e62bd91959ac59f91ba9f590e54
 +SHA1 (patch-configure.py) = d9f43ac117386da95bd4fcb478d6c04204800f37
 +SHA1 (patch-configure_node__cross) = e02f55c982e907a73ae8cc615c71706a4db39c71

@@ -1,6 +1,5 @@
 # Origin: EmberBSD (AI-assisted); common upstream Undici provider.
-DISTNAME= undici-8.12.3
-PKGREVISION= 1
+DISTNAME= undici-8.12.4
 CATEGORIES= www
 MASTER_SITES= -https://github.com/nodejs/undici/archive/refs/tags/v${PKGVERSION_NOREV}.tar.gz
 HOMEPAGE= https://undici.nodejs.org/
@@ -11,7 +10,7 @@ NO_CONFIGURE= yes
 USE_LANGUAGES= # JavaScript package
 USE_TOOLS+= find sort
 PYTHON_FOR_BUILD_ONLY= tool
-TOOL_DEPENDS+= llhttp-wasi>=9.4.3:../../www/llhttp-wasi
+TOOL_DEPENDS+= llhttp-wasi>=9.4.4:../../www/llhttp-wasi
 .include "../../mk/bsd.prefs.mk"
 EMBERBSD_UNDICI_HOST_PREFIX?= ${TOOLBASE}
 .if empty(USE_CROSS_COMPILE:M[yY][eE][sS])

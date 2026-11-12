@@ -8,6 +8,8 @@ artifacts from this source.
 The producer prepares the effective exported recipe with the selected SDK
 source-preparation API, checks the archive hashes and version header, applies
 the complete patch inventory, and records an identity for the resulting tree.
+The packaged tree records the effective recipe and the exported producer hash;
+verification checks both against the selected recipe and current producer.
 The output directory must not exist.
 
 `prepare --previous-source /absolute/previous-v8` optionally preserves mtimes
@@ -19,7 +21,7 @@ the appropriate workspace locks and drain writers before reuse.
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/v8/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
-  --archive "$DISTFILES/v8-15.6.75.31-5467f0a017e04ff016021a01687868c90af198e5.tar.gz" \
+  --archive "$DISTFILES/v8-15.6.75.50-6500240d220d9eaba51ea0012f60e926fe4b6472.tar.gz" \
   --patch "$HOST_PREFIX/bin/gpatch" --output "$WORK/v8-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/v8/source.py \
   --sdk-source "$SDK_SOURCE" verify-source --source "$WORK/v8-source" \

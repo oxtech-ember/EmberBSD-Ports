@@ -1,6 +1,6 @@
 # Common Node provider
 
-The prepared pkgsrc tree uses `lang/nodejs` with [Node.js 26.13.0](https://nodejs.org/en/blog/release/v26.13.0). The official archive SHA256 is recorded in `sources.tsv`; recipe `distinfo` records BLAKE2s, SHA512, size and portability patch checksums. `pkgsrc-nodejs-current.patch` updates the common upstream recipe and `node-gc-net-timeout.patch` adjusts only the upstream test. The version family removes replaced versioned recipes from the prepared catalog.
+The prepared pkgsrc tree uses `lang/nodejs` with [Node.js 26.13.1](https://nodejs.org/en/blog/release/v26.13.1). The official archive SHA256 is recorded in `sources.tsv`; recipe `distinfo` records BLAKE2s, SHA512, size and portability patch checksums. `pkgsrc-nodejs-current.patch` updates the common upstream recipe and `node-gc-net-timeout.patch` adjusts only the upstream test. The version family removes replaced versioned recipes from the prepared catalog.
 
 The source-owned `src/node_version.h` defines EmberBSD's unregistered native-addon module ABI revisions: 1162674177 for standalone Node and 1162674178 for Electron. These values identify separately built EmberBSD runtimes; they are not upstream registrations or compatibility claims for other distributions. Rebuild V8/Node C++ addons against the matching runtime headers and configuration, rather than using foreign prebuilt binaries. Node-API has its separate ABI contract and remains subject to its documented API and external-library limits. Advance the affected revision when its native-addon ABI changes. `tools/getmoduleversion.py` reads this header for standalone configuration; `--electron` selects the Electron value for its GN arguments, headers and config.
 
@@ -38,7 +38,7 @@ The source regression verifies the release checksum, applies the complete pkgsrc
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B -I -S profiles/common-build-tools/tests/node26-source.py \
-  --archive "$DISTDIR/node-v26.13.0.tar.xz" --recipe "$PREPARED_PKGSRC/lang/nodejs" \
+  --archive "$DISTDIR/node-v26.13.1.tar.xz" --recipe "$PREPARED_PKGSRC/lang/nodejs" \
   --patch "$HOST_PREFIX/bin/gpatch" --work "$NEW_WORK_DIRECTORY" \
   --gyp-source "$GYP_SOURCE" --gyp-pkgsrc "$PREPARED_PKGSRC" --sdk-source "$SDK_SOURCE"
 ```
@@ -50,6 +50,22 @@ and cross toolset modes, checking that each shared Torque output has one writer.
 it checks generated Darwin native, Darwin-to-NetBSD and simulated Linux-to-NetBSD
 link commands against the original GYP templates. Actual host and target builds
 remain separate checks.
+
+For the 26.13.1 SPKI change, the Darwin arm64 host build passed the upstream
+`test-tls-spki-blocklist.js` (12 cases). A separate diagnostic binary linked
+the actual `crypto_context.cc` object built with address and undefined behavior
+sanitizers; the same 12 cases passed without sanitizer reports. This instruments
+that object, not the entire Node/V8 or its shared libraries. A Clang Static
+Analyzer warning in the unchanged `SetTicketKeys` path assumes both a null
+V8 backing-store data pointer and a 48-byte view. V8's backing-store invariant
+and detached/out-of-bounds length rules exclude that path; the ticket tests and
+offset, detached and resized view checks also passed on this host. Target
+hardware and Electron runtime acceptance remain separate.
+Cppcheck 2.22.0 could not analyze this translation unit: its built-in parser
+fails on a V8 constexpr specialization and its Clang importer aborts on the
+preprocessed file. The reproducible parser fixture and limits are documented
+in `pkgsrc/devel/cppcheck/tests/constexpr-specialization.md`; neither result
+is a Cppcheck pass.
 
 `tests/node26-export.py --help` exercises the actual pkgsrc exporter and compares its resulting recipe to the selected expected recipe. `tests/node26-pkgconfig-flags.py --help` describes the selected native inputs for the generated GYP rule regression. `tests/node-darwin-metadata.py --help` covers selected metadata and the Darwin CoreFoundation dependency through static archives, including negative and non-macOS generation cases. These checks do not replace a full package build, installed runtime and target tests.
 

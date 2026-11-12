@@ -15,10 +15,26 @@ SPEC = importlib.util.spec_from_file_location(
 EXPORTER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(EXPORTER)
 PATCH = Path('profiles/common-build-tools/patches/pkgsrc-nodejs-current.patch')
-CRYPTO_PATCH = Path('profiles/common-build-tools/patches/node-crypto-provider-types.patch')
-EXPORT_LINE = ('patch\t' + PATCH.as_posix() + '\n' +
-               'recipe-patch\t' + CRYPTO_PATCH.as_posix() +
-               '\tlang/nodejs\tpatch-zzzzzzzzzz-node-crypto-provider-types\n')
+MANIFEST = (ROOT / 'pkgsrc/export.conf').read_text().splitlines()
+def is_node_line(line):
+    fields = line.split('\t')
+    if fields[0] == 'file':
+        return len(fields) == 3 and fields[2].startswith('lang/nodejs/')
+    if fields[0] == 'recipe-patch':
+        return len(fields) == 4 and fields[2] == 'lang/nodejs'
+    if fields[0] != 'patch' or len(fields) != 2:
+        return False
+    path = ROOT / fields[1]
+    headers = [x[6:] for x in path.read_text().splitlines() if x.startswith('--- a/')]
+    return bool(headers) and all(x.startswith('lang/nodejs/') for x in headers)
+
+NODE_LINES = [line for line in MANIFEST if is_node_line(line)]
+NODE_RECIPE_PATCHES = [(Path(line.split('\t')[1]), line.split('\t')[3])
+                       for line in NODE_LINES if line.startswith('recipe-patch\t')]
+NODE_PATCH_FILES = [Path(line.split('\t')[1]) for line in NODE_LINES]
+assert PATCH in NODE_PATCH_FILES
+EXPORT_LINE = '\n'.join(NODE_LINES) + '\n'
+
 
 
 def run(command, *, cwd=None, input=None):
@@ -58,9 +74,10 @@ def main():
     import shutil
     shutil.copytree(args.pkgsrc / 'lang/nodejs', package)
     (ports / 'profiles/common-build-tools/patches').mkdir(parents=True)
-    for patch_file in (PATCH, CRYPTO_PATCH):
-        (ports / 'profiles/common-build-tools/patches' / patch_file.name).write_bytes(
-            (ROOT / patch_file).read_bytes())
+    for patch_file in NODE_PATCH_FILES:
+        destination = ports / patch_file
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((ROOT / patch_file).read_bytes())
     (ports / 'pkgsrc/export.conf').write_text(EXPORT_LINE)
     subprocess.run([str(args.git), '-C', str(upstream), 'init', '-q'], check=True)
     subprocess.run([str(args.git), '-C', str(upstream), 'add', '-f', 'lang/nodejs'], check=True)
@@ -89,11 +106,10 @@ def main():
     assert actual == expected, (actual.keys() ^ expected.keys())
     makefile = (recipe / 'Makefile').read_text()
     assert re.search(r'^PKGREVISION=\s+1$', makefile, re.M)
-    crypto_patch_name = 'patch-zzzzzzzzzz-node-crypto-provider-types'
-    crypto_patch_data = (recipe / 'patches' / crypto_patch_name).read_bytes()
-    assert crypto_patch_data == (ROOT / CRYPTO_PATCH).read_bytes()
-    assert (f'SHA1 ({crypto_patch_name}) = '
-            f'{EXPORTER.patch_sha1(ROOT / CRYPTO_PATCH)}\n') in (recipe / 'distinfo').read_text()
+    assert any(name.endswith('node-emudhra-rsa-blocklist') for _, name in NODE_RECIPE_PATCHES)
+    for source, name in NODE_RECIPE_PATCHES:
+        assert (recipe / 'patches' / name).read_bytes() == (ROOT / source).read_bytes()
+        assert (f'SHA1 ({name}) = {EXPORTER.patch_sha1(ROOT / source)}\n') in (recipe / 'distinfo').read_text()
     assert not list(destination.rglob('*.~[0-9]*~'))
     print('PASS: common exporter applied Node.js 26 recipe overlay with selected patch tool')
 

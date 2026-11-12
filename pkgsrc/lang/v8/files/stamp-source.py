@@ -3,6 +3,7 @@
 # Origin: EmberBSD (AI-assisted).
 """Record the staged V8 source content using the selected SDK API."""
 import argparse
+import hashlib
 import importlib.util
 from pathlib import Path
 import sys
@@ -27,7 +28,9 @@ try:
     spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    identity = {'effective': module.effective_package_identity(root, 'lang/v8', upstream)}
+    owner = root / 'EMBERBSD-SOURCE-IDENTITY/v8-source.py'
+    identity = {'effective': module.effective_package_identity(root, 'lang/v8', upstream),
+                'owner_sha256': hashlib.sha256(owner.read_bytes()).hexdigest()}
     stamped = sourceprep.write_prepared_tree_receipt(a.source, package='lang/v8', identity=identity)
     # The receipt holds the digest just measured from this tree. Check the
     # written receipt instead of hashing the whole tree a second time.
