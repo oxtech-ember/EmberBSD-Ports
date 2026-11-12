@@ -16,6 +16,12 @@ commands and does not enable executable-relative resolution.
 flags; `tests/bsdinstall-relocation.py` exercises a built native binary after
 relocation, including shell, strip, overrides and missing-provider failures.
 
+Native Darwin libgpg-error resolves locale, error descriptions and prefix-local
+system configuration relative to their owning image; an explicitly external
+configuration directory remains unchanged. The moved-prefix runtime fixture
+`tests/gpg-error-darwin-relocation.py` checks the library, CLI and custom
+allocator; `tests/gpg-error-darwin-selection.py` checks native and target metadata.
+
 SPIRV-Headers, SPIRV-Tools and glslang build or install their production
 artifacts without compiling upstream test executables by default. To build their separate test
 graph, select `tests` in the corresponding `PKG_OPTIONS.spirv-headers`,

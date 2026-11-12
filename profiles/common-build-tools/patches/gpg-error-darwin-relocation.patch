@@ -1,0 +1,152 @@
+$NetBSD$
+
+Resolve native Darwin runtime data relative to each owning image.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- src/init.c.orig
++++ src/init.c
+@@ -50,6 +50,12 @@
+ 
+ static char *get_locale_dir (void);
+ static void drop_locale_dir (char *locale_dir);
++
++#elif defined(__APPLE__)
++
++#include "ember-reloc.h"
++#define get_locale_dir() ember_resource_path (EMBER_LOCALE_RELATIVE)
++#define drop_locale_dir(dir) free (dir)
+ 
+ #else /*!HAVE_W32_SYSTEM*/
+ 
+--- src/gpg-error.c.orig
++++ src/gpg-error.c
+@@ -57,6 +57,10 @@
+ /* The implementation follows below.  */
+ static char *get_locale_dir (void);
+ static void drop_locale_dir (char *locale_dir);
++#elif defined(__APPLE__)
++#include "ember-reloc.h"
++#define get_locale_dir() ember_resource_path (EMBER_LOCALE_RELATIVE)
++#define drop_locale_dir(dir) free (dir)
+ #else
+ #define get_locale_dir() LOCALEDIR
+ #define drop_locale_dir(dir)
+@@ -448,6 +452,9 @@
+   int indesc = 0;
+   int blanklines = 0;
+   int last_was_keyword = 0;
++#if defined(__APPLE__)
++  char *name;
++#endif
+ 
+   if (!symbol)
+     return;
+@@ -455,7 +462,20 @@
+   if (!initialized)
+     {
+       initialized = 1;
++#if defined(__APPLE__)
++      name = ember_resource_path (EMBER_ERRORREF_RELATIVE);
++      if (!name)
++        fprintf (stderr, "cannot resolve relocated error reference\n");
++      else
++        {
++          fp = fopen (name, "r");
++          if (!fp)
++            fprintf (stderr, "cannot open relocated error reference: %s\n", name);
++          free (name);
++        }
++#else
+       fp = fopen (PKGDATADIR "/errorref.txt", "r");
++#endif
+     }
+   if (!fp)
+     return;
+--- src/stringutils.c.orig
++++ src/stringutils.c
+@@ -32,6 +32,9 @@
+ #include <sys/types.h>
+ 
+ #include "gpgrt-int.h"
++#ifdef __APPLE__
++#include "ember-reloc.h"
++#endif
+ 
+ 
+ char *
+@@ -97,6 +100,17 @@
+       home = _gpgrt_w32_get_sysconfdir ();
+       if (!home)
+         return NULL;
++#elif defined(__APPLE__)
++      {
++        char *resolved = ember_resource_path (EMBER_SYSCONF_RELATIVE);
++        if (!resolved)
++          return NULL;
++        home_buffer = _gpgrt_strdup (resolved);
++        free (resolved);
++        if (!home_buffer)
++          return NULL;
++        home = home_buffer;
++      }
+ #else
+       home = SYSCONFDIR;
+ #endif
+--- /dev/null
++++ src/ember-reloc.h
+@@ -0,0 +1,55 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later
++ * Origin: EmberBSD contributors (AI-assisted).
++ * Internal Darwin SDK path resolution.  No exported ABI.  */
++#ifndef EMBER_RELOC_H
++#define EMBER_RELOC_H
++#define EMBER_LOCALE_RELATIVE "@EMBER_LOCALE_RELATIVE@"
++#define EMBER_ERRORREF_RELATIVE "@EMBER_ERRORREF_RELATIVE@"
++#define EMBER_SYSCONF_RELATIVE "@EMBER_SYSCONF_RELATIVE@"
++#include <dlfcn.h>
++#include <errno.h>
++#include <limits.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++
++static char *
++ember_resource_path (const char *relative)
++{
++  Dl_info info;
++  char image[PATH_MAX];
++  char *slash, *result;
++  size_t base, suffix;
++
++  if (relative[0] == '/')
++    return strdup (relative);
++  if (!dladdr ((const void *)&ember_resource_path, &info) || !info.dli_fname)
++    {
++      errno = ENOENT;
++      return NULL;
++    }
++  if (!realpath (info.dli_fname, image))
++    return NULL;
++  slash = strrchr (image, '/');
++  if (!slash)
++    {
++      errno = ENOENT;
++      return NULL;
++    }
++  *slash = 0;
++  base = strlen (image);
++  suffix = strlen (relative);
++  if (suffix > SIZE_MAX - base - 2)
++    {
++      errno = ENOMEM;
++      return NULL;
++    }
++  result = malloc (base + suffix + 2);
++  if (!result)
++    return NULL;
++  memcpy (result, image, base);
++  result[base] = '/';
++  memcpy (result + base + 1, relative, suffix + 1);
++  return result;
++}
++#endif
