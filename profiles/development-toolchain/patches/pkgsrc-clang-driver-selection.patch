@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Explicit SDK driver bindings must also select ordinary native builds.
+--- a/mk/compiler/clang.mk
++++ b/mk/compiler/clang.mk
+@@ -6,6 +6,8 @@
+ #
+ # CLANGBASE
+ #	The base directory where the compiler is installed.
++# CCPATH, CXXPATH, CPPPATH
++#	Explicit Clang driver paths, including SDK compiler-binding adapters.
+ #
+ 
+ .if !defined(COMPILER_CLANG_MK)
+@@ -35,22 +37,22 @@
+ PKG_CXX:= ${CXXPATH}
+ PKG_CPP:= ${CPPPATH}
+ .else
+-.if exists(${CLANGBASE}/bin/clang)
++CCPATH?=		${CLANGBASE}/bin/clang
++.if exists(${CCPATH})
+ LANGUAGES.clang+=	c objc
+ _COMPILER_STRIP_VARS+=	CC
+-CCPATH=			${CLANGBASE}/bin/clang
+ PKG_CC:=		${CCPATH}
+ .endif
+ 
+-.if exists(${CLANGBASE}/bin/clang++)
++CXXPATH?=		${CLANGBASE}/bin/clang++
++.if exists(${CXXPATH})
+ LANGUAGES.clang+=	c++
+ _COMPILER_STRIP_VARS+=	CXX
+-CXXPATH=		${CLANGBASE}/bin/clang++
+ PKG_CXX:=		${CXXPATH}
+ .endif
+ 
+-.if exists(${CLANGBASE}/bin/clang-cpp)
+-CPPPATH=		${CLANGBASE}/bin/clang-cpp
++CPPPATH?=		${CLANGBASE}/bin/clang-cpp
++.if exists(${CPPPATH})
+ PKG_CPP:=		${CPPPATH}
+ .endif
+ 
