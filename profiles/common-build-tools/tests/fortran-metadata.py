@@ -10,8 +10,9 @@ import tempfile
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--bmake', type=Path, required=True)
 p.add_argument('--policy', type=Path, required=True)
+p.add_argument('--version-include', type=Path, required=True)
 a = p.parse_args()
-assert a.bmake.is_absolute() and a.policy.is_absolute()
+assert a.bmake.is_absolute() and a.policy.is_absolute() and a.version_include.is_absolute()
 with tempfile.TemporaryDirectory(prefix='fortran-metadata-') as tmp:
     root = Path(tmp)
     buildlink = root / 'lang/flang-rt/buildlink3.mk'
@@ -19,7 +20,7 @@ with tempfile.TemporaryDirectory(prefix='fortran-metadata-') as tmp:
     buildlink.write_text('DEPENDS+= flang-rt>=23:../../lang/flang-rt\n')
     policy = root / 'fortran.mk'
     policy.write_bytes(a.policy.read_bytes())
-    (root / 'EMBERBSD-CROSS-FLANG-VERSION.MK').write_text('_EMBER_FLANG_VERSION= 23.1.4\n_EMBER_FLANG_MAJOR= 23\n')
+    (root / 'EMBERBSD-CROSS-FLANG-VERSION.MK').write_bytes(a.version_include.read_bytes())
     makefile = root / 'test.mk'
     makefile.write_text('''USE_LANGUAGES= c fortran
 TOOLS_USE_CROSS_COMPILE= yes
@@ -38,16 +39,21 @@ EMBERBSD_SDK_SOURCE= /nonexistent/sdk
 show-var show-vars all:
 \t@printf 'depends=%%s\\nbuild=%%s\\nfc=%%s\\nfail=%%s\\n' '${DEPENDS}' '${BUILD_DEPENDS}' '${FC}' '${PKG_FAIL_REASON}'
 ''' % (root, root, policy))
-    def run(*goals, family='clang', compiler='clang'):
+    def run(*goals, family='clang', compiler='clang', extra=()):
         return subprocess.run([str(a.bmake), '-r', '-f', str(makefile),
                                'EMBERBSD_CROSS_COMPILER_FAMILY='+family,
-                               'PKGSRC_COMPILER='+compiler, *goals],
+                               'PKGSRC_COMPILER='+compiler, *extra, *goals],
                               text=True, capture_output=True, timeout=10)
     for goal in ('show-var', 'show-vars'):
         result = run(goal)
         assert result.returncode == 0, (goal, result.stderr)
         assert 'flang-rt>=23:../../lang/flang-rt' in result.stdout, result.stdout
         assert 'fail=\n' in result.stdout, result.stdout
+        assert not result.stderr, result.stderr
+    native = run('show-vars', extra=('TOOLS_USE_CROSS_COMPILE=no', 'EMBERBSD_HOST_COMPILER_FAMILY=clang'))
+    assert native.returncode == 0 and 'flang-rt>=23' in native.stdout and not native.stderr, (native.stdout, native.stderr)
+    fake = run('show-vars', extra=('USE_CROSS_COMPILE=no',))
+    assert fake.returncode == 0 and 'flang-rt>=23' not in fake.stdout and not fake.stderr, (fake.stdout, fake.stderr)
     for goals in (('all',), ('all', 'show-vars')):
         result = run(*goals)
         assert 'EMBERBSD_FLANG must select the build-host Ports flang driver' in result.stdout, result.stdout

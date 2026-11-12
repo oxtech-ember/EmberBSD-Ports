@@ -30,10 +30,13 @@ _EMBER_FLANG_MODE=native
 # normal runtime dependency like libgfortran: one copy per process.
 # The driver searches the lib directory beside its real path, so packages run
 # a hard link that has no host library directory beside it.
-.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && \
-    (empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG}))
-PKG_FAIL_REASON+="EMBERBSD_FLANG must select the build-host Ports flang driver"
+.if ${_EMBER_FLANG_MODE} == "native" || ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
 .endif
+.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes"
+.if empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG})
+PKG_FAIL_REASON+="EMBERBSD_FLANG must select the build-host Ports flang driver"
+.else
 .include "${.PARSEDIR}/EMBERBSD-CROSS-FLANG-VERSION.MK"
 .if ${_EMBER_FLANG_MODE} == "cross"
 _EMBER_FLANG_TRIPLE=${_EMBER_CROSS_TRIPLET}
@@ -44,28 +47,23 @@ _EMBER_FLANG_TRIPLE=${MACHINE_GNU_PLATFORM}
 _EMBER_FLANG_RT=${LOCALBASE}/lib/clang/${_EMBER_FLANG_MAJOR}
 _EMBER_FLANG_RESOURCE=${_EMBER_FLANG_RT}
 .endif
-.if empty(_EMBER_FLANG_VERSION:M[0-9]*.[0-9]*.[0-9]*) || \
-    (${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && !exists(${_EMBER_FLANG_RESOURCE}))
+.if empty(_EMBER_FLANG_VERSION:M[0-9]*.[0-9]*.[0-9]*) || !exists(${_EMBER_FLANG_RESOURCE})
 PKG_FAIL_REASON+="EMBERBSD_FLANG must match the major version of the SDK Clang runtime"
 .endif
 .if ${_EMBER_FLANG_MODE} == "native"
 # The native prefix must already hold its Flang-RT; recursion never builds a
 # GCC Fortran in its place.
-.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && \
-    !exists(${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE})
+.if !exists(${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE})
 PKG_FAIL_REASON+="Install lang/flang-rt into the native prefix before native Fortran"
 .endif
-.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
 _EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
 .elif ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
 _EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
 .else
 # Fake-cross Libtool is a native host script; it links Flang-RT from the
 # sysroot but never registers the target package in the native database.
 _EMBER_FLANG_RT_LIBDIR=${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
-.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && \
-    !exists(${_EMBER_FLANG_RT_LIBDIR}/libflang_rt.runtime.so.${_EMBER_FLANG_MAJOR})
+.if !exists(${_EMBER_FLANG_RT_LIBDIR}/libflang_rt.runtime.so.${_EMBER_FLANG_MAJOR})
 PKG_FAIL_REASON+="Install lang/flang-rt into the target sysroot before fake-cross Fortran"
 .endif
 .endif
@@ -100,6 +98,8 @@ CWRAPPERS_APPEND_LINK.f77+=--rtlib=compiler-rt
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}/usr/lib
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
 .endif
+.endif # existing driver
+.endif # non-metadata
 .elif ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     (!empty(USE_LANGUAGES:Mfortran) || !empty(USE_LANGUAGES:Mfortran77))
 .if ${EMBERBSD_CROSS_COMPILER_FAMILY} != "gcc"
