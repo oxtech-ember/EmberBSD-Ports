@@ -6,7 +6,8 @@ stable) and enable the Qt6 GUI that matches Plasma. Cross builds use
 host luac/protoc/NATIVE_CC and host Qt6 qmake6/moc/rcc/uic with a
 qt.conf that points Prefix at the cross sysroot. Disable fluidsynth
 (SDL3 outside the default closure). Do not ship an empty plugins.dat:
-PLIST @exec runs vlc-cache-gen on the target after pkg_add. PLIST drops
+The install hook runs vlc-cache-gen after extraction; the deinstall hook
+removes the generated cache. PLIST drops
 youtube.lua, librist and schroedinger and records share/applications
 open-* desktop files from 3.0.24.
 
@@ -18,7 +19,7 @@ open-* desktop files from 3.0.24.
 -DISTNAME=		vlc-3.0.23
 -PKGREVISION=		9
 +DISTNAME=		vlc-3.0.24
-+PKGREVISION=		1
++PKGREVISION=		2
  CATEGORIES=		multimedia
  MASTER_SITES=		https://download.videolan.org/pub/videolan/vlc/${PKGVERSION_NOREV}/
  EXTRACT_SUFX=		.tar.xz
@@ -273,12 +274,11 @@ open-* desktop files from 3.0.24.
  share/doc/vlc/lua/sd/README.txt
  share/doc/vlc/lua/sd/icast.lua
  share/doc/vlc/lua/sd/icecast.lua
-@@ -719,3 +715,5 @@
+@@ -719,3 +715,4 @@
  share/vlc/utils/gnome-vlc-default.sh
  share/vlc/utils/video-vlc-default.sh
  share/vlc/vlc.ico
 +lib/vlc/vlc-cache-gen
-+@exec %D/lib/vlc/vlc-cache-gen %D/lib/vlc/plugins
 --- a/multimedia/vlc/distinfo
 +++ b/multimedia/vlc/distinfo
 @@ -1,9 +1,9 @@
@@ -298,18 +298,30 @@ open-* desktop files from 3.0.24.
  SHA1 (patch-lib_video.c) = 362aaf7977c264bb70a79e98cf18da923ae62e39
 --- a/multimedia/vlc/INSTALL
 +++ b/multimedia/vlc/INSTALL
-@@ -0,0 +1,12 @@
-+# $NetBSD$
-+#
-+# Generate a real plugins.dat on the target. An empty placeholder does not
-+# get rewritten by a normal VLC start (CacheSave needs CACHE_WRITE_FILE).
-+#
+@@ -0,0 +1,16 @@
++# Generate the cache only after all plugins have been installed.
 +case ${STAGE} in
 +POST-INSTALL)
-+	if [ -x ${PKG_PREFIX}/lib/vlc/vlc-cache-gen ]; then
-+		${PKG_PREFIX}/lib/vlc/vlc-cache-gen ${PKG_PREFIX}/lib/vlc/plugins || true
-+	fi
-+	;;
++ cache="${PKG_PREFIX}/lib/vlc/plugins/plugins.dat"
++ rm -f "$cache" || exit 1
++ if ! "${PKG_PREFIX}/lib/vlc/vlc-cache-gen" "${PKG_PREFIX}/lib/vlc/plugins"; then
++  rm -f "$cache"
++  echo "VLC plugin cache generation failed" >&2
++  exit 1
++ fi
++ if [ ! -s "$cache" ]; then
++  rm -f "$cache"
++  echo "VLC plugin cache is missing or empty" >&2
++  exit 1
++ fi ;;
++esac
+--- a/multimedia/vlc/DEINSTALL
++++ b/multimedia/vlc/DEINSTALL
+@@ -0,0 +1,5 @@
++case ${STAGE} in
++DEINSTALL)
++ rm -f "${PKG_PREFIX}/lib/vlc/plugins/plugins.dat" || exit 1
++ ;;
 +esac
 --- a/multimedia/vlc/patches/patch-compat_Makefile.am
 +++ b/multimedia/vlc/patches/patch-compat_Makefile.am

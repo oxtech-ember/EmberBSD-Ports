@@ -164,3 +164,19 @@ Full package/check-files and selected installed codecs are now covered by the
 installed KFileMetadata extraction remain mandatory
 before the [common userspace transition](../../probes/plasma-mobile/toolkit/MIGRATION.md).
 The PLIST is source-derived; no file is exempted from native checking.
+
+### VLC plugin cache lifecycle
+
+The VLC package generates `plugins.dat` once in its target `POST-INSTALL`
+script after plugin extraction, fails installation on generator failure or an
+empty result, and removes the generated cache in `DEINSTALL`. Exercise the
+actual hook bodies with a selected host shell and a fake generator:
+
+```sh
+/path/to/sdk/bin/python3.15 profiles/common-media/tests/vlc-cache-hooks.py \
+  --shell /path/to/sdk/bin/bash
+```
+
+This host check covers hook ordering, repeated installation and removal, and
+failure cleanup. It does not execute VLC's target generator, `pkg_add`, or a
+native playback session; those remain separate target acceptance checks.
