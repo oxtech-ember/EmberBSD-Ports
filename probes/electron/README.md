@@ -372,11 +372,12 @@ An explicit selection uses the source-owned common Node 26.13.1 version input.
 The unchanged JavaScript equality check runs before its success marker is written.
 The unset selector keeps the upstream executable and Node24.12.0 version input.
 This path check does not qualify a provider. Native SDK and JavaScript action
-acceptance remain required. Run the pure source controls without Node or GN:
+acceptance remain required. Run the source controls with the selected native Node and current common recipe:
 
 ```sh
-python3.15 probes/electron/tests/qualified-host-node.py \
-  --source /absolute/patched/Chromium -v
+"$HOST_PREFIX/bin/python3.15" probes/electron/tests/qualified-host-node.py \
+  --source /absolute/patched/Chromium --pkgsrc /absolute/current/pkgsrc \
+  --node "$HOST_PREFIX/bin/node" -v
 ```
 
 The existing host-input integration test still checks the unset upstream route.

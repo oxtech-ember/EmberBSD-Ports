@@ -7,6 +7,7 @@ import hashlib
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 import types
@@ -15,6 +16,8 @@ from unittest.mock import Mock, patch
 
 SOURCE = None
 JS_SHA256 = None
+COMMON_VERSION = None
+HOST_NODE = None
 
 
 def module(name, relative):
@@ -91,10 +94,23 @@ class QualifiedNodeTests(unittest.TestCase):
         with self.env(str(self.executable)), patch.object(self.node, 'RunNode') as run:
             self.check.main(self.arguments(output))
         expected = SOURCE / 'third_party/node/emberbsd_host_node_version'
-        self.assertRegex(expected.read_text(), r'(?m)^NODE_VERSION="v26\.12\.1"$')
+        self.assertEqual(expected.read_text().split('NODE_VERSION=')[1].strip(), f'"v{COMMON_VERSION}"')
         run.assert_called_once_with([str(SOURCE / 'third_party/node/check_version.js'),
                                      '--expected_version_file', str(expected)])
         self.assertEqual(output.read_text(), 'OK')
+
+    def test_actual_node_requires_the_common_recipe_version(self):
+        checker = SOURCE / 'third_party/node/check_version.js'
+        expected = SOURCE / 'third_party/node/emberbsd_host_node_version'
+        success = subprocess.run([str(HOST_NODE), str(checker), '--expected_version_file', str(expected)],
+                                 capture_output=True, text=True)
+        self.assertEqual(success.returncode, 0, success.stdout + success.stderr)
+        wrong = self.work / 'wrong-version'
+        wrong.write_text('NODE_VERSION="v0.0.0"\n')
+        failure = subprocess.run([str(HOST_NODE), str(checker), '--expected_version_file', str(wrong)],
+                                 capture_output=True, text=True)
+        self.assertNotEqual(failure.returncode, 0)
+        self.assertIn('Failed NodeJS version check', failure.stderr)
 
     def test_unset_version_uses_the_original_upstream_input(self):
         output = self.work / 'default-result'
@@ -131,8 +147,16 @@ class QualifiedNodeTests(unittest.TestCase):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', required=True, type=Path)
+    parser.add_argument('--pkgsrc', required=True, type=Path)
+    parser.add_argument('--node', required=True, type=Path)
     args, remaining = parser.parse_known_args()
     SOURCE = args.source.resolve(strict=True)
+    HOST_NODE = args.node.resolve(strict=True)
+    recipe = (args.pkgsrc.resolve(strict=True) / 'lang/nodejs/Makefile').read_text()
+    versions = re.findall(r'(?m)^DISTNAME=\s*node-v(\d+\.\d+\.\d+)\s*$', recipe)
+    if len(versions) != 1:
+        raise SystemExit('common Node recipe has no unique version')
+    COMMON_VERSION = versions[0]
     # Pinned Chromium dd78960 has this unchanged JavaScript exact check.
     JS_SHA256 = '54bfaa4865e9972f3046042adc18fc94d4834fa6705df63f8403aac109302086'
     unittest.main(argv=[sys.argv[0], *remaining])
