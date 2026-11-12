@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.5 2026/07/08 07:41:45 wiz Exp $
 
 DISTNAME=	xwayland-24.1.14
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	wayland
 MASTER_SITES=	${MASTER_SITE_XORG:=xserver/}
 EXTRACT_SUFX=	.tar.xz
@@ -23,6 +23,8 @@ MESON_ARGS+=	-Dglamor=true -Dglx=true -Ddri3=true -Dxvfb=true
 MESON_ARGS+=	-Dxkb_dir=${PREFIX}/share/X11/xkb
 MESON_ARGS+=	-Dxkb_bin_dir=${PREFIX}/bin
 MESON_ARGS+=	-Dxkb_output_dir=${VARBASE}/db/xkb
+# DRI_DRIVER_PATH has no Meson option: patch-include_meson.build derives it
+# from the prefix and libdir above instead of the sysroot-prefixed dri.pc value.
 
 .include "../../mk/bsd.prefs.mk"
 

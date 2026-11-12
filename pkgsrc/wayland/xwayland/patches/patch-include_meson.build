@@ -1,0 +1,25 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Do not take DRI_DRIVER_PATH from pkg-config.
+dri.pc holds the installed target path /usr/pkg/lib/dri, but a cross build
+runs pkg-config with PKG_CONFIG_SYSROOT_DIR, which prepends the build
+sysroot to the variable. The binary then searches the build machine path
+for the software renderer, and GLX is not initialised ("GLX: could not
+load software renderer"). Derive the path from the install prefix and
+libdir of this build, as the XKB paths of this recipe do.
+
+--- include/meson.build.orig
++++ include/meson.build
+@@ -204,7 +204,10 @@
+ conf_data.set('DPMSExtension', build_dpms ? '1' : false)
+ conf_data.set('DRI3', build_dri3 ? '1' : false)
+ if build_glx
+-    conf_data.set_quoted('DRI_DRIVER_PATH', dri_dep.get_variable(pkgconfig : 'dridriverdir'))
++    # dri.pc names an installed target path, but pkg-config prepends
++    # PKG_CONFIG_SYSROOT_DIR to it, which embeds the build sysroot in the
++    # binary of a cross build. Use the install location of the target.
++    conf_data.set_quoted('DRI_DRIVER_PATH', join_paths(get_option('prefix'), get_option('libdir'), 'dri'))
+ endif
+ conf_data.set('MITSHM', build_mitshm ? '1' : false)
+ conf_data.set('PANORAMIX', build_xinerama ? '1' : false)
