@@ -39,13 +39,15 @@ Before qualifying with SDK `package-portable.py --relocate-text
 --allow-binary-prefix`, unpack the exact candidate and run:
 
 ```
-python3 check_binary_prefix.py --payload /absolute/unpacked-payload --config-h /absolute/build/config.h --producer-prefix /absolute/producer-prefix
-python3 test_check_binary_prefix.py
+python3 check_binary_prefix.py --payload /absolute/unpacked-payload --config-h /absolute/build/config.h --producer-prefix /absolute/producer-prefix --llvm-ar /absolute/sdk/bin/llvm-ar --llvm-readobj /absolute/sdk/bin/llvm-readobj
+FFMPEG_TEST_HOST_PREFIX=/absolute/sdk FFMPEG_TEST_PYTHON=/absolute/sdk/bin/python3.15 FFMPEG_TEST_CONFIG_H=/absolute/build/config.h FFMPEG_TEST_VERSION_O=/absolute/extracted/version.o FFMPEG_TEST_PRODUCER_PREFIX=/absolute/producer-prefix python3 test_check_binary_prefix.py
 ```
 
-The checker permits only the complete NUL-terminated configure diagnostic
-string in binaries; it rejects other binary producer-prefix occurrences. SDK
-qualification still checks text and Mach-O dependencies. Preserve the real
+The checker permits only complete NUL-terminated configure diagnostic strings
+in Mach-O CString sections; it verifies archive member offsets and rejects other
+binary producer-prefix occurrences. The configuration also supports the runtime
+diagnostic for library configuration mismatch. SDK qualification separately
+checks text relocation and Mach-O dependencies. Preserve the real
 configuration and source provenance. The SDK contract also requires a compiler
 check at a different prefix; this test does not replace that check.
 
