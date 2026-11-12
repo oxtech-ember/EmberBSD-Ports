@@ -20,6 +20,6 @@ with tempfile.TemporaryDirectory(prefix='ruby-relocatable-') as tmp:
  assert '--enable-load-relative' not in old_native[2] and old_native[1]=='1'
  subprocess.run([str(a.patch),'-d',str(root),'-p1','-F0','-i',str(a.overlay)],check=True,stdout=subprocess.PIPE)
  native=query('no');target=query('yes')
- assert native[0]=='Darwin' and native[1]=='2' and '--enable-load-relative' in native[2],native
+ assert native[0]=='Darwin' and native[1]=='2' and '--enable-load-relative' in native[2] and '--with-destdir=' in native[2],native
  assert target==old_target,(old_target,target)
  print('PASS: old native lacks relative loading; new Darwin nb2 enables it; target metadata unchanged')

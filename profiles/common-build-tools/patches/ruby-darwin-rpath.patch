@@ -1,0 +1,15 @@
+$NetBSD$
+
+Use a consumer-independent Darwin library ID for relocatable Ruby.
+
+--- configure.orig
++++ configure
+@@ -32442,7 +32442,7 @@
+ 	if test "$load_relative" = yes
+ then :
+ 
+-	    libprefix="@executable_path${relative_libprefix}"
++	    libprefix="@rpath"
+ 	    LIBRUBY_RELATIVE=yes
+ 
+ fi

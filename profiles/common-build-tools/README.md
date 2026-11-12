@@ -303,6 +303,10 @@ Native Darwin Ruby uses upstream `--enable-load-relative` so a qualified
 package resolves its standard library from its installed prefix. The metadata
 regression is `tests/ruby-darwin-relocatable.py`; relocated runtime acceptance
 is still required for a package release.
+The minimal Darwin SDK omits the optional RI database because upstream RI
+names collide on case-insensitive filesystems. Explicit `ruby-build-ri-db`
+remains available; that choice is not qualified for those filesystems. The
+default native package is accepted with a relocated native extension check.
 On Darwin, Ruby links YJIT with the selected linker without a relocatable
 `ld -r` step: final executable/shared links retain the Rust archive, while
 LLVM ar merges its members into static libruby. No-JIT builds keep empty
