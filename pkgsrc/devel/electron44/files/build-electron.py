@@ -2756,6 +2756,11 @@ def gn_source(options):
             try:
                 sqlite.verify_view(view, options.workspace / 'src', destination, new_sqlite)
             except (ValueError, OSError):
+                if old_sqlite is None and options.phase == 'configure' and (
+                        getattr(options, 'retry_configure', False) or
+                        getattr(options, 'resume_configure', False)):
+                    old_sqlite = sqlite.recover_equivalent_initial(
+                        view, options.workspace / 'src', destination, new_sqlite)
                 require(old_sqlite is not None, 'foreign SQLite projection during recovery')
                 sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite)
             else:

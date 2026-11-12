@@ -4,6 +4,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 NAME = 'sqlite'
@@ -90,3 +91,25 @@ def activate(view, source, destination, selected, old, verify_old):
         destination, origin, [NAME], identity, 'sqlite-components', verify_old, build,
         lambda _: verify_view(view, source, destination, selected),
         check_old_entry=check_old, already_new=lambda: False)
+
+
+def recover_equivalent_initial(view, source, destination, selected):
+    """Recover an initial projection only when all generated inputs match."""
+    marker = Path(destination).parent / ('.' + Path(destination).name + '.sqlite-components-migration')
+    view.require(not os.path.lexists(marker), 'pending SQLite migration requires transaction recovery')
+    link = Path(destination) / 'src/third_party/sqlite/src/amalgamation/sqlite3.c'
+    view.require(link.is_symlink(), 'initial SQLite projection has no selected amalgamation')
+    target = Path(os.readlink(link))
+    view.require(target.is_absolute() and target.name == 'sqlite3.c', 'invalid initial SQLite target')
+    old, old_receipt = selection(view, target.parent)
+    current, new_receipt = selection(view, selected['path'])
+    view.require(current == selected, 'new SQLite selection changed')
+    old_identity = dict(old_receipt['identity']); new_identity = dict(new_receipt['identity'])
+    old_generator = old_identity.pop('generator_sha256', None)
+    new_generator = new_identity.pop('generator_sha256', None)
+    view.require(isinstance(old_generator, str) and re.fullmatch(r'[0-9a-f]{64}', old_generator) and
+                 isinstance(new_generator, str) and re.fullmatch(r'[0-9a-f]{64}', new_generator) and
+                 old_identity == new_identity and old_receipt['files'] == new_receipt['files'],
+                 'initial SQLite projection differs from current generated inputs')
+    verify_view(view, source, destination, old)
+    return old
