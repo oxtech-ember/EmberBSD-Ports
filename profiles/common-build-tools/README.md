@@ -299,6 +299,10 @@ The export keeps only Ruby 4.0. Its `rubyversion.mk` supports, accepts and
 defaults to 4.0 alone, so no profile sets its own Ruby default and builds
 without a profile, such as the Darwin bootstrap, also select `lang/ruby40`.
 Recursive host generators use native Ruby and `ruby40-asciidoctor`.
+Native Darwin Ruby uses upstream `--enable-load-relative` so a qualified
+package resolves its standard library from its installed prefix. The metadata
+regression is `tests/ruby-darwin-relocatable.py`; relocated runtime acceptance
+is still required for a package release.
 On Darwin, Ruby links YJIT with the selected linker without a relocatable
 `ld -r` step: final executable/shared links retain the Rust archive, while
 LLVM ar merges its members into static libruby. No-JIT builds keep empty
