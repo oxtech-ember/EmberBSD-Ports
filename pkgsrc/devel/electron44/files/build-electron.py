@@ -3766,7 +3766,7 @@ def font_activation_args(options, old_environment, environment, old_arguments, v
 
 
 def xml_activation_args(options, old_environment, environment, old_arguments, values):
-    """Allow the first verified XML selection; guard later identities."""
+    """Allow a verified XML activation or compatible package revision update."""
     if not getattr(options, 'shared_xml', False):
         return set()
     key = 'EMBERBSD_XML_SOURCE_SHA256'
@@ -3774,8 +3774,53 @@ def xml_activation_args(options, old_environment, environment, old_arguments, va
     names = {'emberbsd_' + provider + '_' + role + '_' + kind
              for provider in ('xml', 'xslt') for role in ('host', 'target')
              for kind in ('library', 'inputs')}
-    if old_environment.get(key):
-        return set()
+    old_identity = old_environment.get(key)
+    if old_identity:
+        require(re.fullmatch(r'[0-9a-f]{64}', old_identity), 'previous XML identity is invalid')
+        if old_identity == environment[key]:
+            return set()
+        # producer_inputs already selected and verified both current providers.
+        # Preserve every library/header/pc path; only complete package metadata
+        # triples may move to a newer revision of the same upstream package.
+        revisions = {}
+        for provider, base in (('xml', 'libxml2'), ('xslt', 'libxslt')):
+            for role in ('host', 'target'):
+                prefix = (Path(options.host_prefix) if role == 'host' else Path(options.sysroot) / 'usr/pkg').resolve(strict=True)
+                db = prefix / 'pkgdb'
+                libkey = 'emberbsd_' + provider + '_' + role + '_library'
+                inputkey = 'emberbsd_' + provider + '_' + role + '_inputs'
+                require(old_arguments.get(libkey) == values.get(libkey) and values.get(libkey),
+                        'XML library changed during revision update')
+                def split_inputs(items):
+                    require(isinstance(items, list) and all(isinstance(item, str) for item in items) and
+                            len(items) == len(set(items)),
+                            'invalid XML revision inputs')
+                    records, ordinary = [], []
+                    for item in items:
+                        require(isinstance(item, str) and Path(item).is_absolute(), 'invalid XML input path')
+                        path = Path(item)
+                        if path.is_relative_to(db):
+                            records.append(path)
+                        else:
+                            require('/pkgdb/' not in item, 'foreign XML package database')
+                            ordinary.append(item)
+                    require(len(records) == 3 and len({p.parent for p in records}) == 1 and
+                            {p.name for p in records} == {'+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION'} and
+                            records[0].parent.parent == db, 'invalid XML package records')
+                    package = records[0].parent.name
+                    match = re.fullmatch(re.escape(base) + r'-(\d+\.\d+\.\d+)(?:nb(\d+))?', package)
+                    require(match is not None, 'invalid XML package identity')
+                    return sorted(ordinary), (match.group(1), int(match.group(2) or 0))
+                before, old_version = split_inputs(old_arguments.get(inputkey))
+                after, new_version = split_inputs(values.get(inputkey))
+                require(before == after and old_version[0] == new_version[0] and
+                        new_version[1] >= old_version[1], 'XML revision inputs changed incompatibly')
+                revisions[(provider, role)] = (old_version, new_version)
+        require(all(revisions[(provider, 'host')] == revisions[(provider, 'target')]
+                    for provider in ('xml', 'xslt')) and
+                any(before != after for before, after in revisions.values()),
+                'XML role revisions differ or did not advance')
+        return {name for name in names if name.endswith('_inputs')}
     require(all(old_arguments.get(name) in (None, '', []) for name in names),
             'XML activation cannot replace existing GN inputs')
     require(all(values.get(name) for name in names), 'verified XML GN inputs are incomplete')
