@@ -17,6 +17,12 @@ graph, select `tests` in the corresponding `PKG_OPTIONS.spirv-headers`,
 `PKG_OPTIONS.spirv-tools` or `PKG_OPTIONS.glslang`; running the tests remains a separate action.
 The package metadata selection is checked by `tests/shader-test-selection.py`.
 
+`scripts/cross-bulk.sh build` also runs `package-install` for each selected
+node, including native nodes: it installs the resulting package into the
+selected host prefix. Coordinate its package database and prefix with other
+consumers before running it; `CROSS_BULK_JOBS` controls concurrent packages and
+`CROSS_BULK_MAKE_JOBS` controls jobs per package.
+
 `scripts/cross-bulk.sh package-install PKGPATH STATE` rebuilds and installs a
 selected target package from its retained pkgsrc work directory. Add `@native`
 to `PKGPATH` to rebuild a native host-tool package from its retained work
