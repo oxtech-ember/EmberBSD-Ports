@@ -19,7 +19,7 @@ open-* desktop files from 3.0.24.
 -DISTNAME=		vlc-3.0.23
 -PKGREVISION=		9
 +DISTNAME=		vlc-3.0.24
-+PKGREVISION=		2
++PKGREVISION=		3
  CATEGORIES=		multimedia
  MASTER_SITES=		https://download.videolan.org/pub/videolan/vlc/${PKGVERSION_NOREV}/
  EXTRACT_SUFX=		.tar.xz
