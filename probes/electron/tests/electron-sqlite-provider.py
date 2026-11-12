@@ -3,6 +3,8 @@
 # Origin: EmberBSD contributors (AI-assisted).
 """Check SQLite selection binds source, generation policy without installed SQLite packages."""
 import ast
+import argparse
+import sys
 import hashlib
 import importlib.util
 import json
@@ -17,9 +19,9 @@ def load(name):
     obj=importlib.util.module_from_spec(spec); spec.loader.exec_module(obj); return obj
 view, projection, provider=map(load,('protobuf-source-view','sqlite-source-view','sqlite-provider'))
 # Take the upstream location from the explicit test argument on other hosts.
-import sys
-if len(sys.argv) != 2: sys.exit('usage: electron-sqlite-provider.py CHROMIUM_THIRD_PARTY_SQLITE')
-source=Path(sys.argv[1]).resolve(strict=True)
+parser=argparse.ArgumentParser(); parser.add_argument('--sdk-source',type=Path,required=True); parser.add_argument('chromium_sqlite',type=Path)
+args=parser.parse_args(); sys.path.insert(0,str(args.sdk_source.resolve(strict=True)/'src'))
+source=args.chromium_sqlite.resolve(strict=True)
 with tempfile.TemporaryDirectory(prefix='sqlite-provider-') as temp:
     root=Path(temp).resolve(); workspace=root/'workspace'; chrome=workspace/'src/third_party/sqlite'
     (chrome/'scripts').mkdir(parents=True)

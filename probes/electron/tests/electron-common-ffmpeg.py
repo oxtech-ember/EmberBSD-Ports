@@ -7,6 +7,13 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+import argparse, sys
+parser = argparse.ArgumentParser(); parser.add_argument('--sdk-source', type=Path, required=True)
+args = parser.parse_args(); sys.path.insert(0, str(args.sdk_source.resolve() / 'src'))
+from emberbsd_sdk import paths
+import importlib.util as _iu
+_sp = _iu.spec_from_file_location('stable_fixture', Path(__file__).with_name('stable-read-fixture.py'))
+fixture = _iu.module_from_spec(_sp); _sp.loader.exec_module(fixture)
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -39,19 +46,26 @@ with tempfile.TemporaryDirectory() as tmp:
     def capture(command, env):
         environments.append(env)
         return SimpleNamespace(stdout=b'63.1\n63.1\n61.1\n')
-    sdk = {'process': SimpleNamespace(capture=capture)}
+    sdk = {'paths':paths, 'process': SimpleNamespace(capture=capture)}
     native = SimpleNamespace(tool=lambda role: '/selected/'+role, host={'os':'Darwin'})
     options = SimpleNamespace(shared_ffmpeg=True, host_prefix=host, sysroot=target,
         host_buildlink_pkgsrc=root/'pkgsrc', _common_native_packages={pkgpath:[hp]},
         _common_target_packages={pkgpath:[tp]}, _compression_catalog={'recipes':{pkgpath:{'distinfo':'verified'}}})
     env = {'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK':str(selection)}
     with patch.object(e, 'validate_package_source') as validate:
+        observed=target/'usr/pkg/include/ffmpeg9/libavutil/version.h'; fixture.age(observed)
         values=e.common_ffmpeg(options, sdk, native, env, buildlink)
         assert values['use_system_ffmpeg'] and not values['is_component_ffmpeg']
         assert all(x.endswith('.dylib') for x in values['emberbsd_ffmpeg_host_libraries'])
         assert all(x.endswith('.so') for x in values['emberbsd_ffmpeg_target_libraries'])
         assert len(values['emberbsd_ffmpeg_host_inputs']) == 7
         assert validate.call_count == 2
+        fixture.race(paths, observed, lambda: e.common_ffmpeg(options, sdk, native, env, buildlink))
+        observed.write_text('tampered')
+        try: e.common_ffmpeg(options, sdk, native, env, buildlink)
+        except ValueError as error: assert 'header differs' in str(error)
+        else: raise AssertionError('FFmpeg header checksum mismatch accepted')
+        observed.write_text('owned')
         assert len(env['EMBERBSD_FFMPEG_SOURCE_SHA256']) == 64
         assert 'PKG_CONFIG_SYSROOT_DIR' not in environments[0]
         assert environments[1]['PKG_CONFIG_SYSROOT_DIR'] == str(target)

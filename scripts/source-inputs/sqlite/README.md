@@ -37,3 +37,9 @@ source receipt, Chromium policy and extractor, generated file hashes, and genera
 projects both amalgamations and the common source test directory; the rest of
 Chromium's SQLite wrapper is unchanged. Reconfiguration accepts a completed verified projection
 after an interrupted GN run and rejects a foreign or mixed projection.
+The Tcl owner check has an isolated stable-read regression:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" scripts/source-inputs/sqlite/test-tcl-stable.py \
+  --sdk-source "$SDK_SOURCE"
+```

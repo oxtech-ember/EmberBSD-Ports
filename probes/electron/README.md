@@ -1018,3 +1018,17 @@ and target builds, through Chromium's unbundle wrapper. Source-view recovery,
 role ownership and GN selection fixtures pass. Actual installed package,
 production GN transition, target execution and browser acceptance remain
 separate checks.
+Provider and source-view stable-read regressions use the explicitly selected SDK:
+
+```sh
+for test in electron-xml-provider electron-common-ffmpeg electron-common-media-libraries \
+  electron-brotli-stable-read electron-pdfium-source-view electron-sqlite-source-view \
+  electron-sqlite-stable-read; do
+  "$HOST_PREFIX/bin/python3.15" "probes/electron/tests/$test.py" --sdk-source "$SDK_SOURCE"
+done
+"$HOST_PREFIX/bin/python3.15" probes/electron/tests/electron-sqlite-provider.py \
+  --sdk-source "$SDK_SOURCE" "$CHROMIUM_SQLITE"
+```
+
+These fixtures check atime-only reads and reject content or file-identity changes;
+they do not replace the selected Electron source and runtime checks.

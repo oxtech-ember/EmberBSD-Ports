@@ -57,6 +57,7 @@ def activate_pdfium(view, source, destination, old_table, old_shared, table, sha
     """Migrate the PDFium sibling without replacing the old font-only journal."""
     import json
     import os
+    from emberbsd_sdk import paths
     source, destination = Path(source).resolve(strict=True), Path(destination).resolve(strict=True)
     origin = source/'third_party'; selected = destination/'src/third_party'
     old_table, old_shared = pdfium_selection(old_table, old_shared)
@@ -98,7 +99,8 @@ def activate_pdfium(view, source, destination, old_table, old_shared, table, sha
                     if new.is_symlink() and old.is_symlink() and os.readlink(new) == os.readlink(old):
                         before = os.lstat(old)
                         os.utime(new, ns=(before.st_atime_ns, before.st_mtime_ns), follow_symlinks=False)
-                        view.require(os.lstat(old) == before, 'old PDFium link changed during staging')
+                        view.require(paths.stable_identity(os.lstat(old)) == paths.stable_identity(before),
+                                     'old PDFium link changed during staging')
     return view.sibling_component_transaction(
         destination, origin, [NAME], identity, 'pdfium-components', verify_old_whole, build,
         lambda _: verify_pdfium(view, source, destination, table, shared),

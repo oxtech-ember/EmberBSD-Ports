@@ -7,7 +7,11 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
-import tempfile
+import tempfile, argparse, sys
+parser=argparse.ArgumentParser();parser.add_argument('--sdk-source',type=Path,required=True);args=parser.parse_args();sys.path.insert(0,str(args.sdk_source.resolve()/'src'))
+from emberbsd_sdk import paths as sdkpaths
+spec_fixture=importlib.util.spec_from_file_location('stable_fixture',Path(__file__).with_name('stable-read-fixture.py'))
+fixture=importlib.util.module_from_spec(spec_fixture);spec_fixture.loader.exec_module(fixture)
 
 owner = Path(__file__).resolve().parents[3] / 'pkgsrc/devel/electron44/files/build-electron.py'
 spec = importlib.util.spec_from_file_location('electron', owner)
@@ -32,8 +36,10 @@ with tempfile.TemporaryDirectory() as tmp:
     options=SimpleNamespace(sysroot=root/'sysroot',host_prefix=host,ports_source=root,host_buildlink_pkgsrc=root/'export')
     native=SimpleNamespace(host={'os':'Darwin'}); env={'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK':str(work)}
     with patch.object(m,'protobuf_package_source') as metadata:
+        observed=target/'include/libyuv.h';fixture.age(observed)
         values=m.common_media_libraries(options,native,env,host)
-        assert metadata.call_count==6
+        fixture.race(sdkpaths,observed,lambda:m.common_media_libraries(options,native,env,host))
+        assert metadata.call_count>=6
         for name in m.COMMON_MEDIA_LIBRARIES:
             for role,prefix in (('host',host),('target',target)):
                 key='emberbsd_'+name+'_'+role

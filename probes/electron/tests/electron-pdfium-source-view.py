@@ -5,7 +5,8 @@
 import importlib.util
 from pathlib import Path
 from unittest.mock import patch
-import tempfile
+import tempfile, argparse, sys, os
+parser=argparse.ArgumentParser();parser.add_argument('--sdk-source',type=Path,required=True);args=parser.parse_args();sys.path.insert(0,str(args.sdk_source.resolve()/'src'))
 owner=Path(__file__).resolve().parents[3]/'pkgsrc/devel/electron44/files'
 def load(n,p):
  s=importlib.util.spec_from_file_location(n,owner/p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
@@ -32,7 +33,25 @@ with tempfile.TemporaryDirectory() as tmp:
   except ValueError:pass
   else:raise AssertionError('interrupted transaction accepted')
  assert (r/'.view.pdfium-components-migration').is_file()
- f.activate_pdfium(v,source,dest,table,False,table,True,old)
+ unchanged=core; assert unchanged.is_symlink()
+ symlink_stat=unchanged.lstat();os.utime(unchanged,ns=(1_000_000_000,symlink_stat.st_mtime_ns),follow_symlinks=False)
+ original_utime=os.utime; original_lstat=os.lstat; observed=[]
+ class AtimeOnly:
+  def __init__(self, raw): self.raw=raw
+  def __getattr__(self, name):
+   return self.raw.st_atime_ns+1 if name=='st_atime_ns' else getattr(self.raw,name)
+  def __eq__(self, other): return False
+ def lstat_changed(path,*args,**kwargs):
+  raw=original_lstat(path,*args,**kwargs)
+  return AtimeOnly(raw) if observed and Path(path)==unchanged else raw
+ def age_old(path,*args,**kwargs):
+  result=original_utime(path,*args,**kwargs)
+  if Path(path).name=='core' and not observed:
+   observed.append(True);os.readlink(unchanged)
+  return result
+ with patch.object(os,'utime',side_effect=age_old), patch.object(os,'lstat',side_effect=lstat_changed):
+  f.activate_pdfium(v,source,dest,table,False,table,True,old)
+ assert observed
  f.verify_pdfium(v,source,dest,table,True)
  assert not (r/'.view.pdfium-components-migration').exists()
  assert (core.lstat().st_mtime_ns,(core/'unchanged').stat().st_mtime_ns)==before

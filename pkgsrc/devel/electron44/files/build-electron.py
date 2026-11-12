@@ -1388,6 +1388,7 @@ COMMON_MEDIA_LIBRARIES = {
 
 
 def common_media_libraries(options, native, environment, buildlink):
+    from emberbsd_sdk import paths
     """Select installed common host/target libraries and their owned inputs."""
     host_prefix = Path(options.host_prefix).resolve(strict=True)
     host_db = host_prefix / 'pkgdb'
@@ -1442,10 +1443,13 @@ def common_media_libraries(options, native, environment, buildlink):
                             re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index + 1]),
                             'common media header lacks package checksum: ' + line)
                     expected_md5 = manifest[index + 1].split(':', 1)[1]
-                    info = os.stat(resolved, follow_symlinks=False)
-                    data = resolved.read_bytes()
-                    require(os.stat(resolved, follow_symlinks=False) == info and
-                            hashlib.md5(data, usedforsecurity=False).hexdigest() == expected_md5,
+                    stream, info = paths.open_regular(resolved)
+                    with stream:
+                        data = stream.read()
+                        require(paths.stable_identity(os.fstat(stream.fileno())) == paths.stable_identity(info),
+                                'common media header changed during verification: ' + line)
+                    paths.verify_stable(resolved, info)
+                    require(hashlib.md5(data, usedforsecurity=False).hexdigest() == expected_md5,
                             'common media header differs from installed package: ' + line)
                     header_hashes[line] = hashlib.sha256(data).hexdigest()
                     header_files[line] = {'path': str(resolved), 'md5': expected_md5,
@@ -1592,10 +1596,13 @@ def common_compression(options, sdk, native, environment, buildlink):
     index = manifest.index('bin/brotli')
     require(index + 1 < len(manifest) and re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]),
             'native Brotli executable has no package checksum')
-    info = os.stat(tool, follow_symlinks=False)
-    data = tool.read_bytes()
-    require(os.stat(tool, follow_symlinks=False) == info and
-            hashlib.md5(data, usedforsecurity=False).hexdigest() == manifest[index+1].split(':', 1)[1],
+    stream, info = sdk['paths'].open_regular(tool)
+    with stream:
+        data = stream.read()
+        require(sdk['paths'].stable_identity(os.fstat(stream.fileno())) == sdk['paths'].stable_identity(info),
+                'native Brotli executable changed during verification')
+    sdk['paths'].verify_stable(tool, info)
+    require(hashlib.md5(data, usedforsecurity=False).hexdigest() == manifest[index+1].split(':', 1)[1],
             'native Brotli executable differs from installed package')
     sdk['host_prefix'].validate_host_executable(str(options.host_prefix), str(tool), native.host,
                                                 search_path=native.path)
@@ -1763,9 +1770,13 @@ def common_ffmpeg(options, sdk, native, environment, buildlink):
             require(index + 1 < len(manifest) and
                     re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]),
                     'shared FFmpeg header has no package checksum: ' + entry)
-            info = path.stat()
-            digest = hashlib.md5(path.read_bytes(), usedforsecurity=False).hexdigest()
-            require(path.stat() == info and digest == manifest[index+1].split(':', 1)[1],
+            stream, info = sdk['paths'].open_regular(path)
+            with stream:
+                digest = hashlib.md5(stream.read(), usedforsecurity=False).hexdigest()
+                require(sdk['paths'].stable_identity(os.fstat(stream.fileno())) == sdk['paths'].stable_identity(info),
+                        'shared FFmpeg header changed during verification: ' + entry)
+            sdk['paths'].verify_stable(path, info)
+            require(digest == manifest[index+1].split(':', 1)[1],
                     'shared FFmpeg header differs from installed package: ' + entry)
             files.append(str(path))
         values['emberbsd_ffmpeg_' + role + '_libraries'] = libraries

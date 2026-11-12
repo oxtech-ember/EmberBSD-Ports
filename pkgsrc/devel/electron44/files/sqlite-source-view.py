@@ -18,8 +18,13 @@ def selection(view, output):
     root = original.resolve(strict=True)
     receipt = root / 'receipt.json'
     view.require(receipt.is_file() and not receipt.is_symlink(), 'invalid SQLite receipt')
-    before = receipt.stat(); raw = receipt.read_bytes()
-    view.require(receipt.stat() == before, 'SQLite receipt changed during verification')
+    from emberbsd_sdk import paths
+    stream, before = paths.open_regular(receipt)
+    with stream:
+        raw = stream.read()
+        view.require(paths.stable_identity(os.fstat(stream.fileno())) == paths.stable_identity(before),
+                     'SQLite receipt changed during verification')
+    paths.verify_stable(receipt, before)
     receipt_digest = hashlib.sha256(raw).hexdigest()
     view.require(root.name == 'amalgamation-' + receipt_digest, 'SQLite receipt identity mismatch')
     data = json.loads(raw)
@@ -30,8 +35,13 @@ def selection(view, output):
     for name in FILES:
         path = root / name
         view.require(path.is_file() and not path.is_symlink(), 'invalid SQLite amalgamation file: ' + name)
-        before = path.stat(); file_digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        view.require(path.stat() == before and file_digest == data['files'][name],
+        stream, before = paths.open_regular(path)
+        with stream:
+            file_digest = hashlib.sha256(stream.read()).hexdigest()
+            view.require(paths.stable_identity(os.fstat(stream.fileno())) == paths.stable_identity(before),
+                         'SQLite file changed during verification: ' + name)
+        paths.verify_stable(path, before)
+        view.require(file_digest == data['files'][name],
                      'SQLite amalgamation file differs from receipt: ' + name)
     source = data['identity'].get('source')
     view.require(isinstance(source, str) and Path(source).is_absolute() and

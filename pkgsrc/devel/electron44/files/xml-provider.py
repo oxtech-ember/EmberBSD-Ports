@@ -3,6 +3,7 @@
 """Select the common libxml2 and libxslt providers for both GN roles."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 
@@ -54,9 +55,13 @@ def select(controller, options, sdk, native, environment, buildlink):
                 index = manifest.index(entry)
                 require(index+1 < len(manifest) and re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]),
                         'XML input has no package checksum: ' + entry)
-                info = path.stat()
-                digest = hashlib.md5(path.read_bytes(), usedforsecurity=False).hexdigest()
-                require(path.stat() == info and digest == manifest[index+1].split(':', 1)[1],
+                stream, info = sdk['paths'].open_regular(path)
+                with stream:
+                    digest = hashlib.md5(stream.read(), usedforsecurity=False).hexdigest()
+                    require(sdk['paths'].stable_identity(os.fstat(stream.fileno())) ==
+                            sdk['paths'].stable_identity(info), 'XML input changed during verification')
+                sdk['paths'].verify_stable(path, info)
+                require(digest == manifest[index+1].split(':', 1)[1],
                         'XML input differs from installed package: ' + entry)
                 files.append(str(path))
             selected = controller.selected_owned_library(prefix, library + suffix, [package])
@@ -65,9 +70,13 @@ def select(controller, options, sdk, native, environment, buildlink):
             index = manifest.index(selected_entry)
             require(index+1 < len(manifest) and re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]),
                     'XML library has no package checksum: ' + selected_entry)
-            info = selected_path.stat()
-            digest = hashlib.md5(selected_path.read_bytes(), usedforsecurity=False).hexdigest()
-            require(selected_path.stat() == info and digest == manifest[index+1].split(':', 1)[1],
+            stream, info = sdk['paths'].open_regular(selected_path)
+            with stream:
+                digest = hashlib.md5(stream.read(), usedforsecurity=False).hexdigest()
+                require(sdk['paths'].stable_identity(os.fstat(stream.fileno())) ==
+                        sdk['paths'].stable_identity(info), 'XML input changed during verification')
+            sdk['paths'].verify_stable(selected_path, info)
+            require(digest == manifest[index+1].split(':', 1)[1],
                     'XML library differs from installed package: ' + selected_entry)
             result['emberbsd_' + name + '_' + role + '_library'] = selected
             result['emberbsd_' + name + '_' + role + '_inputs'] = sorted(set(files + [selected] +

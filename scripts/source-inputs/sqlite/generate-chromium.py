@@ -58,8 +58,13 @@ def selected_tcl(prefix, executable, native):
     index = manifest.index(actual_entry)
     require(index + 1 < len(manifest) and re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]),
             'Tcl executable has no package checksum')
-    before = resolved.stat(); data = resolved.read_bytes()
-    require(resolved.stat() == before and hashlib.md5(data, usedforsecurity=False).hexdigest() == manifest[index+1].split(':',1)[1],
+    stream, before = paths.open_regular(resolved)
+    with stream:
+        data = stream.read()
+        require(paths.stable_identity(os.fstat(stream.fileno())) == paths.stable_identity(before),
+                'Tcl executable changed during verification')
+    paths.verify_stable(resolved, before)
+    require(hashlib.md5(data, usedforsecurity=False).hexdigest() == manifest[index+1].split(':',1)[1],
             'Tcl executable differs from installed package')
     return resolved, package, hashlib.sha256(data).hexdigest()
 

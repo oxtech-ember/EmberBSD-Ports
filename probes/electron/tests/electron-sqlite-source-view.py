@@ -8,6 +8,13 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import argparse, sys
+parser = argparse.ArgumentParser(); parser.add_argument('--sdk-source', type=Path, required=True)
+args = parser.parse_args(); sys.path.insert(0, str(args.sdk_source.resolve() / 'src'))
+from emberbsd_sdk import paths
+import importlib.util as _iu
+_sp = _iu.spec_from_file_location('stable_fixture', Path(__file__).with_name('stable-read-fixture.py'))
+fixture = _iu.module_from_spec(_sp); _sp.loader.exec_module(fixture)
 
 files = Path(__file__).resolve().parents[3] / 'pkgsrc/devel/electron44/files'
 def load(name):
@@ -43,6 +50,12 @@ with tempfile.TemporaryDirectory(prefix='electron-sqlite-view-') as temp:
         final = root/('amalgamation-'+hashlib.sha256(raw).hexdigest()); stage.rename(final)
         return sqlite.selection(view, final)[0]
     first, second = output('first'), output('second')
+    observed=Path(first['path'])/'receipt.json'; fixture.age(observed)
+    sqlite.selection(view, first['path'])
+    fixture.race(paths, observed, lambda: sqlite.selection(view, first['path']))
+    selected_file=Path(first['path'])/'sqlite3.c'; fixture.age(selected_file)
+    sqlite.selection(view, first['path'])
+    fixture.race(paths, selected_file, lambda: sqlite.selection(view, first['path']))
     expected = hashlib.sha256((Path(first['path'])/'receipt.json').read_bytes()).hexdigest()
     last = hashlib.sha256((Path(first['path'])/sqlite.FILES[-1]).read_bytes()).hexdigest()
     assert first['receipt'] == expected and first['receipt'] != last
