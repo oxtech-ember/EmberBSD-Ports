@@ -46,3 +46,42 @@ The complete input translation unit also passes the target compiler's strict
 format gate after both patches. Preserve the actual Meson compilation database,
 generated headers, analyzer commands and raw logs with the validation receipt.
 See [the bounded source-analysis scope](source-analysis.md) for its limitations.
+
+## Anonymous file and installed-path checks
+
+`shm-fallocate.rb` extracts the real `os_create_anonymous_file()` and its
+helpers from the upstream and the patched `xwayland-shm.c`. The harness replaces
+only the libc `posix_fallocate()` call, so each case sets its result:
+
+```sh
+HOST_CC=/absolute/native/clang \
+TARGET_CC="/absolute/native/clang --target=x86_64--netbsd" \
+TARGET_SYSROOT=/absolute/emberbsd-sysroot \
+ruby tests/shm-fallocate.rb \
+    /absolute/upstream/hw/xwayland/xwayland-shm.c \
+    /absolute/patched/hw/xwayland/xwayland-shm.c \
+    /absolute/new-results
+```
+
+`EINVAL`, `EOPNOTSUPP` and `ENOSYS` must return -1 from the upstream function and
+a descriptor of the requested size from the patched one. A successful
+`posix_fallocate()` that leaves the file unsized (the NetBSD manual page
+documents this) gives an unsized descriptor upstream and a sized one patched. `ENOSPC`, `EFBIG`, `EIO`
+and `EBADF` must return -1 with the same `errno` from both. Success and one
+`EINTR` followed by success must return a descriptor in both. The native
+programs run with ASan/UBSan when the host compiler has them. `TARGET_CC` and
+`TARGET_SYSROOT` are optional: with them the script also builds the harness
+for the target with warnings as errors and links two programs per source.
+`*-target-stubbed` takes the case name and expectation like the native run, for
+example `./patched-target-stubbed ENOSPC ENOSPC`. `*-target-real` is built with
+`-DREAL_POSIX_FALLOCATE` and calls the unmodified libc. Run them on the target.
+On EmberBSD the upstream `real` program prints `posix_fallocate(memfd) = 22` and
+`os_create_anonymous_file = -1, errno 22` and exits 1; the patched one maps and
+writes 4096 bytes and exits 0.
+
+`xwayland-binary.rb XWAYLAND [PREFIX]` reads a built or installed
+`bin/Xwayland` without running it. It fails when the file contains a build
+machine or sysroot path (`/Volumes/`, `/home/`, `sysroot`, `stages/` ...), when
+`DRI_DRIVER_PATH` is not exactly `PREFIX/lib/dri`, or when the XKB paths are
+missing. PREFIX defaults to `/usr/pkg`. The package `nb3` fails this check.
+
