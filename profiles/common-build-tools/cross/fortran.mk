@@ -1,6 +1,13 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; late language policy after final option selection.
 # GCC's Fortran runtime and intrinsic modules are a separate SDK role.
+# Dependency queries need the selected runtime edges before a compiler is
+# installed. Defer executable/toolset checks only for pure metadata goals;
+# a default build or mixed "all show-vars" invocation still checks them.
+_EMBER_FORTRAN_METADATA_ONLY=no
+.if !empty(.TARGETS) && empty(.TARGETS:Nshow-var:Nshow-vars)
+_EMBER_FORTRAN_METADATA_ONLY=yes
+.endif
 .if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang" && \
     ${PKGSRC_COMPILER} != "clang"
@@ -23,9 +30,10 @@ _EMBER_FLANG_MODE=native
 # normal runtime dependency like libgfortran: one copy per process.
 # The driver searches the lib directory beside its real path, so packages run
 # a hard link that has no host library directory beside it.
-.if empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG})
+.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && \
+    (empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG}))
 PKG_FAIL_REASON+="EMBERBSD_FLANG must select the build-host Ports flang driver"
-.else
+.endif
 .include "${.PARSEDIR}/EMBERBSD-CROSS-FLANG-VERSION.MK"
 .if ${_EMBER_FLANG_MODE} == "cross"
 _EMBER_FLANG_TRIPLE=${_EMBER_CROSS_TRIPLET}
@@ -36,17 +44,18 @@ _EMBER_FLANG_TRIPLE=${MACHINE_GNU_PLATFORM}
 _EMBER_FLANG_RT=${LOCALBASE}/lib/clang/${_EMBER_FLANG_MAJOR}
 _EMBER_FLANG_RESOURCE=${_EMBER_FLANG_RT}
 .endif
-.if empty(_EMBER_FLANG_VERSION:M[0-9]*.[0-9]*.[0-9]*) || !exists(${_EMBER_FLANG_RESOURCE})
+.if empty(_EMBER_FLANG_VERSION:M[0-9]*.[0-9]*.[0-9]*) || \
+    (${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && !exists(${_EMBER_FLANG_RESOURCE}))
 PKG_FAIL_REASON+="EMBERBSD_FLANG must match the major version of the SDK Clang runtime"
 .endif
 .if ${_EMBER_FLANG_MODE} == "native"
 # The native prefix must already hold its Flang-RT; recursion never builds a
 # GCC Fortran in its place.
-.if !exists(${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE})
+.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && \
+    !exists(${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE})
 PKG_FAIL_REASON+="Install lang/flang-rt into the native prefix before native Fortran"
-.else
-.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
 .endif
+.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
 _EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
 .elif ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
@@ -55,7 +64,8 @@ _EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
 # Fake-cross Libtool is a native host script; it links Flang-RT from the
 # sysroot but never registers the target package in the native database.
 _EMBER_FLANG_RT_LIBDIR=${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
-.if !exists(${_EMBER_FLANG_RT_LIBDIR}/libflang_rt.runtime.so.${_EMBER_FLANG_MAJOR})
+.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && \
+    !exists(${_EMBER_FLANG_RT_LIBDIR}/libflang_rt.runtime.so.${_EMBER_FLANG_MAJOR})
 PKG_FAIL_REASON+="Install lang/flang-rt into the target sysroot before fake-cross Fortran"
 .endif
 .endif
@@ -90,14 +100,13 @@ CWRAPPERS_APPEND_LINK.f77+=--rtlib=compiler-rt
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}/usr/lib
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
 .endif
-.endif
 .elif ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     (!empty(USE_LANGUAGES:Mfortran) || !empty(USE_LANGUAGES:Mfortran77))
 .if ${EMBERBSD_CROSS_COMPILER_FAMILY} != "gcc"
 PKG_FAIL_REASON+="The cross compiler family must be clang or gcc for Fortran packages"
 .else
 FC=${TOOLDIR}/bin/${_EMBER_CROSS_TRIPLET}-gfortran
-.if !exists(${FC})
+.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && !exists(${FC})
 PKG_FAIL_REASON+="The selected GCC16 compiler generation has no Fortran frontend"
 .endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
@@ -106,6 +115,8 @@ BUILD_DEPENDS+=gcc16-fortran-devel-16.2.0nb1:../../lang/gcc16-fortran-devel
 .endif
 # Fake-cross Libtool is a native host script. Its target runtime dependencies
 # are checked in the SDK, never registered in the native package database.
+_EMBER_FORTRAN_SUPPORT=${CROSS_DESTDIR}/usr/pkg/gcc16/lib/gcc/${_EMBER_CROSS_TRIPLET}/16.2.0
+.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes"
 EMBERBSD_FORTRAN_CAPABILITY?=
 EMBERBSD_FORTRAN_PYTHON?=
 EMBERBSD_FORTRAN_PORTS_SOURCE?=
@@ -122,7 +133,6 @@ _EMBER_FORTRAN_CHECK!=${EMBERBSD_FORTRAN_PYTHON:Q} -B ${EMBERBSD_FORTRAN_PORTS_S
 PKG_FAIL_REASON+="The selected Fortran frontend does not match its completed capability receipt"
 .endif
 .endif
-_EMBER_FORTRAN_SUPPORT=${CROSS_DESTDIR}/usr/pkg/gcc16/lib/gcc/${_EMBER_CROSS_TRIPLET}/16.2.0
 .if !exists(${CROSS_DESTDIR}/usr/pkg/gcc16/lib/libgfortran.spec) || \
     !exists(${_EMBER_FORTRAN_SUPPORT}/include/ISO_Fortran_binding.h)
 PKG_FAIL_REASON+="Install the verified GCC16 Fortran runtime and SDK roles before cross compilation"
@@ -132,6 +142,7 @@ PKG_FAIL_REASON+="Install the verified GCC16 Fortran runtime and SDK roles befor
 PKG_FAIL_REASON+="Install the verified GCC16 Fortran runtime and SDK roles before cross compilation"
 .endif
 .endfor
+.endif
 CWRAPPERS_APPEND.f77+=-B${_EMBER_FORTRAN_SUPPORT}/
 CWRAPPERS_APPEND.f77+=-B${CROSS_DESTDIR}/usr/pkg/gcc16/lib/
 CWRAPPERS_APPEND.f77+=-fintrinsic-modules-path=${_EMBER_FORTRAN_SUPPORT}/finclude
