@@ -51,8 +51,7 @@ check at a different prefix; this test does not replace that check.
 
 For changed CLI units run Clang Static Analyzer and Cppcheck using the actual
 compile flags, and run the moved CLI fixture with both units instrumented by
-ASan/UBSan. Cppcheck 2.22.0 has a reproducible parser limitation on the Darwin
-mux unit: direct actual source with the selected SDK headers reports
+ASan/UBSan. Cppcheck 2.22.0 has a reproducible [Darwin pthread parser limitation](../../../../devel/cppcheck/tests/darwin-pthread.md) on the mux unit: direct actual source with the selected SDK headers reports
 `AV_VERSION_DOT` token-paste syntaxError; Clang-preprocessed output reports
 `pragma .. typedef` syntaxError in `_mach_port_t.h`. Its experimental Clang AST
 mode reports `internalAstError`. Reproduce against the actual unit and selected
