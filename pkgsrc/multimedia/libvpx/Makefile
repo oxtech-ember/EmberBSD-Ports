@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.111 2026/03/27 21:35:19 tnn Exp $
 
 DISTNAME=	libvpx-1.17.0
+PKGREVISION=	1
 CATEGORIES=	multimedia
 MASTER_SITES=	${MASTER_SITE_GITHUB:=webmproject/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -56,7 +57,6 @@ CONFIGURE_ARGS+=	--target=x86_64-darwin9-gcc
 .    endif
 .  elif ${MACHINE_ARCH} == "aarch64"
 CONFIGURE_ARGS+=	--target=arm64-darwin20-gcc
-CONFIGURE_ARGS+=	--disable-runtime-cpu-detect
 .  endif
 .elif ${OPSYS} == "SunOS" && !empty(PKGSRC_COMPILER:Mgcc*)
 .  if ${MACHINE_ARCH} == "x86_64"
