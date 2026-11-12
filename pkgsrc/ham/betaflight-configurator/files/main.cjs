@@ -1,7 +1,10 @@
 "use strict";
 
 const path = require("path");
-const { app, BrowserWindow, protocol, session, shell } = require("electron");
+const { pathToFileURL } = require("node:url");
+const { app, BrowserWindow, dialog, protocol, session, shell } = require("electron");
+const { installSerialSelection } = require("./serial.cjs");
+const { appFilePath, isAllowedExternalURL } = require("./app-paths.cjs");
 
 const DIST = path.join(__dirname, "dist");
 const SCHEME = "bfapp";
@@ -19,17 +22,6 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-function enableSerialPermissions() {
-  const ses = session.defaultSession;
-  ses.setPermissionRequestHandler((_wc, permission, callback) => {
-    callback(permission === "serial" || permission === "clipboard-read" || permission === "media");
-  });
-  ses.setDevicePermissionHandler((details) => details.deviceType === "serial");
-  if (typeof ses.setPermissionCheckHandler === "function") {
-    ses.setPermissionCheckHandler((_wc, permission) => permission === "serial" || permission === "clipboard-sanitized-write");
-  }
-}
-
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -45,7 +37,7 @@ function createWindow() {
     },
   });
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (isAllowedExternalURL(url)) shell.openExternal(url);
     return { action: "deny" };
   });
   win.loadURL(`${SCHEME}://./index.html`);
@@ -54,16 +46,13 @@ function createWindow() {
 app.whenReady().then(() => {
   protocol.handle(SCHEME, (request) => {
     const { net } = require("electron");
-    const url = new URL(request.url);
-    let rel = decodeURIComponent(url.pathname || "/");
-    if (rel === "/" || rel === "") rel = "/index.html";
-    const filePath = path.normalize(path.join(DIST, rel.replace(/^\/+/, "")));
-    if (!filePath.startsWith(DIST)) {
+    const filePath = appFilePath(DIST, request.url);
+    if (filePath === null) {
       return new Response("Forbidden", { status: 403 });
     }
-    return net.fetch("file://" + filePath);
+    return net.fetch(pathToFileURL(filePath).href);
   });
-  enableSerialPermissions();
+  installSerialSelection(session.defaultSession, { BrowserWindow, dialog });
   createWindow();
 });
 
