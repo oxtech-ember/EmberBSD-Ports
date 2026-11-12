@@ -1,0 +1,13 @@
+--- a/textproc/libxslt/Makefile
++++ b/textproc/libxslt/Makefile
+@@ -20,6 +20,10 @@
+ 
+ .include "../../mk/bsd.prefs.mk"
+ 
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	6
++.endif
++
+ BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,-M rm:-Wl,./libxslt.syms
+ 
+ .if ${USE_CROSS_COMPILE:tl} == "yes"

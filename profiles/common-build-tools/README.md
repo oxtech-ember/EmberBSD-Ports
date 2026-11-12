@@ -1,5 +1,10 @@
 # Current common build tools
 
+Native Darwin libxslt locates extension modules relative to the loaded library;
+`LIBXSLT_PLUGINS_PATH` remains an explicit override.
+`tests/libxslt-darwin-selection.py` checks native and target package revisions;
+`tests/libxslt-plugin-relocation.py` exercises the moved native package.
+
 Native BSDinstall selects its shell and strip provider from its own installed
 prefix when those tools are siblings. Direct paths, PATH lookup and symlinks
 resolve the executable before selecting those providers; an explicit STRIP

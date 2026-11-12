@@ -1,0 +1,22 @@
+$NetBSD$
+
+Keep native Darwin plugin lookup relative to the loaded libxslt image when
+the SDK prefix moves. dyld expands @loader_path for dlopen callers; the
+existing LIBXSLT_PLUGINS_PATH override and other platforms are unchanged.
+Origin: EmberBSD contributors (AI-assisted).
+Reference: https://github.com/apple-oss-distributions/dyld/blob/main/dyld/Loader.cpp
+
+--- libxslt/xsltconfig.h.in.orig
++++ libxslt/xsltconfig.h.in
+@@ -112,7 +112,11 @@
+ #ifndef WITH_MODULES
+ #define WITH_MODULES
+ #endif
++#ifdef __APPLE__
++#define LIBXSLT_DEFAULT_PLUGINS_PATH() "@loader_path/libxslt-plugins"
++#else
+ #define LIBXSLT_DEFAULT_PLUGINS_PATH() "@LIBXSLT_DEFAULT_PLUGINS_PATH@"
++#endif
+ #endif
+ 
+ /**
