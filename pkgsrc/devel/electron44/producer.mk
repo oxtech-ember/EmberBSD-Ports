@@ -83,6 +83,12 @@ _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g} ${EMBERBSD_ELECTRON_${_ember_k
 _EMBER_ELECTRON_ARGS+= --v8-metagen-runtime-extra ${_ember_file:Q}
 .endfor
 
+.if ${EMBERBSD_ELECTRON_HOST_BUILDLINK_HOST_TOOLCHAIN:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --host-buildlink-host-toolchain
+.elif ${EMBERBSD_ELECTRON_HOST_BUILDLINK_HOST_TOOLCHAIN:Uno} != "no"
+.error EMBERBSD_ELECTRON_HOST_BUILDLINK_HOST_TOOLCHAIN must be yes or no
+.endif
+
 # These packages are common dependencies, not optional bundled alternatives.
 .for _ember_key in SHARED_UNDICI SHARED_ABSEIL SHARED_ICU SHARED_RE2
 .if ${EMBERBSD_ELECTRON_${_ember_key}:Uyes} != "yes"

@@ -472,10 +472,14 @@ def host_buildlink(options, sdk, native, environment, host_binding):
     fields = ('host_buildlink_pkgsrc', 'host_buildlink_stage_root',
               'host_buildlink_base_makeconf', 'host_buildlink_bmake_mk')
     selected = [getattr(options, name, None) for name in fields]
+    host_toolchain = getattr(options, 'host_buildlink_host_toolchain', False)
     if not any(selected):
+        require(not host_toolchain, 'host buildlink host toolchain requires a stage')
         return None
     require(all(selected[i] for i in (0, 2, 3)) and host_binding,
             'native host buildlink needs pkgsrc, makeconf, bmake mk and native C++ binding')
+    require(not host_toolchain or (selected[1] and not getattr(options, 'host_runtime_root', None)),
+            'host buildlink host toolchain requires a stage and the selected prefix runtime')
     root = getattr(options, 'native_binding_root', options.work)
     config = root / 'configuration.json'
     saved = json.loads(config.read_text()) if config.is_file() else {}
@@ -486,6 +490,7 @@ def host_buildlink(options, sdk, native, environment, host_binding):
         return [native.tool('python'), '-B', str(script), '--sdk-source', str(options.sdk_source),
                 '--pkgsrc-root', str(selected[0]), '--host-prefix', str(options.host_prefix),
                 *(['--stage-root', str(selected[1])] if selected[1] else []),
+                *(['--host-toolchain'] if host_toolchain else []),
                 *(['--shared-ffmpeg'] if getattr(options, 'shared_ffmpeg', False) else []),
                 *(['--shared-minizip'] if getattr(options, 'shared_minizip', False) else []),
                 *(['--shared-xml'] if getattr(options, 'shared_xml', False) else []),
@@ -4356,6 +4361,7 @@ def main():
         for provider in ML_PROVIDERS:
             for role in ('ports-source', 'pkgsrc-export', 'export-patch'):
                 command.add_argument('--ml-' + provider + '-' + role, type=Path)
+        command.add_argument('--host-buildlink-host-toolchain', action='store_true')
         command.add_argument('--perfetto-scoped-runtime', action='store_true')
         command.add_argument('--node-scoped-runtime', action='store_true')
         command.add_argument('--shared-undici', action='store_true')

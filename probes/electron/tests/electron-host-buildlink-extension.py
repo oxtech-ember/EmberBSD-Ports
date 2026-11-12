@@ -244,3 +244,57 @@ with tempfile.TemporaryDirectory() as directory:
     except ValueError: pass
     else: raise AssertionError('fallback accepted a newly pending journal')
 print('PASS: controller retains the old path and resumes only during reconfigure')
+
+# Explicit host toolchain mode must be forwarded only for a selected stage.
+with tempfile.TemporaryDirectory() as directory:
+    root = Path(directory).resolve()
+    calls = []
+    def capture_host_toolchain(command, env):
+        calls.append(command)
+        return SimpleNamespace(stdout=b'/selected/view\n')
+    sdk = {'process': SimpleNamespace(capture=capture_host_toolchain, CommandError=CommandError)}
+    native = SimpleNamespace(tool=lambda role: '/selected/' + role)
+    options = SimpleNamespace(work=root, sdk_source=Path('/sdk'), host_prefix=Path('/prefix'),
+                              host_buildlink_pkgsrc=Path('/export'), host_buildlink_stage_root=Path('/stage'),
+                              host_buildlink_base_makeconf=Path('/makeconf'), host_buildlink_bmake_mk=Path('/mk'),
+                              host_buildlink_host_toolchain=True, host_runtime_root=None,
+                              lock_root=Path('/locks'), phase='configure')
+    controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'})
+    assert '--host-toolchain' in calls[-1]
+    options.host_buildlink_host_toolchain = False
+    controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'})
+    assert '--host-toolchain' not in calls[-1]
+    options.host_buildlink_host_toolchain = True
+    options.host_buildlink_stage_root = None
+    try:
+        controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'})
+    except ValueError as error:
+        assert 'requires a stage' in str(error)
+    else:
+        raise AssertionError('accepted host toolchain mode without a stage')
+    options.host_buildlink_pkgsrc = None
+    options.host_buildlink_base_makeconf = None
+    options.host_buildlink_bmake_mk = None
+    try:
+        controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'})
+    except ValueError as error:
+        assert 'requires a stage' in str(error)
+    else:
+        raise AssertionError('silently ignored host toolchain mode without buildlink inputs')
+    options.host_buildlink_pkgsrc = Path('/export')
+    options.host_buildlink_base_makeconf = Path('/makeconf')
+    options.host_buildlink_bmake_mk = Path('/mk')
+    options.host_buildlink_stage_root = Path('/stage')
+    options.host_runtime_root = Path('/external')
+    try:
+        controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'})
+    except ValueError as error:
+        assert 'selected prefix runtime' in str(error)
+    else:
+        raise AssertionError('accepted an external runtime in host toolchain mode')
+print('PASS: explicit staged host toolchain selection')
+
+assert host.native_stage_mode(Path('/stage'), True) == ['USE_CROSS_COMPILE=no']
+assert host.native_stage_mode(Path('/stage'), False) == ['EMBERBSD_DARWIN_BOOTSTRAP=yes']
+assert host.native_stage_mode(None, False) == ['USE_CROSS_COMPILE=no']
+print('PASS: explicit host stage uses ordinary native policy; default remains bootstrap')

@@ -18,6 +18,13 @@ import sys
 LEGACY_SELECTION_SELF_SHA256 = 'bf32e53d13d5a2df2804064f0708ebf455b25cfbee2a36248434e7838ac4b956'
 
 
+def native_stage_mode(stage_root, host_toolchain):
+    """Select ordinary native host tools or the replacement bootstrap stage."""
+    if stage_root and not host_toolchain:
+        return ['EMBERBSD_DARWIN_BOOTSTRAP=yes']
+    return ['USE_CROSS_COMPILE=no']
+
+
 def identity(process, command, env, consumer, view, host_prefix, extras):
     """Capture this actual buildlink selection, not an SDK qualification."""
     def query(*variables):
@@ -630,6 +637,8 @@ def main():
     parser.add_argument('--shared-woff2', action='store_true')
     parser.add_argument('--shared-snappy', action='store_true')
     parser.add_argument('--stage-root', type=Path, help='explicit replacement stage; omit for installed prefix')
+    parser.add_argument('--host-toolchain', action='store_true',
+                        help='use selected host-prefix toolchain with staged dependencies')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='check an existing view identity')
     mode.add_argument('--migrate-selection', action='store_true',
@@ -660,9 +669,13 @@ def main():
     inputs = (deps, owner / 'host-buildlink/Makefile', owner / 'host-buildlink/PLIST')
     if not all(p.is_file() for p in inputs):
         raise SDKError('Electron host consumer inputs are missing')
+    if args.host_toolchain and not args.stage_root:
+        raise SDKError('--host-toolchain requires --stage-root')
     work = args.work
     invocation = {name: str(value) for name, value in vars(args).items()
                   if isinstance(value, Path) and name not in ('refresh_from', 'extend_from')}
+    if args.host_toolchain:
+        invocation['host_toolchain'] = 'yes'
     if args.shared_ffmpeg:
         invocation['shared_ffmpeg'] = 'yes'
     if args.shared_minizip:
@@ -718,7 +731,7 @@ def main():
                 env = process.sanitized_environment()
                 env.update(PATH=native.path, MAKECONF=str(work / 'make.conf'), EMBERBSD_SDK_SOURCE=str(sdk_root))
                 command = [native.tool('make'), '-m', str(args.bmake_mk), '-C', str(consumer),
-                           *(['EMBERBSD_DARWIN_BOOTSTRAP=yes'] if args.stage_root else ['USE_CROSS_COMPILE=no']),
+                           *native_stage_mode(args.stage_root, args.host_toolchain),
                            'DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency',
                            'EMBERBSD_ELECTRON_HOST_DEPENDENCIES=' + str(deps),
                            *(['EMBERBSD_ELECTRON_SHARED_FFMPEG=yes'] if args.shared_ffmpeg else []),
@@ -833,7 +846,7 @@ def main():
                     base=str(args.base_makeconf), output=str(makeconf), stage_root=str(args.stage_root),
                     prefix=str(args.host_prefix), object_root=str(work / 'objects'),
                     packages=str(work / 'packages'), binding_record=str(args.binding_record),
-                    python=native.tool('python'), buildlinks=[])
+                    python=native.tool('python'), buildlinks=[], host_toolchain=args.host_toolchain)
             else:
                 record = json.loads(args.binding_record.read_text())
                 if 'native_cxx_runtime' in record:
@@ -853,12 +866,12 @@ def main():
                 makeconf.write_text('.include "' + str(args.base_makeconf) + '"\n' +
                     'PKGSRC_COMPILER= clang\nCLANGBASE= ' + str(args.host_prefix) + '\nLOCALBASE= ' + str(args.host_prefix) + '\nPKG_DBDIR= ' + str(args.host_prefix / 'pkgdb') +
                     '\nWRKOBJDIR= ' + str(work / 'objects') + '\nPACKAGES= ' + str(work / 'packages') +
-                    '\nCC= ' + str(adapters / 'cc') + '\nCXX= ' + str(adapters / 'cxx') +
-                    '\nCPP= ' + str(adapters / 'cpp') + '\n')
+                    '\nCCPATH= ' + str(adapters / 'cc') + '\nCXXPATH= ' + str(adapters / 'cxx') +
+                    '\nCPPPATH= ' + str(adapters / 'cpp') + '\n')
             env = process.sanitized_environment()
             env.update(PATH=native.path, MAKECONF=str(makeconf), EMBERBSD_SDK_SOURCE=str(sdk_root))
             command = [native.tool('make'), '-m', str(args.bmake_mk), '-C', str(consumer),
-                       *(['EMBERBSD_DARWIN_BOOTSTRAP=yes'] if args.stage_root else ['USE_CROSS_COMPILE=no']),
+                       *native_stage_mode(args.stage_root, args.host_toolchain),
                            'DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency',
                        'EMBERBSD_ELECTRON_HOST_DEPENDENCIES=' + str(deps),
                            *(['EMBERBSD_ELECTRON_SHARED_FFMPEG=yes'] if args.shared_ffmpeg else []),

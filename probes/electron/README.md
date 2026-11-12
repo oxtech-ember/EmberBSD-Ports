@@ -838,7 +838,16 @@ The Electron controller accepts `--host-buildlink-pkgsrc`,
 `--host-buildlink-stage-root`, `--host-buildlink-base-makeconf`, and
 `--host-buildlink-bmake-mk` together with the native C++ runtime binding. It
 creates the view in its work directory and checks actual bmake includes,
-selected package metadata and view links before reuse. Reconfigure creates a
+selected package metadata and view links before reuse. For an explicit native
+stage that supplies dependencies while retaining the selected host-prefix
+toolchain and its runtime, select `--host-buildlink-host-toolchain` (pkgsrc:
+`EMBERBSD_ELECTRON_HOST_BUILDLINK_HOST_TOOLCHAIN=yes`). This mode requires a
+stage and no external host runtime and uses the ordinary native pkgsrc policy;
+without it the stage keeps the SDK replacement-runtime binding and Darwin
+bootstrap checks. The [host binding regression](tests/electron-host-binding.py) exercises
+the generated makeconf directly and checks all three cwrapper argv without
+overriding compiler paths in the test. This is the explicit [SDK host-toolchain
+stage contract](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/native-checks.md). Reconfigure creates a
 new view when these inputs change; build refuses a stale selection. For host
 protocol generators, `--protoc-runtime-view` selects the SDK's scoped Darwin
 launcher. The launcher and actual runtime files are declared as GN action
