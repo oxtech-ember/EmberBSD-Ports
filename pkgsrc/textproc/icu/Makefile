@@ -65,10 +65,6 @@ WRKDIR_BASENAME?= work${_CROSSDIR_SUFFIX}-${ICU_STAGED_HOST_PREFIX:hash}
 CONFIGURE_ENV+=		AR=${AR:Q} RANLIB=${RANLIB:Q}
 .endif
 
-# The selected Darwin binding links ICU C++ components to the shared runtime.
-.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && defined(EMBERBSD_NATIVE_CXX_BINDING_RECORD) && !empty(EMBERBSD_NATIVE_CXX_BINDING_RECORD) && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} != "__ember1"
-DEPENDS+= libcxx>=23.1.4:../../lang/libcxx
-.endif
 .include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
 PKGREVISION= 1

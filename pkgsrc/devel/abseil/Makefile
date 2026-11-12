@@ -28,14 +28,8 @@ CMAKE_CONFIGURE_ARGS+=	-DBUILD_SHARED_LIBS=ON
 .include "../../mk/bsd.prefs.mk"
 
 
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin"
-.  if ${USE_CROSS_COMPILE:Uno:tl} != "yes" && defined(EMBERBSD_NATIVE_CXX_BINDING_RECORD) && !empty(EMBERBSD_NATIVE_CXX_BINDING_RECORD)
-.    if ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-DEPENDS+=	libcxx>=23.1.4nb1:../../lang/libcxx
-.    else
-DEPENDS+=	libcxx>=23.1.4:../../lang/libcxx
-.    endif
-.  endif
 .  if exists(${OSX_SDK_PATH}/usr/include/execinfo.h)
 BUILDLINK_TRANSFORM+=	rm:-lexecinfo
 .  endif
