@@ -11,13 +11,15 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--bmake', type=Path, required=True)
 p.add_argument('--policy', type=Path, required=True)
 p.add_argument('--version-include', type=Path, required=True)
+p.add_argument('--metadata-include', type=Path, required=True)
 a = p.parse_args()
-assert a.bmake.is_absolute() and a.policy.is_absolute() and a.version_include.is_absolute()
+assert a.bmake.is_absolute() and a.policy.is_absolute()
 with tempfile.TemporaryDirectory(prefix='fortran-metadata-') as tmp:
     root = Path(tmp)
     buildlink = root / 'lang/flang-rt/buildlink3.mk'
     buildlink.parent.mkdir(parents=True)
     buildlink.write_text('DEPENDS+= flang-rt>=23:../../lang/flang-rt\n')
+    (root / 'EMBERBSD-METADATA-GOALS.MK').write_bytes(a.metadata_include.read_bytes())
     policy = root / 'fortran.mk'
     policy.write_bytes(a.policy.read_bytes())
     (root / 'EMBERBSD-CROSS-FLANG-VERSION.MK').write_bytes(a.version_include.read_bytes())

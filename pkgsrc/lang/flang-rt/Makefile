@@ -25,6 +25,8 @@ USE_LANGUAGES=		c c++
 
 # The build-host Flang selected by the host toolset include, as for every
 # Fortran package.
+.include "${PKGSRCDIR}/EMBERBSD-METADATA-GOALS.MK"
+.if ${_EMBER_METADATA_ONLY} != "yes"
 .if empty(EMBERBSD_FLANG:U:M/*) || !exists(${EMBERBSD_FLANG:U/nonexistent})
 PKG_FAIL_REASON+=	"EMBERBSD_FLANG must select the build-host Ports flang driver"
 .else
@@ -34,6 +36,8 @@ PKG_FAIL_REASON+=	"EMBERBSD_FLANG must select the build-host Ports flang driver"
 PKG_FAIL_REASON+=	"EMBERBSD_FLANG is Flang ${_EMBER_FLANG_VERSION}, not LLVM ${LLVM_MAJOR_VERSION}"
 .  endif
 .endif
+
+.endif # Build and mixed goals retain the Flang checks.
 
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_ENABLE_RUNTIMES=flang-rt

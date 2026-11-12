@@ -4,10 +4,7 @@
 # Dependency queries need the selected runtime edges before a compiler is
 # installed. Defer executable/toolset checks only for pure metadata goals;
 # a default build or mixed "all show-vars" invocation still checks them.
-_EMBER_FORTRAN_METADATA_ONLY=no
-.if !empty(.TARGETS) && empty(.TARGETS:Nshow-var:Nshow-vars)
-_EMBER_FORTRAN_METADATA_ONLY=yes
-.endif
+.include "${PKGSRCDIR}/EMBERBSD-METADATA-GOALS.MK"
 .if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang" && \
     ${PKGSRC_COMPILER} != "clang"
@@ -33,7 +30,7 @@ _EMBER_FLANG_MODE=native
 .if ${_EMBER_FLANG_MODE} == "native" || ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
 .endif
-.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes"
+.if ${_EMBER_METADATA_ONLY} != "yes"
 .if empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG})
 PKG_FAIL_REASON+="EMBERBSD_FLANG must select the build-host Ports flang driver"
 .else
@@ -106,7 +103,7 @@ CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}${CROSS_LOCALBASE}/li
 PKG_FAIL_REASON+="The cross compiler family must be clang or gcc for Fortran packages"
 .else
 FC=${TOOLDIR}/bin/${_EMBER_CROSS_TRIPLET}-gfortran
-.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes" && !exists(${FC})
+.if ${_EMBER_METADATA_ONLY} != "yes" && !exists(${FC})
 PKG_FAIL_REASON+="The selected GCC16 compiler generation has no Fortran frontend"
 .endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
@@ -116,7 +113,7 @@ BUILD_DEPENDS+=gcc16-fortran-devel-16.2.0nb1:../../lang/gcc16-fortran-devel
 # Fake-cross Libtool is a native host script. Its target runtime dependencies
 # are checked in the SDK, never registered in the native package database.
 _EMBER_FORTRAN_SUPPORT=${CROSS_DESTDIR}/usr/pkg/gcc16/lib/gcc/${_EMBER_CROSS_TRIPLET}/16.2.0
-.if ${_EMBER_FORTRAN_METADATA_ONLY} != "yes"
+.if ${_EMBER_METADATA_ONLY} != "yes"
 EMBERBSD_FORTRAN_CAPABILITY?=
 EMBERBSD_FORTRAN_PYTHON?=
 EMBERBSD_FORTRAN_PORTS_SOURCE?=
