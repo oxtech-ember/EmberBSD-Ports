@@ -105,5 +105,8 @@ ${PLIST.v3d}lib/libvulkan_broadcom.so
 ${PLIST.v3d}share/drirc.d/00-v3dv-defaults.conf
 ${PLIST.powervr}lib/libvulkan_powervr_mesa.so
 ${PLIST.powervr}share/drirc.d/00-pvr-defaults.conf
+${PLIST.radv}lib/libvulkan_radeon.so
+${PLIST.radv}share/drirc.d/00-radv-defaults.conf
 ${PLIST.v3d}share/vulkan/icd.d/broadcom_icd.json
 ${PLIST.powervr}share/vulkan/icd.d/powervr_mesa_icd.json
+${PLIST.radv}share/vulkan/icd.d/radeon_icd.json

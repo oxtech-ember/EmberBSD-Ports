@@ -37,7 +37,7 @@ SUBST_CLASSES+=	python
 SUBST_STAGE.python=	pre-configure
 SUBST_FILES.python=	meson.build
 SUBST_SED.python=	-e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
-PLIST_VARS+= intel v3d powervr radeonsi full_drivers vaapi
+PLIST_VARS+= intel v3d powervr radeonsi radv full_drivers vaapi
 .if !empty(PKG_OPTIONS:Msoftpipe-only)
 # X11 software renderer retains common GL, EGL, GLES and GBM interfaces.
 MESON_ARGS+= -Dgallium-drivers=softpipe
@@ -64,9 +64,11 @@ PLIST.full_drivers= yes
 DEPENDS+= vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
 .if ${MACHINE_ARCH} == "x86_64"
 MESON_ARGS+=	-Dgallium-drivers=iris,radeonsi,virgl,softpipe,llvmpipe,zink
-MESON_ARGS+=	-Dvulkan-drivers=
+# RADV ICD for amdgpu (Dawn/WebGPU and Zink on Nick).
+MESON_ARGS+=	-Dvulkan-drivers=amd -Dvulkan-manifest-per-architecture=false
 PLIST.intel=	yes
 PLIST.radeonsi=	yes
+PLIST.radv=	yes
 _EMBERBSD_MESA_GENERATOR_PROFILES+= intel
 _EMBERBSD_MESA_LLVM_TRIPLE=	x86_64-unknown-netbsd
 BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb7

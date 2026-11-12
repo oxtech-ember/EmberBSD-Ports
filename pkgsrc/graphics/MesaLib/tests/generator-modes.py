@@ -17,8 +17,8 @@ FIELDS = ('PKG_FAIL_REASON', 'MESON_ARGS', 'MESON_NATIVE_ARGS', 'DEPENDS', 'TOOL
           'BUILDLINK_API_DEPENDS.spirv-llvm-translator', 'TEST_INCLUDES',
           'BUILDLINK_API_DEPENDS.spirv-tools',
           'BUILDLINK_API_DEPENDS.googletest',
-          'GCC_REQD', 'USE_LANGUAGES', 'PLIST.radeonsi', 'PLIST.full_drivers',
-          'PLIST.powervr')
+          'GCC_REQD', 'USE_LANGUAGES', 'PLIST.radeonsi', 'PLIST.radv',
+          'PLIST.full_drivers', 'PLIST.powervr')
 BUILD_LINKS = {'../../lang/clang/buildlink3.mk', '../../parallel/spirv-tools/buildlink3.mk',
                '../../parallel/spirv-llvm-translator/buildlink3.mk'}
 
@@ -85,6 +85,14 @@ def oracle(values, arch, cross, sealed, provider_version, tests=False):
     drivers = ('iris,radeonsi,virgl,softpipe,llvmpipe,zink' if arch == 'x86_64'
                else 'v3d,virgl,softpipe,llvmpipe,zink')
     require('-Dgallium-drivers=' + drivers in options, 'The selected drivers changed')
+    if arch == 'x86_64':
+        require('-Dvulkan-drivers=amd' in options and
+                '-Dvulkan-manifest-per-architecture=false' in options,
+                'amd64 must ship the RADV ICD')
+        require('-Dvulkan-drivers=' not in options, 'amd64 kept an empty Vulkan list')
+    else:
+        require('-Dvulkan-drivers=imagination,broadcom' in options,
+                'AArch64 Vulkan ICD selection changed')
     test_flag = '-Dbuild-tests=true' if tests else '-Dbuild-tests=false'
     require(test_flag in options and ('-Dbuild-tests=false' if tests else '-Dbuild-tests=true') not in options,
             'The upstream test mode does not follow the tests package option')
@@ -95,6 +103,8 @@ def oracle(values, arch, cross, sealed, provider_version, tests=False):
             'GoogleTest dependency is not scoped to the tests option')
     require(values['PLIST.radeonsi'] == ('yes' if arch == 'x86_64' else ''),
             'RadeonSI package files do not follow the selected architecture')
+    require(values['PLIST.radv'] == ('yes' if arch == 'x86_64' else ''),
+            'RADV package files do not follow the selected architecture')
     require('-Dmicrosoft-clc=disabled' in options and '-Dgallium-rusticl=false' in options,
             'Unrelated CLC consumers changed')
     require('16.2' not in values['GCC_REQD'].split() and values['USE_LANGUAGES'].split() == ['c', 'c++'],
