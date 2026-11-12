@@ -4,12 +4,14 @@
 require 'open3'
 require 'json'
 require 'fileutils'
+require 'shellwords'
 
 abort 'Usage: shm-fallocate.rb UPSTREAM_C PATCHED_C NEW_RESULTS' unless ARGV.size == 3
 before, after, work = ARGV.map { |path| File.expand_path(path) }
 Dir.mkdir(work)
-native = ENV.fetch('HOST_CC', '/usr/bin/cc')
-target = ENV['TARGET_CC']&.split # compiler and its target selection, e.g. "clang --target=x86_64--netbsd"
+native = ENV.fetch('HOST_CC') { abort 'HOST_CC must select the native SDK compiler' }
+abort 'HOST_CC must be an absolute compiler path' unless native.start_with?('/')
+target = ENV['TARGET_CC'] && Shellwords.split(ENV['TARGET_CC']) # compiler and its target selection, e.g. "clang --target=x86_64--netbsd"
 sysroot = ENV['TARGET_SYSROOT']
 
 # Extract the real functions; nothing of the allocation logic is re-implemented.
@@ -55,9 +57,11 @@ def harness(parts)
     #include <sys/stat.h>
     #include <sys/types.h>
     #include <unistd.h>
+    #ifndef __APPLE__
     #define HAVE_MEMFD_CREATE 1
-    #define HAVE_POSIX_FALLOCATE 1
     #define HAVE_MKOSTEMP 1
+    #endif
+    #define HAVE_POSIX_FALLOCATE 1
     static int os_move_fd(int fd) { return fd; }
     static void OsBlockSignals(void) {}
     static void OsReleaseSignals(void) {}
@@ -151,6 +155,26 @@ def harness(parts)
   C
 end
 
+# Probe the selected compiler and runtime separately from the real harness.
+# Preserve both commands and their diagnostics, even for an unsupported runtime.
+def recorded(command, log)
+  out, err, status = Open3.capture3(*command)
+  File.write(log, JSON.pretty_generate({arguments: command, exit: status.exitstatus, signal: status.termsig, stdout: out, stderr: err}) + "\n")
+  [out, err, status]
+end
+probe_source = File.join(work, 'sanitizer-probe.c')
+probe_binary = File.join(work, 'sanitizer-probe')
+File.write(probe_source, "int main(void) { return 0; }\n")
+probe_flags = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer']
+_, _, baseline = recorded([native, probe_source, '-o', probe_binary], File.join(work, 'compiler-probe.json'))
+raise 'Selected host compiler cannot build the baseline probe' unless baseline.success?
+_, _, instrumented = recorded([native, *probe_flags, probe_source, '-o', probe_binary], File.join(work, 'sanitizer-compile-probe.json'))
+supported = false
+if instrumented.success?
+  _, _, runtime = recorded([probe_binary], File.join(work, 'sanitizer-runtime-probe.json'))
+  supported = runtime.success?
+end
+puts(supported ? 'Sanitizers: supported' : 'Sanitizers: unsupported (see probe diagnostics)')
 commands = []
 [before, after].each_with_index do |input, index|
   version = index.zero? ? 'upstream' : 'patched'
@@ -160,21 +184,15 @@ commands = []
   # used when the host compiler has them).
   executable = File.join(work, version)
   flags = ['-std=gnu99', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', '-Wno-unused-parameter']
-  sanitize = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer']
+  sanitize = supported ? probe_flags : []
   command = [native, *flags, *sanitize, file, '-o', executable]
-  out, err, status = Open3.capture3(*command)
-  unless status.success?
-    command = [native, *flags, file, '-o', executable]
-    out, err, status = Open3.capture3(*command)
-    sanitize = []
-  end
-  File.write(executable + '-compile.log', command.inspect + "\n" + out + err)
+  out, err, status = recorded(command, executable + '-compile.json')
   raise "Native compile failed: #{version}: #{err}" unless status.success?
   commands << {directory: work, file: file, arguments: command}
   CASES.each do |name, stub, upstream, patched|
     expect = index.zero? ? upstream : patched
-    out, err, status = Open3.capture3({'ASAN_OPTIONS' => 'halt_on_error=1', 'UBSAN_OPTIONS' => 'halt_on_error=1'}, executable, stub, expect)
-    File.write("#{executable}-#{name}.log", out + err)
+    out, err, status = Open3.capture3({'ASAN_OPTIONS' => 'halt_on_error=1', 'UBSAN_OPTIONS' => 'halt_on_error=1', 'XDG_RUNTIME_DIR' => work}, executable, stub, expect)
+    File.write("#{executable}-#{name}.log", JSON.pretty_generate({arguments: [executable, stub, expect], exit: status.exitstatus, signal: status.termsig, stdout: out, stderr: err}) + "\n")
     raise "Unexpected result: #{version} #{name}: #{out}#{err}" unless status.success? && err.empty?
     puts "PASS: #{version} #{name}: #{out.strip}"
   end
@@ -187,8 +205,7 @@ commands = []
     extra = kind == 'real' ? ['-DREAL_POSIX_FALLOCATE'] : []
     obj = File.join(work, "#{version}-target-#{kind}")
     cross = [*target, '--sysroot=' + sysroot, '-fuse-ld=lld', '-std=gnu99', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', '-Wno-unused-parameter', *extra, file, '-o', obj]
-    out, err, status = Open3.capture3(*cross)
-    File.write(obj + '-compile.log', cross.inspect + "\n" + out + err)
+    out, err, status = recorded(cross, obj + '-compile.json')
     raise "Target compile failed: #{version} #{kind}: #{err}" unless status.success?
     puts "PASS: #{version} target #{kind} build (#{File.basename(obj)})"
   end

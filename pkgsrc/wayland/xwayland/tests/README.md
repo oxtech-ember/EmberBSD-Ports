@@ -57,7 +57,7 @@ only the libc `posix_fallocate()` call, so each case sets its result:
 HOST_CC=/absolute/native/clang \
 TARGET_CC="/absolute/native/clang --target=x86_64--netbsd" \
 TARGET_SYSROOT=/absolute/emberbsd-sysroot \
-ruby tests/shm-fallocate.rb \
+"$HOST_PREFIX/bin/ruby40" tests/shm-fallocate.rb \
     /absolute/upstream/hw/xwayland/xwayland-shm.c \
     /absolute/patched/hw/xwayland/xwayland-shm.c \
     /absolute/new-results
@@ -85,3 +85,14 @@ machine or sysroot path (`/Volumes/`, `/home/`, `sysroot`, `stages/` ...), when
 `DRI_DRIVER_PATH` is not exactly `PREFIX/lib/dri`, or when the XKB paths are
 missing. PREFIX defaults to `/usr/pkg`. The package `nb3` fails this check.
 
+
+The native run requires `HOST_CC` as an absolute selected SDK compiler path and
+uses `$HOST_PREFIX/bin/ruby40`. Sanitizer support is probed with a separate
+compiler and runtime test; unsupported is reported explicitly, and each probe,
+compile and case retains arguments, exit status, signal and diagnostics. A
+failed instrumented harness build is an error when the probe succeeds.
+
+On Darwin the native harness uses the upstream `mkstemp` path in its isolated
+results directory; NetBSD target builds use the `memfd` path. SDK Ruby 4.0.9
+and Clang 23 ran all 20 upstream/patched native cases with ASan and UBSan; this
+does not establish a new target runtime result.
