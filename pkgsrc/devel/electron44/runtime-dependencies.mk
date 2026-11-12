@@ -17,7 +17,7 @@ BUILDLINK_ABI_DEPENDS.harfbuzz+= harfbuzz>=15.0.0nb3
 PREFER.gettext= pkgsrc
 
 # Node loads the selected common JavaScript provider from its installed prefix.
-DEPENDS+= undici>=8.12.3:../../www/undici
+DEPENDS+= undici>=8.12.4:../../www/undici
 
 # The selected GN graph consumes these header-only providers only while building.
 BUILDLINK_DEPMETHOD.flatbuffers= build

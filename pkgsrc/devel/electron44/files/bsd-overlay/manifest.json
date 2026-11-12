@@ -2,7 +2,7 @@
   "adapted": [
     {
       "patch": "patch-chrome_browser_file__system__access_chrome__file__system__access__permission__context.cc",
-      "source_sha256": "268cc42bd9029431efa6811410b9803d267400555b3bafb9614b2ef12ec459a0",
+      "source_sha256": "274d5b4d03a5038cd534793429e1d4c8cedfe1f7b01924544d90e41d4b307861",
       "target": "chrome/browser/file_system_access/chrome_file_system_access_permission_context.h"
     },
     {

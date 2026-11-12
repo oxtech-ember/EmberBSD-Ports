@@ -25,7 +25,7 @@ MAX_MEMBER_BYTES = 128 * 1024 * 1024
 MAX_TOOL_OUTPUT = 8 * 1024 * 1024
 NPM_NAME = re.compile(r'^(?:@[a-z0-9._~-]+/)?[a-z0-9._~-]+$')
 VERSION = re.compile(r'^[0-9]+\.[0-9]+\.[0-9]+$')
-HOST_NODE_VERSION = '26.13.0'
+HOST_NODE_VERSION = '26.13.1'
 SOURCE_ARCHIVE_SHA256 = 'cdba222bb036eee845716371d7d7aa3f66369bbfd4a40d11951e47d3f6a1f166'
 
 
@@ -277,13 +277,6 @@ def run_host_tool(stream, argv, *, cwd, env, timeout=900):
     return result.value
 
 
-def next_patch(version):
-    match = VERSION.fullmatch(version)
-    require(match is not None, f'invalid Electron version: {version}')
-    major, minor, patch = map(int, version.split('.'))
-    return f'{major}.{minor}.{patch + 1}'
-
-
 def validate_host_node_version(output):
     require(output.decode('ascii').strip() == 'v' + HOST_NODE_VERSION,
             f'Blanc package tools require the selected host Node.js {HOST_NODE_VERSION}')
@@ -293,10 +286,12 @@ def validate_runtime_dependency(version, package_path, dependency):
     expected_path = posixpath.normpath(posixpath.join('www/blanc', package_path))
     require(expected_path == 'devel/electron44',
             f'Electron package path does not resolve from www/blanc: {package_path}')
-    expected = f'electron>={version}nb2<{next_patch(version)}:{package_path}'
+    require(VERSION.fullmatch(version) is not None, f'invalid Electron version: {version}')
+    require((45, 3, 1) <= tuple(map(int, version.split('.'))) < (46, 0, 0),
+            'Electron runtime must be at least 45.3.1 and below 46')
+    expected = f'electron>=45.3.1<46:{package_path}'
     require(dependency == expected,
             f'SBOM runtime version and pkgsrc dependency disagree: expected {expected}')
-    require(version == '45.2.1', 'Blanc package is qualified only for Electron 45.2.1')
     return expected_path, expected
 
 

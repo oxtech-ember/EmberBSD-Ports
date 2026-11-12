@@ -1,8 +1,8 @@
-# Electron 45.2.1 runtime for NetBSD.
+# Electron 45.3.1 runtime for NetBSD.
 # Target execution, GUI and hardware acceptance remain pending.
 
-DISTNAME=	electron-45.2.1
-PKGREVISION=	2
+DISTNAME=	electron-45.3.1
+PKGREVISION=	0
 CATEGORIES=	devel
 # The source owner prepares the complete pinned workspace separately.  The
 # controller verifies it; no prebuilt distribution ZIP is a build input.
@@ -11,7 +11,7 @@ DISTFILES=
 # Keep the pkgsrc scratch directory separate from that reusable source tree.
 WRKSRC=		${WRKDIR}
 
-CHROMIUM_VERSION=	156.0.8078.75
+CHROMIUM_VERSION=	156.0.8078.96
 
 MAINTAINER=	oxtech-ember@users.noreply.github.com
 HOMEPAGE=	https://www.electronjs.org/

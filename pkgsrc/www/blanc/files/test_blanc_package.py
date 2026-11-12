@@ -52,9 +52,9 @@ class BlancPackageTests(unittest.TestCase):
                           source_files_sha256='fixture', source=str(self.source),
                           archive=None, distdir=str(self.distdir), work=str(work),
                           node=BUILD_OPTIONS.node, host_prefix=BUILD_OPTIONS.host_prefix,
-                          asar_min_version='4.3.1', projection='/tmp/projection.py', electron_version='45.2.1',
+                          asar_min_version='4.3.1', projection='/tmp/projection.py', electron_version='45.3.1',
                           electron_package_path='../../devel/electron44',
-                          electron_depends='electron>=45.2.1nb2<45.2.2:../../devel/electron44')
+                          electron_depends='electron>=45.3.1<46:../../devel/electron44')
             names = ('parse_args', 'load_sdk', 'select_host_tools', 'resolve_asar_provider',
                      'run_host_tool', 'check_source_files', 'validate_runtime_dependency',
                      'run_node_tests', 'test_asar_pack_roundtrip', 'run_python_tests',
@@ -64,7 +64,7 @@ class BlancPackageTests(unittest.TestCase):
                                                   self.stream, self.native_api)
                 calls['select_host_tools'].return_value = self.native
                 calls['resolve_asar_provider'].return_value = {}
-                calls['run_host_tool'].return_value = b'v26.13.0\n'
+                calls['run_host_tool'].return_value = b'v26.13.1\n'
                 calls['check_source_files'].return_value = {}
                 calls['parse_args'].return_value = SimpleNamespace(action='test', **common)
                 self.assertEqual(builder.main(), 0)
@@ -83,9 +83,9 @@ class BlancPackageTests(unittest.TestCase):
                 calls['test_asar_pack_roundtrip'].assert_not_called()
 
     def test_host_node_version_is_exact(self):
-        self.assertEqual(builder.HOST_NODE_VERSION, '26.13.0')
-        builder.validate_host_node_version(b'v26.13.0\n')
-        for value in (b'v24.22.0\n', b'v24.12.0\n', b'v24.22.1\n', b'', b'26.13.0'):
+        self.assertEqual(builder.HOST_NODE_VERSION, '26.13.1')
+        builder.validate_host_node_version(b'v26.13.1\n')
+        for value in (b'v24.22.0\n', b'v24.12.0\n', b'v24.22.1\n', b'', b'26.13.1'):
             with self.subTest(value=value), self.assertRaises(builder.BuildError):
                 builder.validate_host_node_version(value)
 
@@ -253,22 +253,22 @@ class BlancPackageTests(unittest.TestCase):
                     manifest_sha, '0' * 64)
             self.assertFalse(bad_destination.exists())
 
-    def test_exact_runtime_dependency_is_required(self):
-        path, dependency = builder.validate_runtime_dependency(
-            '45.2.1', '../../devel/electron44',
-            'electron>=45.2.1nb2<45.2.2:../../devel/electron44')
-        self.assertEqual(path, 'devel/electron44')
-        self.assertEqual(dependency, 'electron>=45.2.1nb2<45.2.2:../../devel/electron44')
-        for version, package_path, depends in (
-            ('45.2.2', '../../devel/electron44', 'electron>=45.2.1nb2<45.2.2:../../devel/electron44'),
-            ('45.2.1', '../../www/electron44', 'electron>=45.2.1nb2<45.2.2:../../www/electron44'),
-            ('45.2.1', '../../devel/electron44', 'electron>=45.2.0<45.2.2:../../devel/electron44'),
-            ('45.2.1', '../../devel/electron44', 'electron>=45.2.1nb1<45.2.2:../../devel/electron44'),
-            ('45.2.1', '../../devel/electron44', 'electron>=45.2.1<45.2.2:../../devel/electron44'),
+    def test_runtime_dependency_supports_qualified_major(self):
+        dependency = 'electron>=45.3.1<46:../../devel/electron44'
+        for version in ('45.3.1', '45.3.2', '45.9.0'):
+            self.assertEqual(builder.validate_runtime_dependency(version, '../../devel/electron44', dependency),
+                             ('devel/electron44', dependency))
+        for version, path, depends in (
+            ('45.3.0', '../../devel/electron44', dependency),
+            ('46.0.0', '../../devel/electron44', dependency),
+            ('45.3.1', '../../www/electron44', dependency),
+            ('45.3.1', '../../devel/electron44', 'electron>=45.2.1<46:../../devel/electron44'),
+            ('45.3.1', '../../devel/electron44', 'electron>=45.3.1<47:../../devel/electron44'),
+            ('invalid', '../../devel/electron44', dependency),
         ):
-            with self.subTest(version=version, package_path=package_path, depends=depends):
+            with self.subTest(version=version, package_path=path, depends=depends):
                 with self.assertRaises(builder.BuildError):
-                    builder.validate_runtime_dependency(version, package_path, depends)
+                    builder.validate_runtime_dependency(version, path, depends)
 
     def test_recipe_pins_the_source_allowlist_and_common_projection(self):
         makefile = (PACKAGE / 'Makefile').read_text(encoding='utf-8')
@@ -284,7 +284,7 @@ class BlancPackageTests(unittest.TestCase):
             (work / 'home').mkdir()
             projection = PACKAGE.parents[2] / 'profiles/common-build-tools/javascript-projection.py'
             rows = builder.project_runtime(self.stream, self.jsonio, self.native, work,
-                                           projection, '45.2.1', work / 'modules')
+                                           projection, '45.3.1', work / 'modules')
             names = {row['name'] for row in rows}
             self.assertIn('@ghostery/adblocker-electron', names)
             self.assertIn('@mozilla/readability', names)
@@ -298,15 +298,15 @@ class BlancPackageTests(unittest.TestCase):
                       'sourceArchiveSha256': 'a' * 64, 'packageLockSha256': 'b' * 64,
                       'allowlistSha256': 'c' * 64}
             asar = {'name': '@electron/asar', 'version': '4.3.1'}
-            bom = builder.make_projected_sbom(source, {}, rows, app, '26.13.0', '45.2.1',
-                      '../../devel/electron44', 'electron>=45.2.1nb2<45.2.2:../../devel/electron44',
+            bom = builder.make_projected_sbom(source, {}, rows, app, '26.13.1', '45.3.1',
+                      '../../devel/electron44', 'electron>=45.3.1<46:../../devel/electron44',
                       asar, 'd' * 64, '3.15.0', 'e' * 64)
             serialized = json.dumps(bom)
             self.assertNotIn(str(work), serialized)
             self.assertNotIn(BUILD_OPTIONS.host_prefix, serialized)
             self.assertIn('emberbsd:distinfoSha256', serialized)
             self.assertIn('ember-browser-1.46.0nb1', serialized)
-            self.assertIn('pkgsrc:devel/electron44@45.2.1', serialized)
+            self.assertIn('pkgsrc:devel/electron44@45.3.1', serialized)
 
     def test_installed_asar_provider_rejects_missing_old_and_outside_prefix(self):
         with tempfile.TemporaryDirectory(prefix='blanc-asar-provider-') as temporary:

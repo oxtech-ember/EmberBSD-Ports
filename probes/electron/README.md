@@ -3,7 +3,11 @@
 Goal: run Ember Browser, based on Blanc v1.46.0, on EmberBSD.
 The application uses Electron and needs the native Electron runtime.
 
-## Source pins
+## Update in progress
+
+The recipe now selects Electron 45.3.1 (`3025e0491e87674c112f7a7d2646292c0efa4599`), Chromium 156.0.8078.96 (`2ad9b7f5a86846e0b264090723a6a78964bb84c4`) and Node.js 24.22.2 (`f7f273a9bb6445f6f7fb6349105e7532972045fb`). Its source preparation pin test passes against the clean Electron tag. The two upstream SPKI blocklist patches apply without fuzz to the corresponding individual Chromium and Node files. The Git-only DEPS acquisition completed for 174 repositories and recorded 108 deferred CIPD/GCS inputs and 23 LFS objects. Upstream patches and the ordered BSD/Ports source layer applied successfully. The selected common Node 26.13.1 and prepared Chromium sources both contain the eight revoked RSA keys; this is a source check, not TLS runtime acceptance. Full asset selection, GN integration, build and target acceptance remain pending. The following 45.2.1 results are historical and do not establish 45.3.1 acceptance.
+
+## Previous source pins (45.2.1)
 
 | Component | Pin | Source |
 |---|---|---|
@@ -125,7 +129,7 @@ GCC platform profile. Fetch and checksum need no selected Node, Python or SDK
 source. Extraction requires `EMBERBSD_CROSS_BUILD_PYTHON` set to the selected
 host CPython 3.15 executable and `EMBERBSD_SDK_SOURCE` set to an absolute SDK
 API 1 source directory. Build and test additionally require `EMBERBSD_HOST_NODE`
-set to the absolute host Node.js 26.13.0 executable and `EMBERBSD_HOST_PREFIX`
+set to the absolute host Node.js 26.13.1 executable and `EMBERBSD_HOST_PREFIX`
 set to the installed native Ports prefix. The shared SDK `load_host_prefix`
 selects Node and Python without requiring a compiler, checks native CPU,
 symlink containment and script interpreters, and supplies the prefix-only child
@@ -364,7 +368,7 @@ Node executable in both generic and TypeScript runtime inputs.
 
 The patch restores the production exact version check removed by pkgsrc's
 `www/chromium/patches/patch-third__party_node_check__version.py` (revision1.23).
-An explicit selection uses the source-owned common Node26.13.0 version input.
+An explicit selection uses the source-owned common Node 26.13.1 version input.
 The unchanged JavaScript equality check runs before its success marker is written.
 The unset selector keeps the upstream executable and Node24.12.0 version input.
 This path check does not qualify a provider. Native SDK and JavaScript action

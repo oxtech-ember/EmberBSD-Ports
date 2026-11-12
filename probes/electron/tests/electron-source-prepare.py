@@ -107,7 +107,7 @@ class Preparation(unittest.TestCase):
         self.assertEqual(solution["custom_vars"]["chromium_version"],
                          "dd78960ccd8a03a2fe1f629543d27783885b78e9")
         self.assertEqual(solution["custom_vars"]["node_version"],
-                         "ce7aaf1cee78b8cf0ce17364260535c418d3ed26")
+                         "f7f273a9bb6445f6f7fb6349105e7532972045fb")
         self.assertFalse(solution["custom_vars"]["install_sysroot"])
         self.assertEqual(values["target_cpu"], ["arm64"])
         self.assertEqual(values["target_os"], ["linux"])
@@ -227,6 +227,6 @@ if __name__ == "__main__":
         with tempfile.TemporaryDirectory(prefix="electron-production-source-") as work:
             root = preparer.prepare(options.electron_source, Path(work) / "prepared", options.git,
                                     "arm64", owner / "patches")
-            preparer.check_deps(root / "DEPS", "v24.22.1")
+            preparer.check_deps(root / "DEPS", "v24.22.2")
         print("PASS: production Electron pin and complete recipe-local patch series")
     print("Scope: DEPS input preparation only; no dependency sync, hooks, compilation or target runtime")

@@ -5,7 +5,7 @@
 
 DISTNAME=	blanc-1.46.0
 PKGNAME=	ember-browser-1.46.0
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	www
 BLANC_SOURCE=	v1.46.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
@@ -28,11 +28,11 @@ LICENSE=	mit AND apache-2.0 AND cc-by-sa-v3.0 AND ofl-v1.1 AND isc AND mpl-2.0
 NO_SRC_ON_FTP=	Unfiltered upstream archive includes reserved identity artwork and third-party imagery.
 NO_SRC_ON_CDROM=	${NO_SRC_ON_FTP}
 
-BLANC_ELECTRON_RUNTIME_VERSION=	45.2.1
-BLANC_ELECTRON_MIN_PKG_VERSION=	45.2.1nb2
+BLANC_ELECTRON_RUNTIME_VERSION=	45.3.1
+BLANC_ELECTRON_MIN_PKG_VERSION=	45.3.1
 BLANC_ELECTRON_PKGDIR=	../../devel/electron44
-BLANC_ELECTRON_DEPENDS=	electron>=${BLANC_ELECTRON_MIN_PKG_VERSION}<45.2.2:${BLANC_ELECTRON_PKGDIR}
-BLANC_NODE_VERSION=	26.13.0
+BLANC_ELECTRON_DEPENDS=	electron>=${BLANC_ELECTRON_MIN_PKG_VERSION}<46:${BLANC_ELECTRON_PKGDIR}
+BLANC_NODE_VERSION=	26.13.1
 BLANC_SOURCE_SHA256=	cdba222bb036eee845716371d7d7aa3f66369bbfd4a40d11951e47d3f6a1f166
 BLANC_SOURCE_FILES_SHA256=	9dcf9dde9e6eefb843a864a67a58455c0d19a8f77c9a1ef7e5747d9773d9a768
 BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
@@ -58,7 +58,7 @@ blanc-check-source-tools:
 
 blanc-check-build-tools: blanc-check-source-tools
 .if !defined(EMBERBSD_HOST_NODE) || empty(EMBERBSD_HOST_NODE:M/*) || !exists(${EMBERBSD_HOST_NODE})
-	${FAIL_MSG} "Blanc requires the selected host Node.js 26.13.0 in EMBERBSD_HOST_NODE"
+	${FAIL_MSG} "Blanc requires the selected host Node.js 26.13.1 in EMBERBSD_HOST_NODE"
 .endif
 .if !defined(EMBERBSD_HOST_PREFIX) || empty(EMBERBSD_HOST_PREFIX:M/*) || !exists(${EMBERBSD_HOST_PREFIX})
 	${FAIL_MSG} "Blanc requires the selected native EMBERBSD_HOST_PREFIX"
