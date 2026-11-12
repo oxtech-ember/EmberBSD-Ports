@@ -79,11 +79,12 @@ cat > "$work/bin/readelf" <<'EOF'
 exit 0
 EOF
 chmod +x "$work/bin/readelf"
+: > "$work/empty-plist"
 elf_check()
 {
     : > "$work/requires"
     printf '%s\n' "$2" | DESTDIR="$dest" CROSS_DESTDIR="$sysroot" \
-        REQUIRES_FILE="$work/requires" READELF="$work/bin/readelf" \
+        REQUIRES_FILE="$work/requires" PREFIX=/usr/pkg PACKAGE_PLIST="$work/empty-plist" READELF="$work/bin/readelf" \
         PLATFORM_RPATH=/usr/lib WRKDIR="$work" \
         awk -f "$work/$1/mk/check/check-shlibs-elf.awk"
 }

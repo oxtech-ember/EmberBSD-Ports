@@ -1,10 +1,18 @@
 # Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+# Resolve ELF dependencies in the target namespace and preserve loader names.
 
-# Resolve $ORIGIN in the target namespace without host cwd fallback.
-
---- a/mk/check/check-shlibs-elf.awk	2026-11-03 04:35:56.181027127 +0300
-+++ b/mk/check/check-shlibs-elf.awk	2026-11-03 05:00:31.720781845 +0300
-@@ -121,8 +121,10 @@
+--- a/mk/check/check-shlibs-elf.awk
++++ b/mk/check/check-shlibs-elf.awk
+@@ -106,7 +106,7 @@
+ 
+ # Resolve staged aliases in the target namespace, including directory links.
+ # Never follow an absolute target link into the build host's filesystem.
+-function target_path(file,    path, rest, part, nextpath, candidate, cmd, line, link, status, links) {
++function target_path(file, preserve_external_final,    path, rest, part, nextpath, candidate, cmd, line, link, status, links) {
+ 	if (destdir == "" || index(file, destdir "/") != 1)
+ 		return file
+ 	rest = substr(file, length(destdir) + 2)
+@@ -121,8 +121,12 @@
  		if (part == "..") { sub(/\/[^\/]*$/, "", path); continue }
  		nextpath = path "/" part
  		candidate = destdir nextpath
@@ -13,10 +21,12 @@
 +			if (cross_destdir == "") return ""
  			candidate = cross_destdir nextpath
 +		}
++		if (preserve_external_final && rest == "" && cross_destdir != "" &&
++		    index(candidate, cross_destdir "/") == 1) return candidate
  		if (system("test -L " shquote(candidate)) == 0) {
  			if (++links > 40) return ""
  			cmd = "readlink " shquote(candidate) " 2>/dev/null; printf '\nEMBER_LINK_STATUS=%s\n' \"$?\""
-@@ -142,10 +144,40 @@
+@@ -142,10 +146,54 @@
  			path = nextpath
  		}
  	}
@@ -44,7 +54,21 @@
 +	return value
 +}
 +
-+function checkshlib(DSO, needed, rpath, found, dso_rpath, got_rpath, nrpath, header, status, line, file, logical, origin, expanded, crossfile, resolved, logicalfile, logicaldir) {
++# Check the resolved external provider independently of the loader name.
++function check_external(DSO, provider,    count, paths, i, directory) {
++	check_pkg(DSO, provider)
++	count = split(toxic, paths, " ")
++	for (i = 1; i <= count; i++)
++		if (match(provider, paths[i])) print DSO ": resolved path " provider " matches toxic " paths[i]
++	directory = provider
++	sub(/\/[^\/]*$/, "", directory)
++	count = split(extradirs, paths, " ")
++	for (i = 1; i <= count; i++)
++		if (directory == paths[i] || index(directory, paths[i] "/") == 1)
++			print DSO ": rpath " directory " relative to CHECK_WRKREF_EXTRA_DIRS directory " paths[i]
++}
++
++function checkshlib(DSO, needed, rpath, found, dso_rpath, got_rpath, nrpath, header, status, line, file, logical, origin, expanded, crossfile, resolved, logicalfile, lookup, alias_dependency, alias_provider, plist_relative) {
 +	# The normal caller supplies paths relative to the declared target PREFIX.
 +	if (substr(DSO, 1, 1) != "/") {
 +		if (substr(prefix, 1, 1) != "/" ||
@@ -58,7 +82,7 @@
  	# Native checks retain their historical handling of non-ELF input.
  	# Metadata must distinguish scripts from broken ELF or a failed tool.
  	if (requires_file != "") {
-@@ -156,12 +188,17 @@
+@@ -156,12 +204,32 @@
  			print DSO ": not installed in DESTDIR"
  			return
  		}
@@ -70,13 +94,28 @@
  			print DSO ": cannot resolve target path"
  			return
  		}
++		plist_relative = DSO
++		if (index(DSO, destdir prefix "/") == 1)
++			plist_relative = substr(DSO, length(destdir prefix) + 2)
++		if (requires_file != "" && (plist_relative in provided_libraries) &&
++		    cross_destdir != "" && index(file, cross_destdir "/") == 1) {
++			alias_dependency = target_path(DSO, 1)
++			if (index(alias_dependency, cross_destdir "/") != 1) {
++				print DSO ": cannot resolve external alias dependency"
++				return
++			}
++			alias_dependency = substr(alias_dependency, length(cross_destdir) + 1)
++			alias_provider = substr(file, length(cross_destdir) + 1)
++			check_external(DSO, alias_provider)
++			print alias_dependency >> requires_file
++		}
  		DSO = file
 +	}
 +	if (requires_file != "") {
  		cmd = "od -An -tx1 -N4 " shquote(DSO) " 2>/dev/null; printf '\nEMBER_OD_STATUS=%s\n' \"$?\""
  		header = ""
  		status = -1
-@@ -210,7 +247,21 @@
+@@ -210,48 +278,75 @@
  		print DSO ": readelf failed"
  		return
  	}
@@ -99,7 +138,10 @@
  		if (rpath[p] == wrkdir ||
  		    substr(rpath[p], 1, length(wrkdir) + 1) == wrkdir "/") {
  			print DSO ": rpath relative to WRKDIR"
-@@ -221,29 +272,48 @@
+ 		}
+ 	}
+-	ntpaths = split(toxic, tpaths, " ")
+-	nedirs = split(extradirs, edirs, " ")
  	for (lib in needed) {
  		found = 0
  		for (p = 1; p <= nrpath; p++) {
@@ -136,37 +178,56 @@
  			}
  			if (!libcache[libfile]) {
 -				check_pkg(DSO, rpath[p] "/" lib)
-+				logicalfile = cross_destdir != "" ? substr(libfile, length(cross_destdir) + 1) : libfile
-+				check_pkg(DSO, logicalfile)
- 				for (t = 1; t <= ntpaths; t++) {
+-				for (t = 1; t <= ntpaths; t++) {
 -					if (match(rpath[p] "/" lib, tpaths[t])) {
 -						print DSO ": resolved path " rpath[p] "/" lib " matches toxic " tpaths[t]
-+					if (match(logicalfile, tpaths[t])) {
-+						print DSO ": resolved path " logicalfile " matches toxic " tpaths[t]
- 					}
- 				}
-+				logicaldir = logicalfile
-+				sub(/\/[^\/]*$/, "", logicaldir)
- 				for (e = 1; e <= nedirs; e++) {
+-					}
+-				}
+-				for (e = 1; e <= nedirs; e++) {
 -					if (rpath[p] == edirs[e] ||
 -					    substr(rpath[p], 1, length(edirs[e]) + 1) == edirs[e] "/") {
 -						print DSO ": rpath " rpath[p] " relative to CHECK_WRKREF_EXTRA_DIRS directory " edirs[e]
-+					if (logicaldir == edirs[e] ||
-+					    substr(logicaldir, 1, length(edirs[e]) + 1) == edirs[e] "/") {
-+						print DSO ": rpath " logicaldir " relative to CHECK_WRKREF_EXTRA_DIRS directory " edirs[e]
- 					}
- 				}
+-					}
+-				}
++				logicalfile = cross_destdir != "" ? substr(libfile, length(cross_destdir) + 1) : libfile
++				check_external(DSO, logicalfile)
  				found = 1
-@@ -251,7 +321,7 @@
+ 				break
  			}
  		}
- 		if (found && requires_file != "")
+-		if (found && requires_file != "")
 -			print rpath[p] "/" lib >> requires_file
-+			print logicalfile >> requires_file
++		if (found && requires_file != "") {
++			# Resolve all directory and staged aliases, retaining the first
++			# external final name which the loader actually depends on.
++			lookup = destdir != "" ? target_path(destdir rpath[p] "/" lib, 1) : rpath[p] "/" lib
++			if (destdir != "" && index(lookup, destdir "/") == 1)
++				lookup = substr(lookup, length(destdir) + 1)
++			else if (cross_destdir != "" && index(lookup, cross_destdir "/") == 1)
++				lookup = substr(lookup, length(cross_destdir) + 1)
++			if (lookup == "") { print DSO ": cannot resolve dependency path"; continue }
++			print lookup >> requires_file
++		}
  		if (found == 0)
  			print DSO ": missing library: " lib;
  	}
-@@ -263,6 +333,7 @@
+@@ -260,9 +355,23 @@
+ }
+ 
+ BEGIN {
++	package_plist = ENVIRON["PACKAGE_PLIST"]
++	if (ENVIRON["REQUIRES_FILE"] != "" &&
++	    (package_plist == "" || ENVIRON["PREFIX"] !~ /^\// ||
++	     system("test -f " shquote(package_plist) " && test -r " shquote(package_plist)) != 0)) {
++		print "ELF metadata requires an absolute PREFIX and readable PACKAGE_PLIST"
++		exit 1
++	}
++	if (package_plist != "") {
++		while ((plist_status = (getline plist_line < package_plist)) > 0)
++			if (plist_line ~ /\/lib.*\.so(\.[0-9]+)*$/) provided_libraries[plist_line] = 1
++		close(package_plist)
++		if (plist_status < 0) { print "ELF metadata cannot read PACKAGE_PLIST"; exit 1 }
++	}
  	system_rpath = ENVIRON["PLATFORM_RPATH"]
  	cross_destdir = ENVIRON["CROSS_DESTDIR"]
  	destdir = ENVIRON["DESTDIR"]

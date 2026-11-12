@@ -413,7 +413,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +				done | \
 +				${PKGSRC_SETENV} REQUIRES_FILE=${WRKDIR}/.elf-requires \
 +				    PLATFORM_RPATH=${_OPSYS_SYSTEM_RPATH:Q} \
-+				    CROSS_DESTDIR=${_CROSS_DESTDIR:Q} DESTDIR=${DESTDIR:Q} \
++				    CROSS_DESTDIR=${_CROSS_DESTDIR:Q} DESTDIR=${DESTDIR:Q} PREFIX=${PREFIX:Q} PACKAGE_PLIST=${_PLIST_NOKEYWORDS:Q} \
 +				    WRKDIR=${WRKDIR:Q} READELF=${TOOLS_PATH.readelf:Q} \
 +				    PKG_INFO_CMD=${PKG_INFO:Q} DEPENDS_FILE=${_RRDEPENDS_FILE:Q} \
 +				    ${AWK} -f ${PKGSRCDIR}/mk/check/check-shlibs-elf.awk \

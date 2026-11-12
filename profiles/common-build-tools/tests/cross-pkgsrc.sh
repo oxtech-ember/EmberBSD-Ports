@@ -56,6 +56,8 @@ sysroot=$("$bmake" -C "$pkgsrc/devel/pkgconf" MAKECONF="$makeconf" -v CROSS_DEST
 readelf=$("$bmake" -C "$pkgsrc/devel/pkgconf" MAKECONF="$makeconf" -v TOOLS_PATH.readelf)
 export CROSS_DESTDIR="$sysroot" DESTDIR="$stage" PLATFORM_RPATH=/usr/lib READELF="$readelf"
 export WRKDIR="$work" PKG_INFO_CMD=true DEPENDS_FILE=/dev/null
+: > "$work/empty-plist"
+export PREFIX=/usr/pkg PACKAGE_PLIST="$work/empty-plist"
 printf '%s\n' "$stage/usr/pkg/bin/pkgconf" > "$work/elf-list"
 export REQUIRES_FILE="$work/requires-before.txt"
 : > "$REQUIRES_FILE"
@@ -110,7 +112,7 @@ printf '%s\n' "$work/absent" | awk -f "$pkgsrc/mk/check/check-shlibs-elf.awk" > 
 grep -q 'cannot read ELF header' "$work/elf-absent.txt"
 echo 'PASS: ELF metadata rejects missing tools/files and malformed ELF, and skips scripts'
 
-unset WRKDIR DESTDIR CROSS_DESTDIR READELF PKG_INFO_CMD DEPENDS_FILE REQUIRES_FILE PLATFORM_RPATH
+unset WRKDIR DESTDIR CROSS_DESTDIR READELF PKG_INFO_CMD DEPENDS_FILE REQUIRES_FILE PLATFORM_RPATH PREFIX PACKAGE_PLIST
 
 # Exercise the actual metadata rule; shell-pattern exceptions must stay usable.
 for mode in all skip; do
