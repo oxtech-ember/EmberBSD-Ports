@@ -1,0 +1,118 @@
+$NetBSD$
+
+Resolve native Darwin preset defaults relative to the executing tool.
+Origin: EmberBSD contributors (AI-assisted).
+
+diff -uNr fftools/cmdutils.c fftools/cmdutils.c
+--- fftools/cmdutils.c	2026-11-12 22:37:14.065645865 +0300
++++ fftools/cmdutils.c	2026-11-12 22:40:06.995561755 +0300
+@@ -24,6 +24,10 @@
+ #include <stdlib.h>
+ #include <errno.h>
+ #include <math.h>
++#ifdef __APPLE__
++#include <dlfcn.h>
++#include <limits.h>
++#endif
+ 
+ /* Include only the enabled headers since some compilers (namely, Sun
+    Studio) will not omit unused inline functions and create undefined
+@@ -921,6 +925,22 @@
+     return yesno;
+ }
+ 
++#ifdef __APPLE__
++/* The Darwin package installs the tools in PREFIX/bin. */
++char *fftools_preset_datadir(void)
++{
++    Dl_info info;
++    char image[PATH_MAX];
++    char *slash;
++
++    if (!dladdr((void *)&fftools_preset_datadir, &info) || !info.dli_fname ||
++        !realpath(info.dli_fname, image) || !(slash = strrchr(image, '/')))
++        return NULL;
++    *slash = 0;
++    return av_asprintf("%s/../%s", image, "@FFMPEG_DATADIR_REL@");
++}
++#endif
++
+ FILE *get_preset_file(char *filename, size_t filename_size,
+                       const char *preset_name, int is_path,
+                       const char *codec_name)
+@@ -930,11 +950,18 @@
+ #if HAVE_GETMODULEHANDLE && defined(_WIN32)
+     char *datadir = NULL;
+ #endif
++#ifdef __APPLE__
++    char *relocated_datadir = is_path ? NULL : fftools_preset_datadir();
++#endif
+     char *env_home = getenv_utf8("HOME");
+     char *env_ffmpeg_datadir = getenv_utf8("FFMPEG_DATADIR");
+     const char *base[3] = { env_ffmpeg_datadir,
+                             env_home,   /* index=1(HOME) is special: search in a .ffmpeg subfolder */
++#ifdef __APPLE__
++                            relocated_datadir, };
++#else
+                             FFMPEG_DATADIR, };
++#endif
+ 
+     if (is_path) {
+         av_strlcpy(filename, preset_name, filename_size);
+@@ -987,6 +1014,9 @@
+ #if HAVE_GETMODULEHANDLE && defined(_WIN32)
+     av_free(datadir);
+ #endif
++#ifdef __APPLE__
++    av_free(relocated_datadir);
++#endif
+     freeenv_utf8(env_ffmpeg_datadir);
+     freeenv_utf8(env_home);
+     return f;
+diff -uNr fftools/cmdutils.h fftools/cmdutils.h
+--- fftools/cmdutils.h	2026-11-12 22:37:14.067937045 +0300
++++ fftools/cmdutils.h	2026-11-12 22:40:06.995293379 +0300
+@@ -487,6 +487,11 @@
+  */
+ int read_yesno(void);
+ 
++#ifdef __APPLE__
++/* Return an av_malloc-owned data directory, or NULL if unavailable. */
++char *fftools_preset_datadir(void);
++#endif
++
+ /**
+  * Get a file corresponding to a preset file.
+  *
+diff -uNr fftools/ffmpeg_mux_init.c fftools/ffmpeg_mux_init.c
+--- fftools/ffmpeg_mux_init.c	2026-11-12 22:37:14.068170046 +0300
++++ fftools/ffmpeg_mux_init.c	2026-11-12 22:37:34.459639273 +0300
+@@ -127,11 +127,18 @@
+ {
+     int i, ret = -1;
+     char filename[1000];
++#ifdef __APPLE__
++    char *relocated_datadir = fftools_preset_datadir();
++#endif
+     char *env_avconv_datadir = getenv_utf8("AVCONV_DATADIR");
+     char *env_home = getenv_utf8("HOME");
+     const char *base[3] = { env_avconv_datadir,
+                             env_home,
++#ifdef __APPLE__
++                            relocated_datadir,
++#else
+                             AVCONV_DATADIR,
++#endif
+                             };
+ 
+     for (i = 0; i < FF_ARRAY_ELEMS(base) && ret < 0; i++) {
+@@ -148,6 +155,9 @@
+             ret = avio_open2(s, filename, AVIO_FLAG_READ, &int_cb, NULL);
+         }
+     }
++#ifdef __APPLE__
++    av_free(relocated_datadir);
++#endif
+     freeenv_utf8(env_home);
+     freeenv_utf8(env_avconv_datadir);
+     return ret;

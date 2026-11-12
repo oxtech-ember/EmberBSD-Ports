@@ -4,7 +4,7 @@
 
 DISTNAME=	ffmpeg-9.0.2
 # nb8: the libav*.pc files no longer name the build sysroot (target-pkgconfig.sh).
-PKGREVISION=	9
+PKGREVISION=	10
 # Both ffmpeg9 and ffplay9 include this after their early MAKECONF parsing.
 .if ${DISTNAME} != "ffmpeg-9.0.2"
 PKG_FAIL_REASON+= "The common media profile requires the FFmpeg 9.0.2 recipe"
@@ -46,7 +46,15 @@ CONFIGURE_ARGS+=	--prefix=${PREFIX}
 CONFIGURE_ARGS+=	--progs-suffix=9
 
 CONFIGURE_ARGS+=	--enable-runtime-cpudetect
-CONFIGURE_ARGS+=	--datadir=${PREFIX}/share/ffmpeg9
+# ffmpeg tools install in ${PREFIX}/bin; keep their runtime data relative.
+FFMPEG_DATADIR_REL=	share/ffmpeg9
+CONFIGURE_ARGS+=	--datadir=${PREFIX}/${FFMPEG_DATADIR_REL}
+.if ${OPSYS} == "Darwin"
+SUBST_CLASSES+=		ffmpeg-datadir
+SUBST_STAGE.ffmpeg-datadir=	pre-configure
+SUBST_FILES.ffmpeg-datadir=	fftools/cmdutils.c
+SUBST_VARS.ffmpeg-datadir=	FFMPEG_DATADIR_REL
+.endif
 CONFIGURE_ARGS+=	--docdir=${PREFIX}/share/doc/ffmpeg9
 CONFIGURE_ARGS+=	--incdir=${PREFIX}/include/ffmpeg9
 CONFIGURE_ARGS+=	--libdir=${PREFIX}/lib/ffmpeg9

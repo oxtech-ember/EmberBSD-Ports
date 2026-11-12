@@ -30,3 +30,4 @@ SHA1 (patch-zz-v4l2-native-m2m) = 9e0c6b6e5c2f92b53fc436ac0693c9ae917f9e88
 SHA1 (patch-zz-hdr-saturation) = 847d1dc337a37349488ed905c3a2580360e6ab13
 SHA1 (patch-zz-avstring-empty-search) = dd531a3428eab84ba97b308b976d34948404b64c
 SHA1 (patch-zz-rtsp-redirect-limit) = 923bcf0b9bb84d061ef943383b35d692a38c91f7
+SHA1 (patch-zz-darwin-preset-relocation) = 5e7549d7e90e5a528fe4c337c9fd82f14d6c2af4
