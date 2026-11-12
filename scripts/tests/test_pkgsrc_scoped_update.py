@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 PORTS = Path(os.environ['PORTS_ROOT']).resolve()
 SDK = Path(os.environ['EMBERBSD_SDK_SOURCE']).resolve()
@@ -104,6 +105,26 @@ class ScopedUpdateTests(unittest.TestCase):
         write(self.ports, 'pkgsrc/export.conf',
               'patch\tpatches/fixture.patch\nfile\tresources/owner.txt\tmisc/owner.txt\n')
         commit(self.ports, 'update selected outputs')
+
+    def test_scoped_patch_preserves_no_backup_contract(self):
+        self.newer_inputs()
+        source = self.ports / 'patches/fixture.patch'
+        source.write_text(source.read_text().replace('@@ -1 +1 @@', '@@ -2 +2 @@'))
+        commit(self.ports, 'offset hunk still applies without fuzz')
+        untouched = self.tree / 'cat/pkg/files/unchanged'
+        before = untouched.stat()
+        # The ordinary exporter sets this environment. Scoped replay must also
+        # override an inherited backup policy, including BSD patch's -V quirk.
+        with mock.patch.dict(os.environ, PATCH_VERSION_CONTROL='numbered', VERSION_CONTROL='numbered'):
+            result = self.update()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=fixture-2\n')
+        self.assertFalse((self.tree / 'cat/pkg/files/deleted').exists())
+        self.assertEqual(sorted(str(p.relative_to(self.tree / 'cat/pkg'))
+                                for p in (self.tree / 'cat/pkg').rglob('*') if p.is_file()),
+                         ['Makefile', 'files/unchanged'])
+        after = untouched.stat()
+        self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
 
     def test_initial_dirty_input_is_replayed_for_scoped_update(self):
         write(self.ports, 'resources/owner.txt', 'dirty-before\n')

@@ -535,7 +535,8 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                             matching.append(part)
                     if matching:
                         subprocess.run([patch, '-f', '-E', '-d', str(stage), '-p1', '-F', '0', '-V', 'none', *patch_options],
-                                       input=b''.join(matching), check=True, stdout=subprocess.DEVNULL)
+                                       input=b''.join(matching), check=True, stdout=subprocess.DEVNULL,
+                                       env=dict(os.environ, PATCH_VERSION_CONTROL='none'))
             for name, source in file_map(rows).items():
                 if global_file or not name.startswith(package + '/'):
                     continue
