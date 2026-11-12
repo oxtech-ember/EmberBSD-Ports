@@ -2,36 +2,148 @@ $NetBSD$
 
 * Translate WSCONS_EVENT_GESTURE_SWIPE_* of the EmberBSD touchpad driver
   (hidmt/imt, hw.imt0.gestures=1) into libinput swipe gesture events.
-* Wsmouse devices report LIBINPUT_DEVICE_CAP_GESTURE. A kernel that sends
-  no such events leaves the behaviour unchanged.
-* The event numbers are defined here too, so the package builds against
-  base headers that do not have them yet.
+* LIBINPUT_DEVICE_CAP_GESTURE is declared only for a wsmouse device that
+  answers WSMOUSEIO_GGESTURE with supported=1 (the imt touchpad driver); an
+  ordinary mouse fails the ioctl and has no gesture capability.  Whether the
+  gestures are switched on at the moment (wgi_enabled) is not part of the
+  capability: the driver setting may change while the device is open.
+* The event numbers and the ioctl come from the base headers
+  (dev/wscons/wsconsio.h) only.  There are no private copies: against
+  headers without WSCONS_EVENT_GESTURE_SWIPE_BEGIN and WSMOUSEIO_GGESTURE
+  this code is not compiled and the package has no gestures.  A package with
+  gestures is built against a sysroot with the headers of EmberBSD main from
+  the gesture commits on.
+* Disabling the device (LIBINPUT_CONFIG_SEND_EVENTS_DISABLED) ends a swipe in
+  progress as cancelled and clears the state, so the END/CANCEL that the
+  disabled device drains afterwards cannot leave a swipe active; a new BEGIN
+  after enabling starts a clean pair.  The swipe state transitions are small
+  functions between the "wscons-swipe-state" markers, tested on the host.
 
+--- src/wscons.h.orig
++++ src/wscons.h
+@@ -14,6 +14,14 @@
+     uint32_t *map;
+ };
+ 
++/* wscons-swipe-state begin */
++/* State of the swipe gesture in progress (see wscons.c). */
++struct wscons_swipe {
++	bool active;
++	int fingers;
++};
++/* wscons-swipe-state end */
++
+ struct wscons_device {
+ 	struct libinput_device base;
+ 	enum libinput_device_capability capability;
+@@ -33,6 +41,9 @@
+ 		bool available;
+ 		bool pending;
+ 	} absolute;
++	/* The device can produce swipes (WSMOUSEIO_GGESTURE); see wscons.c. */
++	bool gestures;
++	struct wscons_swipe swipe;
+ 	struct {
+ 		struct libinput_device_config_accel config;
+ 		struct motion_filter *filter;
 --- src/wscons.c.orig
 +++ src/wscons.c
-@@ -286,6 +286,18 @@
+@@ -232,6 +232,70 @@
+ 	dev->sendevents.pressed = 0;
+ }
+ 
++/*
++ * Swipe gestures of the touchpad driver (WSCONS_EVENT_GESTURE_SWIPE_*).
++ * They are compiled only against base headers that define the events and
++ * the capability ioctl WSMOUSEIO_GGESTURE; there are no private copies of
++ * the numbers, so a package built against older headers has no gestures.
++ */
++#if defined(WSCONS_EVENT_GESTURE_SWIPE_BEGIN) && defined(WSMOUSEIO_GGESTURE)
++#define WSCONS_HAVE_GESTURES 1
++#endif
++
++/* wscons-swipe-state begin: no libinput dependencies, tested on the host. */
++/* BEGIN: a swipe that is still open is cancelled first. */
++static bool
++wscons_swipe_begin(struct wscons_swipe *s, int fingers, int *old_fingers)
++{
++	bool reopen = s->active;
++
++	if (reopen)
++		*old_fingers = s->fingers;
++	s->active = true;
++	s->fingers = fingers;
++	return reopen;
++}
++
++/* UPDATE is passed on only inside a swipe. */
++static bool
++wscons_swipe_update(const struct wscons_swipe *s)
++{
++	return s->active;
++}
++
++/* END, CANCEL and send-events DISABLED close the swipe, if there is one. */
++static bool
++wscons_swipe_close(struct wscons_swipe *s, int *fingers)
++{
++	if (!s->active)
++		return false;
++	*fingers = s->fingers;
++	s->active = false;
++	s->fingers = 0;
++	return true;
++}
++/* wscons-swipe-state end */
++
++/*
++ * Disabling the device ends a running swipe as cancelled: events that the
++ * disabled device drains afterwards (END, CANCEL) cannot leave it active.
++ */
++static void
++wscons_swipe_cancel(struct libinput_device *device)
++{
++#ifdef WSCONS_HAVE_GESTURES
++	struct wscons_device *dev = wscons_device(device);
++	struct timespec ts;
++	int fingers;
++
++	if (!wscons_swipe_close(&dev->swipe, &fingers))
++		return;
++	clock_gettime(CLOCK_REALTIME, &ts);
++	gesture_notify_swipe_end(device, usec_from_timespec(&ts), fingers,
++	    true);
++#endif
++}
++
+ static uint32_t
+ wscons_sendevents_get_modes(struct libinput_device *device)
+ {
+@@ -251,6 +315,7 @@
+ 	case LIBINPUT_CONFIG_SEND_EVENTS_ENABLED:
+ 		break;
+ 	case LIBINPUT_CONFIG_SEND_EVENTS_DISABLED:
++		wscons_swipe_cancel(device);
+ 		wscons_release_buttons(device);
+ 		dev->absolute.pending = false;
+ 		break;
+@@ -286,6 +351,11 @@
  	device->base.config.sendevents = &device->sendevents.config;
  }
  
-+/* Same numbers as sys/dev/wscons/wsconsio.h of the gesture-capable kernel. */
-+#ifndef WSCONS_EVENT_GESTURE_SWIPE_BEGIN
-+#define WSCONS_EVENT_GESTURE_SWIPE_BEGIN	18
-+#define WSCONS_EVENT_GESTURE_SWIPE_UPDATE_X	19
-+#define WSCONS_EVENT_GESTURE_SWIPE_UPDATE_Y	20
-+#define WSCONS_EVENT_GESTURE_SWIPE_END		21
-+#define WSCONS_EVENT_GESTURE_SWIPE_CANCEL	22
-+#endif
-+
++#ifdef WSCONS_HAVE_GESTURES
 +/* Libinput delta per kernel gesture unit (pointer units). */
 +#define WSCONS_SWIPE_SCALE 10.0
++#endif
 +
  static void
  wscons_process(struct libinput_device *device, struct wscons_event *wsevent)
  {
-@@ -398,6 +410,48 @@
+@@ -398,6 +468,55 @@
  		dev->absolute.pending = true;
  		break;
  
++#ifdef WSCONS_HAVE_GESTURES
 +	/*
 +	 * Three/four-finger swipes of the touchpad driver. The kernel sends
 +	 * no pointer motion for them. UPDATE_X and UPDATE_Y arrive as
@@ -39,22 +151,24 @@ $NetBSD$
 +	 * on one by one; libinput deltas are about ten times a pointer unit
 +	 * for this pad (1000 dpi against 8 contact units per pointer unit).
 +	 */
-+	case WSCONS_EVENT_GESTURE_SWIPE_BEGIN:
++	case WSCONS_EVENT_GESTURE_SWIPE_BEGIN: {
++		int old_fingers;
++
 +		if (!dev->gestures)
 +			break;
-+		if (dev->swipe.active)
-+			gesture_notify_swipe_end(device, time,
-+			    dev->swipe.fingers, true);
-+		dev->swipe.active = true;
-+		dev->swipe.fingers = wsevent->value;
++		if (wscons_swipe_begin(&dev->swipe, wsevent->value,
++		    &old_fingers))
++			gesture_notify_swipe_end(device, time, old_fingers,
++			    true);
 +		gesture_notify_swipe(device, time,
 +		    LIBINPUT_EVENT_GESTURE_SWIPE_BEGIN, dev->swipe.fingers,
 +		    &delta, &delta);
 +		break;
++	}
 +
 +	case WSCONS_EVENT_GESTURE_SWIPE_UPDATE_X:
 +	case WSCONS_EVENT_GESTURE_SWIPE_UPDATE_Y:
-+		if (!dev->gestures || !dev->swipe.active)
++		if (!dev->gestures || !wscons_swipe_update(&dev->swipe))
 +			break;
 +		if (wsevent->type == WSCONS_EVENT_GESTURE_SWIPE_UPDATE_X)
 +			delta.x = wsevent->value * WSCONS_SWIPE_SCALE;
@@ -66,41 +180,43 @@ $NetBSD$
 +		break;
 +
 +	case WSCONS_EVENT_GESTURE_SWIPE_END:
-+	case WSCONS_EVENT_GESTURE_SWIPE_CANCEL:
-+		if (!dev->gestures || !dev->swipe.active)
++	case WSCONS_EVENT_GESTURE_SWIPE_CANCEL: {
++		int fingers;
++
++		if (!dev->gestures || !wscons_swipe_close(&dev->swipe,
++		    &fingers))
 +			break;
-+		dev->swipe.active = false;
-+		gesture_notify_swipe_end(device, time, dev->swipe.fingers,
++		gesture_notify_swipe_end(device, time, fingers,
 +		    wsevent->type == WSCONS_EVENT_GESTURE_SWIPE_CANCEL);
 +		break;
++	}
++#endif
 +
  	case WSCONS_EVENT_HSCROLL:
  		delta.x = wsevent->value / 8;
  		delta.y = 0;
-@@ -768,6 +822,8 @@
+@@ -768,6 +887,21 @@
  	if (strncmp(device->devname, "/dev/wsmouse", 12) == 0) {
  		/* XXX handle tablets and touchpanel */
  		wscons_device->capability = LIBINPUT_DEVICE_CAP_POINTER;
-+		/* Gesture events appear only if the kernel driver sends them. */
-+		wscons_device->gestures = true;
++#ifdef WSCONS_HAVE_GESTURES
++		/*
++		 * Gestures are offered only by a device that says it can
++		 * produce them (WSMOUSEIO_GGESTURE; an ordinary mouse fails
++		 * the ioctl).  wgi_enabled is a driver setting that may be
++		 * switched later, so it is not part of the capability.
++		 */
++		{
++			struct wsmouse_gesture_info gi;
++
++			if (ioctl(device->fd, WSMOUSEIO_GGESTURE, &gi) == 0 &&
++			    gi.wgi_supported != 0)
++				wscons_device->gestures = true;
++		}
++#endif
  		/* Only pointers can be disabled; keys have no release path. */
  		wscons_device_init_sendevents(wscons_device);
  		/* ums reports HID logical bounds through the calibration ioctl. */
---- src/wscons.h.orig
-+++ src/wscons.h
-@@ -33,6 +33,12 @@
- 		bool available;
- 		bool pending;
- 	} absolute;
-+	/* The kernel may send WSCONS_EVENT_GESTURE_SWIPE_*; see wscons_process. */
-+	bool gestures;
-+	struct {
-+		bool active;
-+		int fingers;
-+	} swipe;
- 	struct {
- 		struct libinput_device_config_accel config;
- 		struct motion_filter *filter;
 --- src/libinput_openbsd.c.orig
 +++ src/libinput_openbsd.c
 @@ -3345,7 +3345,11 @@
