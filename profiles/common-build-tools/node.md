@@ -67,6 +67,12 @@ preprocessed file. The reproducible parser fixture and limits are documented
 in `pkgsrc/devel/cppcheck/tests/constexpr-specialization.md`; neither result
 is a Cppcheck pass.
 
+Externalized builtins compile from their selected source without consuming or
+saving V8 code cache. Equal-length replacements cannot reuse stale snapshot
+caches. Immutable builtins retain code caching. The release-build cctest
+`BuiltinCacheTest.ExternalizedSourceDoesNotReuseCodeCache` checks source
+replacement and snapshot filtering.
+
 The npm `node-gyp` frontend uses the common installed `py-gyp` provider and
 current package headers. By default it resolves both from the installed npm
 layout; `NODE_GYP_SOURCE` explicitly selects an absolute alternative provider,

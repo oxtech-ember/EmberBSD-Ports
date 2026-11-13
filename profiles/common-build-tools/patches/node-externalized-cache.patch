@@ -1,0 +1,165 @@
+# Origin: EmberBSD (AI-assisted); do not cache externalized builtin source.
+--- src/node_builtins.h.orig
++++ src/node_builtins.h
+@@ -78,6 +78,8 @@
+   std::string id;
+   UnionBytes source;
+   BuiltinSourceType type;
++  // Externalized content has no trusted identity for code-cache reuse.
++  bool is_externalized = false;
+ };
+ 
+ using BuiltinSourceMap = std::map<std::string, BuiltinSource>;
+--- src/node_builtins.cc.orig
++++ src/node_builtins.cc
+@@ -179,7 +179,7 @@
+                                                 const UnionBytes& source) {
+   BuiltinSourceType type = GetBuiltinSourceType(id, filename);
+   auto result =
+-      source_.write()->insert_or_assign(id, BuiltinSource{id, source, type});
++      source_.write()->insert_or_assign(id, BuiltinSource{id, source, type, true});
+   return &(result.first->second);
+ }
+ 
+@@ -425,7 +425,7 @@
+   EscapableHandleScope scope(isolate);
+ 
+   BuiltinCodeCacheData cached_data{};
+-  {
++  if (!builtin_source->is_externalized) {
+     // Note: The lock here should not extend into the
+     // `CompileFunction()` call below, because this function may recurse if
+     // there is a syntax error during bootstrap (because the fatal exception
+@@ -561,8 +561,8 @@
+                        is_cache_accepted ? "is accepted" : "is rejected");
+   }
+ 
+-  if (result == Result::kWithoutCache && optional_realm != nullptr &&
+-      harvest_code_cache &&
++  if (!builtin_source->is_externalized && result == Result::kWithoutCache &&
++      optional_realm != nullptr && harvest_code_cache &&
+       !optional_realm->env()->isolate_data()->is_building_snapshot()) {
+     // We failed to accept this cache, maybe because it was rejected, maybe
+     // because it wasn't present. Either way, we'll attempt to replace this
+@@ -627,7 +627,7 @@
+   Local<String> source = builtin_source->source.ToStringChecked(isolate);
+   ScriptOrigin origin(filename, 0, 0, true);
+   BuiltinCodeCacheData cached_data{};
+-  {
++  if (!builtin_source->is_externalized) {
+     RwLock::ScopedLock lock(code_cache_->mutex);
+     auto it = code_cache_->map.find(builtin_source->id);
+     if (it != code_cache_->map.end()) cached_data = it->second;
+@@ -751,23 +751,34 @@
+     }
+ 
+     TryCatch bootstrapCatch(Isolate::GetCurrent());
+-    auto data = LookupAndCompile(context, id.data(), nullptr);
++    const BuiltinSource* builtin_source =
++        LoadBuiltinSource(Isolate::GetCurrent(), id.data());
++    CHECK_NOT_NULL(builtin_source);
++    const bool is_externalized = builtin_source->is_externalized;
++    auto data = LookupAndCompile(context, builtin_source, nullptr);
+     if (bootstrapCatch.HasCaught()) {
+       per_process::Debug(DebugCategory::CODE_CACHE,
+                          "Failed to compile code cache for %s\n",
+                          id);
+       all_succeeded = false;
+       PrintCaughtException(Isolate::GetCurrent(), context, bootstrapCatch);
+-    } else {
+-      // This is used by the snapshot builder, so save the code cache
+-      // unconditionally.
++    } else if (!is_externalized) {
++      // Externalized source can differ while retaining the same length.
+       SaveCodeCache(id, data.ToLocalChecked());
+     }
+   }
+ 
++  // Snapshot the source classification before taking the cache lock.
++  std::unordered_set<std::string> externalized;
++  {
++    auto source = source_.read();
++    for (const auto& [id, builtin] : *source) {
++      if (builtin.is_externalized) externalized.insert(id);
++    }
++  }
+   RwLock::ScopedReadLock lock(code_cache_->mutex);
+   for (const auto& [id, data] : code_cache_->map) {
+-    out->push_back({id, data});
++    if (!externalized.contains(id)) out->push_back({id, data});
+   }
+   return all_succeeded;
+ }
+--- test/cctest/test_per_process.cc.orig
++++ test/cctest/test_per_process.cc
+@@ -99,6 +99,52 @@
+ }
+ 
+ namespace {
++
++TEST_F(BuiltinCacheTest, ExternalizedSourceDoesNotReuseCodeCache) {
++  RestoreBuiltinCache restore;
++  node::builtins::TearDownExternalizedBuiltinCache();
++  node::builtins::InitializeExternalizedBuiltinCache();
++  v8::HandleScope scope(isolate_);
++  v8::Local<v8::Context> context = v8::Context::New(isolate_);
++  v8::Context::Scope context_scope(context);
++  const char* id = "internal/test/cache_probe";
++  TemporaryBuiltin old_source("return parameter + 1;\n");
++  BuiltinLoader old_loader;
++  Load(old_loader, id, old_source.path());
++  v8::LocalVector<v8::String> params(isolate_);
++  params.push_back(v8::String::NewFromUtf8Literal(isolate_, "parameter"));
++  v8::Local<v8::Function> compiled;
++  ASSERT_TRUE(old_loader.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  auto cache = std::shared_ptr<v8::ScriptCompiler::CachedData>(
++      v8::ScriptCompiler::CreateCodeCacheForFunction(compiled));
++  ASSERT_TRUE(cache && cache->length > 0);
++  node::builtins::TearDownExternalizedBuiltinCache();
++  node::builtins::InitializeExternalizedBuiltinCache();
++  TemporaryBuiltin changed("return parameter + 2;\n");
++  BuiltinLoader loader;
++  Load(loader, id, changed.path());
++  loader.RefreshCodeCache({{id, BuiltinCodeCacheData(cache)}});
++  isolate_->ClearCachesForTesting();
++  ASSERT_TRUE(loader.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  v8::Local<v8::Value> argv[] = {v8::Integer::New(isolate_, 40)};
++  v8::Local<v8::Value> result;
++  ASSERT_TRUE(compiled->Call(context, v8::Undefined(isolate_), 1, argv)
++                  .ToLocal(&result));
++  EXPECT_EQ(result->Int32Value(context).FromJust(), 42);
++  std::vector<CodeCacheInfo> snapshot;
++  ASSERT_TRUE(loader.CompileAllBuiltinsAndCopyCodeCache(context, {}, &snapshot));
++  EXPECT_TRUE(std::none_of(snapshot.begin(), snapshot.end(),
++                          [id](const CodeCacheInfo& entry) { return entry.id == id; }));
++#ifndef NODE_BUILTIN_MODULES_PATH
++  EXPECT_TRUE(std::any_of(snapshot.begin(), snapshot.end(),
++                          [](const CodeCacheInfo& entry) {
++                            return entry.id == "internal/assert";
++                          }));
++#endif
++  node::builtins::TearDownExternalizedBuiltinCache();
++}
+ 
+ TEST_F(BuiltinCacheTest, DynamicSourcesSurviveCacheAndLoaders) {
+   RestoreBuiltinCache restore;
+@@ -268,7 +314,7 @@
+   isolate_->ClearCachesForTesting();
+   ASSERT_TRUE(loader.LookupAndCompileFunction(context, id, &params, nullptr)
+                   .ToLocal(&compiled));
+-  EXPECT_TRUE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
+   ClearProcessDefaultCache clear_default;
+   {
+     std::vector<CodeCacheInfo> defaults = {{id, BuiltinCodeCacheData(valid_cache)}};
+@@ -279,7 +325,7 @@
+   isolate_->ClearCachesForTesting();
+   ASSERT_TRUE(default_valid.LookupAndCompileFunction(context, id, &params, nullptr)
+                   .ToLocal(&compiled));
+-  EXPECT_TRUE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
+   BuiltinLoader::SetProcessDefaultCodeCache(nullptr);
+ 
+   BuiltinLoader follower;
