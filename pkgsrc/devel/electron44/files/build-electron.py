@@ -2518,7 +2518,15 @@ def gn_source(options):
                    system_re2=getattr(options, 'shared_re2', False),
                    node_modules=Path(options.host_prefix) / 'lib/node_modules',
                    protobuf_protoc=(Path(options.host_prefix) / 'bin/protoc') if common else None)
-    destination = options.work / 'source-view'
+    destination = getattr(options, 'source_view_destination', options.work / 'source-view')
+    require(destination.is_absolute() and destination.parent == options.work,
+            'source view destination must be a sibling in the selected work directory')
+    verify_selected = getattr(options, 'verify_selected_source_view', False)
+    if verify_selected:
+        require(options.phase == 'build' and not any(getattr(options, name, False) for name in
+                ('refresh_source_view', 'activate_common_ml', 'activate_common_providers',
+                 'migrate_devtools_modules_only', 'resume_configure', 'retry_configure')),
+                'selected source view verification must be read-only')
     def refresh_leaves(current):
         created = getattr(options, 'source_view_created_files', None)
         extra = ({'created_files': created,
@@ -2632,6 +2640,17 @@ def gn_source(options):
         new_ffmpeg = bool(getattr(options, 'shared_ffmpeg', False))
         ffmpeg_marker = destination.parent / ('.' + destination.name + '.ffmpeg-components-migration')
         compression_marker = destination.parent / ('.' + destination.name + '.compression-components-migration')
+        if verify_selected:
+            # Identities are selected and verified before this read-only pass.
+            # Equal old/new state prevents activation and runs every existing
+            # component verifier against the supplied view.
+            old_boring, old_media, old_compression = new_boring, new_media, new_compression
+            old_pdf, old_font, old_codecs = new_pdf, new_font, new_codecs
+            old_pffft, old_expat, old_cpuinfo = new_pffft, new_expat, new_cpuinfo
+            old_vulkan, old_woff2, old_snappy = new_vulkan, new_woff2, new_snappy
+            old_openh264, old_image, old_xml = new_openh264, new_image, new_xml
+            old_minizip, old_ffmpeg = new_minizip, new_ffmpeg
+            old_ots, old_leveldb, old_spirv, old_sqlite = new_ots, new_leveldb, new_spirv, new_sqlite
         compression_root = destination / 'src/third_party'
         if (new_pffft and not old_pffft and
                 (options.phase == 'reconfigure' or
@@ -2834,6 +2853,8 @@ def gn_source(options):
         old_ml = getattr(options, 'old_ml_identities', None)
         old_headers = getattr(options, 'old_header_identities', None)
         new_headers = {name: data['identity'] for name, data in selected.items()}
+        if verify_selected:
+            old_ml, old_headers = ids, new_headers
         sp = options.ml_sdk['sourceprep']
         boring_marker = destination.parent / ('.' + destination.name + '.boringssl-components-migration')
         boring_root = compression_root / boring.NAME
@@ -2922,14 +2943,17 @@ def gn_source(options):
         selection_refreshed = False
         selection_verified = False
         selection_needs_final = False
-        # A pending transaction must follow the original full verification path.
-        # This memo exists only for this locked, ordinary reconfigure invocation.
-        reuse_selection = (options.phase == 'reconfigure' and
-                           not getattr(options, 'resume_configure', False) and
+        # Pending recovery always takes the original full verification path.
+        # The memo is scoped to this locked invocation and still forces a final check.
+        clean_selection = (not getattr(options, 'resume_configure', False) and
                            not getattr(options, 'retry_configure', False) and
-                           os.path.lexists(destination) and
                            not os.path.lexists(destination.parent / ('.' + destination.name + '-refresh-incomplete')) and
                            not any(destination.parent.glob('.' + destination.name + '.*-migration')))
+        fresh_selection = (clean_selection and options.phase == 'configure' and
+                           not getattr(options, 'refresh_source_view', False) and
+                           not os.path.lexists(destination))
+        reuse_selection = (clean_selection and options.phase == 'reconfigure' and
+                           os.path.lexists(destination))
         selection_default = object()
         def verify_selection(ml_ids, header_ids, media_ids=old_media, compression_id=selection_default, boring_id=selection_default, *, force=False):
             nonlocal selection_refreshed, selection_verified, selection_needs_final
@@ -3114,6 +3138,10 @@ def gn_source(options):
         if new_view:
             require(getattr(options, 'phase', '') == 'configure', 'common source view is missing')
             view.create(options.workspace / 'src', common, destination, **sources)
+            # Only a successfully created view in a fresh ordinary configure
+            # may reuse verified selections within this invocation.
+            if fresh_selection:
+                reuse_selection = True
         initial = getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)
         transition = (new_view or getattr(options, 'activate_common_ml', False) or
                       (old_ml is not None and (old_ml != ids or old_headers != new_headers)))
@@ -3589,7 +3617,7 @@ def leveldb_activation_args(options, old_environment, environment, old_arguments
     return set()
 
 
-def spirv_activation_args(options, old_environment, environment, old_arguments, values, receipt_name):
+def spirv_activation_args(options, old_environment, environment, old_arguments, values, receipt_name, *, origin=False):
     if not getattr(options, 'shared_spirv_tools', False):
         return set()
     selection = getattr(options, 'spirv_selection', None)
@@ -3608,11 +3636,36 @@ def spirv_activation_args(options, old_environment, environment, old_arguments, 
     names.update('emberbsd_spirv_tools_' + role + '_table' for role in ('host', 'target'))
     names.update('emberbsd_spirv_headers_' + role + '_inputs' for role in ('host', 'target'))
     require(all(values.get(name) for name in names), 'verified SPIRV GN inputs are incomplete')
+    if origin:
+        require(old_environment.get('EMBERBSD_SPIRV_SELECTION'),
+                'source-origin transition requires the saved SPIRV selection')
     if not old_environment.get('EMBERBSD_SPIRV_SELECTION'):
         require(not any(old_environment.get(key) for key in keys), 'partial previous SPIRV selection')
         require(all(old_arguments.get(name) in (None, False, '', []) for name in names),
                 'SPIRV activation cannot replace unrelated GN inputs')
         return names
+    if origin:
+        old_selection = json.loads(old_environment['EMBERBSD_SPIRV_SELECTION'])
+        sourceprep = options.ml_sdk['sourceprep']
+        view = local_module('electron_protobuf_source_view', 'protobuf-source-view.py')
+        spirv = local_module('electron_spirv_source_view', 'spirv-source-view.py')
+        require(spirv.selection(view, sourceprep, old_selection['path']) == old_selection and
+                spirv.selection(view, sourceprep, selection['path']) == selection and
+                old_selection['tree_sha256'] == selection['tree_sha256'],
+                'SPIRV source-origin payload changed')
+        require(all(re.fullmatch(r'[0-9a-f]{64}', old_environment.get(key, '')) for key in keys),
+                'saved SPIRV package identities are incomplete')
+        changed = set()
+        if any(old_environment.get(key) != environment.get(key) for key in keys):
+            changed = provider_revision_args(options, 'SPIRV', (
+                ('spirv_tools', 'spirv-tools', 'libraries'),
+                ('spirv_link', 'spirv-tools', 'libraries'),
+                ('spirv_core', 'spirv-tools', 'libraries'),
+                ('spirv_headers', 'spirv-headers', None),
+            ), old_arguments, values)
+        if old_selection != selection:
+            changed.add('emberbsd_spirv_source_identity')
+        return changed
     require(all(old_environment.get(key) == environment.get(key) for key in keys),
             'SPIRV package identities changed during reconfigure')
     if old_environment['EMBERBSD_SPIRV_SELECTION'] != environment['EMBERBSD_SPIRV_SELECTION']:
@@ -3764,9 +3817,15 @@ def provider_revision_args(options, label, providers, old_arguments, values):
             prefix = (Path(options.host_prefix) if role == 'host' else Path(options.sysroot) / 'usr/pkg').resolve(strict=True)
             db = prefix / 'pkgdb'
             stem = 'emberbsd_' + provider + '_' + role
-            libkey, inputkey = stem + '_' + library_kind, stem + '_inputs'
-            require(old_arguments.get(libkey) == values.get(libkey) and values.get(libkey),
-                    label + ' library changed during revision update')
+            inputkey = stem + '_inputs'
+            if library_kind is None:
+                require(provider == 'spirv_headers' and base == 'spirv-headers' and
+                        stem + '_libraries' not in old_arguments and stem + '_libraries' not in values,
+                        label + ' header-only provider is invalid')
+            else:
+                libkey = stem + '_' + library_kind
+                require(old_arguments.get(libkey) == values.get(libkey) and values.get(libkey),
+                        label + ' library changed during revision update')
             def split_inputs(items):
                 require(isinstance(items, list) and all(isinstance(item, str) for item in items) and
                         len(items) == len(set(items)), 'invalid ' + label + ' revision inputs')
@@ -3782,7 +3841,11 @@ def provider_revision_args(options, label, providers, old_arguments, values):
                 require(len(records) == 3 and len({p.parent for p in records}) == 1 and
                         {p.name for p in records} == {'+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION'} and
                         records[0].parent.parent == db, 'invalid ' + label + ' package records')
-                match = re.fullmatch(re.escape(base) + r'-(\d+\.\d+\.\d+)(?:nb(\d+))?', records[0].parent.name)
+                version_pattern = {'spirv-tools': r'\d+\.\d+',
+                                   'spirv-headers': r'\d+\.\d+\.\d+\.\d+'}.get(
+                                       base, r'\d+\.\d+\.\d+')
+                match = re.fullmatch(re.escape(base) + '-(' + version_pattern + r')(?:nb(\d+))?',
+                                     records[0].parent.name)
                 require(match is not None, 'invalid ' + label + ' package identity')
                 return sorted(ordinary), (match.group(1), int(match.group(2) or 0))
             before, old_version = split_inputs(old_arguments.get(inputkey))
@@ -3972,6 +4035,60 @@ def verified_host_deployment_change(old_args, new_args, old_env, new_env, option
     return True
 
 
+def verify_source_origin_provider_invariants(old_environment, new_environment, *, verified_spirv=False):
+    """Keep every other selected provider unchanged during an origin switch."""
+    selections = {
+        'EMBERBSD_OTS_SELECTION', 'EMBERBSD_LEVELDB_SELECTION',
+        'EMBERBSD_SPIRV_SELECTION', 'EMBERBSD_SQLITE_SELECTION',
+        'EMBERBSD_COMPRESSION_RECIPE_CATALOG', 'EMBERBSD_FFMPEG_TARGET_PKGCONFIG',
+        'EMBERBSD_DEVTOOLS_PROVIDER_SHA256',
+    }
+    for key in set(old_environment) | set(new_environment):
+        selected_hash = (key.startswith('EMBERBSD_') and
+                         key.endswith(('_SOURCE_SHA256', '_SELECTION_SHA256')))
+        projected_hash = (key.startswith(('EMBERBSD_ML_', 'EMBERBSD_MEDIA_HEADER_')) and
+                          key.endswith('_SHA256'))
+        spirv_keys = ('EMBERBSD_SPIRV_SELECTION', 'EMBERBSD_SPIRV_TOOLS_SOURCE_SHA256',
+                      'EMBERBSD_SPIRV_HEADERS_SOURCE_SHA256', 'EMBERBSD_SPIRV_LINK_SOURCE_SHA256',
+                      'EMBERBSD_SPIRV_CORE_SOURCE_SHA256')
+        if ((selected_hash or projected_hash or key in selections) and
+                key not in ('EMBERBSD_NODE_SOURCE_SHA256', 'EMBERBSD_V8_SOURCE_SHA256') and
+                not (verified_spirv and key in spirv_keys)):
+
+            require(old_environment.get(key) == new_environment.get(key),
+                    'source-origin transition changed another provider: ' + key)
+
+
+def saved_source_origin_inputs(saved):
+    """Recover only the old source roots explicitly recorded by the producer."""
+    workspace = Path(saved['source'])
+    receipt = Path(saved['arguments']['emberbsd_node_source_identity'])
+    rows = saved['arguments']['emberbsd_node_configure_inputs']
+    require(workspace.is_absolute() and receipt.is_absolute() and
+            receipt.name == 'emberbsd-prepared-source.json' and
+            type(rows) is list and all(type(row) is str for row in rows),
+            'invalid saved source origin inputs')
+    roots = [row.partition('=')[2] for row in rows if row.startswith('v8-source=')]
+    require(len(roots) == 1 and Path(roots[0]).is_absolute(),
+            'saved Node configure inputs need exactly one V8 source')
+    return workspace, receipt.parent, Path(roots[0])
+
+
+def verify_saved_source_provider(options, sdk, native, environment, saved, role, source):
+    """Check the complete payload and saved producer identity of an old source."""
+    require(source.is_absolute() and source.resolve(strict=True) == source,
+            'saved ' + role + ' source path changed')
+    owner = options.ports_source / 'scripts/source-inputs' / role.lower() / 'source.py'
+    require(owner.is_file(), 'common ' + role + ' source owner is missing')
+    result = sdk['process'].capture(
+        [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
+         'verify-payload', '--source', str(source)], env=source_owner_environment(environment))
+    record = json.loads(result.stdout.decode('utf-8', 'strict'))
+    actual = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    require(actual == saved['environment'].get('EMBERBSD_' + role + '_SOURCE_SHA256'),
+            'saved ' + role + ' source identity changed')
+
+
 def reconfigure(options):
     keep_going_limit(options)
     build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
@@ -4001,10 +4118,23 @@ def reconfigure(options):
     options.source_view_publication = sdk.get('publication')
     work = options.work
     output = work / 'out'
-    saved = json.loads((work / 'configuration.json').read_text())
-    require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
+    origin = getattr(options, 'previous_source', None)
+    saved_bytes = (options.origin_saved_configuration if origin else
+                   (work / 'configuration.json').read_bytes())
+    saved = json.loads(saved_bytes)
+    cleanup_only = bool(origin and saved['source'] == str(options.workspace))
+    require(saved['source'] == str(options.workspace if cleanup_only or not origin else origin) and
+            saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
             'reconfigure inputs differ from configuration')
+    if origin:
+        require(not build_after_reconfigure and not any(getattr(options, name, False) for name in
+                ('activate_common_ml', 'activate_common_providers', 'migrate_devtools_modules_only')),
+                'source-origin transition requires a separate reconfigure')
+        require(getattr(options, 'refresh_source_view', False),
+                'source-origin transition requires source-view refresh')
+        if not cleanup_only:
+            verify_source(origin, options.ports_source, options.git)
     require(options.compiler_family == 'clang', 'reconfigure currently supports Clang bindings only')
     require((output / 'build.ninja').is_file(), 'existing GN graph is missing')
     old_args = gn_arguments(saved['arguments'])
@@ -4131,6 +4261,11 @@ def reconfigure(options):
             saved['arguments'], values, old_env, environment, options, work)
         permitted_env.update(refreshed_sources)
         node_source_refresh = 'EMBERBSD_NODE_SOURCE_SHA256' in refreshed_sources
+        spirv_args = spirv_activation_args(options, old_env, environment, saved['arguments'], values,
+                                           sdk['sourceprep'].PREPARED_TREE_RECEIPT,
+                                           origin=bool(origin and not cleanup_only))
+        if origin and not cleanup_only:
+            verify_source_origin_provider_invariants(old_env, environment, verified_spirv=bool(spirv_args))
         require(not old_env.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK') or
                 environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'),
                 'reconfigure cannot remove the selected host buildlink')
@@ -4170,8 +4305,6 @@ def reconfigure(options):
                                        sdk['sourceprep'].PREPARED_TREE_RECEIPT)
         leveldb_args = leveldb_activation_args(options, old_env, environment, saved['arguments'], values,
                                        sdk['sourceprep'].PREPARED_TREE_RECEIPT)
-        spirv_args = spirv_activation_args(options, old_env, environment, saved['arguments'], values,
-                                           sdk['sourceprep'].PREPARED_TREE_RECEIPT)
         codec_args = codec_activation_args(options, old_env, environment, saved['arguments'], values)
         pdf_args = pdfium_activation_args(options, old_env, environment, saved['arguments'], values)
         pffft_args = pffft_activation_args(options, old_env, environment, saved['arguments'], values)
@@ -4328,6 +4461,82 @@ def reconfigure(options):
         if getattr(options, 'migrate_devtools_modules_only', False):
             require(not build_after_reconfigure, 'migration-only cannot build')
             migrate_devtools_only(options, work)
+            return
+
+        if origin:
+            expected_config = dict(arguments=values, environment=environment, source=str(options.workspace),
+                                   sdk=str(options.sdk_source), host_prefix=str(options.host_prefix),
+                                   target=options.target)
+            config_path = work / 'configuration.json'
+            def config_is_new():
+                return (config_path.is_file() and not config_path.is_symlink() and
+                        json.loads(config_path.read_bytes()) == expected_config)
+            old_workspace, old_node, old_v8 = saved_source_origin_inputs(saved)
+            old_spirv = (json.loads(old_env['EMBERBSD_SPIRV_SELECTION'])
+                         if old_env.get('EMBERBSD_SPIRV_SELECTION') else None)
+            if not cleanup_only:
+                require(old_workspace == origin, 'saved old workspace changed')
+                verify_saved_source_provider(options, sdk, native, environment, saved, 'NODE', old_node)
+                verify_saved_source_provider(options, sdk, native, environment, saved, 'V8', old_v8)
+
+            def view_options(path, source, node, v8, *, factory=False):
+                selected = argparse.Namespace(**vars(options))
+                selected.work = path.parent
+                selected.source_view_destination = path
+                selected.workspace, selected.node_source, selected.v8_source = source, node, v8
+                selected.phase = 'configure' if factory else 'build'
+                selected.verify_selected_source_view = not factory
+                for name in ('refresh_source_view', 'activate_common_ml', 'activate_common_providers',
+                             'migrate_devtools_modules_only', 'resume_configure', 'retry_configure'):
+                    setattr(selected, name, False)
+                if factory:
+                    for name in tuple(vars(selected)):
+                        if name.startswith('old_'):
+                            setattr(selected, name, None)
+                return selected
+
+            def verify_old(path):
+                require(not cleanup_only, 'old configuration is unavailable')
+                for relative, target in (('v8', old_v8), ('third_party/electron_node', old_node)):
+                    link = path / 'src' / relative
+                    require(link.is_symlink() and os.readlink(link) == str(target),
+                            'old source provider link changed: ' + relative)
+                previous_options = view_options(path, old_workspace, old_node, old_v8)
+                previous_options.spirv_selection = old_spirv
+                result = gn_source(previous_options)
+                require(result == path / 'src', 'old source view verification returned another path')
+
+            def verify_new(path):
+                result = gn_source(view_options(path, options.workspace, options.node_source, options.v8_source))
+                require(result == path / 'src', 'new source view verification returned another path')
+
+            def build_new(path):
+                result = gn_source(view_options(path, options.workspace, options.node_source, options.v8_source,
+                                                factory=True))
+                require(result == path / 'src', 'source view factory returned another path')
+
+            def commit_config():
+                try:
+                    write_devtools_identity(work, sdk, environment)
+                    write_protoc_selection(work, sdk, options.protoc_selection)
+                    write_v8_metagen_selection(work, sdk, getattr(options, 'v8_metagen_selection', None))
+                    (output / 'args.gn').write_text(gn_arguments(values))
+                    sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
+                        '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
+                        '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
+                        str(work / 'reconfigure.log'), cwd=str(work / 'source-view/src'), env=environment,
+                        append=(work / 'reconfigure.log').exists())
+                    local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(
+                        config_path, expected_config)
+                except BaseException:
+                    if not config_is_new():
+                        (output / 'args.gn').write_text(old_args)
+                    raise
+
+            transition = local_module('electron_source_origin_transition', 'source-origin-transition.py')
+            transition.transition(work, saved_configuration=saved_bytes, config_is_new=config_is_new,
+                                  verify_old=verify_old, verify_new=verify_new,
+                                  build_new=build_new, commit_config=commit_config)
             return
 
         # A failed or interrupted GN run may leave a partial graph. The marker
@@ -4492,6 +4701,8 @@ def main():
             initial.add_argument('--retry-configure', action='store_true',
                                  help='retry failed GN with verified selected inputs')
         if phase == 'reconfigure':
+            command.add_argument('--previous-source', type=Path,
+                                 help='verify and replace the previously configured source workspace')
             command.add_argument('--reuse-host-buildlink', type=Path,
                                  help='reuse an equivalent existing host buildlink context')
             command.add_argument('--activate-common-ml', action='store_true',
@@ -4522,6 +4733,35 @@ def main():
             options.jobs = sdk['cpu_capacity'].resolve_jobs(options.jobs)
             exclusive = context_keys(options.workspace, options.work)
             with sdk['process'].ContextLocks(exclusive, str(options.lock_root)):
+                origin_roots = ()
+                if getattr(options, 'previous_source', None):
+                    previous = options.work / '.source-view-origin-old-configuration.json'
+                    marker = options.work / 'reconfigure-incomplete'
+                    backup = options.work / '.source-view-origin-backup'
+                    current = options.work / 'configuration.json'
+                    if os.path.lexists(previous):
+                        require(previous.is_file() and not previous.is_symlink(),
+                                'invalid saved source-origin configuration')
+                        saved_path = previous
+                    else:
+                        require(not os.path.lexists(backup), 'old view lacks saved configuration')
+                        saved_path = current
+                    require(saved_path.is_file() and not saved_path.is_symlink(),
+                            'invalid producer configuration')
+                    options.origin_saved_configuration = saved_path.read_bytes()
+                    origin_saved = json.loads(options.origin_saved_configuration)
+                    origin_roots = saved_source_origin_inputs(origin_saved)
+                    if origin_saved['environment'].get('EMBERBSD_SPIRV_SELECTION'):
+                        saved_spirv = json.loads(origin_saved['environment']['EMBERBSD_SPIRV_SELECTION'])
+                        require(Path(saved_spirv['path']).is_absolute(), 'invalid saved SPIRV source')
+                        origin_roots += (Path(saved_spirv['path']),)
+                    cleanup_only = (not os.path.lexists(previous) and
+                                    not os.path.lexists(backup) and
+                                    marker.is_file() and not marker.is_symlink() and
+                                    marker.read_text() == 'GN reconfiguration incomplete\nsource-origin-v1\n' and
+                                    origin_roots[0] == options.workspace)
+                    require(origin_roots[0] == options.previous_source or cleanup_only,
+                            'previous source differs from saved producer configuration')
                 selected = (options.ports_source, options.sdk_source, options.protobuf_source,
                             options.protobuf_ports_source, options.protobuf_archive, options.protobuf_patch,
                             options.node_source, options.node_pkgsrc, options.node_ports_source, options.gyp_source, options.gyp_pkgsrc, options.perfetto_source,
@@ -4539,7 +4779,7 @@ def main():
                             options.host_buildlink_stage_root, options.ml_patch, options.ml_pkgsrc_export, options.ml_ports_source, options.ml_export_patch,
                             *(getattr(options, 'ml_' + name.replace('-', '_') + '_' + role)
                               for name in ML_PROVIDERS for role in ('source', 'archive', 'ports_source', 'pkgsrc_export', 'export_patch')))
-                shared = [key for key in context_keys(*selected) if key not in exclusive]
+                shared = [key for key in context_keys(*selected, *origin_roots) if key not in exclusive]
                 with sdk['process'].ContextLocks(shared, str(options.lock_root), shared=True):
                     {'configure': configure, 'reconfigure': reconfigure, 'build': build}[options.phase](options)
     except Exception as error:

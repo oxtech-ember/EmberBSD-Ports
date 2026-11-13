@@ -5,7 +5,7 @@ The application uses Electron and needs the native Electron runtime.
 
 ## Update in progress
 
-The recipe now selects Electron 45.3.1 (`3025e0491e87674c112f7a7d2646292c0efa4599`), Chromium 156.0.8078.96 (`2ad9b7f5a86846e0b264090723a6a78964bb84c4`) and Node.js 24.22.2 (`f7f273a9bb6445f6f7fb6349105e7532972045fb`). Its source preparation pin test passes against the clean Electron tag. The two upstream SPKI blocklist patches apply without fuzz to the corresponding individual Chromium and Node files. The Git-only DEPS acquisition completed for 174 repositories and recorded 108 deferred CIPD/GCS inputs and 23 LFS objects. Upstream patches and the ordered BSD/Ports source layer applied successfully. The selected common Node 26.13.1 and prepared Chromium sources both contain the eight revoked RSA keys; this is a source check, not TLS runtime acceptance. Full asset selection, GN integration, build and target acceptance remain pending. The following 45.2.1 results are historical and do not establish 45.3.1 acceptance.
+The recipe selects Electron 45.3.2 (`9ee9e7718172287d068cee397097c2d79a137eec`), Chromium 156.0.8078.100 (`46876a0c2df3492ed67a8846950ba6d37170b58c`) and Node.js 24.22.2 (`f7f273a9bb6445f6f7fb6349105e7532972045fb`). Git dependency acquisition, the complete upstream patch series, and the ordered BSD source layer have been prepared. The selected common Node 26.13.1 and Chromium sources contain all eight revoked RSA keys; this source inventory does not establish TLS runtime behavior. The current build, packaging and target acceptance remain pending. The following 45.2.1 results are historical and do not establish 45.3.2 acceptance.
 
 ## Previous source pins (45.2.1)
 
