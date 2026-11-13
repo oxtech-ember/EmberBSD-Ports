@@ -118,9 +118,9 @@ BUILDLINK_ABI_DEPENDS.expat+= expat>=2.10.0nb1
 
 .if ${EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS:Uno} == "yes"
 BUILDLINK_DEPMETHOD.spirv-tools= build
-BUILDLINK_API_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb4
-BUILDLINK_ABI_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb4
-BUILDLINK_API_DEPENDS.spirv-headers+= spirv-headers>=1.4.363.0
+BUILDLINK_API_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb5
+BUILDLINK_ABI_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb5
+BUILDLINK_API_DEPENDS.spirv-headers+= spirv-headers>=1.4.363.0nb1
 .include "../../parallel/spirv-tools/buildlink3.mk"
 .include "../../parallel/spirv-headers/buildlink3.mk"
 .endif

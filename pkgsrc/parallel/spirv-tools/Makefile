@@ -4,7 +4,8 @@
 DISTNAME=	SPIRV-Tools-2026.4
 PKGNAME=	${DISTNAME:tl}
 # nb4 installs the generated internal table for consumers of the patched source.
-PKGREVISION=	4
+# nb5 records the common Headers license-bearing dependency.
+PKGREVISION=	5
 CATEGORIES=	parallel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=KhronosGroup/}
 GITHUB_PROJECT=	SPIRV-Tools
@@ -62,6 +63,6 @@ BUILDLINK_API_DEPENDS.re2+=	re2>=20251105nb3
 BUILDLINK_DEPMETHOD.re2=		build
 .include "../../devel/re2/buildlink3.mk"
 .endif
-BUILDLINK_API_DEPENDS.spirv-headers+=	spirv-headers>=1.4.363.0
+BUILDLINK_API_DEPENDS.spirv-headers+=	spirv-headers>=1.4.363.0nb1
 .include "../../parallel/spirv-headers/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

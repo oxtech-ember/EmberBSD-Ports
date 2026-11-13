@@ -1,0 +1,124 @@
+# Origin: EmberBSD (AI-assisted); use the selected common GYP.
+--- deps/npm/node_modules/node-gyp/lib/configure.js.orig
++++ deps/npm/node_modules/node-gyp/lib/configure.js
+@@ -31,56 +31,32 @@
+     // 'python' should be set by now
+     process.env.PYTHON = python
+ 
+-    if (!gyp.opts.nodedir &&
+-        process.config.variables.use_prefix_to_find_headers) {
+-      // check if the headers can be found using the prefix specified
+-      // at build time. Use them if they match the version expected
+-      const prefix = process.config.variables.node_prefix
+-      let availVersion
+-      try {
+-        const nodeVersionH = readFileSync(path.join(prefix,
+-          'include', 'node', 'node_version.h'), { encoding: 'utf8' })
+-        const major = nodeVersionH.match(majorRe)[1]
+-        const minor = nodeVersionH.match(minorRe)[1]
+-        const patch = nodeVersionH.match(patchRe)[1]
+-        availVersion = major + '.' + minor + '.' + patch
+-      } catch {}
+-      if (availVersion === release.version) {
+-        // ok version matches, use the headers
+-        gyp.opts.nodedir = prefix
+-        log.verbose('using local node headers based on prefix',
+-          'setting nodedir to ' + gyp.opts.nodedir)
+-      }
+-    }
+-
+-    if (gyp.opts.nodedir) {
+-      // --nodedir was specified. use that for the dev files
+-      nodeDir = gyp.opts.nodedir.replace(/^~/, os.homedir())
+-      log.verbose('get node dir', 'compiling against specified --nodedir dev files: %s', nodeDir)
+-    } else {
+-      // if no --nodedir specified, ensure node dependencies are installed
+-      if ('v' + release.version !== process.version) {
+-        // if --target was given, then determine a target version to compile for
+-        log.verbose('get node dir', 'compiling against --target node version: %s', release.version)
+-      } else {
+-        // if no --target was specified then use the current host node version
+-        log.verbose('get node dir', 'no --target version specified, falling back to host node version: %s', release.version)
+-      }
+-
+-      if (!release.semver) {
+-        // could not parse the version string with semver
+-        throw new Error('Invalid version number: ' + release.version)
++    if (!gyp.opts.nodedir) {
++      const installedPrefix = path.resolve(__dirname, '../../../../../..')
++      if (gyp.opts['force-process-config']) {
++        throw new Error('installed Node headers require their config.gypi')
+       }
+-
+-      // If the tarball option is set, always remove and reinstall the headers
+-      // into devdir. Otherwise only install if they're not already there.
+-      gyp.opts.ensure = !gyp.opts.tarball
+-
+-      await gyp.commands.install([release.version])
+-
+-      log.verbose('get node dir', 'target node version installed:', release.versionDir)
+-      nodeDir = path.resolve(gyp.devDir, release.versionDir)
+-    }
++      let header
++      try {
++        header = readFileSync(path.join(installedPrefix, 'include', 'node', 'node_version.h'), 'utf8')
++        await fs.access(path.join(installedPrefix, 'include', 'node', 'config.gypi'))
++      } catch (err) {
++        throw new Error('installed Node headers or config.gypi are unavailable: ' + err.message)
++      }
++      const major = header.match(majorRe)
++      const minor = header.match(minorRe)
++      const patch = header.match(patchRe)
++      const version = major && minor && patch && [major[1], minor[1], patch[1]].join('.')
++      if (version !== release.version) {
++        throw new Error('installed Node headers do not match target ' + release.version + '; select --nodedir')
++      }
++      gyp.opts.nodedir = installedPrefix
++      log.verbose('using installed Node headers', installedPrefix)
++    }
++
++    // Explicit --nodedir retains upstream's custom-header behaviour.
++    nodeDir = gyp.opts.nodedir.replace(/^~/, os.homedir())
++    log.verbose('get node dir', 'compiling against selected dev files: %s', nodeDir)
+ 
+     return createBuildDir()
+   }
+@@ -246,7 +222,16 @@
+     }
+ 
+     // this logic ported from the old `gyp_addon` python file
+-    const gypScript = path.resolve(__dirname, '..', 'gyp', 'gyp_main.py')
++    const selectedGyp = process.env.NODE_GYP_SOURCE
++    if (selectedGyp !== undefined && (!selectedGyp || !path.isAbsolute(selectedGyp))) {
++      throw new Error('NODE_GYP_SOURCE must be an absolute directory')
++    }
++    const gypSource = selectedGyp || path.resolve(__dirname, '../../../../../..', 'share/gyp')
++    const gypScript = path.join(gypSource, 'gyp_main.py')
++    const gypPylib = path.join(gypSource, 'pylib')
++    if (!(await fs.stat(gypScript)).isFile() || !(await fs.stat(path.join(gypPylib, 'gyp'))).isDirectory()) {
++      throw new Error('selected common GYP provider is incomplete')
++    }
+     const addonGypi = path.resolve(__dirname, '..', 'addon.gypi')
+     let commonGypi = path.resolve(nodeDir, 'include/node/common.gypi')
+     try {
+@@ -303,8 +288,8 @@
+     // execute `gyp` from the current target nodedir
+     argv.unshift(gypScript)
+ 
+-    // make sure python uses files that came with this particular node package
+-    const pypath = [path.join(__dirname, '..', 'gyp', 'pylib')]
++    // Select the common GYP provider before any caller Python paths.
++    const pypath = [gypPylib]
+     if (process.env.PYTHONPATH) {
+       pypath.push(process.env.PYTHONPATH)
+     }
+--- deps/npm/node_modules/node-gyp/lib/create-config-gypi.js.orig
++++ deps/npm/node_modules/node-gyp/lib/create-config-gypi.js
+@@ -27,6 +27,7 @@
+       const baseConfigGypi = await fs.readFile(baseConfigGypiPath)
+       return parseConfigGypi(baseConfigGypi.toString())
+     } catch (err) {
++      if (gyp.opts.nodedir) throw err
+       log.warn('read config.gypi', err.message)
+     }
+   }

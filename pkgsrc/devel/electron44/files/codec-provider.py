@@ -108,7 +108,7 @@ WOFF2_PROVIDER = {
 
 
 SPIRV_TOOLS_PROVIDER = {
-    'spirv_tools': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 4),
+    'spirv_tools': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 5),
                     ('libSPIRV-Tools-opt', 'libSPIRV-Tools'), ('SPIRV-Tools',),
                     ('include/spirv-tools/libspirv.h', 'include/spirv-tools/libspirv.hpp',
                      'include/spirv-tools/linker.hpp', 'include/spirv-tools/optimizer.hpp',
@@ -116,20 +116,20 @@ SPIRV_TOOLS_PROVIDER = {
 }
 
 SPIRV_HEADERS_PROVIDER = {
-    'spirv_headers': ('parallel/spirv-headers', 'spirv-headers', (1, 4, 363, 0, 0),
+    'spirv_headers': ('parallel/spirv-headers', 'spirv-headers', (1, 4, 363, 0, 1),
                       (), (), ('include/spirv/unified1/spirv.h',
                                'include/spirv/unified1/spirv.hpp11',
                                'include/spirv/unified1/spirv.core.grammar.json')),
 }
 
 SPIRV_LINK_PROVIDER = {
-    'spirv_link': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 4),
+    'spirv_link': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 5),
                    ('libSPIRV-Tools-link', 'libSPIRV-Tools-opt', 'libSPIRV-Tools'),
                    ('SPIRV-Tools',), ()),
 }
 
 SPIRV_CORE_PROVIDER = {
-    'spirv_core': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 4),
+    'spirv_core': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 5),
                    ('libSPIRV-Tools',), ('SPIRV-Tools',), ()),
 }
 

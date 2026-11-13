@@ -11,8 +11,8 @@ def load(name,file):
  s=importlib.util.spec_from_file_location(name,owner/file); m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
 c=load('electron','build-electron.py'); image=load('image','image-provider.py'); codec=load('codec','codec-provider.py')
 c.atomic_write=load('view','protobuf-source-view.py')._write_transaction_marker
-assert image.package_at_least('spirv-tools-2026.4nb4', 'spirv-tools', (2026, 4, 0, 4))
-assert not image.package_at_least('spirv-tools-2026.4nb3', 'spirv-tools', (2026, 4, 0, 4))
+assert image.package_at_least('spirv-tools-2026.4nb5', 'spirv-tools', (2026, 4, 0, 5))
+assert not image.package_at_least('spirv-tools-2026.4nb4', 'spirv-tools', (2026, 4, 0, 5))
 assert image.package_at_least('vulkan-loader-1.4.363.0', 'vulkan-loader', (1, 4, 363, 0, 0))
 assert not image.package_at_least('vulkan-loader-1.4.362.99nb999', 'vulkan-loader', (1, 4, 363, 0, 0))
 assert not image.package_at_least('vulkan-loader-1.4..363', 'vulkan-loader', (1, 4, 363, 0, 0))
@@ -20,10 +20,10 @@ with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp).resolve(); host=root/'host'; target=root/'sysroot/usr/pkg'; view=root/'view'; dbs={'host':{},'target':{}}; inputs={}
  for role,prefix,suffix in (('host',host,'.a'),('target',target,'.a')):
   for name,(path,base,minimum,libraries,modules,headers) in (codec.SPIRV_TOOLS_PROVIDER | codec.SPIRV_HEADERS_PROVIDER).items():
-   pkg=prefix/'pkgdb'/(base+('-2026.4nb4' if name=='spirv_tools' else '-1.4.363.0'));pkg.mkdir(parents=True);dbs[role][path]=[pkg]
+   pkg=prefix/'pkgdb'/(base+('-2026.4nb5' if name=='spirv_tools' else '-1.4.363.0nb1'));pkg.mkdir(parents=True);dbs[role][path]=[pkg]
    entries=list(headers)+['lib/pkgconfig/'+m+'.pc' for m in modules]+['lib/'+lib+suffix for lib in libraries]
    if name=='spirv_tools':entries.append('lib/libSPIRV-Tools-link.a')
-   contents=['@blddep spirv-headers-1.4.363.0'] if name=='spirv_tools' else []
+   contents=['@blddep spirv-headers-1.4.363.0nb1'] if name=='spirv_tools' else []
    for entry in entries:
     f=prefix/entry;f.parent.mkdir(parents=True,exist_ok=True);f.write_text('owned');contents += [entry,'@comment MD5:'+hashlib.md5(b'owned',usedforsecurity=False).hexdigest()]
     if role=='host' and entry.endswith('.pc'):
@@ -70,7 +70,7 @@ with tempfile.TemporaryDirectory() as tmp:
   victim.write_bytes(before['spirv_tools'][0])
   assert [Path(x).name for x in v['emberbsd_spirv_core_host_libraries']] == ['libSPIRV-Tools.a']
   contents=dbs['target']['parallel/spirv-tools'][0]/'+CONTENTS'; original=contents.read_text()
-  contents.write_text(original.replace('@blddep spirv-headers-1.4.363.0', '@blddep spirv-headers-1.4.362.0'))
+  contents.write_text(original.replace('@blddep spirv-headers-1.4.363.0nb1', '@blddep spirv-headers-1.4.363.0'))
   try:codec.select_spirv_tools(image,c,o,sdk,native,env,view)
   except ValueError as error:assert 'different SPIRV-Headers' in str(error)
   else:raise AssertionError('different build headers accepted')

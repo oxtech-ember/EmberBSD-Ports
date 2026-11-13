@@ -67,9 +67,17 @@ preprocessed file. The reproducible parser fixture and limits are documented
 in `pkgsrc/devel/cppcheck/tests/constexpr-specialization.md`; neither result
 is a Cppcheck pass.
 
+The npm `node-gyp` frontend uses the common installed `py-gyp` provider and
+current package headers. By default it resolves both from the installed npm
+layout; `NODE_GYP_SOURCE` explicitly selects an absolute alternative provider,
+and `--nodedir` selects custom headers. Missing or invalid selected inputs fail
+without fetching headers or falling back to bundled GYP. The Node source and
+package omit npm's duplicate GYP backend. `tests/node-gyp-common.py --help` and
+`tests/node-prune-npm-gyp.py --help` describe the selected tools and fixtures.
+
 `tests/node26-export.py --help` exercises the actual pkgsrc exporter and compares its resulting recipe to the selected expected recipe. `tests/node26-pkgconfig-flags.py --help` describes the selected native inputs for the generated GYP rule regression. `tests/node-darwin-metadata.py --help` covers selected metadata and the Darwin CoreFoundation dependency through static archives, including negative and non-macOS generation cases. These checks do not replace a full package build, installed runtime and target tests.
 
-The GC regression retains the timeout callback and complete collection condition while permitting peer `ECONNRESET`, including aggregate errors only when every child matches. Run `tests/node-gc-net-timeout.py --help` with the installed selected host Node and the release archive. The Electron 44 to 45 transition is in progress: its target runtime and host tools are being moved to this common Node26 source and provider; the existing Electron 44 source pin remains until that transition is complete.
+The GC regression retains the timeout callback and complete collection condition while permitting peer `ECONNRESET`, including aggregate errors only when every child matches. Run `tests/node-gc-net-timeout.py --help` with the installed selected host Node and the release archive. The Electron source recipe selects 45.3.2 and this common Node 26 provider; the new target package and runtime acceptance remain pending.
 
 On macOS, Node’s `--build-sea` produces an unsigned executable. The host OS signing service must ad-hoc sign it (`codesign --sign -`) before execution, as documented in [Node SEA instructions](https://nodejs.org/api/single-executable-applications.html); the signer does not select the compiler or linker.
 
