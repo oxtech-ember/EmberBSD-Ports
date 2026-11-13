@@ -810,6 +810,16 @@ never refresh or activate components. The sibling `work/out` and compatible
 Ninja objects remain in place. Provider, receipt and host buildlink checks
 remain in force, including checks of non-makefile inputs.
 
+Internal ML aliases use relative paths, so a verified view survives the origin
+transaction's renames. To normalize legacy absolute aliases during this
+reconfigure, explicitly pass `--migrate-ml-alias-root`: before the transaction
+this must be the existing stable view; for an interrupted post-swap transaction
+it must be the previously observed factory view root. The controller verifies
+the selected views and exact old targets before replacing aliases under the
+work lock. Recovery accepts only the expected old or relative target; ordinary
+verification accepts only the relative form. Initial normalization precedes
+the source-origin transaction and preserves the existing configuration and out.
+
 Reconfigure accepts one scoped runtime-view update: pass a different protoc
 runtime-view directory that preserves every existing alias and canonical target
 and only adds aliases for libraries selected by the native buildlink and staged

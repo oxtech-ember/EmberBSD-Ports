@@ -160,6 +160,33 @@ with tempfile.TemporaryDirectory() as temporary:
  else:raise AssertionError('ordinary build accepted incomplete old view after failure')
 print('PASS: precommit failure does not admit incomplete old view for build')
 
+# Explicit migration accepts only its initial or guarded interrupted state.
+with tempfile.TemporaryDirectory() as temporary:
+ work=Path(temporary).resolve();stable=work/'source-view';stable.mkdir();config=work/'configuration.json';config.write_bytes(b'old');factory=work/'.source-view-origin-factory-proof'/'source-view'
+ def mode(root,**kw):return controller.ml_alias_migration_mode(work,config,b'old',root,origin=True,cleanup_only=False,build_after=False,marker_text=t.MARKER,**kw)
+ assert mode(stable)=='initial'
+ try:mode(factory)
+ except ValueError:pass
+ else:raise AssertionError('initial foreign alias root accepted')
+ (work/'.source-view-origin-backup').mkdir();(work/'.source-view-origin-old-configuration.json').write_bytes(b'old');(work/'reconfigure-incomplete').write_text(t.MARKER)
+ assert mode(factory)=='recovery'
+ try:mode(stable)
+ except ValueError:pass
+ else:raise AssertionError('recovery accepted wrong factory root')
+ (work/'.source-view-origin-candidate').mkdir()
+ try:mode(factory)
+ except ValueError:pass
+ else:raise AssertionError('unexpected candidate accepted')
+print('PASS: explicit ML alias migration state and roots')
+
+# Invalid alias migration CLI combinations fail before source/SDK preflight.
+for previous,build_after in ((None,False),(Path('/old'),True)):
+ opts=Namespace(migrate_ml_alias_root=Path('/selected'),previous_source=previous,build_after_reconfigure=build_after)
+ try:controller.reconfigure(opts)
+ except ValueError as error:assert 'requires separate source-origin' in str(error)
+ else:raise AssertionError('invalid ML alias migration invocation accepted')
+print('PASS: invalid ML migration invocation rejected before preflight')
+
 # Old source roots must come from the saved producer contract, not a caller guess.
 saved={'source':'/old/workspace','arguments':{'emberbsd_node_source_identity':'/old/node/emberbsd-prepared-source.json','emberbsd_node_configure_inputs':['v8-source=/old/v8']}}
 assert controller.saved_source_origin_inputs(saved)==(Path('/old/workspace'),Path('/old/node'),Path('/old/v8'))

@@ -2506,7 +2506,9 @@ def ensure_lastchange(workspace, native, environment, sdk):
 
 
 
-def gn_source(options, *, retired=False):
+def gn_source(options, *, retired=False, legacy_ml_root=None):
+    require(legacy_ml_root is None or getattr(options, 'verify_selected_source_view', False),
+            'legacy ML recovery requires selected verification')
     require(not retired or getattr(options, 'verify_selected_source_view', False),
             'retired source view requires selected verification')
     common = getattr(options, 'protobuf_source', None)
@@ -2873,7 +2875,8 @@ def gn_source(options, *, retired=False):
             checks, names = [], []
             if ml_ids:
                 names.extend(ml.NAMES)
-                checks.append(lambda: ml.verify_view(view, options.workspace / 'src', destination, ml_ids, sp))
+                checks.append(lambda: ml.verify_view(view, options.workspace / 'src', destination, ml_ids, sp,
+                                                     **({'legacy_root': legacy_ml_root} if legacy_ml_root is not None else {})))
             if header_ids:
                 names.extend(headers.NAMES)
                 records = {name: dict(selected[name], identity=header_ids[name]) for name in headers.NAMES}
@@ -4081,6 +4084,27 @@ def equivalent_spirv_catalog(old_raw, new_raw):
     return True
 
 
+def ml_alias_migration_mode(work, config_path, saved_bytes, legacy_root, *, origin, cleanup_only, build_after, marker_text):
+    stable, backup = work / 'source-view', work / '.source-view-origin-backup'
+    marker, previous = work / 'reconfigure-incomplete', work / '.source-view-origin-old-configuration.json'
+    candidate = work / '.source-view-origin-candidate'
+    require(origin and not cleanup_only and not build_after and legacy_root.is_absolute() and
+            config_path.is_file() and not config_path.is_symlink() and config_path.read_bytes() == saved_bytes and
+            stable.is_dir() and not stable.is_symlink() and not os.path.lexists(candidate),
+            'invalid ML alias migration transaction')
+    if not any(os.path.lexists(p) for p in (marker, previous, backup)):
+        require(legacy_root == stable, 'initial ML alias root must be the stable view')
+        return 'initial'
+    require(legacy_root.name == 'source-view' and legacy_root.parent.parent == work and
+            legacy_root.parent.name.startswith('.source-view-origin-factory-') and
+            legacy_root.parent.name != '.source-view-origin-factory-' and
+            not os.path.lexists(legacy_root.parent) and
+            marker.is_file() and not marker.is_symlink() and marker.read_text() == marker_text and
+            previous.is_file() and not previous.is_symlink() and previous.read_bytes() == saved_bytes and
+            backup.is_dir() and not backup.is_symlink(), 'invalid ML alias recovery transaction')
+    return 'recovery'
+
+
 def verify_source_origin_provider_invariants(old_environment, new_environment, *, verified_spirv=False):
     """Keep every other selected provider unchanged during an origin switch."""
     selections = {
@@ -4142,6 +4166,9 @@ def verify_saved_source_provider(options, sdk, native, environment, saved, role,
 def reconfigure(options):
     keep_going_limit(options)
     build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
+    require(not getattr(options, 'migrate_ml_alias_root', None) or
+            (getattr(options, 'previous_source', None) and not build_after_reconfigure),
+            'ML alias migration requires separate source-origin reconfigure')
     require(not (getattr(options, 'activate_common_providers', False) and
                  getattr(options, 'ml_ruy_source', None)),
             'common provider activation is a separate stage from ML selection')
@@ -4545,7 +4572,7 @@ def reconfigure(options):
                             setattr(selected, name, None)
                 return selected
 
-            def verify_old(path):
+            def verify_old(path, *, legacy_root=None):
                 require(not cleanup_only, 'old configuration is unavailable')
                 for relative, target in (('v8', old_v8), ('third_party/electron_node', old_node)):
                     link = path / 'src' / relative
@@ -4555,11 +4582,12 @@ def reconfigure(options):
                 previous_options.spirv_selection = old_spirv
                 previous_options.source_view_created_files = None
                 previous_options.source_view_publication = None
-                result = gn_source(previous_options, retired=True)
+                result = gn_source(previous_options, retired=True, legacy_ml_root=legacy_root)
                 require(result == path / 'src', 'old source view verification returned another path')
 
-            def verify_new(path):
-                result = gn_source(view_options(path, options.workspace, options.node_source, options.v8_source))
+            def verify_new(path, *, legacy_root=None):
+                result = gn_source(view_options(path, options.workspace, options.node_source, options.v8_source),
+                                   legacy_ml_root=legacy_root)
                 require(result == path / 'src', 'new source view verification returned another path')
 
             def build_new(path):
@@ -4586,6 +4614,25 @@ def reconfigure(options):
                     raise
 
             transition = local_module('electron_source_origin_transition', 'source-origin-transition.py')
+            legacy_factory = getattr(options, 'migrate_ml_alias_root', None)
+            if legacy_factory is not None:
+                stable, backup = work / 'source-view', work / '.source-view-origin-backup'
+                mode = ml_alias_migration_mode(work, config_path, saved_bytes, legacy_factory, origin=origin,
+                                               cleanup_only=cleanup_only, build_after=build_after_reconfigure,
+                                               marker_text=transition.MARKER)
+                ml = local_module('electron_ml_source_view', 'ml-source-view.py')
+                view = local_module('electron_protobuf_source_view', 'protobuf-source-view.py')
+                if mode == 'initial':
+                    verify_old(stable, legacy_root=stable)
+                    ml.migrate_aliases(view, stable, stable)
+                    verify_old(stable)
+                else:
+                    verify_old(backup, legacy_root=stable)
+                    verify_new(stable, legacy_root=legacy_factory)
+                    ml.migrate_aliases(view, backup, stable)
+                    ml.migrate_aliases(view, stable, legacy_factory)
+                    verify_old(backup)
+                    verify_new(stable)
             transition.transition(work, saved_configuration=saved_bytes, config_is_new=config_is_new,
                                   verify_old=verify_old, verify_new=verify_new,
                                   build_new=build_new, commit_config=commit_config)
@@ -4755,6 +4802,8 @@ def main():
         if phase == 'reconfigure':
             command.add_argument('--previous-source', type=Path,
                                  help='verify and replace the previously configured source workspace')
+            command.add_argument('--migrate-ml-alias-root', type=Path,
+                                 help='migrate verified legacy ML aliases from an explicit prior view root')
             command.add_argument('--reuse-host-buildlink', type=Path,
                                  help='reuse an equivalent existing host buildlink context')
             command.add_argument('--activate-common-ml', action='store_true',
