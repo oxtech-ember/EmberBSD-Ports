@@ -1967,7 +1967,8 @@ def common_node_configure(options, native, sdk, environment, resource_text):
     jinja = Path(jinja_file).resolve(strict=True)
     require(jinja.is_file() and jinja.is_relative_to(prefix), 'Jinja must belong to selected host prefix')
     resource = Path(resource_text).resolve(strict=True)
-    helper = (options.ports_source / 'scripts/source-inputs/node/configure-inputs.py').resolve(strict=True)
+    helper = ((getattr(options, 'node_ports_source', None) or options.ports_source) /
+              'scripts/source-inputs/node/configure-inputs.py').resolve(strict=True)
     paths = {
         'gyp-source': Path(options.gyp_source).resolve(strict=True),
         'gyp-pkgsrc': Path(options.gyp_pkgsrc).resolve(strict=True),

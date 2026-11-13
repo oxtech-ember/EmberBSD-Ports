@@ -47,8 +47,10 @@ with tempfile.TemporaryDirectory(prefix='electron-provider-once-') as tmp:
         if filename == 'rust-policy.py': return SimpleNamespace(apply=lambda env, _: (env, 'rust-fixture'))
         raise AssertionError(filename)
     tools = {name: '/target/' + name for name in ('cc', 'cxx', 'ar', 'nm', 'readelf', 'strip', 'objcopy')}
-    empty_names = ('common_abseil', 'common_icu', 'common_re2', 'common_protobuf', 'common_undici',
-                   'common_embedder_sources', 'common_v8_metagen', 'common_node_configure')
+    empty_names = ('common_abseil', 'common_icu', 'common_re2', 'common_media_libraries',
+                   'common_compression', 'common_ffmpeg', 'common_minizip', 'common_protobuf', 'common_undici',
+                   'common_embedder_sources', 'common_ml_sources', 'common_boringssl_source',
+                   'common_v8_metagen', 'common_node_configure')
     with patch.object(build, 'local_module', side_effect=local_module), \
          patch.object(build, 'selected_control_git', return_value='/git'), \
          patch.object(build, 'devtools_provider_identity', return_value='digest'), \

@@ -307,9 +307,9 @@ their effective timestamps, while changed inputs cause the relevant objects to
 rebuild. Interrupted view transitions retain the reconfiguration guard.
 
 `EMBERBSD_ELECTRON_NODE_PORTS_SOURCE` optionally selects a different checkout
-of the same Ports owner for the Node source verification command. It defaults
-to `EMBERBSD_ELECTRON_PORTS_SOURCE`; the existing Node configure helper and
-its recorded GN dependency paths continue to use `PORTS_SOURCE`.
+of the same Ports owner for Node source verification and its configure helper.
+It defaults to `EMBERBSD_ELECTRON_PORTS_SOURCE`; GN records the selected helper
+as an input dependency.
 
 TFLite Support imports the common LiteRT configuration schema and requires
 `use_litert_tflite=true`; the former bundled TensorFlow schema is not selected.

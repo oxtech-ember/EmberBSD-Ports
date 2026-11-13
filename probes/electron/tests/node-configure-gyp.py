@@ -59,8 +59,21 @@ with TemporaryDirectory() as temporary:
     options.node_ports_source = alternate
     controller.common_embedder_sources(options, {'process':OwnerProcess()}, Native(), {})
     assert commands[-1][2] == str(alternate / 'scripts/source-inputs/node/source.py')
-    assert controller.common_node_configure(options, Native(), {'process':Process()}, {}, host/'resource') == result
+    helper = alternate / 'scripts/source-inputs/node/configure-inputs.py'
+    helper.write_text('selected helper')
+    selected = controller.common_node_configure(options, Native(), {'process':Process()}, {}, host/'resource')
+    assert selected['emberbsd_node_configure_helper'] == str(helper)
+    assert str(helper) in selected['emberbsd_node_configure_dependencies']
+    assert str(ports / 'scripts/source-inputs/node/configure-inputs.py') not in selected['emberbsd_node_configure_dependencies']
+    helper.unlink()
+    try:
+        controller.common_node_configure(options, Native(), {'process':Process()}, {}, host/'resource')
+    except (FileNotFoundError, ValueError):
+        pass
+    else:
+        raise AssertionError('missing selected Node helper accepted')
     options.node_ports_source = None
+    assert controller.common_node_configure(options, Native(), {'process':Process()}, {}, host/'resource') == result
     controller.common_embedder_sources(options, {'process':OwnerProcess()}, Native(), {})
     assert commands[-1][2] == str(ports / 'scripts/source-inputs/node/source.py')
     options.gyp_source = None
