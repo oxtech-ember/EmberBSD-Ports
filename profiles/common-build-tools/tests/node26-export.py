@@ -33,6 +33,12 @@ NODE_RECIPE_PATCHES = [(Path(line.split('\t')[1]), line.split('\t')[3])
                        for line in NODE_LINES if line.startswith('recipe-patch\t')]
 NODE_PATCH_FILES = [Path(line.split('\t')[1]) for line in NODE_LINES]
 assert PATCH in NODE_PATCH_FILES
+resolver = next(i for i, line in enumerate(NODE_LINES)
+                if line.endswith('\tpatch-zzzzzzz-node-shared-builtin-path'))
+for i, line in enumerate(NODE_LINES):
+    fields = line.split('\t')
+    if fields[0] == 'patch' and '--- a/lang/nodejs/distinfo\n' in (ROOT / fields[1]).read_text():
+        assert i < resolver, 'Node resolver patch must follow distinfo infrastructure patches'
 EXPORT_LINE = '\n'.join(NODE_LINES) + '\n'
 
 
@@ -105,7 +111,7 @@ def main():
                 for p in args.expected_recipe.rglob('*') if p.is_file()}
     assert actual == expected, (actual.keys() ^ expected.keys())
     makefile = (recipe / 'Makefile').read_text()
-    assert re.search(r'^PKGREVISION=\s+1$', makefile, re.M)
+    assert re.search(r'^PKGREVISION=\s+3$', makefile, re.M)
     assert any(name.endswith('node-emudhra-rsa-blocklist') for _, name in NODE_RECIPE_PATCHES)
     for source, name in NODE_RECIPE_PATCHES:
         assert (recipe / 'patches' / name).read_bytes() == (ROOT / source).read_bytes()
