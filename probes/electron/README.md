@@ -853,7 +853,10 @@ bootstrap checks. The [host binding regression](tests/electron-host-binding.py) 
 the generated makeconf directly and checks all three cwrapper argv without
 overriding compiler paths in the test. This is the explicit [SDK host-toolchain
 stage contract](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/native-checks.md). Reconfigure creates a
-new view when these inputs change; build refuses a stale selection. For host
+new view when these inputs change; build refuses a stale selection. A change of
+pkgsrc export root requires both live selections to match their records and the
+same links, generated inputs, external providers and invocation; changed mk
+inputs are accepted only when those generated outputs remain equivalent. For host
 protocol generators, `--protoc-runtime-view` selects the SDK's scoped Darwin
 launcher. The launcher and actual runtime files are declared as GN action
 inputs, and only its child process receives the runtime search path. Protoc's

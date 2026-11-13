@@ -604,7 +604,7 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
     if old_args.get(key) == new_args.get(key):
         return set()
     context_key = 'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'
-    records, prefixes = [], []
+    records, prefixes, contexts = [], [], []
     for arguments, environment in ((old_args, old_env), (new_args, new_env)):
         context = Path(environment.get(context_key, ''))
         require(context.is_absolute() and context.parent == work and
@@ -636,13 +636,20 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
                     'host buildlink link differs from selection: ' + relative)
         records.append(record)
         prefixes.append(prefix.relative_to(context))
+        contexts.append(context)
     require(prefixes[0] == prefixes[1], 'host buildlink prefix layout changed')
     old_links, new_links = (record['identity']['links'] for record in records)
     require(all(new_links.get(name) == target for name, target in old_links.items()),
             'host buildlink relocation removed or replaced an existing link')
     old_call, new_call = (record['invocation'] for record in records)
+    relocated_root = old_call.get('pkgsrc_root') != new_call.get('pkgsrc_root')
+    if relocated_root:
+        owner = local_module('electron_host_buildlink', 'host-buildlink.py')
+        proof = local_module('electron_host_buildlink_relocation', 'host-buildlink-relocation.py')
+        proof.verify(records[0], records[1], contexts[0], contexts[1], owner)
     selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat', 'shared_cpuinfo', 'shared_vulkan', 'shared_woff2', 'shared_snappy', 'shared_pdf_libraries', 'shared_spirv_tools'}
-    for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
+    ignored = {'work', 'pkgsrc_root'} if relocated_root else {'work'}
+    for name in (set(old_call) | set(new_call)) - ignored - selection_keys:
         require(old_call.get(name) == new_call.get(name),
                 'host buildlink relocation changed an unrelated input: ' + name)
     for name in selection_keys:
