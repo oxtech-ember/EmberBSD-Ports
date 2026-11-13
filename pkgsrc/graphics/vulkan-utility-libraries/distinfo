@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (vulkan-utility-libraries-1.4.363.0.tar.gz) = 9e725b72c8d53bad3997215c5128a980364cb41614cba3619d27f80d5873721d
+SHA512 (vulkan-utility-libraries-1.4.363.0.tar.gz) = 65ec2e2e45bd892f8964cb9397e202777dc04051e33cb78278292cb32f955b77d8b9f0615170bca7a181aa808fe1d06717601d1cc955af21550d06f7b4f58be6
+Size (vulkan-utility-libraries-1.4.363.0.tar.gz) = 1346915 bytes

@@ -1,0 +1,2 @@
+Vulkan Utility Libraries provide shared Vulkan utility headers, safe structure
+helpers, and layer settings support from the Khronos Vulkan SDK.

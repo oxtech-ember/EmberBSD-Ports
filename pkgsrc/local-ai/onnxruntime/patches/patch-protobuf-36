@@ -1,0 +1,44 @@
+--- a/onnxruntime/core/flatbuffers/flatbuffers_utils.cc
++++ b/onnxruntime/core/flatbuffers/flatbuffers_utils.cc
+@@ -200,7 +200,6 @@
+     dims->Reserve(fbs_dims->size());
+     for (const auto fbs_dim : *fbs_dims) {
+       ORT_RETURN_IF(nullptr == fbs_dim, "Null entry in dimensions. Invalid ORT format model.");
+-      TensorShapeProto_Dimension dim;
+       ORT_RETURN_IF_ERROR(LoadTensorDimensionOrtFormat(*fbs_dim, *dims->Add()));
+     }
+   }
+--- a/onnxruntime/core/graph/contrib_ops/bert_defs.cc
++++ b/onnxruntime/core/graph/contrib_ops/bert_defs.cc
+@@ -1728,7 +1728,6 @@
+         updateOutputShape(ctx, 0, output_shape);
+       }
+     } else if (ctx.hasInput(2)) {
+-      ONNX_NAMESPACE::TensorShapeProto output_shape;
+       propagateShapeFromInputToOutput(ctx, 0, 0);
+     } else {  // packed QKV
+       ONNX_NAMESPACE::TensorShapeProto output_shape;
+--- a/onnxruntime/core/session/onnxruntime_c_api.cc
++++ b/onnxruntime/core/session/onnxruntime_c_api.cc
+@@ -3577,7 +3577,6 @@
+ 
+ ORT_API_STATUS_IMPL(OrtApis::OpAttr_GetType, _In_ const OrtOpAttr* attribute, _Out_ OrtOpAttrType* type) {
+   API_IMPL_BEGIN
+-  const auto attr = attribute->attr_proto;
+   auto onnx_attr_type = attribute->attr_proto.type();
+   switch (onnx_attr_type) {
+     case ONNX_NAMESPACE::AttributeProto_AttributeType::AttributeProto_AttributeType_UNDEFINED: {
+--- a/onnxruntime/core/framework/ep_context_utils.cc
++++ b/onnxruntime/core/framework/ep_context_utils.cc
+@@ -249,9 +249,10 @@
+     auto out_stream_buf = std::make_unique<epctx::OutStreamBuf>(*output_write_func_holder);
+     std::ostream out_stream(out_stream_buf.get());
+ 
+-    model_proto.SerializeToOstream(&out_stream);
++    const bool ok = model_proto.SerializeToOstream(&out_stream);
+     out_stream.flush();
+     ORT_RETURN_IF_ERROR(out_stream_buf->GetStatus());
++    ORT_RETURN_IF(!ok, "Protobuf serialization failed when saving model to output stream");
+   } else {
+     // Write output model to a file.
+     int fd = 0;

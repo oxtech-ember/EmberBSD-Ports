@@ -41,6 +41,7 @@ SHA1 (patch-netbsd-device-discovery-cmake) = bb9bafbd1888a07fab9aa058eef6f14a55c
 SHA1 (patch-netbsd-thread-id) = c8df8472c354959d00d38c1fb70b78eb668313e9
 SHA1 (patch-posix-thread-attributes) = ce6e4210945a428433a8d4c006ef69c1e5ef36a4
 SHA1 (patch-posix-thread-errors) = 019fcc6726f6f8cc7313f57cb89b7522e8d472ce
+SHA1 (patch-protobuf-36) = 6574b43f900d97bd59d116834b8e4e3cfe5dde6a
 SHA1 (patch-static-selector-registry) = 53f187a3fe857863fd02257600783c7e397b4775
 BLAKE2s (ort-dawn-v20260916.214021-sources.tar.gz) = b1f3c2511d79340bb86c5e0f42b6c4def240e13942b9cd301bcd18b9406065a5
 SHA512 (ort-dawn-v20260916.214021-sources.tar.gz) = 172617aea89f83635a30d648171aa8c276a9f15ffcc76efe9ee5a8c068c6afead93ca11b5bb9a6ba7305838aea84b33cb2794215aa3542b603985b177b6130a8
