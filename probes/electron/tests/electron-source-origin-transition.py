@@ -108,6 +108,42 @@ for key in old.keys() - {'EMBERBSD_NODE_SOURCE_SHA256','EMBERBSD_V8_SOURCE_SHA25
  else:raise AssertionError('changed provider accepted: '+key)
 print('PASS: unrelated provider identity/selection changes rejected')
 
+# Only verified SPIRV recipe identities may move in the shared catalog.
+import copy,json
+names=('parallel/spirv-headers','parallel/spirv-tools','archivers/brotli')
+def catalog():
+ return {'version':1,'identities':{n:{'api':3,'package':n,'upstream':'f'*40,'effective_package_sha256':'a'*64} for n in names},'recipes':{n:{'distinfo':'d'*64,'patches':{'test':1}} for n in names}}
+def encoded(value):return json.dumps(value,sort_keys=True,separators=(',',':'))
+key='EMBERBSD_COMPRESSION_RECIPE_CATALOG'; before=catalog(); after=copy.deepcopy(before)
+for n in names[:2]:after['identities'][n]['effective_package_sha256']='b'*64
+old_catalog={key:encoded(before)}; new_catalog={key:encoded(after)}
+controller.verify_source_origin_provider_invariants(old_catalog,new_catalog,verified_spirv=True)
+def reject(value,proof=True):
+ try:controller.verify_source_origin_provider_invariants(old_catalog,{key:value},verified_spirv=proof)
+ except ValueError:pass
+ else:raise AssertionError('invalid catalog transition accepted')
+reject(encoded(after),False)
+for mutate in ('foreign','recipe','identity','package','missing','extra','boolversion','floatapi','foreignfloat','recipetype','badsha'):
+ bad=copy.deepcopy(after)
+ if mutate=='foreign':bad['identities'][names[2]]['effective_package_sha256']='c'*64
+ elif mutate=='recipe':bad['recipes'][names[0]]['distinfo']='e'*64
+ elif mutate=='identity':bad['identities'][names[0]]['upstream']='e'*40
+ elif mutate=='package':bad['identities'][names[0]]['package']=names[1]
+ elif mutate=='missing':del bad['identities'][names[0]]
+ elif mutate=='extra':bad['identities']['other']={}
+ elif mutate=='boolversion':bad['version']=True
+ elif mutate=='floatapi':bad['identities'][names[0]]['api']=3.0
+ elif mutate=='foreignfloat':bad['identities'][names[2]]['api']=3.0
+ elif mutate=='recipetype':bad['recipes'][names[0]]['patches']['test']=True
+ elif mutate=='badsha':bad['identities'][names[0]]['effective_package_sha256']='z'*64
+ reject(encoded(bad))
+reject(encoded(after).replace('"version":1','"version":1,"version":1'))
+bad_old=copy.deepcopy(before);bad_old['identities'][names[0]]['effective_package_sha256']='bad'
+try:controller.verify_source_origin_provider_invariants({key:encoded(bad_old)},new_catalog,verified_spirv=True)
+except ValueError:pass
+else:raise AssertionError('invalid saved catalog hash accepted')
+print('PASS: verified SPIRV catalog transition and negative cases')
+
 # The saved source identity is the hash of the complete canonical record.
 import hashlib,json
 with tempfile.TemporaryDirectory() as temporary:

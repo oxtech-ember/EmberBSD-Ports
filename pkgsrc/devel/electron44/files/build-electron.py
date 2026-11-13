@@ -4035,6 +4035,47 @@ def verified_host_deployment_change(old_args, new_args, old_env, new_env, option
     return True
 
 
+def equivalent_spirv_catalog(old_raw, new_raw):
+    """Allow only proven SPIRV recipe-identity revisions in the catalog."""
+    def canonical(value):
+        return json.dumps(value, sort_keys=True, separators=(',', ':'))
+
+    def parse(raw):
+        require(isinstance(raw, str), 'invalid compression catalog')
+        try:
+            value = json.loads(raw)
+        except (TypeError, ValueError) as error:
+            raise ValueError('invalid compression catalog') from error
+        require(canonical(value) == raw,
+                'noncanonical compression catalog')
+        require(isinstance(value, dict) and set(value) == {'version', 'identities', 'recipes'} and
+                type(value['version']) is int and value['version'] == 1 and
+                isinstance(value['identities'], dict) and isinstance(value['recipes'], dict),
+                'invalid compression catalog schema')
+        return value
+
+    old, new = parse(old_raw), parse(new_raw)
+    spirv = {'parallel/spirv-tools', 'parallel/spirv-headers'}
+    keys = set(old['identities'])
+    require(spirv <= keys and keys == set(new['identities']) == set(old['recipes']) == set(new['recipes']) and
+            canonical(old['recipes']) == canonical(new['recipes']), 'compression catalog providers changed')
+    for name in keys:
+        before, after = old['identities'][name], new['identities'][name]
+        if name not in spirv:
+            require(canonical(before) == canonical(after), 'unrelated compression catalog identity changed')
+            continue
+        fields = {'api', 'package', 'upstream', 'effective_package_sha256'}
+        require(isinstance(before, dict) and isinstance(after, dict) and
+                set(before) == set(after) == fields and before['package'] == after['package'] == name and
+                type(before['api']) is int and type(after['api']) is int and before['api'] == after['api'] == 3 and
+                before['upstream'] == after['upstream'] and
+                isinstance(before['upstream'], str) and re.fullmatch(r'[0-9a-f]{40}', before['upstream']) and
+                all(isinstance(identity['effective_package_sha256'], str) and
+                    re.fullmatch(r'[0-9a-f]{64}', identity['effective_package_sha256'])
+                    for identity in (before, after)), 'invalid SPIRV catalog identity')
+    return True
+
+
 def verify_source_origin_provider_invariants(old_environment, new_environment, *, verified_spirv=False):
     """Keep every other selected provider unchanged during an origin switch."""
     selections = {
@@ -4055,6 +4096,10 @@ def verify_source_origin_provider_invariants(old_environment, new_environment, *
                 key not in ('EMBERBSD_NODE_SOURCE_SHA256', 'EMBERBSD_V8_SOURCE_SHA256') and
                 not (verified_spirv and key in spirv_keys)):
 
+            if (key == 'EMBERBSD_COMPRESSION_RECIPE_CATALOG' and verified_spirv and
+                    old_environment.get(key) != new_environment.get(key)):
+                equivalent_spirv_catalog(old_environment.get(key), new_environment.get(key))
+                continue
             require(old_environment.get(key) == new_environment.get(key),
                     'source-origin transition changed another provider: ' + key)
 
