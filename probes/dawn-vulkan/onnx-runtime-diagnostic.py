@@ -4,6 +4,18 @@ import argparse, ctypes as c, json, math, os, re, sys, collections
 P=c.c_void_p; PP=c.POINTER(P); S=c.c_size_t; I=c.c_int; B=c.c_char_p
 
 
+def api_names(hdr, struct_name):
+    body=hdr.split('struct '+struct_name+' {',1)[1].split('\n};',1)[0]
+    body=re.sub(r'/\*.*?\*/|//[^\n]*','',body,flags=re.S)
+    names=[]
+    for decl in body.split(';'):
+        decl=decl.strip()
+        if not decl: continue
+        m=re.search(r'ORT_API2_STATUS\(\s*(\w+)|ORT_CLASS_RELEASE\(\s*(\w+)|\(ORT_API_CALL\s*\*\s*(\w+)\)|ORT_API_T\(\s*[^,]+,\s*(\w+)',decl)
+        if not m: raise RuntimeError('unrecognized '+struct_name+' entry '+decl[:100])
+        n=m.group(1) or ('Release'+m.group(2) if m.group(2) else None) or m.group(3) or m.group(4); names.append(n)
+    return names
+
 def compare_outputs(cpu, gpu, atol, rtol):
     if len(cpu) != len(gpu): raise RuntimeError('CPU/GPU output counts differ')
     failures = 0
@@ -30,15 +42,7 @@ def main():
     # ORT uses a stable versioned function-pointer table; derive indices from the installed header.
     hdr=open(os.path.join(args.prefix,'include/onnxruntime/onnxruntime_c_api.h')).read()
     if not re.search(r'#define\s+ORT_API_VERSION\s+31\b',hdr): raise RuntimeError('expected ORT C API 31 header')
-    body=hdr.split('struct OrtApi {',1)[1].split('\n};',1)[0]
-    body=re.sub(r'/\*.*?\*/|//[^\n]*','',body,flags=re.S)
-    names=[]
-    for decl in body.split(';'):
-        decl=decl.strip()
-        if not decl: continue
-        m=re.search(r'ORT_API2_STATUS\(\s*(\w+)|ORT_CLASS_RELEASE\(\s*(\w+)|\(ORT_API_CALL\s*\*\s*(\w+)\)|ORT_API_T\(\s*[^,]+,\s*(\w+)',decl)
-        if not m: raise RuntimeError('unrecognized OrtApi entry '+decl[:100])
-        n=m.group(1) or ('Release'+m.group(2) if m.group(2) else None) or m.group(3) or m.group(4); names.append(n)
+    names=api_names(hdr, 'OrtApi')
     lib=c.CDLL(os.path.join(args.prefix,'lib/libonnxruntime.so.1')); lib.OrtGetApiBase.restype=PP; base=lib.OrtGetApiBase()
     getapi=c.CFUNCTYPE(P,c.c_uint)(base[0]); address=getapi(31)
     if not address: raise RuntimeError('runtime does not support ORT API 31')

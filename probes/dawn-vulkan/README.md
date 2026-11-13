@@ -105,3 +105,14 @@ CXX=/path/to/native/clang++ python3 pkgsrc/local-ai/onnxruntime/files/test-dawn-
 
 Target acceptance still requires comparing all outputs of representative ONNX
 models on the actual WebGPU provider and checking the intended application.
+
+The CPU-only output callback check exercises failure propagation and a successful
+retry through the ORT 31 model compilation API, without writing an output file:
+
+```sh
+python3 ort-compile-write-check.py --model /path/to/model.onnx
+```
+
+It requires `onnx-runtime-diagnostic.py` alongside it and the installed ORT
+header and library. This tests callback failure propagation, not an independent
+failure inside protobuf serialization.
