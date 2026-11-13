@@ -5,6 +5,13 @@ source-only package provides the tree, headers and tools; it does not provide
 a V8 library. Node and Chromium-based consumers build their own ABI-specific
 artifacts from this source.
 
+Electron 45.3.2's complete ordered V8 series is pinned to Electron commit
+`9ee9e7718172287d068cee397097c2d79a137eec`. The numbered patches preserve its
+order and attribution; the separate prepared-source identity patch retains
+EmberBSD's receipt-bound code-cache salt. Verify the series against the pinned
+Git object using `test-electron-series.py --git /path/to/git --electron-source
+/path/to/electron`. Other consumers use the same effective V8 tree.
+
 The producer prepares the effective exported recipe with the selected SDK
 source-preparation API, checks the archive hashes and version header, applies
 the complete patch inventory, and records an identity for the resulting tree.
@@ -21,7 +28,7 @@ the appropriate workspace locks and drain writers before reuse.
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/v8/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
-  --archive "$DISTFILES/v8-15.6.75.50-6500240d220d9eaba51ea0012f60e926fe4b6472.tar.gz" \
+  --archive "$DISTFILES/v8-15.6.75.57-5e51e9c6079c7fa65ca75e7919c81ea50734302e.tar.gz" \
   --patch "$HOST_PREFIX/bin/gpatch" --output "$WORK/v8-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/v8/source.py \
   --sdk-source "$SDK_SOURCE" verify-source --source "$WORK/v8-source" \
