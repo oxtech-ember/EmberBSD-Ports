@@ -1,4 +1,4 @@
-@comment EmberBSD: exact verified ONNX Runtime 1.31.0 shared CPU payload
+@comment EmberBSD: ONNX Runtime 1.31.1 shared CPU payload + optional WebGPU plugin
 include/onnxruntime/core/providers/custom_op_context.h
 include/onnxruntime/core/providers/resource.h
 include/onnxruntime/cpu_provider_factory.h
@@ -18,19 +18,26 @@ include/onnxruntime/onnxruntime_run_options_config_keys.h
 include/onnxruntime/onnxruntime_session_options_config_keys.h
 include/onnxruntime/onnxruntime_type_conversion.h
 include/onnxruntime/provider_options.h
+${PLIST.webgpu}include/onnxruntime/webgpu_provider_factory.h
 lib/cmake/onnxruntime/onnxruntimeConfig.cmake
 lib/cmake/onnxruntime/onnxruntimeConfigVersion.cmake
 lib/cmake/onnxruntime/onnxruntimeTargets-release.cmake
 lib/cmake/onnxruntime/onnxruntimeTargets.cmake
 lib/libonnxruntime.so
 lib/libonnxruntime.so.1
-lib/libonnxruntime.so.1.31.0
+lib/libonnxruntime.so.1.31.1
 lib/libonnxruntime_providers_shared.so
+${PLIST.webgpu}lib/libonnxruntime_providers_webgpu.so
 lib/pkgconfig/libonnxruntime.pc
 share/doc/onnxruntime/SOURCE
 share/licenses/onnxruntime/LICENSE
 share/licenses/onnxruntime/ThirdPartyNotices.txt
-share/licenses/onnxruntime/abseil_cpp/LICENSE
+${PLIST.webgpu}share/licenses/onnxruntime/dawn/LICENSE
+${PLIST.webgpu}share/licenses/onnxruntime/dawn/renderdoc-LICENSE.md
+${PLIST.webgpu}share/licenses/onnxruntime/dawn/spirv-headers-LICENSE
+${PLIST.webgpu}share/licenses/onnxruntime/dawn/vulkan-headers-LICENSE.md
+${PLIST.webgpu}share/licenses/onnxruntime/dawn/vulkan-utility-LICENSE.md
+${PLIST.webgpu}share/licenses/onnxruntime/dawn/webgpu-headers-LICENSE
 share/licenses/onnxruntime/date/LICENSE.txt
 share/licenses/onnxruntime/eigen5/COPYING.APACHE
 share/licenses/onnxruntime/eigen5/COPYING.BSD
@@ -45,6 +52,5 @@ share/licenses/onnxruntime/mp11/copyright-notice.hpp
 share/licenses/onnxruntime/nlohmann_json/LICENSE.MIT
 share/licenses/onnxruntime/onnx/LICENSE
 share/licenses/onnxruntime/onnx/NOTICE
-share/licenses/onnxruntime/protobuf/LICENSE
 share/licenses/onnxruntime/re2/LICENSE
 share/licenses/onnxruntime/safeint/LICENSE

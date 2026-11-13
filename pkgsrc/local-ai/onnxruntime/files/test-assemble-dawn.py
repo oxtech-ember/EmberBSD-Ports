@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """Exercise reproducibility and refusal with small synthetic source archives."""
+import argparse
 import gzip
 import hashlib
 import io
@@ -13,15 +14,19 @@ import tempfile
 import zipfile
 
 
-def run():
+def run(bsdtar):
     tool = Path(__file__).with_name('assemble-dawn.py')
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         inputs = root / 'inputs'
         inputs.mkdir()
         dawn = inputs / 'dawn.zip'
+        long_path = '/'.join(['long-segment-' + str(i) * 40 for i in range(6)]) + '/source.txt'
+        long_content = b'long PAX path payload\n'
+        assert len('dawn-20260916.214021/' + long_path) > 255
         with zipfile.ZipFile(dawn, 'w') as archive:
             archive.writestr('dawn-pin/LICENSE', 'Dawn license\n')
+            archive.writestr('dawn-pin/' + long_path, long_content)
         dependency = inputs / 'dep.tar.gz'
 
         def make_input(mtime):
@@ -49,13 +54,23 @@ def run():
         make_input(2)
         subprocess.run([*command, '--output', str(second)], check=True, stdout=subprocess.DEVNULL)
         assert first.read_bytes() == second.read_bytes()
+        extracted = root / 'extracted'
+        extracted.mkdir()
+        subprocess.run([str(bsdtar), '-xzf', str(first), '-C', str(extracted)], check=True)
+        assert (extracted / 'dawn-20260916.214021' / long_path).read_bytes() == long_content
         manifest['dependencies'][0]['tree_sha256'] = '0' * 64
         manifest_path.write_text(json.dumps(manifest))
         rejected = subprocess.run([*command, '--output', str(second)], capture_output=True)
         assert rejected.returncode != 0 and b'tree SHA-256 mismatch' in rejected.stderr
         assert first.read_bytes() == second.read_bytes()
-    print('Dawn source assembly: reproducibility and refusal passed')
+    print('Dawn source assembly: reproducibility, PAX extraction and refusal passed')
 
 
 if __name__ == '__main__':
-    run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bsdtar', type=Path, required=True,
+                        help='absolute path to bsdtar in the selected native Ports prefix')
+    args = parser.parse_args()
+    if not args.bsdtar.is_absolute() or not args.bsdtar.is_file():
+        parser.error('--bsdtar must name an existing absolute executable')
+    run(args.bsdtar)

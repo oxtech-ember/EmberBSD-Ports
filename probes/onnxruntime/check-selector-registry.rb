@@ -13,8 +13,8 @@ abort 'Preserve the existing output.' if File.exist?(output) || File.symlink?(ou
 relative = 'onnxruntime/core/optimizer/matmul_nbits_fusion.cc'
 before = File.join(original, relative)
 before_header = before.sub(/\.cc\z/, '.h')
-# Keep the baseline tied to the pinned 1.31.0 source, not a reduced substitute.
-abort 'Expected the unmodified ONNX Runtime 1.31.0 translation unit.' unless
+# Keep the baseline tied to the pinned 1.31.1 source, not a reduced substitute.
+abort 'Expected the unmodified ONNX Runtime 1.31.1 translation unit.' unless
   Digest::SHA256.file(before).hexdigest == '3037464601a801ac8dc9602fdaa0dbd682601471423f3394065dce549c68bc8e'
 entries = JSON.parse(File.read(database)).select do |entry|
   File.expand_path(entry.fetch('file'), entry.fetch('directory')).end_with?("/#{relative}")

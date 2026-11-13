@@ -1,7 +1,7 @@
 # MLAS guarded-buffer regression controls
 
 These controls include the actual upstream `test_util.h` header. The baseline
-uses pristine ONNX Runtime 1.31.0. The patched target uses the runtime source
+uses pristine ONNX Runtime 1.31.1. The patched target uses the runtime source
 tree with the canonical `patch-mlas-guard-pages` change.
 
 NetBSD PaX prevents adding mapping permissions that the original `mmap` call

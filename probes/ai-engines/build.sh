@@ -15,6 +15,16 @@ onnx_recipe=$recipe/../../pkgsrc/local-ai/onnxruntime
 ncnn_recipe=$recipe/../../pkgsrc/local-ai/ncnn
 patch_tool=${PATCH:-gpatch}
 python=${PYTHON:-python3}
+: "${PROTOC_FOR_BUILD:?Set PROTOC_FOR_BUILD to the native Ports protobuf 36.2 protoc}"
+common_prefix=${COMMON_PREFIX:-/usr/pkg}
+case "$PROTOC_FOR_BUILD:$common_prefix" in /*:/*) ;; *) echo 'Use absolute common provider paths.' >&2; exit 2 ;; esac
+[ -x "$PROTOC_FOR_BUILD" ] && [ "$("$PROTOC_FOR_BUILD" --version)" = 'libprotoc 36.2' ] || {
+    echo 'The selected native protoc must be version 36.2.' >&2; exit 2;
+}
+[ -f "$common_prefix/lib/cmake/protobuf/protobuf-config.cmake" ] && \
+    [ -f "$common_prefix/lib/cmake/absl/abslConfig.cmake" ] || {
+    echo 'Install the common protobuf and Abseil development packages.' >&2; exit 2;
+}
 CC=${CC:-gcc}
 CXX=${CXX:-g++}
 export CC CXX
@@ -75,12 +85,15 @@ run eigen-configure cmake -S "$work/src/eigen-5.0.1" -B "$work/eigen-build" -G N
     -DCMAKE_INSTALL_PREFIX="$prefix" -DEIGEN_BUILD_TESTING=OFF -DEIGEN_BUILD_DOC=OFF \
     -DEIGEN_BUILD_BLAS=OFF -DEIGEN_BUILD_LAPACK=OFF -DEIGEN_BUILD_DEMOS=OFF
 run eigen-install cmake --install "$work/eigen-build"
+mkdir -p "$work/src/onnxruntime-1.31.1/onnxruntime/core/platform/netbsd"
+cp "$onnx_recipe/files/netbsd-device_discovery.cc" "$work/src/onnxruntime-1.31.1/onnxruntime/core/platform/netbsd/device_discovery.cc"
 for patch in "$onnx_recipe"/patches/patch-*; do
-    run "onnx-$(basename "$patch")" "$patch_tool" -f -N -F 0 -d "$work/src/onnxruntime-1.31.0" -p1 < "$patch"
+    run "onnx-$(basename "$patch")" "$patch_tool" -f -N -F 0 -d "$work/src/onnxruntime-1.31.1" -p1 < "$patch"
 done
-run onnx-configure cmake -S "$work/src/onnxruntime-1.31.0/cmake" -B "$work/onnx-build" -G Ninja \
+run onnx-configure cmake -S "$work/src/onnxruntime-1.31.1/cmake" -B "$work/onnx-build" -G Ninja \
     -C "$onnx_recipe/features.cmake" \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_PREFIX_PATH="$prefix" \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_PREFIX_PATH="$prefix;$common_prefix" \
+    -DONNX_CUSTOM_PROTOC_EXECUTABLE="$PROTOC_FOR_BUILD" \
     -DCMAKE_CXX_STANDARD=20 \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER \
     -Donnxruntime_CMAKE_DEPS_MIRROR_DIR="$work/dependencies" \
@@ -90,7 +103,7 @@ run onnx-float16-contract sh "$recipe/tests/check-float16-source.sh" "$work"
 run onnx-cpu-id-contract sh "$recipe/tests/check-netbsd-cpu-source.sh" "$work"
 run onnx-build cmake --build "$work/onnx-build" --target onnxruntime onnxruntime_providers_shared --parallel "$jobs"
 run onnx-install cmake -DCMAKE_INSTALL_LOCAL_ONLY=ON -P "$work/onnx-build/cmake_install.cmake"
-run onnx-licenses sh "$onnx_recipe/files/install-licenses.sh" "$work/src/onnxruntime-1.31.0" "$work/onnx-build" "$prefix" "$onnx_recipe"
+run onnx-licenses sh "$onnx_recipe/files/install-licenses.sh" "$work/src/onnxruntime-1.31.1" "$work/onnx-build" "$prefix" "$onnx_recipe"
 share=$prefix/share/ai-engines
 mkdir -p "$share/models" "$share/fixtures" "$share/licenses"
 cp "$work/src/silero-vad-6.2.3/src/silero_vad/data/silero_vad.onnx" "$share/models/"

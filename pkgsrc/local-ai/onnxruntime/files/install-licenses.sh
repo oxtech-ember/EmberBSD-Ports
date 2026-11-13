@@ -6,7 +6,7 @@ source=$1 build=$2 prefix=$3 recipe=$4
 licenses=$prefix/share/licenses/onnxruntime
 # Fail if an expected source or its notice is absent. A completed build
 # must preserve the exact internal source set, including header-only inputs.
-for name in abseil_cpp date flatbuffers gsl mp11 nlohmann_json onnx protobuf re2 safeint; do
+for name in date flatbuffers gsl mp11 nlohmann_json onnx re2 safeint; do
     dependency=$build/_deps/$name-src
     [ -d "$dependency" ] || { echo "Missing dependency source: $name" >&2; exit 1; }
     if [ "$name" = mp11 ]; then
@@ -30,9 +30,8 @@ cp "$recipe/licenses/eigen5/"* "$licenses/eigen5/"
 mkdir -p "$licenses/mp11"
 cp "$recipe/licenses/BSL-1.0.txt" "$licenses/mp11/LICENSE_1_0.txt"
 cp "$build/_deps/mp11-src/include/boost/mp11.hpp" "$licenses/mp11/copyright-notice.hpp"
-for dependency in "$build"/_deps/*-src; do
-    [ -d "$dependency" ] || continue
-    name=$(basename "$dependency" -src)
+for name in date flatbuffers gsl nlohmann_json onnx re2 safeint; do
+    dependency=$build/_deps/$name-src
     mkdir -p "$licenses/$name"
     for notice in "$dependency"/LICENSE* "$dependency"/COPYING* "$dependency"/NOTICE*; do
         [ -f "$notice" ] || continue

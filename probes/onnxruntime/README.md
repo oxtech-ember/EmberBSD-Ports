@@ -1,14 +1,15 @@
 # ONNX Runtime installed CPU inference API
 
-The [canonical ONNX Runtime 1.31.0 package](../../pkgsrc/local-ai/onnxruntime)
+The [canonical ONNX Runtime 1.31.1 package](../../pkgsrc/local-ai/onnxruntime)
 provides a shared C API and the upstream C++ wrappers. The CPU execution
 provider uses standard ONNX operators and baseline AArch64 NEON.
 See [provenance](PROVENANCE.md), [validation](VALIDATION.md),
 [source pins](sources.tsv) and [internal dependency pins](dependencies.tsv).
 
-The profile uses GCC 16.2.0, C++20 and the common Eigen 5.0.1 headers.
-Training, Python bindings, contrib operators, traditional ML operators,
-telemetry, cpuinfo, XNNPACK, KleidiAI, SVE and GPU/NPU providers are disabled.
+The CPU profile uses C++20 and the common Eigen, protobuf and Abseil providers.
+The CPU profile disables training, Python bindings, contrib operators,
+traditional ML operators, telemetry, cpuinfo, XNNPACK, KleidiAI, SVE and
+GPU/NPU providers. The package also offers the separate `webgpu` option.
 It is not a reduced-operator or minimal ONNX build. Upstream Python code
 generators are a build dependency. No EmberBSD helper uses Python.
 
@@ -17,7 +18,8 @@ generators are a build dependency. No EmberBSD helper uses Python.
 The source helper below uses a Linux x86-64 build host.
 Use the coherent EmberBSD AArch64 sysroot and GCC16 runtime. The compiler,
 libc, headers and runtime must come from the same accepted fork build.
-Install the common Eigen provider into a writable copy of that sysroot.
+Install the common Eigen, protobuf runtime/devel and Abseil providers into the sysroot.
+Select the matching native Ports protobuf 36.2 generator via `PROTOC_FOR_BUILD`.
 The build verifies every archive and applies the canonical patches without
 fuzz. It records the actual CMake cache and compilation database.
 
@@ -30,14 +32,12 @@ JOBS=2 sh probes/onnxruntime/build-runtime.sh cross /absolute/gcc-prefix \
 The staged installation is `NEW_CROSS_WORK/stage/usr/pkg`. It contains the
 runtime's shared libraries, public headers, CMake exports, pkg-config file
 and original notices. Internal dependency sources are linked privately.
-Their Abseil, protobuf and FlatBuffers SDKs are not installed as competing
-public providers. Eigen remains the common separately owned package.
+FlatBuffers is not installed as a competing public provider. Eigen, Abseil and
+protobuf remain separately owned common packages.
 
-Protobuf's compiler runs on the build host. The Linux x86-64 cross helper obtains
-the upstream-pinned protobuf 33.6 host executable and verifies its archive.
-Native NetBSD builds compile that tool from the same pinned protobuf source.
-For pkgsrc cross builds, set `ONNXRUNTIME_NATIVE_PROTOC` to a matching native
-`protoc`. Do not run a target AArch64 executable on the Linux build host.
+Protobuf's 36.2 compiler runs on the build host from the selected Ports prefix.
+The pkgsrc recipe uses `devel/protobuf/host-protoc.mk` for that selection and
+version check. Do not run a target AArch64 generator on the build host.
 
 ## Native package and installed consumers
 
@@ -51,10 +51,10 @@ The [toolchain profile](../../profiles/development-toolchain/README.md)
 supplies the current GCC 16.2.0 recipe and its prerequisites. The exporter
 automatically includes `local-ai/onnxruntime`; no separate package manager
 or private source repository is needed. Its recipe declares GCC16, CMake,
-upstream Python generators, GNU patch and the common Eigen provider.
+upstream Python generators, GNU patch and common Eigen, Abseil and protobuf providers.
 The runtime does not require Python at execution time.
 
-Installed consumers use `find_package(onnxruntime 1.31.0 EXACT CONFIG REQUIRED)`
+Installed consumers use `find_package(onnxruntime 1.31.1 EXACT CONFIG REQUIRED)`
 or `pkg-config libonnxruntime`. The installed file is `libonnxruntime.pc`;
 its internal `Name: onnxruntime` field does not change the module filename.
 C applications include `onnxruntime_c_api.h`;
@@ -65,7 +65,7 @@ uses these interfaces with a small independently generated ONNX graph.
 
 The [AI/audio source profile](../ai-engines/README.md) uses this same version,
 feature file and patches for its ORT and Silero consumers. Its older native
-1.30.0 record remains historical evidence and is not a 1.31.0 acceptance claim.
+1.30.0 record remains historical evidence and is not a 1.31.1 acceptance claim.
 
 The installed contracts build independently from the runtime build tree:
 
@@ -96,7 +96,7 @@ the original GCC16 constructor diagnostic and a successful patched compile.
 ```sh
 ruby probes/onnxruntime/check-selector-registry.rb \
   /absolute/cross-work/build/compile_commands.json \
-  /absolute/unmodified-onnxruntime-1.31.0 /absolute/new-regression-results
+  /absolute/unmodified-onnxruntime-1.31.1 /absolute/new-regression-results
 ```
 
 The helper preserves the source tree and all original warning flags. It
@@ -108,7 +108,7 @@ construction and compilation; it does not execute MatMulNBits inference.
 `run-target.sh PACKAGES TESTS NEW_RESULTS` runs on AArch64 EmberBSD with
 pkgtools and the coherent GCC16 runtime already present. It requires a fresh
 results directory and no installed ONNX Runtime package. It installs the
-actual `onnxruntime-1.31.0.tgz`, checks inference and errors, removes the
+actual `onnxruntime-1.31.1.tgz`, checks inference and errors, removes the
 package, reinstalls it and compares the results. Preserve its output.
 
 Install the example's C and C++ programs under `/usr/pkg/bin` first. Their

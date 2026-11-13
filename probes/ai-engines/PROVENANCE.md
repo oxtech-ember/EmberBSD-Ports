@@ -1,6 +1,6 @@
 # AI engine source and patch provenance
 
-The current source profile uses **ONNX Runtime 1.31.0** and the
+The current source profile uses **ONNX Runtime 1.31.1** and the
 [canonical package patches and feature file](../onnxruntime/PROVENANCE.md).
 Its updated runtime archive is pinned in [sources.tsv](sources.tsv).
 The table and local adaptation descriptions below preserve the historical
@@ -36,12 +36,12 @@ the upstream ONNX wrapper; the new C++ contract is written for this probe.
 
 [dependencies.tsv](dependencies.tsv) adds SHA256 checks to the selected
 upstream `cmake/deps.txt` inputs. Their upstream SHA1 values were also verified
-when preparing the manifest. The CPU profile consumes Abseil 20250814.0,
-protobuf 33.6, ONNX 1.22.0, date 3.0.1, FlatBuffers 23.5.26, JSON 3.11.3,
+when preparing the manifest. The CPU profile uses common Ports Abseil and
+protobuf 36.2, and consumes ONNX 1.22.0, date 3.0.1, FlatBuffers 23.5.26, JSON 3.11.3,
 Microsoft GSL 4.2.1, Boost mp11 1.82.0, RE2 2024-07-02 and SafeInt 3.0.28.
-These are ONNX Runtime's internal source dependencies; the public installed
-interface remains its C/C++ API. No second system protobuf, interpreter,
-FlatBuffers or Eigen package is installed. Eigen 5.0.1 is shared in version
+The latter are ONNX Runtime's internal source dependencies; the public installed
+interface remains its C/C++ API. Abseil and protobuf are supplied by their
+common packages; this probe does not install another copy. Eigen 5.0.1 is shared in version
 with the robotics profile instead of the older upstream Eigen archive.
 
 Upstream ONNX Runtime applies its own compatibility patches to these sources.

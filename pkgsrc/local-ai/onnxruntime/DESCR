@@ -1,5 +1,10 @@
 ONNX Runtime provides a shared C API and C++ wrappers for ONNX model inference.
 This EmberBSD profile uses the CPU execution provider and standard operators.
-It uses the common Eigen headers and private upstream-pinned source inputs.
-Training, Python bindings, contrib/ML operators, telemetry and accelerator
-providers are disabled. Upstream Python generators run only during the build.
+On NetBSD, device discovery checks an openable DRM node and PCI display devices
+in one domain. It does not infer a DRM-to-PCI mapping and declines ambiguous
+multi-display selection. CPU discovery remains available. The webgpu option
+also ships the shared WebGPU plugin
+(libonnxruntime_providers_webgpu.so) built against Dawn (Vulkan backend only)
+using the ORT 1.31 Dawn pin and its required contrib operators. Training, Python
+bindings, telemetry and CUDA/ROCm/OpenVINO/TensorRT are disabled. Upstream Python
+generators run only during the build.
