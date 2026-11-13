@@ -88,6 +88,69 @@ with tempfile.TemporaryDirectory() as temporary:
  else:raise AssertionError('verification accepted a foreign view path')
 print('PASS: selected-view verification rejects activation and foreign destination')
 
+# The explicit selected refresh uses the real leaf transaction, not activation.
+view_path=path.with_name('protobuf-source-view.py')
+spec=importlib.util.spec_from_file_location('real_view',view_path);view=importlib.util.module_from_spec(spec);spec.loader.exec_module(view)
+with tempfile.TemporaryDirectory() as temporary:
+ root=Path(temporary).resolve();workspace=root/'workspace';source=workspace/'src';source.mkdir(parents=True);work=root/'work';work.mkdir();dest=work/'source-view';dest.mkdir();(dest/'src').mkdir()
+ (source/'keep').write_text('keep');(dest/'src/keep').write_text('keep');(source/'new').write_text('new')
+ options=Namespace(workspace=workspace,work=work,host_prefix=root,protobuf_source=root,phase='build',verify_selected_source_view=True)
+ calls=[];fail=[False]
+ def verify(src,protobuf,destination,*,_updates=None,_refresh=False,**kwargs):
+  calls.append(_refresh)
+  if fail[0]:raise ValueError('injected callback failure')
+  view.mirror(src,destination/'src',verify=True,updates=_updates)
+  return destination/'src'
+ view.verify=verify; original=controller.local_module;controller.local_module=lambda name,filename:view
+ try:
+  options.verify_selected_source_view=False
+  try:controller.gn_source(options,refresh_selected=True)
+  except ValueError:pass
+  else:raise AssertionError('nonselected refresh accepted')
+  options.verify_selected_source_view=True
+  try:controller.gn_source(options)
+  except ValueError:pass
+  else:raise AssertionError('ordinary verification refreshed source')
+  assert not (dest/'src/new').exists()
+  controller.gn_source(options,refresh_selected=True)
+  assert (dest/'src/new').read_text()=='new' and calls.count(True)>=1
+  (source/'later').write_text('later');marker=view._refresh_marker(dest);marker.write_text('source-view-leaves-v1\n')
+  fail[0]=True
+  try:controller.gn_source(options,refresh_selected=True)
+  except ValueError:pass
+  else:raise AssertionError('callback failure accepted')
+  assert marker.exists() and not (dest/'src/later').exists()
+  fail[0]=False;controller.gn_source(options,refresh_selected=True)
+  assert not marker.exists() and (dest/'src/later').read_text()=='later'
+  (dest/'src/foreign').write_text('foreign')
+  try:controller.gn_source(options,refresh_selected=True)
+  except ValueError:pass
+  else:raise AssertionError('foreign view leaf accepted')
+  assert (dest/'src/foreign').read_text()=='foreign'
+  (dest/'src/foreign').unlink()
+  migration=work/'.source-view.codec-components-migration';migration.write_text('foreign')
+  try:controller.gn_source(options,refresh_selected=True)
+  except ValueError:pass
+  else:raise AssertionError('pending component migration accepted')
+  migration.unlink();marker.write_text('foreign marker')
+  try:controller.gn_source(options,refresh_selected=True)
+  except ValueError:pass
+  else:raise AssertionError('foreign refresh marker accepted')
+  assert marker.read_text()=='foreign marker'
+  marker.unlink(); (dest/'src/keep').write_text('tampered')
+  try:controller.gn_source(options)
+  except ValueError:pass
+  else:raise AssertionError('ordinary verification accepted tampered leaf')
+  # Existing local changes are detected by the owner's source comparison; a
+  # mismatching leaf is refreshed only under the explicit owner transaction.
+  opts=Namespace(refresh_source_view=True)
+  assert controller.refresh_old_source_view(dest,work,opts)
+  assert not controller.refresh_old_source_view(work/'.source-view-origin-backup',work,opts)
+  (work/'reconfigure-incomplete').write_text('pending')
+  assert not controller.refresh_old_source_view(dest,work,opts)
+ finally:controller.local_module=original
+print('PASS: selected refresh, read-only verification, callback, recovery and foreign guards')
+
 # Old source roots must come from the saved producer contract, not a caller guess.
 saved={'source':'/old/workspace','arguments':{'emberbsd_node_source_identity':'/old/node/emberbsd-prepared-source.json','emberbsd_node_configure_inputs':['v8-source=/old/v8']}}
 assert controller.saved_source_origin_inputs(saved)==(Path('/old/workspace'),Path('/old/node'),Path('/old/v8'))

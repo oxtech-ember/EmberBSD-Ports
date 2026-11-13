@@ -2506,7 +2506,9 @@ def ensure_lastchange(workspace, native, environment, sdk):
 
 
 
-def gn_source(options):
+def gn_source(options, *, refresh_selected=False):
+    require(not refresh_selected or getattr(options, 'verify_selected_source_view', False),
+            'selected source refresh requires selected verification')
     common = getattr(options, 'protobuf_source', None)
     if not (common or getattr(options, 'node_source', None) or getattr(options, 'perfetto_source', None) or getattr(options, 'v8_source', None) or getattr(options, 'shared_abseil', False) or getattr(options, 'shared_icu', False) or getattr(options, 'shared_re2', False)):
         return options.workspace / 'src'
@@ -2523,6 +2525,8 @@ def gn_source(options):
             'source view destination must be a sibling in the selected work directory')
     verify_selected = getattr(options, 'verify_selected_source_view', False)
     if verify_selected:
+        require(not refresh_selected or not any(destination.parent.glob('.' + destination.name + '.*-migration')),
+                'selected source refresh refuses pending component migration')
         require(options.phase == 'build' and not any(getattr(options, name, False) for name in
                 ('refresh_source_view', 'activate_common_ml', 'activate_common_providers',
                  'migrate_devtools_modules_only', 'resume_configure', 'retry_configure')),
@@ -2641,7 +2645,7 @@ def gn_source(options):
         ffmpeg_marker = destination.parent / ('.' + destination.name + '.ffmpeg-components-migration')
         compression_marker = destination.parent / ('.' + destination.name + '.compression-components-migration')
         if verify_selected:
-            # Identities are selected and verified before this read-only pass.
+            # Identities are selected and verified before this selected-view pass.
             # Equal old/new state prevents activation and runs every existing
             # component verifier against the supplied view.
             old_boring, old_media, old_compression = new_boring, new_media, new_compression
@@ -3368,6 +3372,8 @@ def gn_source(options):
         if transition:
             return finish_selection(transition_result)
         sources = selected_sources(ids, new_headers, new_media, new_compression, new_boring)
+    if refresh_selected:
+        return refresh_leaves(sources)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
         if ids or getattr(options, 'source_view_created_files', None):
@@ -4076,6 +4082,11 @@ def equivalent_spirv_catalog(old_raw, new_raw):
     return True
 
 
+def refresh_old_source_view(path, work, options):
+    return (path == work / 'source-view' and options.refresh_source_view and
+            not os.path.lexists(work / 'reconfigure-incomplete'))
+
+
 def verify_source_origin_provider_invariants(old_environment, new_environment, *, verified_spirv=False):
     """Keep every other selected provider unchanged during an origin switch."""
     selections = {
@@ -4548,7 +4559,7 @@ def reconfigure(options):
                             'old source provider link changed: ' + relative)
                 previous_options = view_options(path, old_workspace, old_node, old_v8)
                 previous_options.spirv_selection = old_spirv
-                result = gn_source(previous_options)
+                result = gn_source(previous_options, refresh_selected=refresh_old_source_view(path, work, options))
                 require(result == path / 'src', 'old source view verification returned another path')
 
             def verify_new(path):
