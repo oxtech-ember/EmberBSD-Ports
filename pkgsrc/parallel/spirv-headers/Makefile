@@ -3,6 +3,7 @@
 # Origin: EmberBSD contributors (AI-assisted); independent stable header release.
 DISTNAME=	SPIRV-Headers-1.4.363.0
 PKGNAME=	${DISTNAME:tl}
+PKGREVISION=	1
 CATEGORIES=	parallel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=KhronosGroup/}
 GITHUB_PROJECT=	SPIRV-Headers
@@ -26,6 +27,10 @@ CMAKE_CONFIGURE_ARGS+= -DSPIRV_HEADERS_ENABLE_TESTS=OFF
 .endif
 
 PKGCONFIG_OVERRIDE+=	SPIRV-Headers.pc.in
+
+post-install:
+	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/spirv-headers
+	${INSTALL_DATA} ${WRKSRC}/LICENSE ${DESTDIR}${PREFIX}/share/licenses/spirv-headers/LICENSE
 
 pre-configure:
 	${RM} -rf ${WRKSRC}/include/spirv/unified1/*.orig*
