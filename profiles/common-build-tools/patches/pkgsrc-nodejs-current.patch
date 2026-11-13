@@ -319,7 +319,7 @@
 +
 +BLAKE2s (node-v26.13.1.tar.xz) = 9facf21ca8cbaad4483ba9a9e43226ab403039f27caf84dcea1eb44a3545097f
 +SHA512 (node-v26.13.1.tar.xz) = 149fd201f1b99c67484daacdb2f6b0dbfc742c9f71f120b5b7160b389b04d6e0b1c17b228c5e27dd0194bc42076fb16909756d021ab0eb0054dacba1a589131a
-+Size (node-v26.13.1.tar.xz) = 63411840
++Size (node-v26.13.1.tar.xz) = 63411840 bytes
 +SHA1 (patch-common.gypi) = be39449298522e62bd91959ac59f91ba9f590e54
 +SHA1 (patch-configure.py) = d9f43ac117386da95bd4fcb478d6c04204800f37
 +SHA1 (patch-configure_node__cross) = e02f55c982e907a73ae8cc615c71706a4db39c71

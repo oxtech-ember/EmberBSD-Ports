@@ -112,6 +112,7 @@ def main():
     assert actual == expected, (actual.keys() ^ expected.keys())
     makefile = (recipe / 'Makefile').read_text()
     assert re.search(r'^PKGREVISION=\s+3$', makefile, re.M)
+    assert 'Size (node-v26.13.1.tar.xz) = 63411840 bytes\n' in (recipe / 'distinfo').read_text()
     assert any(name.endswith('node-emudhra-rsa-blocklist') for _, name in NODE_RECIPE_PATCHES)
     for source, name in NODE_RECIPE_PATCHES:
         assert (recipe / 'patches' / name).read_bytes() == (ROOT / source).read_bytes()
