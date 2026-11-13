@@ -1,0 +1,59 @@
+# Origin: EmberBSD (AI-assisted); executable-relative shared builtin providers.
+--- src/node_builtins.cc.orig
++++ src/node_builtins.cc
+@@ -9,6 +9,7 @@
+ #include "node_external_reference.h"
+ #include "node_internals.h"
+ #include "node_threadsafe_cow-inl.h"
++#include "path.h"
+ #include "quic/guard.h"
+ #include "simdutf.h"
+ #include "util-inl.h"
+@@ -114,6 +115,27 @@
+   harvest_code_cache = on;
+ }
+ 
++#if defined(NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH) || \
++    (HAVE_AMARO && defined(NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH))
++// Shared builtin paths may be absolute, or relative to the executable.
++static std::string ResolveSharedBuiltinPath(const char* path) {
++  if (IsAbsoluteFilePath(path)) return path;
++  char executable[2 * PATH_MAX];
++  size_t length = sizeof(executable);
++  CHECK_EQ(uv_exepath(executable, &length), 0);
++  std::string filename(executable, length);
++#ifdef _WIN32
++  size_t separator = filename.find_last_of("/\\");
++#else
++  size_t separator = filename.find_last_of('/');
++#endif
++  CHECK_NE(separator, std::string::npos);
++  filename.resize(separator + 1);
++  filename.append(path);
++  return filename;
++}
++#endif
++
+ BuiltinLoader::BuiltinLoader()
+     : config_(GetConfig()), code_cache_(std::make_shared<BuiltinCodeCache>()) {
+   {
+@@ -127,13 +149,17 @@
+ #endif
+ #ifdef NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH
+   AddExternalizedBuiltin("internal/deps/undici/undici",
+-                         STRINGIFY(NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH));
++                         ResolveSharedBuiltinPath(
++                             STRINGIFY(NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH))
++                             .c_str());
+ #endif  // NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH
+ 
+ #if HAVE_AMARO
+ #ifdef NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH
+   AddExternalizedBuiltin("internal/deps/amaro/dist/index",
+-                         STRINGIFY(NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH));
++                         ResolveSharedBuiltinPath(
++                             STRINGIFY(NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH))
++                             .c_str());
+ #endif  // NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH
+ #endif  // HAVE_AMARO
+ }
