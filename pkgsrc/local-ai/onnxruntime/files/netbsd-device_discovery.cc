@@ -132,7 +132,8 @@ std::vector<OrtHardwareDevice> DiscoverGpusViaPci() {
     return gpus;
   }
 
-  // Conventional PCI BDF fields: 8-bit bus, 5-bit device, 3-bit function.
+  // Conventional PCI BDF fields within the one domain exposed by this fd.
+  unsigned display_devices = 0;
   for (unsigned bus = 0; bus < 256; ++bus) {
     for (unsigned device = 0; device < 32; ++device) {
       for (unsigned function = 0; function < 8; ++function) {
@@ -147,12 +148,20 @@ std::vector<OrtHardwareDevice> DiscoverGpusViaPci() {
           continue;
         }
 
+        // Without a DRM-to-PCI mapping, more than one display device is
+        // ambiguous even if only one has a supported display subclass.
+        if (++display_devices > 1) {
+          LOGS_DEFAULT(WARNING) << "NetBSD GPU discovery: multiple PCI display devices; "
+                                   "unambiguous WebGPU selection is unsupported";
+          close(pci_fd);
+          return {};
+        }
+
         OrtHardwareDevice gpu{};
         gpu.vendor_id = vendor_id;
         gpu.device_id = device_id;
         gpu.type = OrtHardwareDeviceType_GPU;
         gpu.metadata.Add("pci_bus_id", MakeString(bus, ":", device, ".", function));
-        gpu.metadata.Add("dri_node", dri_node);
         // VGA / 3D controllers are typically the GPUs we care about for WebGPU.
         if (pci_subclass == 0x00 || pci_subclass == 0x02) {
           gpus.push_back(std::move(gpu));

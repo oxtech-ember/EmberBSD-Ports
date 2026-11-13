@@ -123,7 +123,7 @@ def main():
                     if not sep or not re.fullmatch(r'[A-Za-z][A-Za-z0-9]*',key) or not value: raise RuntimeError('invalid EP option: '+option)
                     call('AddSessionConfigEntry',[P,B,B],opt,('ep.webgpuexecutionprovider.'+key).encode(),value.encode()); print('WebGPU option '+key+'='+value,flush=True)
                 if args.strict: call('AddSessionConfigEntry',[P,B,B],opt,b'session.disable_cpu_ep_fallback',b'1')
-                hw=hardware(matches[0]); print('selected WebGPU vendor=%04x device=%04x strict=%s'%(vendor(hw),devid(hw),args.strict),flush=True)
+                hw=hardware(matches[0]); print('selected ORT hardware vendor=%04x device=%04x strict=%s (Dawn adapter selected separately)'%(vendor(hw),devid(hw),args.strict),flush=True)
             print(which+' create session',flush=True); call('CreateSession',[P,B,P,PP],env,os.fsencode(args.model),opt,c.byref(session))
             inputs=metadata(session,'Input'); descriptions=metadata(session,'Output')
             if not descriptions: raise RuntimeError('model has no outputs')

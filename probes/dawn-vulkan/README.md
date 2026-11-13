@@ -43,6 +43,17 @@ The embedded SPIR-V in the compute probe corresponds to the adjacent GLSL
 `.comp` files, built with `glslangValidator -V`; rebuild and compare all bytes
 when changing shaders. The diagnostic uses raw Vulkan directly, not Dawn.
 
+## NetBSD discovery scope
+
+The platform discovery scans all conventional BDFs in the PCI domain of the
+first openable `/dev/pci0` or `/dev/pci` and requires an openable DRM node.
+It does not establish which DRM node belongs to a PCI device. If more than one
+PCI display device is found in that domain, GPU discovery returns no devices;
+CPU discovery remains available. Other PCI domains and unambiguous multi-GPU
+selection are not supported. An ORT hardware descriptor identifies the
+reported device; Dawn chooses its adapter separately and the diagnostic's
+selected ORT hardware line does not prove the actual Dawn adapter identity.
+
 ## ONNX Runtime CPU/WebGPU
 
 `onnx-add-diagnostic.py` derives a small Add graph from a supplied ONNX model,
