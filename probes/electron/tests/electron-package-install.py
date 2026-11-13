@@ -34,7 +34,7 @@ class InstallTests(unittest.TestCase):
         self.members = [('electron', bytes(image), stat.S_IFREG|0o755),
             ('LICENSE', b'MIT notice', stat.S_IFREG|0o644),
             ('LICENSES.chromium.html', b'<html>notices</html>', stat.S_IFREG|0o644),
-            ('version', b'45.3.1\n', stat.S_IFREG|0o644),
+            ('version', b'45.3.2\n', stat.S_IFREG|0o644),
             ('resources/new asset', b'preserve all members', stat.S_IFREG|0o644),
             ('resources/alias', b'../LICENSE', stat.S_IFLNK|0o777),
             ('empty/', b'', stat.S_IFDIR|0o755)]

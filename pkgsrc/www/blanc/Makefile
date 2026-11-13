@@ -5,7 +5,7 @@
 
 DISTNAME=	blanc-1.46.0
 PKGNAME=	ember-browser-1.46.0
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	www
 BLANC_SOURCE=	v1.46.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
@@ -28,7 +28,7 @@ LICENSE=	mit AND apache-2.0 AND cc-by-sa-v3.0 AND ofl-v1.1 AND isc AND mpl-2.0
 NO_SRC_ON_FTP=	Unfiltered upstream archive includes reserved identity artwork and third-party imagery.
 NO_SRC_ON_CDROM=	${NO_SRC_ON_FTP}
 
-BLANC_ELECTRON_RUNTIME_VERSION=	45.3.1
+BLANC_ELECTRON_RUNTIME_VERSION=	45.3.2
 BLANC_ELECTRON_MIN_PKG_VERSION=	45.3.1
 BLANC_ELECTRON_PKGDIR=	../../devel/electron44
 BLANC_ELECTRON_DEPENDS=	electron>=${BLANC_ELECTRON_MIN_PKG_VERSION}<46:${BLANC_ELECTRON_PKGDIR}

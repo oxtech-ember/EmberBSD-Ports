@@ -307,6 +307,10 @@ class BlancPackageTests(unittest.TestCase):
             self.assertIn('emberbsd:distinfoSha256', serialized)
             self.assertIn('ember-browser-1.46.0nb1', serialized)
             self.assertIn('pkgsrc:devel/electron44@45.3.1', serialized)
+            current_bom = builder.make_projected_sbom(source, {}, rows, app, '26.13.1', '45.3.2',
+                      '../../devel/electron44', 'electron>=45.3.1<46:../../devel/electron44',
+                      asar, 'd' * 64, '3.15.0', 'e' * 64)
+            self.assertIn('pkgsrc:devel/electron44@45.3.2', json.dumps(current_bom))
 
     def test_installed_asar_provider_rejects_missing_old_and_outside_prefix(self):
         with tempfile.TemporaryDirectory(prefix='blanc-asar-provider-') as temporary:
