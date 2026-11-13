@@ -16,12 +16,70 @@ def api_names(hdr, struct_name):
         n=m.group(1) or ('Release'+m.group(2) if m.group(2) else None) or m.group(3) or m.group(4); names.append(n)
     return names
 
-def compare_outputs(cpu, gpu, atol, rtol):
+def compare_unordered_rows(name, shape, cpu, gpu, atol, rtol):
+    if len(shape) != 3 or any(not isinstance(x, int) or x < 0 for x in shape):
+        raise RuntimeError('unordered output must have fixed rank-3 shape: ' + name.decode())
+    batches, rows, fields = shape
+    if rows > 1024:
+        raise RuntimeError('unordered output exceeds 1024 rows: ' + name.decode())
+    if len(cpu) != batches * rows * fields or len(gpu) != len(cpu):
+        raise RuntimeError('unordered output data length differs from shape: ' + name.decode())
+    failures = 0
+    for batch in range(batches):
+        start = batch * rows * fields
+        arows = [cpu[start+i*fields:start+(i+1)*fields] for i in range(rows)]
+        brows = [gpu[start+i*fields:start+(i+1)*fields] for i in range(rows)]
+        edges = [[j for j, b in enumerate(brows)
+                  if all(math.isfinite(x) and math.isfinite(y) and
+                         abs(x-y) <= atol + rtol*abs(x) for x, y in zip(a, b))]
+                 for a in arows]
+        # Augmenting paths find a maximum one-to-one match even for ambiguous rows.
+        left = [-1] * rows
+        right = [-1] * rows
+        for root in range(rows):
+            queue = collections.deque([root])
+            seen_left = {root}
+            parent = {}
+            free = -1
+            while queue and free < 0:
+                i = queue.popleft()
+                for j in edges[i]:
+                    if j in parent: continue
+                    parent[j] = i
+                    if right[j] < 0:
+                        free = j
+                        break
+                    if right[j] not in seen_left:
+                        seen_left.add(right[j])
+                        queue.append(right[j])
+            while free >= 0:
+                i = parent[free]
+                previous = left[i]
+                left[i] = free
+                right[free] = i
+                free = previous
+        unmatched_cpu = [i for i, j in enumerate(left) if j < 0]
+        unmatched_gpu = [j for j, i in enumerate(right) if i < 0]
+        maxdiff = max((abs(x-y) for i, j in enumerate(left) if j >= 0
+                       for x, y in zip(arows[i], brows[j])), default=0)
+        print('compare unordered output=%s batch=%d permutation_cpu_to_gpu=%s unmatched_cpu=%s unmatched_gpu=%s max_abs_diff=%g' %
+              (name.decode(), batch, left, unmatched_cpu, unmatched_gpu, maxdiff), flush=True)
+        failures += len(unmatched_cpu)
+    return failures
+
+
+def compare_outputs(cpu, gpu, atol, rtol, unordered=()):
     if len(cpu) != len(gpu): raise RuntimeError('CPU/GPU output counts differ')
+    unordered = set(unordered)
+    unknown = unordered - {name.decode() for name, _, _ in cpu}
+    if unknown: raise RuntimeError('unknown unordered output: ' + ', '.join(sorted(unknown)))
     failures = 0
     for (name, ashape, aout), (bname, bshape, bout) in zip(cpu, gpu):
         if name != bname or ashape != bshape or len(aout) != len(bout):
             raise RuntimeError('CPU/GPU output shapes or names differ')
+        if name.decode() in unordered:
+            failures += compare_unordered_rows(name, ashape, aout, bout, atol, rtol)
+            continue
         bad = sum(not math.isfinite(a) or not math.isfinite(b) or
                   abs(a-b) > atol + rtol*abs(a) for a,b in zip(aout,bout))
         maxdiff = max((abs(a-b) for a,b in zip(aout,bout) if math.isfinite(a) and math.isfinite(b)), default=0)
@@ -31,8 +89,9 @@ def compare_outputs(cpu, gpu, atol, rtol):
     return failures
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument('--mode',choices=['cpu','compare'],default='compare'); ap.add_argument('--strict',action='store_true',help='reject CPU-assigned graph nodes'); ap.add_argument('--model',required=True); ap.add_argument('--prefix',default='/usr/pkg'); ap.add_argument('--vendor',type=lambda x:int(x,0)); ap.add_argument('--device',type=lambda x:int(x,0)); ap.add_argument('--profile-dir',required=True); ap.add_argument('--expected',type=float); ap.add_argument('--ep-option',action='append',default=[],metavar='KEY=VALUE'); ap.add_argument('--output-dir',help='existing directory for exclusive raw output snapshots'); ap.add_argument('--input-file',help='raw little-endian float32 tensor data'); ap.add_argument('--fill',type=float,help='constant input instead of deterministic pattern'); ap.add_argument('--atol',type=float,default=1e-3); ap.add_argument('--rtol',type=float,default=1e-3); args=ap.parse_args()
+    ap=argparse.ArgumentParser(); ap.add_argument('--mode',choices=['cpu','compare'],default='compare'); ap.add_argument('--strict',action='store_true',help='reject CPU-assigned graph nodes'); ap.add_argument('--model',required=True); ap.add_argument('--prefix',default='/usr/pkg'); ap.add_argument('--vendor',type=lambda x:int(x,0)); ap.add_argument('--device',type=lambda x:int(x,0)); ap.add_argument('--profile-dir',required=True); ap.add_argument('--expected',type=float); ap.add_argument('--ep-option',action='append',default=[],metavar='KEY=VALUE'); ap.add_argument('--output-dir',help='existing directory for exclusive raw output snapshots'); ap.add_argument('--input-file',help='raw little-endian float32 tensor data'); ap.add_argument('--fill',type=float,help='constant input instead of deterministic pattern'); ap.add_argument('--unordered-output',action='append',default=[],metavar='NAME',help='compare the named rank-3 output as unordered rows within each batch'); ap.add_argument('--atol',type=float,default=1e-3); ap.add_argument('--rtol',type=float,default=1e-3); args=ap.parse_args()
     if args.input_file and args.fill is not None: ap.error('--input-file and --fill are mutually exclusive')
+    if args.unordered_output and args.mode != 'compare': ap.error('--unordered-output requires compare mode')
     if not math.isfinite(args.atol) or not math.isfinite(args.rtol) or args.atol < 0 or args.rtol < 0: ap.error('tolerances must be finite and nonnegative')
     if args.expected is not None and not math.isfinite(args.expected): ap.error('--expected must be finite')
     if (args.vendor is None) != (args.device is None): ap.error('--vendor and --device must be supplied together')
@@ -198,7 +257,7 @@ def main():
             failures=0
             for iteration,(cpu_run,gpu_run) in enumerate(zip(cpu,gpu),1):
                 print('comparison run=%d'%iteration,flush=True)
-                failures += compare_outputs(cpu_run,gpu_run,args.atol,args.rtol)
+                failures += compare_outputs(cpu_run,gpu_run,args.atol,args.rtol,args.unordered_output)
             if failures: raise RuntimeError('CPU/GPU output comparison failed')
     finally:
         drop('Value',tensor); drop('MemoryInfo',mem)

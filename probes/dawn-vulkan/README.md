@@ -101,9 +101,11 @@ CPU/GPU differences above the chosen tolerances. `--strict` rejects CPU graph
 fallback; the profile must show actual WebGPU-executed nodes even without it.
 Profiles report per-provider node events. `--expected` checks every output and
 is meaningful for the generated Add graph with `--fill 0.5`, not arbitrary
-models. For detection models, raw differences may arise from reordered results
-with equal or close scores; inspect the saved detections and masks before
-attributing a numerical mismatch to the GPU. Dynamic input dimensions and
+models. For an explicitly selected rank-3 output, `--unordered-output NAME` compares
+rows within each batch using a one-to-one maximum matching. Every field must
+be finite and satisfy the same `--atol`/`--rtol`; no rows are filtered. It
+reports the row permutation, unmatched rows and maximum matched field error.
+At most 1024 rows are allowed. Other outputs retain ordered comparison. Dynamic input dimensions and
 non-float tensors need another harness.
 `onnx-intermediate.py --list` inspects a model and `--node N --output PATH`
 creates an exclusive new pruned diagnostic graph without modifying the source.
