@@ -103,7 +103,8 @@
      try {
 @@ -303,8 +288,8 @@
      // execute `gyp` from the current target nodedir
-     argv.unshift(gypScript)
+-    argv.unshift(gypScript)
++    argv.unshift('-B', gypScript)
  
 -    // make sure python uses files that came with this particular node package
 -    const pypath = [path.join(__dirname, '..', 'gyp', 'pylib')]
