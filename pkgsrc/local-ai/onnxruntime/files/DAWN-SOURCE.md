@@ -13,13 +13,22 @@ contents, newline. The assembly tool rejects unexpected members, duplicate
 paths, and a different tree hash. It writes sorted Dawn files followed by
 the manifest's dependency trees, with fixed ownership, mode and timestamps.
 The resulting source bundle contains the upstream files and their licenses;
-it contains neither Git metadata nor macOS AppleDouble files.
+it contains neither Git metadata nor macOS AppleDouble files. The bundle uses
+POSIX PAX for long paths; package extraction requires the native Ports bsdtar
+reader selected by pkgsrc.
 
 From this directory, using the selected native SDK Python:
 
 ```sh
 python3 assemble-dawn.py --inputs /path/to/dawn-inputs \
     --output /path/to/ort-dawn-v20260916.214021-sources.tar.gz --fetch
+```
+
+Run the assembly regression with the selected native Ports Python and bsdtar:
+
+```sh
+/path/to/native-prefix/bin/python3 test-assemble-dawn.py \
+    --bsdtar /path/to/native-prefix/bin/bsdtar
 ```
 
 The expected bundle SHA-256 is

@@ -55,6 +55,9 @@ CMAKE_CONFIGURE_ARGS+=	-DONNX_CUSTOM_PROTOC_EXECUTABLE=${PROTOC_FOR_BUILD:Q}
 .if !empty(PKG_OPTIONS:Mwebgpu)
 # Reproducibly assembled from the ORT-pinned Dawn and its DEPS inputs.
 DISTFILES+=	ort-dawn-v20260916.214021-sources.tar.gz
+EXTRACT_ONLY+=	ort-dawn-v20260916.214021-sources.tar.gz
+# The source bundle uses POSIX PAX paths longer than the ustar name field.
+EXTRACT_USING=	bsdtar
 SITES.ort-dawn-v20260916.214021-sources.tar.gz=	-https://github.com/oxtech-ember/EmberBSD-Ports/releases/download/onnxruntime-dawn-v20260916.214021/ort-dawn-v20260916.214021-sources.tar.gz
 .endif
 
@@ -64,9 +67,6 @@ post-extract:
 	${CP} ${FILESDIR}/netbsd-device_discovery.cc \
 	    ${WRKSRC}/onnxruntime/core/platform/netbsd/device_discovery.cc
 .if !empty(PKG_OPTIONS:Mwebgpu)
-	${RM} -rf ${WRKDIR}/dawn-20260916.214021
-	${GZCAT} ${DISTDIR}/ort-dawn-v20260916.214021-sources.tar.gz | \
-	    ${HOST_TAR:U${TOOLBASE}/bin/nbtar} -xf - -C ${WRKDIR}
 	${TEST} -f ${WRKDIR}/dawn-20260916.214021/CMakeLists.txt || \
 	    ${FAIL_MSG} "Dawn sources missing after extract"
 	${SH} ${FILESDIR}/patch-dawn-netbsd-platform.sh ${WRKDIR}/dawn-20260916.214021
