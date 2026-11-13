@@ -175,6 +175,10 @@ def prepare(archive, output, patch, git, pkgsrc_root=None, previous_source=None)
         require({p.relative_to(root) for p in root.rglob('*')
                  if p.name.endswith(('.orig', '.rej'))} == original_backups,
                 'Node.js patch left a backup or reject')
+        helper = exported / 'lang/nodejs/files/node-prune-npm-gyp.py'
+        namespace = {'__name__': 'emberbsd_node_prune'}
+        exec(compile(read(helper), str(helper), 'exec'), namespace)
+        namespace['prune'](root, packed)
         if identity is not None:
             require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
         current = selector.effective_package_identity(exported, PACKAGE, upstream)

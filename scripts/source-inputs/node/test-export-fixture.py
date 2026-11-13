@@ -47,12 +47,19 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temp:
     for path, name in ((a.node_overlay, 'node-overlay.patch'), (a.gc_patch, 'node-gc.patch'),
                        (a.extra_patch, 'node-extra.patch')):
         shutil.copy2(path, patch_dir / name)
+    prune = root / 'profiles/common-build-tools/node-prune-npm-gyp.py'
+    shutil.copy2(ports / 'profiles/common-build-tools/node-prune-npm-gyp.py', prune)
+    frontend = patch_dir / 'node-npm-gyp-provider.patch'
+    shutil.copy2(ports / 'profiles/common-build-tools/patches/node-npm-gyp-provider.patch', frontend)
     (root / 'pkgsrc/export.conf').write_text(
         'patch\tprofiles/common-build-tools/patches/node-overlay.patch\n'
         'recipe-patch\tprofiles/common-build-tools/patches/node-gc.patch\tlang/nodejs\t'
         'patch-test_parallel_test-gc-net-timeout.js\n'
         'recipe-patch\tprofiles/common-build-tools/patches/node-extra.patch\tlang/nodejs\t'
-        'patch-node-extra\n')
+        'patch-node-extra\n'
+        'file\tprofiles/common-build-tools/node-prune-npm-gyp.py\tlang/nodejs/files/node-prune-npm-gyp.py\n'
+        'recipe-patch\tprofiles/common-build-tools/patches/node-npm-gyp-provider.patch\tlang/nodejs\t'
+        'patch-zzzzzzzz-node-npm-gyp-provider\n')
     run([a.git, '-C', root, 'init', '-q'])
     run([a.git, '-C', root, 'add', 'pkgsrc/export.conf'])
     run([a.git, '-C', root, 'update-index', '--add', '--cacheinfo',
@@ -69,6 +76,7 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temp:
     direct_base = [sys.executable, '-B', '-I', '-S', owner, '--sdk-source', a.sdk_source]
     run([*direct_base, 'prepare', '--pkgsrc-root', exported, '--archive', a.archive,
          '--patch', a.patch, '--output', exported_output])
+    assert not (output / 'deps/npm/node_modules/node-gyp/gyp').exists()
     first = json.loads((output / 'emberbsd-prepared-source.json').read_text())
     second = json.loads((exported_output / 'emberbsd-prepared-source.json').read_text())
     assert first['tree_sha256'] == second['tree_sha256']

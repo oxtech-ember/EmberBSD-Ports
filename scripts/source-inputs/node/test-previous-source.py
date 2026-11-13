@@ -40,6 +40,7 @@ with tempfile.TemporaryDirectory(prefix='node-reuse-fixture-', dir=args.work_dir
     pin = run(args.git, '-C', upstream, 'rev-parse', 'HEAD').stdout.strip()
     for name in ('scripts/prepare-pkgsrc.py', 'scripts/pkgsrc-source-identity.py',
                  'scripts/prepared_receipt.py', 'scripts/source-inputs/node/source.py',
+                 'profiles/common-build-tools/node-prune-npm-gyp.py',
                  'pkgsrc/lang/llvm/files/sdk_source.py'):
         destination = root / name
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -47,7 +48,8 @@ with tempfile.TemporaryDirectory(prefix='node-reuse-fixture-', dir=args.work_dir
     package = root / 'pkgsrc/lang/nodejs'
     (package / 'patches').mkdir(parents=True)
     (root / 'pkgsrc/lang/llvm/Makefile').write_text('DISTNAME= llvm-fixture\n')
-    (root / 'pkgsrc/export.conf').write_text('file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n')
+    (root / 'pkgsrc/export.conf').write_text('file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n'
+        'file\tprofiles/common-build-tools/node-prune-npm-gyp.py\tlang/nodejs/files/node-prune-npm-gyp.py\n')
     (root / 'pkgsrc/replaces').write_text('# fixture\n')
     run(args.git, '-C', root, 'init', '-q')
     run(args.git, '-C', root, 'add', 'pkgsrc/export.conf')
@@ -55,8 +57,18 @@ with tempfile.TemporaryDirectory(prefix='node-reuse-fixture-', dir=args.work_dir
         f'160000,{pin},upstream/pkgsrc')
     archive = work / 'node-v1.2.3.tar.gz'
     with tarfile.open(archive, 'w:gz') as tar:
+        for directory in ('deps/npm/node_modules/node-gyp/gyp',
+                          'deps/npm/node_modules/node-gyp/gyp/pylib',
+                          'deps/npm/node_modules/node-gyp/gyp/pylib/gyp'):
+            entry = tarfile.TarInfo('node-v1.2.3/' + directory)
+            entry.type, entry.mode, entry.mtime = tarfile.DIRTYPE, 0o755, 1000000000
+            tar.addfile(entry)
         for name, data in [('include/node.h', 'original header\n'),
-                           ('node.gyp', 'original gyp\n')]:
+                           ('node.gyp', 'original gyp\n'),
+                           ('deps/npm/node_modules/node-gyp/package.json', '{"name":"node-gyp"}'),
+                           ('deps/npm/node_modules/node-gyp/lib/configure.js', "process.env.NODE_GYP_SOURCE; 'share/gyp';"),
+                           ('deps/npm/node_modules/node-gyp/gyp/gyp_main.py', 'original backend\n'),
+                           ('deps/npm/node_modules/node-gyp/gyp/pylib/gyp/__init__.py', 'original backend\n')]:
             payload = data.encode()
             info = tarfile.TarInfo('node-v1.2.3/' + name)
             info.size, info.mode, info.mtime = len(payload), 0o644, 1000000000
@@ -94,6 +106,7 @@ with tempfile.TemporaryDirectory(prefix='node-reuse-fixture-', dir=args.work_dir
     assert (new / 'node.gyp').stat().st_mtime_ns != fixed_ns
     assert not (old / 'new-file').exists()
     assert (new / 'new-file').read_text() == 'new input\n'
+    assert not (new / 'deps/npm/node_modules/node-gyp/gyp').exists()
     assert (new / 'new-file').stat().st_mtime_ns != fixed_ns
     assert (old / 'include/node.h').stat().st_mtime_ns == fixed_ns
     previous_entries = sorted(p.name for p in old.iterdir())
