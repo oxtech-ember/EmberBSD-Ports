@@ -1050,6 +1050,20 @@ def verified_node_configure_v8_path_change(old_arguments, new_arguments, v8_sour
     return True
 
 
+
+def verified_node_configure_path_change(old_arguments, new_arguments, v8_source, python, sdk_source, environment):
+    """Admit only an independently verified GYP or V8 source-path transition."""
+    def gyp_roots(arguments):
+        rows = arguments.get('emberbsd_node_configure_inputs')
+        if not isinstance(rows, list):
+            return []
+        return [row for row in rows if isinstance(row, str) and row.startswith('gyp-pkgsrc=')]
+    if gyp_roots(old_arguments) != gyp_roots(new_arguments):
+        proof = local_module('electron_node_gyp_relocation', 'node-gyp-relocation.py')
+        return proof.verify(old_arguments, new_arguments, python, sdk_source, environment)
+    return verified_node_configure_v8_path_change(old_arguments, new_arguments, v8_source)
+
+
 def verified_node_source_refresh(old_arguments, new_arguments, old_environment, new_environment, node_source):
     """Allow only a common-Node receipt refresh verified by producer_inputs."""
     old_hash = old_environment.get('EMBERBSD_NODE_SOURCE_SHA256')
@@ -4277,8 +4291,9 @@ def reconfigure(options):
                              for kind in ('libraries', 'inputs'))
         identity_args.update(('emberbsd_common_font', 'use_system_freetype', 'use_system_harfbuzz'))
         identity_args.update('node_shared_' + feature for feature in NODE_SHARED_FEATURES)
-        node_v8_path_changed = verified_node_configure_v8_path_change(
-            saved['arguments'], values, options.v8_source)
+        node_provider_path_changed = verified_node_configure_path_change(
+            saved['arguments'], values, options.v8_source, native.tool('python'),
+            options.sdk_source, source_owner_environment(environment))
         for name in identity_args:
             if name in swiftshader_changed:
                 continue
@@ -4293,7 +4308,7 @@ def reconfigure(options):
                 continue
             if name in permitted_runtime_args:
                 continue
-            if node_v8_path_changed and name in NODE_CONFIGURE_V8_PATH_KEYS:
+            if node_provider_path_changed and name in NODE_CONFIGURE_V8_PATH_KEYS:
                 continue
             require(values.get(name) == saved['arguments'].get(name), 'GN identity changed: ' + name)
 
