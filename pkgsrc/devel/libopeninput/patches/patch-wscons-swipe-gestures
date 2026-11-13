@@ -1,7 +1,7 @@
 $NetBSD$
 
 * Translate WSCONS_EVENT_GESTURE_SWIPE_* of the EmberBSD touchpad driver
-  (hidmt/imt, hw.imt0.gestures=1) into libinput swipe gesture events.
+  (hidmt/imt, hw.imt0.gestures=1) into libinput swipe gesture events. Native pinch adds separate capability and 16.16 scale events.
 * LIBINPUT_DEVICE_CAP_GESTURE is declared only for a wsmouse device that
   answers WSMOUSEIO_GGESTURE with supported=1 (the imt touchpad driver); an
   ordinary mouse fails the ioctl and has no gesture capability.  Whether the
@@ -21,7 +21,7 @@ $NetBSD$
 
 --- src/wscons.h.orig
 +++ src/wscons.h
-@@ -14,6 +14,14 @@
+@@ -14,6 +14,19 @@
      uint32_t *map;
  };
  
@@ -33,22 +33,29 @@ $NetBSD$
 +};
 +/* wscons-swipe-state end */
 +
++struct wscons_pinch {
++	bool active;
++	double scale;
++};
++
  struct wscons_device {
  	struct libinput_device base;
  	enum libinput_device_capability capability;
-@@ -33,6 +41,9 @@
+@@ -33,6 +46,11 @@
  		bool available;
  		bool pending;
  	} absolute;
 +	/* The device can produce swipes (WSMOUSEIO_GGESTURE); see wscons.c. */
 +	bool gestures;
 +	struct wscons_swipe swipe;
++	bool pinches;
++	struct wscons_pinch pinch;
  	struct {
  		struct libinput_device_config_accel config;
  		struct motion_filter *filter;
 --- src/wscons.c.orig
 +++ src/wscons.c
-@@ -232,6 +232,70 @@
+@@ -232,6 +232,138 @@
  	dev->sendevents.pressed = 0;
  }
  
@@ -60,6 +67,71 @@ $NetBSD$
 + */
 +#if defined(WSCONS_EVENT_GESTURE_SWIPE_BEGIN) && defined(WSMOUSEIO_GGESTURE)
 +#define WSCONS_HAVE_GESTURES 1
++#endif
++#if defined(WSCONS_EVENT_GESTURE_PINCH_BEGIN) && defined(WSMOUSEIO_GPINCH)
++#define WSCONS_HAVE_PINCH 1
++#endif
++
++#ifdef WSCONS_HAVE_PINCH
++/* wscons-pinch-bridge begin */
++#define HAVE_PINCH_BRIDGE 1
++static void
++wscons_pinch_cancel(struct libinput_device *device, usec_t time)
++{
++ struct wscons_pinch *p = &wscons_device(device)->pinch;
++
++ if (!p->active)
++  return;
++ p->active = false;
++ gesture_notify_pinch_end(device, time, 2, p->scale, true);
++}
++
++static bool
++wscons_pinch_process(struct libinput_device *device,
++    struct wscons_event *event, usec_t time)
++{
++ struct wscons_pinch *p = &wscons_device(device)->pinch;
++ const struct normalized_coords zero = {0, 0};
++
++ if (!wscons_device(device)->pinches)
++  return false;
++ switch (event->type) {
++ case WSCONS_EVENT_GESTURE_PINCH_BEGIN:
++  if (event->value != 2) {
++   wscons_pinch_cancel(device, time);
++   break;
++  }
++  wscons_pinch_cancel(device, time);
++  p->active = true;
++  p->scale = 1.0;
++  gesture_notify_pinch(device, time, LIBINPUT_EVENT_GESTURE_PINCH_BEGIN,
++      2, &zero, &zero, 1.0, 0.0);
++  break;
++ case WSCONS_EVENT_GESTURE_PINCH_SCALE:
++  if (!p->active)
++   break;
++  if (event->value <= 0) {
++   wscons_pinch_cancel(device, time);
++   break;
++  }
++  p->scale = event->value / 65536.0;
++  gesture_notify_pinch(device, time, LIBINPUT_EVENT_GESTURE_PINCH_UPDATE,
++      2, &zero, &zero, p->scale, 0.0);
++  break;
++ case WSCONS_EVENT_GESTURE_PINCH_END:
++ case WSCONS_EVENT_GESTURE_PINCH_CANCEL:
++  if (!p->active)
++   break;
++  p->active = false;
++  gesture_notify_pinch_end(device, time, 2, p->scale,
++      event->type == WSCONS_EVENT_GESTURE_PINCH_CANCEL);
++  break;
++ default:
++  return false;
++ }
++ return true;
++}
++/* wscons-pinch-bridge end */
 +#endif
 +
 +/* wscons-swipe-state begin: no libinput dependencies, tested on the host. */
@@ -108,9 +180,12 @@ $NetBSD$
 +	struct timespec ts;
 +	int fingers;
 +
++	clock_gettime(CLOCK_REALTIME, &ts);
++#ifdef WSCONS_HAVE_PINCH
++	wscons_pinch_cancel(device, usec_from_timespec(&ts));
++#endif
 +	if (!wscons_swipe_close(&dev->swipe, &fingers))
 +		return;
-+	clock_gettime(CLOCK_REALTIME, &ts);
 +	gesture_notify_swipe_end(device, usec_from_timespec(&ts), fingers,
 +	    true);
 +#endif
@@ -119,7 +194,7 @@ $NetBSD$
  static uint32_t
  wscons_sendevents_get_modes(struct libinput_device *device)
  {
-@@ -251,6 +315,7 @@
+@@ -251,6 +383,7 @@
  	case LIBINPUT_CONFIG_SEND_EVENTS_ENABLED:
  		break;
  	case LIBINPUT_CONFIG_SEND_EVENTS_DISABLED:
@@ -127,7 +202,7 @@ $NetBSD$
  		wscons_release_buttons(device);
  		dev->absolute.pending = false;
  		break;
-@@ -286,6 +351,11 @@
+@@ -286,6 +419,11 @@
  	device->base.config.sendevents = &device->sendevents.config;
  }
  
@@ -139,7 +214,20 @@ $NetBSD$
  static void
  wscons_process(struct libinput_device *device, struct wscons_event *wsevent)
  {
-@@ -398,6 +468,55 @@
+@@ -306,6 +444,12 @@
+ 	    wsevent->type != WSCONS_EVENT_MOUSE_ABSOLUTE_Y)
+ 		wscons_flush_absolute(device, time);
+ 
++#ifdef WSCONS_HAVE_PINCH
++	if (wsevent->type == WSCONS_EVENT_GESTURE_PINCH_BEGIN && dev->pinches)
++		wscons_swipe_cancel(device);
++	if (wscons_pinch_process(device, wsevent, time))
++		return;
++#endif
+ 	switch (wsevent->type) {
+ 	case WSCONS_EVENT_KEY_UP:
+ 	case WSCONS_EVENT_KEY_DOWN:
+@@ -398,6 +542,58 @@
  		dev->absolute.pending = true;
  		break;
  
@@ -152,6 +240,9 @@ $NetBSD$
 +	 * for this pad (1000 dpi against 8 contact units per pointer unit).
 +	 */
 +	case WSCONS_EVENT_GESTURE_SWIPE_BEGIN: {
++#ifdef WSCONS_HAVE_PINCH
++		wscons_pinch_cancel(device, time);
++#endif
 +		int old_fingers;
 +
 +		if (!dev->gestures)
@@ -195,7 +286,7 @@ $NetBSD$
  	case WSCONS_EVENT_HSCROLL:
  		delta.x = wsevent->value / 8;
  		delta.y = 0;
-@@ -768,6 +887,21 @@
+@@ -768,6 +964,30 @@
  	if (strncmp(device->devname, "/dev/wsmouse", 12) == 0) {
  		/* XXX handle tablets and touchpanel */
  		wscons_device->capability = LIBINPUT_DEVICE_CAP_POINTER;
@@ -214,6 +305,15 @@ $NetBSD$
 +				wscons_device->gestures = true;
 +		}
 +#endif
++#ifdef WSCONS_HAVE_PINCH
++		{
++			struct wsmouse_gesture_info gi;
++
++			if (ioctl(device->fd, WSMOUSEIO_GPINCH, &gi) == 0 &&
++			    gi.wgi_supported != 0)
++				wscons_device->pinches = true;
++		}
++#endif
  		/* Only pointers can be disabled; keys have no release path. */
  		wscons_device_init_sendevents(wscons_device);
  		/* ums reports HID logical bounds through the calibration ioctl. */
@@ -227,7 +327,7 @@ $NetBSD$
 +	struct wscons_device *wscons = wscons_device(device);
 +
 +	if (capability == LIBINPUT_DEVICE_CAP_GESTURE)
-+		return wscons->gestures;
++		return wscons->gestures || wscons->pinches;
 +	return (wscons->capability == capability);
  }
  
