@@ -80,7 +80,7 @@ controller=importlib.util.module_from_spec(spec);spec.loader.exec_module(control
 with tempfile.TemporaryDirectory() as temporary:
  root=Path(temporary); options=Namespace(workspace=root,work=root/'work',host_prefix=root,protobuf_source=root,phase='build',verify_selected_source_view=True,activate_common_providers=True)
  try:controller.gn_source(options)
- except ValueError as error:assert 'read-only' in str(error)
+ except ValueError as error:assert 'frozen provider selections' in str(error)
  else:raise AssertionError('verification accepted an activation flag')
  options.activate_common_providers=False;options.source_view_destination=root/'outside'
  try:controller.gn_source(options)

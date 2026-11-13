@@ -2530,7 +2530,7 @@ def gn_source(options, *, refresh_selected=False):
         require(options.phase == 'build' and not any(getattr(options, name, False) for name in
                 ('refresh_source_view', 'activate_common_ml', 'activate_common_providers',
                  'migrate_devtools_modules_only', 'resume_configure', 'retry_configure')),
-                'selected source view verification must be read-only')
+                'selected source view requires frozen provider selections')
     def refresh_leaves(current):
         created = getattr(options, 'source_view_created_files', None)
         extra = ({'created_files': created,
