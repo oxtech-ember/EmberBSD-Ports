@@ -1,0 +1,143 @@
+{
+  "format": 1,
+  "dawn": {
+    "url": "https://github.com/google/dawn/archive/refs/tags/v20260916.214021.zip",
+    "filename": "dawn-v20260916.214021.zip",
+    "sha256": "507949fd45d7ca0cfc672617fd1e06ee02ce23c4f32856b342c48133e71d682e"
+  },
+  "dependencies": [
+    {
+      "path": "third_party/abseil-cpp",
+      "revision": "2d78d7ce09549caca58fc28b442bbad3a19da432",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp/+archive/2d78d7ce09549caca58fc28b442bbad3a19da432.tar.gz",
+      "filename": "dawn-third_party-abseil-cpp.tar.gz",
+      "tree_sha256": "24ee22f5a32056a8b9c50ee9a68d18b703b73216cc60c5a95b4a97c848e17281"
+    },
+    {
+      "path": "third_party/directx-shader-compiler/src",
+      "revision": "397ffb2264b4650c97b2418ec9a0f07228719317",
+      "url": "https://chromium.googlesource.com/external/github.com/microsoft/DirectXShaderCompiler/+archive/397ffb2264b4650c97b2418ec9a0f07228719317.tar.gz",
+      "filename": "dawn-third_party-directx-shader-compiler-src.tar.gz",
+      "tree_sha256": "e6c8c5a68bea1d4ab53e47f9679282f2c8219b09d67d3972574a126e455b9327"
+    },
+    {
+      "path": "third_party/directx-headers/src",
+      "revision": "980971e835876dc0cde415e8f9bc646e64667bf7",
+      "url": "https://chromium.googlesource.com/external/github.com/microsoft/DirectX-Headers/+archive/980971e835876dc0cde415e8f9bc646e64667bf7.tar.gz",
+      "filename": "dawn-third_party-directx-headers-src.tar.gz",
+      "tree_sha256": "8b06cfa71f9587e045b7a0ad11128b274bd9f31fc9fc7beb2dbda1836d1003f7"
+    },
+    {
+      "path": "third_party/glfw3/src",
+      "revision": "92dcf4ce74f2e2554a98fea09be7c705c17daa5a",
+      "url": "https://chromium.googlesource.com/external/github.com/glfw/glfw/+archive/92dcf4ce74f2e2554a98fea09be7c705c17daa5a.tar.gz",
+      "filename": "dawn-third_party-glfw3-src.tar.gz",
+      "tree_sha256": "56ad66be952540a6a12825c0e16d3daf001c06b6e87b040a6071be0464047241"
+    },
+    {
+      "path": "third_party/jinja2",
+      "revision": "c3027d884967773057bf74b957e3fea87e5df4d7",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/jinja2/+archive/c3027d884967773057bf74b957e3fea87e5df4d7.tar.gz",
+      "filename": "dawn-third_party-jinja2.tar.gz",
+      "tree_sha256": "c02f7b1fa4617b7daa711e4bca025d491cdfe86bfaaf100849031f4887fb0695"
+    },
+    {
+      "path": "third_party/EGL-Registry/src",
+      "revision": "5961a7fe64cf8a126890ced6f13d69e0a1e1b83e",
+      "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/EGL-Registry/+archive/5961a7fe64cf8a126890ced6f13d69e0a1e1b83e.tar.gz",
+      "filename": "dawn-third_party-EGL-Registry-src.tar.gz",
+      "tree_sha256": "f265a1a334cd86cb8a1719eb52d267815905e8bd7f68debd9f8775a89c75b4a5"
+    },
+    {
+      "path": "third_party/OpenGL-Registry/src",
+      "revision": "1cdd228e34966dd6b95bd203e9f84faba0f371a1",
+      "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/OpenGL-Registry/+archive/1cdd228e34966dd6b95bd203e9f84faba0f371a1.tar.gz",
+      "filename": "dawn-third_party-OpenGL-Registry-src.tar.gz",
+      "tree_sha256": "4e89976324a8e4550999ec5a5ee0cf01542d81ec0cdefbfe9c794ac2d16d6aec"
+    },
+    {
+      "path": "third_party/libprotobuf-mutator/src",
+      "revision": "c1c950eae0440c3808f2b8bd7c57d0c6a42c1a90",
+      "url": "https://chromium.googlesource.com/external/github.com/google/libprotobuf-mutator.git/+archive/c1c950eae0440c3808f2b8bd7c57d0c6a42c1a90.tar.gz",
+      "filename": "dawn-third_party-libprotobuf-mutator-src.tar.gz",
+      "tree_sha256": "5821a21c1839e0ab32d76050a53e97b5ba74119ced533c7d947b06b8a8600f9f"
+    },
+    {
+      "path": "third_party/protobuf",
+      "revision": "398c57e93a383373546bc6ae5ac2052b6155f2ba",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/protobuf/+archive/398c57e93a383373546bc6ae5ac2052b6155f2ba.tar.gz",
+      "filename": "dawn-third_party-protobuf.tar.gz",
+      "tree_sha256": "436931deb08fff3dc0774fd0219b59c6397f886eb1734f32647907869047ee3b"
+    },
+    {
+      "path": "third_party/markupsafe",
+      "revision": "4256084ae14175d38a3ff7d739dca83ae49ccec6",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/markupsafe/+archive/4256084ae14175d38a3ff7d739dca83ae49ccec6.tar.gz",
+      "filename": "dawn-third_party-markupsafe.tar.gz",
+      "tree_sha256": "ba54362a1f99aef76e7499b49c06cc99361d16c5c2f0018a76c4243f1fc681c6"
+    },
+    {
+      "path": "third_party/glslang/src",
+      "revision": "81f3df51ab1cf14ea35ff35f921241625cfbd7ca",
+      "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/glslang/+archive/81f3df51ab1cf14ea35ff35f921241625cfbd7ca.tar.gz",
+      "filename": "dawn-third_party-glslang-src.tar.gz",
+      "tree_sha256": "746629b7a9191b306975694bd5335f5eaa11adabb2bffa5381ff249d82ad7c34"
+    },
+    {
+      "path": "third_party/google_benchmark/src",
+      "revision": "8abf1e701fbd88c8170f48fe0558247e2e5f8e7d",
+      "url": "https://chromium.googlesource.com/external/github.com/google/benchmark.git/+archive/8abf1e701fbd88c8170f48fe0558247e2e5f8e7d.tar.gz",
+      "filename": "dawn-third_party-google_benchmark-src.tar.gz",
+      "tree_sha256": "410e99e9f3a6d41439a2b80da4b762f0a37229ba9e7391d76c79842eae0ec796"
+    },
+    {
+      "path": "third_party/googletest/src",
+      "revision": "4fe3307fb2d9f86d19777c7eb0e4809e9694dde7",
+      "url": "https://chromium.googlesource.com/external/github.com/google/googletest/+archive/4fe3307fb2d9f86d19777c7eb0e4809e9694dde7.tar.gz",
+      "filename": "dawn-third_party-googletest-src.tar.gz",
+      "tree_sha256": "1e6e2e4a0fb8895943ee5b2ee841227e58a1763dc05ac92efef8d1a5b41561a0"
+    },
+    {
+      "path": "third_party/spirv-headers/src",
+      "revision": "04fd3caa1e8267e4d95c806cad901181728e1006",
+      "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Headers/+archive/04fd3caa1e8267e4d95c806cad901181728e1006.tar.gz",
+      "filename": "dawn-third_party-spirv-headers-src.tar.gz",
+      "tree_sha256": "f876ed5952ca11eee6225d1e384236521dc01d248c9463fbd2fee732c4f89a4e"
+    },
+    {
+      "path": "third_party/spirv-tools/src",
+      "revision": "25318da789b94854908a15b4c718145e4e63fc87",
+      "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Tools/+archive/25318da789b94854908a15b4c718145e4e63fc87.tar.gz",
+      "filename": "dawn-third_party-spirv-tools-src.tar.gz",
+      "tree_sha256": "de02d82e46ee4bb5c78621837b7d1ffee6c39f47fddc7323371b52a9b88d2d79"
+    },
+    {
+      "path": "third_party/vulkan-headers/src",
+      "revision": "ee2ec5fd83dafce291024683b50dc89219333076",
+      "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Headers/+archive/ee2ec5fd83dafce291024683b50dc89219333076.tar.gz",
+      "filename": "dawn-third_party-vulkan-headers-src.tar.gz",
+      "tree_sha256": "5ecf3af32b46fb1685b2a871ca38b2fd551e89a0c8a06e884fa8e718468224fd"
+    },
+    {
+      "path": "third_party/vulkan-loader/src",
+      "revision": "e146980907071e728176acfb8612641d25aacf09",
+      "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Loader/+archive/e146980907071e728176acfb8612641d25aacf09.tar.gz",
+      "filename": "dawn-third_party-vulkan-loader-src.tar.gz",
+      "tree_sha256": "65e5ca07659ab54152f1b6de6ed9cf3add39c1be39ddfe13a0109daa0130aa9a"
+    },
+    {
+      "path": "third_party/vulkan-utility-libraries/src",
+      "revision": "930a38bce146cf85c5bd7cb00fa33a66c640c0c6",
+      "url": "https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Utility-Libraries/+archive/930a38bce146cf85c5bd7cb00fa33a66c640c0c6.tar.gz",
+      "filename": "dawn-third_party-vulkan-utility-libraries-src.tar.gz",
+      "tree_sha256": "0f3760c79514e6e102f4fc96dd5170acd535c17f4c3c0270a669cef5da4b9559"
+    },
+    {
+      "path": "third_party/webgpu-headers/src",
+      "revision": "b5ff182caa90e53293f47939716281342c0812ba",
+      "url": "https://chromium.googlesource.com/external/github.com/webgpu-native/webgpu-headers/+archive/b5ff182caa90e53293f47939716281342c0812ba.tar.gz",
+      "filename": "dawn-third_party-webgpu-headers-src.tar.gz",
+      "tree_sha256": "9f5e35247f83176279babaaba406ffbd00bc46adf16a44ae01d2ad25845aaabf"
+    }
+  ]
+}
