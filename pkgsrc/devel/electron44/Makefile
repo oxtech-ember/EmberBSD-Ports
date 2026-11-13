@@ -37,8 +37,8 @@ TOOL_DEPENDS+= expat>=2.10.0nb1:../../textproc/expat
 .endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS:Uno} == "yes"
-TOOL_DEPENDS+= spirv-tools>=2026.4nb4:../../parallel/spirv-tools
-TOOL_DEPENDS+= spirv-headers>=1.4.363.0:../../parallel/spirv-headers
+TOOL_DEPENDS+= spirv-tools>=2026.4nb5:../../parallel/spirv-tools
+TOOL_DEPENDS+= spirv-headers>=1.4.363.0nb1:../../parallel/spirv-headers
 .endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_CPUINFO:Uno} == "yes"
