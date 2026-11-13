@@ -1,0 +1,127 @@
+$NetBSD$
+
+Preserve EmberBSD prepared V8 source receipt cache identity.
+Origin: EmberBSD contributors (AI-assisted); upstream salt implementation retained.
+
+--- gni/version_hash_salt.gni.orig
++++ gni/version_hash_salt.gni
+@@ -14,9 +14,20 @@
+   # whose contents are fingerprinted at gn gen time to produce the salt.
+   # Changing any of them re-runs gn gen.
+   v8_version_hash_salt_files = []
++
++  # Receipt for the selected common prepared source tree.
++  v8_prepared_source_receipt = ""
+ }
+ 
+-if (v8_version_hash_salt_files != []) {
++if (v8_prepared_source_receipt != "") {
++  assert(v8_version_hash_salt == "" && v8_version_hash_salt_files == [],
++         "Select one V8 source identity")
++  v8_version_hash_salt =
++      exec_script("../tools/gen-version-hash-salt.py",
++                  [ "--receipt", rebase_path(v8_prepared_source_receipt, root_build_dir) ],
++                  "trim string",
++                  [ v8_prepared_source_receipt ])
++} else if (v8_version_hash_salt_files != []) {
+   assert(v8_version_hash_salt == "",
+          "Set either v8_version_hash_salt or v8_version_hash_salt_files")
+   v8_version_hash_salt =
+--- tools/gen-version-hash-salt.py.orig
++++ tools/gen-version-hash-salt.py
+@@ -1,32 +1,75 @@
+-#!/usr/bin/env python3
+-
+ # Copyright 2026 the V8 project authors. All rights reserved.
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+-"""Prints a short, stable fingerprint of the given files.
+-
+-Called by GN at gen time (see gni/version_hash_salt.gni) to derive
+-v8_version_hash_salt from v8_version_hash_salt_files.
+-
+-Usage:
+-  gen-version-hash-salt.py <file1> [file2] ...
+-"""
++"""Generate the V8 cache salt from files or a prepared source receipt."""
+ 
+ import hashlib
++import json
+ import os
++import re
+ import sys
++import tempfile
+ 
+ 
+-def main(paths):
+-  digest = hashlib.sha256()
+-  for path in paths:
+-    digest.update(os.path.basename(path).encode('utf-8') + b'\n')
+-    with open(path, 'rb') as f:
+-      # Normalise line endings so that a CRLF checkout yields the same salt.
+-      digest.update(f.read().replace(b'\r\n', b'\n'))
+-  print(digest.hexdigest()[:16])
++def main(args):
++  output = None
++  if args and args[0] == "--header":
++    if len(args) != 6 or args[2] != "--build-root" or args[4] != "--receipt":
++      raise ValueError("use --header OUTPUT --build-root ROOT --receipt RECEIPT")
++    output, build_root, args = args[1], os.path.realpath(args[3]), args[4:]
++    output = os.path.realpath(output)
++    if (not os.path.isdir(build_root) or output == build_root or
++        os.path.commonpath([build_root, output]) != build_root):
++      raise ValueError("header must be inside the build root")
++  if args and args[0] == "--receipt":
++    if len(args) != 2:
++      raise ValueError("use --receipt RECEIPT")
++    with open(args[1], encoding="utf-8") as source:
++      receipt = json.load(source)
++    if (not isinstance(receipt, dict) or
++        receipt.get("format") != "emberbsd-prepared-source" or
++        type(receipt.get("version")) is not int or receipt["version"] != 1 or
++        receipt.get("package") != "lang/v8" or
++        not isinstance(receipt.get("tree_sha256"), str) or
++        not re.fullmatch("[0-9a-f]{64}", receipt["tree_sha256"])):
++      raise ValueError("invalid V8 prepared source receipt")
++    salt = receipt["tree_sha256"][:16]
++  else:
++    digest = hashlib.sha256()
++    for path in args:
++      digest.update(os.path.basename(path).encode("utf-8") + b"\n")
++      with open(path, "rb") as source:
++        digest.update(source.read().replace(b"\r\n", b"\n"))
++    salt = digest.hexdigest()[:16]
++  if output is None:
++    print(salt)
++  else:
++    contents = '#define V8_VERSION_HASH_SALT "' + salt + '"\n'
++    directory = os.path.dirname(os.path.abspath(output))
++    os.makedirs(directory, exist_ok=True)
++    if os.path.commonpath([build_root, os.path.realpath(output)]) != build_root:
++      raise ValueError("header escaped the build root")
++    try:
++      with open(output, encoding="utf-8") as existing:
++        if existing.read() == contents:
++          return 0
++    except FileNotFoundError:
++      pass
++    fd, temporary = tempfile.mkstemp(prefix=".v8-salt-", dir=directory)
++    try:
++      os.fchmod(fd, 0o644)
++      with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as dest:
++        dest.write(contents)
++      os.replace(temporary, output)
++    finally:
++      if os.path.exists(temporary):
++        os.unlink(temporary)
+   return 0
+ 
+ 
+-if __name__ == '__main__':
+-  sys.exit(main(sys.argv[1:]))
++if __name__ == "__main__":
++  try:
++    sys.exit(main(sys.argv[1:]))
++  except (OSError, ValueError, json.JSONDecodeError) as error:
++    print("V8 cache salt: " + str(error), file=sys.stderr)
++    sys.exit(2)

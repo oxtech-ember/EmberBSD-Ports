@@ -1,8 +1,25 @@
-$NetBSD$
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: deepak1556 <hop2deep@gmail.com>
+Date: Tue, 31 Mar 2026 07:05:17 +0900
+Subject: src: use legacy trace macros in perfetto to support all phases
 
-Preserve all V8 trace-event phases with Perfetto legacy macros.
-Origin: Electron src_use_legacy_trace_macros_in_perfetto_to_support_all_phases.patch,
-by deepak1556, 2026-03-31.
+Replace the phase-specific SDK macros with the INTERNAL_TRACE_EVENT_ADD
+and INTERNAL_TRACE_EVENT_ADD_WITH_ID legacy shim macros, which accept an
+arbitrary phase character and forward it through Perfetto's legacy
+compatibility layer. This supports nestable async ('b'/'e'/'n')
+and counter ('C') trace event phases needed for Node.js.
+
+Additionally:
+
+1. Clear TRACE_EVENT_FLAG_COPY before calling Perfetto macros. Perfetto
+   manages string lifetimes internally via DynamicString and
+   TRACE_STR_COPY; passing FLAG_COPY triggers a CHECK failure in
+   Perfetto's legacy shim.
+
+2. Default instant events (phase 'I') with GLOBAL scope to THREAD scope.
+   Under Perfetto, global-scope instant events land on Track::Global(0),
+   producing pid:0/tid:0 in the trace output, making them effectively
+   invisible in trace viewers.
 
 diff --git a/src/builtins/builtins-trace.cc b/src/builtins/builtins-trace.cc
 index 5acfb72e44683eb35b70ed13d7a8a730a75feb62..cdc36ec311b0be2516a36b699f4df88a8af9583b 100644

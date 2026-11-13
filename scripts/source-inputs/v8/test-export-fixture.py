@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix='v8-export-test-', dir=a.work_dir) as di
     run([a.git, '-C', root, 'add', 'pkgsrc/export.conf'])
     run([a.git, '-C', root, 'update-index', '--add', '--cacheinfo',
          f'160000,{revision},upstream/pkgsrc'])
-    archive = work / 'v8-15.6.75.50-6500240d220d9eaba51ea0012f60e926fe4b6472.tar.gz'
+    archive = work / 'v8-15.6.75.57-5e51e9c6079c7fa65ca75e7919c81ea50734302e.tar.gz'
     shutil.copyfile(a.archive, archive)
     owner = root / 'scripts/source-inputs/v8/source.py'
     command = [sys.executable, '-B', '-I', '-S', owner, '--sdk-source', a.sdk_source,
@@ -66,6 +66,25 @@ with tempfile.TemporaryDirectory(prefix='v8-export-test-', dir=a.work_dir) as di
              '--git', a.git, '--patch', a.patch])
         return result
     baseline = export('export-baseline')
+    # The actual selected V8 generator binds code-cache salt to its prepared
+    # tree receipt; a different valid tree changes it and malformed input fails.
+    import json
+    selected_receipt = output / PREPARED_TREE_RECEIPT
+    record = json.loads(selected_receipt.read_text())
+    alternate = work / 'alternate-receipt.json'
+    changed = dict(record, tree_sha256=('0' if record['tree_sha256'][0] != '0' else '1') + record['tree_sha256'][1:])
+    alternate.write_text(json.dumps(changed))
+    generator = output / 'tools/gen-version-hash-salt.py'
+    salt_a = run([sys.executable, '-B', generator, '--receipt', selected_receipt]).stdout.strip()
+    salt_b = run([sys.executable, '-B', generator, '--receipt', alternate]).stdout.strip()
+    assert salt_a == record['tree_sha256'][:16] and salt_b == changed['tree_sha256'][:16] and salt_a != salt_b
+    header = work / 'cache-salt.h'
+    run([sys.executable, '-B', generator, '--header', header, '--build-root', work, '--receipt', selected_receipt])
+    assert header.read_text() == '#define V8_VERSION_HASH_SALT "' + salt_a + '"\n'
+    alternate.write_text('{}')
+    assert 'invalid V8 prepared source receipt' in run([sys.executable, '-B', generator, '--receipt', alternate], False).stderr
+    gn = (output / 'gni/version_hash_salt.gni').read_text()
+    assert 'v8_prepared_source_receipt' in gn and '--receipt' in gn
     run([sys.executable, '-B', '-I', '-S', owner, '--sdk-source', a.sdk_source,
          'verify-payload', '--source', output])
     run([*command, 'verify-source', '--source', output, '--pkgsrc-root', baseline])
