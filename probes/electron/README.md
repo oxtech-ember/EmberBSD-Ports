@@ -959,6 +959,11 @@ so configure selects the ordinary host `tsc` and its native backend; the source
 view carries no TypeScript copy. Its standard declarations and the shared Lit
 `.d.ts` files reach `ts_library` as `--toolchain_definitions`.
 
+For XML and common codec providers, reconfigure accepts verified package revision
+updates only when both roles retain the same upstream version, library paths and
+other inputs. It checks the package metadata for each role and rejects a downgrade
+or incompatible changes; Ninja then updates dependencies from the new graph.
+
 The opt-in common codec selection uses the shared dav1d, libaom, libvpx,
 libopus and FLAC packages for both toolchain roles. Chromium's private AOM and
 VPX worker overrides are disabled for this selection; the libraries use their

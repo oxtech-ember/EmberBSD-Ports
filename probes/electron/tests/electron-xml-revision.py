@@ -27,7 +27,7 @@ def arguments(revision):
                 *[prefix+'/pkgdb/'+package+suffix+'/'+name for name in ('+BUILD_INFO','+BUILD_VERSION','+CONTENTS')]]
     return result
 old = arguments(5); new = arguments(6)
-expected = {k for k in old if k.endswith('_inputs')}
+expected = {k for k in old if k.endswith('_inputs') and old[k] != new[k]}
 assert b.xml_activation_args(options, old_env, env, old, new) == expected
 assert b.xml_activation_args(options, old_env, old_env, old, old) == set()
 def reject(changed, previous=old, current_env=env):
