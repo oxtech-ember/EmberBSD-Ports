@@ -1051,17 +1051,21 @@ def verified_node_configure_v8_path_change(old_arguments, new_arguments, v8_sour
 
 
 
-def verified_node_configure_path_change(old_arguments, new_arguments, v8_source, python, sdk_source, environment):
-    """Admit only an independently verified GYP or V8 source-path transition."""
+def verified_node_configure_path_change(old_arguments, new_arguments, v8_source, python, sdk_source, environment,
+                                        selected_node_owner):
+    """Return only Node configure keys covered by a verified path transition."""
     def gyp_roots(arguments):
         rows = arguments.get('emberbsd_node_configure_inputs')
         if not isinstance(rows, list):
             return []
         return [row for row in rows if isinstance(row, str) and row.startswith('gyp-pkgsrc=')]
-    if gyp_roots(old_arguments) != gyp_roots(new_arguments):
-        proof = local_module('electron_node_gyp_relocation', 'node-gyp-relocation.py')
-        return proof.verify(old_arguments, new_arguments, python, sdk_source, environment)
-    return verified_node_configure_v8_path_change(old_arguments, new_arguments, v8_source)
+    if (gyp_roots(old_arguments) != gyp_roots(new_arguments) or
+            old_arguments.get('emberbsd_node_configure_helper') != new_arguments.get('emberbsd_node_configure_helper')):
+        proof = local_module('electron_node_configure_relocation', 'node-configure-relocation.py')
+        return proof.verify(old_arguments, new_arguments, python, sdk_source, environment, selected_node_owner)
+    if verified_node_configure_v8_path_change(old_arguments, new_arguments, v8_source):
+        return set(NODE_CONFIGURE_V8_PATH_KEYS)
+    return set()
 
 
 def verified_node_source_refresh(old_arguments, new_arguments, old_environment, new_environment, node_source):
@@ -4293,7 +4297,8 @@ def reconfigure(options):
         identity_args.update('node_shared_' + feature for feature in NODE_SHARED_FEATURES)
         node_provider_path_changed = verified_node_configure_path_change(
             saved['arguments'], values, options.v8_source, native.tool('python'),
-            options.sdk_source, source_owner_environment(environment))
+            options.sdk_source, source_owner_environment(environment),
+            getattr(options, 'node_ports_source', None) or options.ports_source)
         for name in identity_args:
             if name in swiftshader_changed:
                 continue
@@ -4308,7 +4313,7 @@ def reconfigure(options):
                 continue
             if name in permitted_runtime_args:
                 continue
-            if node_provider_path_changed and name in NODE_CONFIGURE_V8_PATH_KEYS:
+            if name in node_provider_path_changed:
                 continue
             require(values.get(name) == saved['arguments'].get(name), 'GN identity changed: ' + name)
 

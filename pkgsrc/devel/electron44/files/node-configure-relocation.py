@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2026 EmberBSD contributors.
-"""Prove a Node configure GYP export root move without changing inputs."""
+"""Prove byte-identical Node configure provider path transitions."""
 from collections import Counter
 import hashlib
 import os
@@ -46,8 +46,8 @@ def _inventory(root):
     return entries
 
 
-def verify(old, new, python, sdk_source, env):
-    """Require exact configure inputs except a verified byte-identical GYP export."""
+def verify(old, new, python, sdk_source, env, selected_node_owner):
+    """Return only keys covered by verified GYP and declared helper transitions."""
     inputs_key = 'emberbsd_node_configure_inputs'
     deps_key = 'emberbsd_node_configure_dependencies'
     def parse(value):
@@ -59,8 +59,32 @@ def verify(old, new, python, sdk_source, env):
         return [(k, v) for k, _, v in pairs]
     before, after = parse(old.get(inputs_key)), parse(new.get(inputs_key))
     a, b = dict(before), dict(after)
-    if before == after:
-        return False
+    helper_key = 'emberbsd_node_configure_helper'
+    old_helper, new_helper = old.get(helper_key), new.get(helper_key)
+    if not isinstance(old_helper, str) or not isinstance(new_helper, str):
+        raise ValueError('invalid Node configure helper')
+    selected = Path(selected_node_owner)
+    if (not selected.is_absolute() or selected.is_symlink() or
+            selected.resolve(strict=True) != selected or not selected.is_dir()):
+        raise ValueError('invalid selected Node owner')
+    suffix = Path('scripts/source-inputs/node/configure-inputs.py')
+    helpers = []
+    for raw in (old_helper, new_helper):
+        path = Path(raw)
+        if not path.is_absolute() or str(path) != raw or '..' in path.parts or len(path.parents) < 4:
+            raise ValueError('invalid Node configure helper path')
+        owner = path.parents[3]
+        if path != owner / suffix or not owner.is_dir() or owner.resolve(strict=True) != owner:
+            raise ValueError('invalid declared Node configure helper')
+        helpers.append(path)
+    if helpers[1] != selected / suffix:
+        raise ValueError('Node configure helper does not belong to selected owner')
+    if _file(helpers[0]) != _file(helpers[1]):
+        raise ValueError('Node configure helper bytes differ')
+    gyp_changed = before != after
+    helper_changed = old_helper != new_helper
+    if not gyp_changed and not helper_changed:
+        return set()
     if ([k for k, _ in before] != [k for k, _ in after] or
             any(a[k] != b[k] for k in a if k != 'gyp-pkgsrc')):
         raise ValueError('Node configure changed beyond GYP export root')
@@ -70,7 +94,7 @@ def verify(old, new, python, sdk_source, env):
         if not root.is_absolute() or str(root) != raw or root.is_symlink() or root.resolve(strict=True) != root or not root.is_dir():
             raise ValueError('invalid GYP export root')
         roots.append(root)
-    if roots[0] == roots[1] or roots[0].is_relative_to(roots[1]) or roots[1].is_relative_to(roots[0]):
+    if roots[0] != roots[1] and (roots[0].is_relative_to(roots[1]) or roots[1].is_relative_to(roots[0])):
         raise ValueError('invalid GYP export transition')
     inventory = _inventory(roots[0])
     if inventory != _inventory(roots[1]):
@@ -81,6 +105,8 @@ def verify(old, new, python, sdk_source, env):
     old_deps, new_deps = old.get(deps_key), new.get(deps_key)
     if any(type(v) is not list or any(type(x) is not str for x in v) for v in (old_deps, new_deps)):
         raise ValueError('invalid Node configure dependencies')
+    if old_deps.count(old_helper) != 1 or new_deps.count(new_helper) != 1:
+        raise ValueError('Node configure helper dependency must occur exactly once')
     source = Path(a['gyp-source'])
     if not source.is_absolute() or source.is_symlink() or source.resolve(strict=True) != source or not source.is_dir():
         raise ValueError('invalid prepared GYP source')
@@ -96,7 +122,9 @@ def verify(old, new, python, sdk_source, env):
         path = Path(raw)
         if not path.is_absolute() or str(path) != raw or '..' in path.parts:
             raise ValueError('invalid Node configure dependency path')
-        if path.is_relative_to(roots[0]):
+        if raw == old_helper:
+            dest = new_helper
+        elif path.is_relative_to(roots[0]):
             rel = path.relative_to(roots[0])
             newpath = roots[1] / rel
             if _file(path) != _file(newpath):
@@ -110,8 +138,13 @@ def verify(old, new, python, sdk_source, env):
         mapped.append(dest)
     if Counter(mapped) != Counter(new_deps):
         raise ValueError('Node configure dependencies differ')
-    for root in roots:
+    for root in dict.fromkeys(roots):
         verifier = root / 'devel/gyp/files/verify-source.py'
         subprocess.run([str(python), '-B', str(verifier), '--sdk-source', str(sdk_source),
                         '--source', a['gyp-source'], '--pkgsrc-root', str(root)], env=env, check=True)
-    return True
+    allowed = {deps_key}
+    if gyp_changed:
+        allowed.add(inputs_key)
+    if helper_changed:
+        allowed.add(helper_key)
+    return allowed
