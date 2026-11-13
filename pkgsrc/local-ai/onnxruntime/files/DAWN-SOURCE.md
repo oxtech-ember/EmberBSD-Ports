@@ -42,3 +42,9 @@ The previously used local bundle contained AppleDouble files and a Windows-only
 DirectX checkout with CRLF differences from the pinned upstream source. The
 new bundle uses upstream bytes; a package build and target acceptance are
 separate from assembly validation.
+
+The Ports adaptation disables extended mapped buffer usages on NetBSD RADV
+`1002:15d8` and selects non-device-local host-visible memory for mappable
+allocations on that adapter. This avoids the observed unreliable directly
+mapped device-local path; it does not establish or repair its underlying
+Vulkan/OS cause. Target GPU acceptance remains pending.

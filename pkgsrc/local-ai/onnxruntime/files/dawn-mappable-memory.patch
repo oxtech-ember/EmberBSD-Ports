@@ -1,0 +1,109 @@
+--- a/src/dawn/native/vulkan/MemoryTypeSelector.h
++++ b/src/dawn/native/vulkan/MemoryTypeSelector.h
+@@ -57,9 +57,10 @@
+ // Encapsulates logic to select best memory type based on VkMemoryRequirements plus MemoryKind.
+ class MemoryTypeSelector {
+   public:
+-    explicit MemoryTypeSelector(const VulkanDeviceInfo& info);
++    explicit MemoryTypeSelector(const VulkanDeviceInfo& info, bool avoidDeviceLocalForMappable = false);
+     MemoryTypeSelector(std::vector<VkMemoryType> memoryTypes,
+-                       std::vector<VkMemoryHeap> memoryHeaps);
++                       std::vector<VkMemoryHeap> memoryHeaps,
++                       bool avoidDeviceLocalForMappable = false);
+ 
+     uint32_t FindBestTypeIndex(VkMemoryRequirements requirements, MemoryKind kind);
+ 
+@@ -68,6 +69,7 @@
+ 
+     const std::vector<VkMemoryType> mMemoryTypes;
+     const std::vector<VkMemoryHeap> mMemoryHeaps;
++    const bool mAvoidDeviceLocalForMappable;
+ };
+ 
+ }  // namespace dawn::native::vulkan
+--- a/src/dawn/native/vulkan/MemoryTypeSelector.cpp
++++ b/src/dawn/native/vulkan/MemoryTypeSelector.cpp
+@@ -62,12 +62,15 @@
+     return HasMemoryTypeWithFlags(deviceInfo.memoryTypes, kMapExtendedUsageMemoryPropertyFlags);
+ }
+ 
+-MemoryTypeSelector::MemoryTypeSelector(const VulkanDeviceInfo& info)
+-    : MemoryTypeSelector(info.memoryTypes, info.memoryHeaps) {}
++MemoryTypeSelector::MemoryTypeSelector(const VulkanDeviceInfo& info, bool avoidDeviceLocalForMappable)
++    : MemoryTypeSelector(info.memoryTypes, info.memoryHeaps, avoidDeviceLocalForMappable) {}
+ 
+ MemoryTypeSelector::MemoryTypeSelector(std::vector<VkMemoryType> memoryTypes,
+-                                       std::vector<VkMemoryHeap> memoryHeaps)
+-    : mMemoryTypes(std::move(memoryTypes)), mMemoryHeaps(std::move(memoryHeaps)) {}
++                                       std::vector<VkMemoryHeap> memoryHeaps,
++                                       bool avoidDeviceLocalForMappable)
++    : mMemoryTypes(std::move(memoryTypes)),
++      mMemoryHeaps(std::move(memoryHeaps)),
++      mAvoidDeviceLocalForMappable(avoidDeviceLocalForMappable) {}
+ 
+ uint32_t MemoryTypeSelector::FindBestTypeIndex(VkMemoryRequirements requirements, MemoryKind kind) {
+     bool mappable = IsMemoryKindMappable(kind);
+@@ -83,6 +86,12 @@
+ 
+         // Memory type must have all the required memory properties.
+         if ((mMemoryTypes[i].propertyFlags & vkRequiredFlags) != vkRequiredFlags) {
++            continue;
++        }
++
++        // Some devices cannot reliably access directly mapped device-local memory.
++        if (mAvoidDeviceLocalForMappable && mappable &&
++            (mMemoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+             continue;
+         }
+ 
+--- a/src/dawn/native/vulkan/ResourceMemoryAllocatorVk.cpp
++++ b/src/dawn/native/vulkan/ResourceMemoryAllocatorVk.cpp
+@@ -152,7 +152,8 @@
+                                                  QueueBase* queue)
+     : mDevice(device),
+       mMaxSizeForSuballocation(GetMaxSuballocationSize(heapBlockSize)),
+-      mMemoryTypeSelector(mDevice->GetDeviceInfo()) {
++      mMemoryTypeSelector(mDevice->GetDeviceInfo(),
++                          mDevice->IsToggleEnabled(Toggle::VulkanUseHostMemoryForMappableBuffers)) {
+     const VulkanDeviceInfo& info = mDevice->GetDeviceInfo();
+ 
+     mAllocatorsPerType.reserve(info.memoryTypes.size());
+--- a/src/dawn/native/Toggles.h
++++ b/src/dawn/native/Toggles.h
+@@ -88,6 +88,7 @@
+     TimestampQuantization,
+     ClearBufferBeforeResolveQueries,
++    VulkanUseHostMemoryForMappableBuffers,
+     VulkanUseZeroInitializeWorkgroupMemoryExtension,
+     MetalRenderR8RG8UnormSmallMipToTempTexture,
+     DisableBlobCache,
+     D3D12ForceClearCopyableDepthStencilTextureOnCreation,
+--- a/src/dawn/native/Toggles.cpp
++++ b/src/dawn/native/Toggles.cpp
+@@ -274,6 +274,10 @@
+       "clear destination buffer to zero before resolving queries. This toggle is enabled on Intel "
+       "Gen12 GPUs due to driver issue.",
+       "https://crbug.com/dawn/1823", ToggleStage::Device}},
++    {Toggle::VulkanUseHostMemoryForMappableBuffers,
++     {"vulkan_use_host_memory_for_mappable_buffers",
++      "Avoid device-local memory types for mappable Vulkan buffers.",
++      "https://github.com/oxtech-ember/EmberBSD-Ports/tree/main/probes/dawn-vulkan", ToggleStage::Device}},
+     {Toggle::VulkanUseZeroInitializeWorkgroupMemoryExtension,
+      {"use_vulkan_zero_initialize_workgroup_memory_extension",
+       "Initialize workgroup memory with OpConstantNull on Vulkan when the Vulkan extension "
+--- a/src/dawn/native/vulkan/PhysicalDeviceVk.cpp
++++ b/src/dawn/native/vulkan/PhysicalDeviceVk.cpp
+@@ -1042,6 +1042,13 @@
+ 
+ void PhysicalDevice::SetupBackendDeviceToggles(dawn::platform::Platform* platform,
+                                                TogglesState* deviceToggles) const {
++#if defined(__NetBSD__)
++    // Direct CPU-mapped device-local memory is unreliable on this adapter.
++    if (IsAmdMesa() && GetVendorId() == 0x1002 && GetDeviceId() == 0x15d8) {
++        deviceToggles->ForceSet(Toggle::VulkanUseHostMemoryForMappableBuffers, true);
++    }
++#endif
++    deviceToggles->Default(Toggle::VulkanUseHostMemoryForMappableBuffers, false);
+     // TODO(crbug.com/dawn/857): tighten this workaround when this issue is fixed in both
+     // Vulkan SPEC and drivers.
+     deviceToggles->Default(Toggle::UseTemporaryBufferInCompressedTextureToTextureCopy, true);

@@ -26,11 +26,12 @@ def main():
     parser=argparse.ArgumentParser(description='Vulkan isolated compute diagnostic')
     parser.add_argument('--variant',choices=('add1d','constant','add2d'),default='add1d')
     parser.add_argument('--source-memory',choices=('device-local','host'),default='device-local')
+    parser.add_argument('--readback-memory',choices=('host','device-local'),default='host')
+    parser.add_argument('--readback-type',type=int,help='require this compatible Vulkan memory type index')
     parser.add_argument('--staging',action='store_true',help='copy host input into device-local shader input')
     parser.add_argument('--vulkan-library',default='/usr/pkg/lib/libvulkan.so.1')
     parser.add_argument('--device-name',help='require this substring in the selected device name')
     args=parser.parse_args()
-    if args.staging and args.source_memory != 'host': raise RuntimeError('--staging requires --source-memory host')
     SHADERS['add1d']=SHADER_BASE64
     vk=c.CDLL(args.vulkan_library)
     def f(name,restype,*args):
@@ -59,17 +60,24 @@ def main():
         family=candidates[0]; pri=c.c_float(1); qcreate=QCreate(2,None,0,family,1,c.pointer(pri)); dc=DevCreate(3,None,0,1,c.pointer(qcreate),0,None,0,None,None); check('device',f('vkCreateDevice',c.c_int,P,c.POINTER(DevCreate),P,PP)(physical,c.byref(dc),None,c.byref(dev))); queue=P(); f('vkGetDeviceQueue',None,P,U,U,PP)(dev,family,0,c.byref(queue))
         mp=MemProps(); f('vkGetPhysicalDeviceMemoryProperties',None,P,c.POINTER(MemProps))(physical,c.byref(mp)); print('queue family',family,flush=True)
         createbuf=f('vkCreateBuffer',c.c_int,P,c.POINTER(Buffer),P,PP); reqfn=f('vkGetBufferMemoryRequirements',None,P,P,c.POINTER(Requirements)); allocfn=f('vkAllocateMemory',c.c_int,P,c.POINTER(Allocation),P,PP); bind=f('vkBindBufferMemory',c.c_int,P,P,P,Z); size=3*480*640*4
-        buffer_specs=([('src',1,6,0),('shader-input',0x22,1,0),('device',0x21,1,0),('readback',2,6,0)] if args.staging else [('src',0x20,6,1),('device',0x21,1,0),('readback',2,6,0)])
+        buffer_specs=([('src',1,6,1),('shader-input',0x22,1,0),('device',0x21,1,0),('readback',2,6,0)] if args.staging else [('src',0x20,6,1),('device',0x21,1,0),('readback',2,6,0)])
         input_index=1 if args.staging else 0; output_index=2 if args.staging else 1; readback_index=3 if args.staging else 2
         for label,usage,required,prefer in buffer_specs:
             b=P(); check(label+' buffer',createbuf(dev,c.byref(Buffer(12,None,0,size,usage,0,0,None)),None,c.byref(b))); buffers.append(b)
-            r=Requirements(); reqfn(dev,b,c.byref(r)); valid=[i for i in range(mp.nt) if r.bits&(1<<i) and (mp.types[i].flags&required)==required]
-            if not valid: raise RuntimeError('no compatible memory type '+label)
+            r=Requirements(); reqfn(dev,b,c.byref(r))
+            print(label,'usage',hex(usage),'memoryTypeBits',hex(r.bits),'requirements.size',r.size,'requirements.alignment',r.alignment,flush=True)
+            valid=[i for i in range(mp.nt) if r.bits&(1<<i) and (mp.types[i].flags&required)==required]
             if label=='src' and args.source_memory=='host':
                 valid=[i for i in valid if not mp.types[i].flags&1]
-                if not valid: raise RuntimeError('no host-visible coherent non-device-local memory')
-            if prefer and args.source_memory!='host': valid.sort(key=lambda i:not(mp.types[i].flags&prefer))
-            elif label=='readback': valid.sort(key=lambda i:bool(mp.types[i].flags&1))
+            if label=='readback':
+                if args.readback_memory=='host':
+                    valid=[i for i in valid if not mp.types[i].flags&1]
+                else:
+                    valid=[i for i in valid if mp.types[i].flags&1]
+            if label=='readback' and args.readback_type is not None:
+                valid=[i for i in valid if i==args.readback_type]
+            if not valid: raise RuntimeError('no compatible memory type for '+label)
+            if label=='src' and prefer and args.source_memory!='host': valid.sort(key=lambda i:not(mp.types[i].flags&prefer))
             index=valid[0]; m=P(); check(label+' allocation',allocfn(dev,c.byref(Allocation(5,None,r.size,index)),None,c.byref(m))); mems.append(m); check(label+' bind',bind(dev,b,m,0)); print(label,'memory type',index,'flags',hex(mp.types[index].flags),'heap',mp.types[index].heap,flush=True)
         mapfn=f('vkMapMemory',c.c_int,P,P,Z,Z,U,PP)
         for i in (0,readback_index):

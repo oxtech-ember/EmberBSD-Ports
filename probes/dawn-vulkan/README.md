@@ -9,11 +9,12 @@ for another installation. They require exactly one enumerated physical device;
 `--device-name` may additionally require a name substring. They print memory
 types and flags: verify the requested memory type was actually selected.
 
-The packaged NetBSD RADV adapter `1002:15d8` has a targeted Dawn restriction
-for the two optional mapped-buffer extended-usage features. Direct mapped
-storage reads were observed to be incorrect beyond 2 MiB; the Vulkan/OS cause
-remains unresolved. The restriction does not alter direct Vulkan. Other WebGPU
-upload paths are not covered by this probe.
+The NetBSD RADV adapter `1002:15d8` has targeted Dawn restrictions: the two
+optional mapped-buffer extended-usage features are hidden and mappable
+allocations exclude device-local memory. Direct host-mapped device-local
+shader input and readback were observed incorrect beyond 2 MiB; the Vulkan/OS
+cause remains unresolved. The restrictions do not alter direct Vulkan. Target
+GPU acceptance of the updated workaround remains pending.
 
 ## Vulkan isolation
 
@@ -24,6 +25,8 @@ python3 vulkan-copy-diagnostic.py --device-name RAVEN2
 python3 vulkan-compute-diagnostic.py --variant constant --device-name RAVEN2
 python3 vulkan-compute-diagnostic.py --variant add1d --source-memory host --device-name RAVEN2
 python3 vulkan-compute-diagnostic.py --variant add1d --source-memory host --staging --device-name RAVEN2
+python3 vulkan-compute-diagnostic.py --variant add1d --source-memory host --staging --readback-memory device-local --device-name RAVEN2
+python3 vulkan-compute-diagnostic.py --variant add1d --source-memory device-local --staging --readback-memory host --readback-type 5 --device-name RAVEN2
 python3 vulkan-compute-diagnostic.py --variant add1d --source-memory device-local --device-name RAVEN2
 python3 vulkan-compute-diagnostic.py --variant add2d --source-memory device-local --device-name RAVEN2
 ```
@@ -35,9 +38,23 @@ accepted expected result. On the previously affected Raven2 setup, transfer,
 constant, host-only source and staged source passed; both direct mapped local
 add variants failed after 2 MiB. A fixed system should pass all variants. The
 1D and 2D variants use identical linear indexing with different dispatch shapes.
-Source-memory selection requires a matching coherent memory type; unsupported
-memory layouts stop with an error rather than silently changing the experiment.
+Source and readback memory selection requires matching host-visible coherent
+memory. `--readback-memory host` (the default) excludes DEVICE_LOCAL;
+`--readback-memory device-local` requires it. `--readback-type N` requires
+that exact type index to satisfy both the selected flags and buffer requirements.
+Unsupported memory layouts stop with an error rather than silently changing the
+experiment. Each allocation reports its usage, memory type bits, required size
+and alignment. With `--staging`, the source may also prefer device-local memory.
 The scripts wait for a Vulkan fence and may block if the driver hangs.
+
+On the tested Radeon 1002:15d8, the same staged Add path with device-local
+shader input and output and host-cached readback passed twice with a non-local
+host-visible source. Replacing only that source with host-visible device-local
+memory produced incorrect results for all 397,312 floats after 2 MiB in both
+runs. These type indices describe that adapter's reported memory properties,
+not a portable mapping. The actual Dawn allocation choices were not traced;
+the underlying OS/Mesa defect remains unresolved and the updated guard has not
+yet passed target GPU acceptance.
 
 The embedded SPIR-V in the compute probe corresponds to the adjacent GLSL
 `.comp` files, built with `glslangValidator -V`; rebuild and compare all bytes
@@ -95,12 +112,20 @@ creates an exclusive new pruned diagnostic graph without modifying the source.
 
 Dawn `v20260916.214021` is pinned by `local-ai/onnxruntime` with its `webgpu`
 option. The adaptation hides `BufferMapExtendedUsages` and
-`BufferMapWriteExtendedUsages` only for NetBSD RADV `1002:15d8`; ordinary
-staging remains available. Run the source-level predicate and patch checks from
-the Ports repository root:
+`BufferMapWriteExtendedUsages` only for NetBSD RADV `1002:15d8`; its mappable
+allocations also avoid device-local memory. Ordinary staging remains available.
+Run the source-level predicate and patch checks from the Ports repository root:
 
 ```sh
 CXX=/path/to/native/clang++ python3 pkgsrc/local-ai/onnxruntime/files/test-dawn-map-features.py
+```
+
+Run the memory selection regression against the prepared Dawn source using the
+selected native Ports SDK:
+
+```sh
+sh probes/dawn-vulkan/test-dawn-memory-selector.sh /path/to/prepared-dawn /path/to/native-prefix
+python3 probes/dawn-vulkan/test-dawn-toggle-table.py /path/to/prepared-dawn
 ```
 
 Target acceptance still requires comparing all outputs of representative ONNX

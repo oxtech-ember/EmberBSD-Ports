@@ -10,3 +10,6 @@ Common Eigen 5.0.1 remains a separate provider.
 Eigen header code is compiled into this library. Its unchanged COPYING files
 and exact current source pin are retained under share/licenses/onnxruntime/eigen5.
 See probes/onnxruntime/PROVENANCE.md for patch origin and validation boundaries.
+On NetBSD RADV 1002:15d8, the Dawn adaptation excludes device-local
+memory for mappable allocations and disables extended mapped buffer usage.
+GPU acceptance of this workaround is pending; see probes/dawn-vulkan.

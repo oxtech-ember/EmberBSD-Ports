@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Origin: EmberBSD (AI-assisted), based on the official ONNX Runtime release.
 DISTNAME=	onnxruntime-1.31.0
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	math
 MASTER_SITES=	-https://codeload.github.com/microsoft/onnxruntime/tar.gz/refs/tags/v1.31.0
 DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
@@ -70,6 +70,8 @@ post-extract:
 	${TEST} -f ${WRKDIR}/dawn-20260916.214021/CMakeLists.txt || \
 	    ${FAIL_MSG} "Dawn sources missing after extract"
 	${SH} ${FILESDIR}/patch-dawn-netbsd-platform.sh ${WRKDIR}/dawn-20260916.214021
+	${SH} ${FILESDIR}/apply-dawn-mappable-memory.sh ${WRKDIR}/dawn-20260916.214021 \
+	    ${PATCH} ${FILESDIR}/dawn-mappable-memory.patch
 .endif
 
 pre-configure:
