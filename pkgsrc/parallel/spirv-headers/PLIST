@@ -85,4 +85,5 @@ include/spirv/unified1/spirv.py
 include/spirv/unified1/spv.d
 share/cmake/SPIRV-Headers/SPIRV-HeadersConfig.cmake
 share/cmake/SPIRV-Headers/SPIRV-HeadersConfigVersion.cmake
+share/licenses/spirv-headers/LICENSE
 share/pkgconfig/SPIRV-Headers.pc

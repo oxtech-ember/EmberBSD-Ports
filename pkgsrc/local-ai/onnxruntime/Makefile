@@ -96,7 +96,7 @@ post-install:
 	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/onnxruntime/dawn
 	${INSTALL_DATA} ${WRKDIR}/dawn-20260916.214021/LICENSE ${DESTDIR}${PREFIX}/share/licenses/onnxruntime/dawn/LICENSE
 	${INSTALL_DATA} ${WRKDIR}/dawn-20260916.214021/third_party/webgpu-headers/LICENSE ${DESTDIR}${PREFIX}/share/licenses/onnxruntime/dawn/webgpu-headers-LICENSE
-	${INSTALL_DATA} ${WRKDIR}/dawn-20260916.214021/third_party/spirv-headers/LICENSE ${DESTDIR}${PREFIX}/share/licenses/onnxruntime/dawn/spirv-headers-LICENSE
+	${INSTALL_DATA} ${BUILDLINK_DIR}/share/licenses/spirv-headers/LICENSE ${DESTDIR}${PREFIX}/share/licenses/onnxruntime/dawn/spirv-headers-LICENSE
 	${INSTALL_DATA} ${WRKDIR}/dawn-20260916.214021/third_party/renderdoc/LICENSE.md ${DESTDIR}${PREFIX}/share/licenses/onnxruntime/dawn/renderdoc-LICENSE.md
 	${INSTALL_DATA} ${WRKDIR}/dawn-20260916.214021/third_party/vulkan-headers/src/LICENSE.md ${DESTDIR}${PREFIX}/share/licenses/onnxruntime/dawn/vulkan-headers-LICENSE.md
 	${INSTALL_DATA} ${WRKDIR}/dawn-20260916.214021/third_party/vulkan-utility-libraries/src/LICENSE.md ${DESTDIR}${PREFIX}/share/licenses/onnxruntime/dawn/vulkan-utility-LICENSE.md
