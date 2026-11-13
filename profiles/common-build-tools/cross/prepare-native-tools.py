@@ -483,7 +483,29 @@ def write_aliases(toolset, destination, native_cxx=None):
     return {'aliases': str(output), 'path': str(output) + os.pathsep + toolset.path}
 
 
+def exec_tool(arguments):
+    """Resolve a requested installed prefix tool at the moment it is used."""
+    parser = argparse.ArgumentParser(description=exec_tool.__doc__)
+    parser.add_argument('--host-prefix', required=True)
+    parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
+    parser.add_argument('--role', required=True)
+    parser.add_argument('command', nargs=argparse.REMAINDER)
+    args = parser.parse_args(arguments)
+    if args.command[:1] == ['--']:
+        args.command = args.command[1:]
+    from emberbsd_sdk.host_prefix import load_host_prefix
+    from emberbsd_sdk.errors import SDKError
+    toolset = load_host_prefix(args.host_prefix, required_roles=(args.role, 'python'),
+                               compiler_family=args.compiler_family)
+    if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
+        raise SDKError('Use the selected host prefix Python')
+    command = toolset.command(args.role)
+    os.execvpe(command[0], [*command, *args.command], dict(os.environ, PATH=toolset.path))
+
+
 def main(arguments):
+    if arguments[:1] == ['exec-tool']:
+        return exec_tool(arguments[1:])
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=('write', 'verify', 'aliases'))
     parser.add_argument('--host-prefix', required=True)

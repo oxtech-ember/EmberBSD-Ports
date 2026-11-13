@@ -1,0 +1,27 @@
+--- a/mk/pax.mk
++++ b/mk/pax.mk
+@@ -19,7 +19,23 @@
+ 
+ .if !defined(PAX_MK)
+ 
+-. if defined(TOOLS_PLATFORM.paxctl)
++# NetBSD packages which declare PaX policy need a host tool during staging.
++# Native pkgsrc keeps its existing TOOLS_PLATFORM selection; cross builds use
++# the selected native prefix and must include the tool in their host graph.
++. if ${OPSYS} == "NetBSD" && (!empty(NOT_PAX_ASLR_SAFE:U) || !empty(NOT_PAX_MPROTECT_SAFE:U))
++.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes" || ${_EMBER_SDK_PAXCTL_SELECTED:Uno} == "yes"
++TOOL_DEPENDS+= emberbsd-paxctl>=20261113:../../sysutils/emberbsd-paxctl
++.  endif
++.  if empty(TOOLS_PLATFORM.paxctl:U)
++.PHONY: post-install-paxctl-required
++post-install: post-install-paxctl-required
++post-install-paxctl-required:
++	${FAIL_MSG} "PaX-marked NetBSD binaries require a selected host paxctl"
++	${FALSE}
++.  endif
++. endif
++
++. if ${OPSYS} == "NetBSD" && !empty(TOOLS_PLATFORM.paxctl:U)
+ PAXCTL=	${TOOLS_PLATFORM.paxctl}
+ .  if !empty(NOT_PAX_ASLR_SAFE)
+ _INSTALL_ALL_TARGETS+=		post-install-pax-aslr-binaries

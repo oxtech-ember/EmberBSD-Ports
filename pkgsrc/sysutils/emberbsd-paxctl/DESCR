@@ -1,0 +1,2 @@
+Native host tool built from EmberBSD's shared paxctl source for inspecting
+and updating NetBSD ELF PaX notes during cross-package installation.

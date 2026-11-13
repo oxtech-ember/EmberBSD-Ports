@@ -5,7 +5,7 @@ and Electron patch series remains under `probes/electron/patches`.
 
 ## Build boundary
 
-The recipe binds an explicitly selected, complete Electron 45.2.1 source
+The recipe binds an explicitly selected, complete Electron 45.3.1 source
 workspace to `files/build-electron.py`. The [source owner](source-preparation.md)
 prepares the pinned dependency graph and ordered Ports patches before pkgsrc
 configuration. `DISTFILES` is empty: neither an external distribution ZIP nor
@@ -45,6 +45,20 @@ existing graph. `JOBS` defaults to `MAKE_JOBS` when selected by the caller;
 otherwise the controller uses the SDK CPU resolver. `KEEP_GOING` applies only
 to the build action. The selected Ninja retains compatible objects and produces
 `WORK/out/dist.zip`.
+
+After a completed compatible build, pkgsrc `repackage-metadata` checks the
+retained work identity and refreshes dependencies, installation staging and
+package metadata without recompiling the producer. It preserves the build
+phase and uses the existing `WORK/out/dist.zip`; it does not replace the
+source, toolchain, ABI or runtime acceptance checks. Use a verified current
+pkgsrc export with clean recipe inputs for packaging. Generated files such as
+Python `__pycache__` entries are not recipe inputs and must not enter the
+package's `+BUILD_VERSION` provenance. Confirm the retained work and payload
+are compatible before a metadata-only repackage.
+Install-time policy is applied again during staging: for a NetBSD target,
+PaX-marked executables use the shared native `emberbsd-paxctl` tool dependency
+from the selected SDK prefix. The ELF note can therefore change without a
+recompile; compare the resulting payload and requalify affected behavior.
 
 The build and installation phases are separate. `do-install` passes that
 producer work directory to `install-runtime.py`; `GENERATE_PLIST` uses its
@@ -165,8 +179,8 @@ compiler or target program. They cannot qualify an Electron artifact.
 
 The runtime dependency selection comes from Electron's `dist_zip` target and
 `build/zip.py`, including the generated Chromium credits. See the upstream
-[BUILD.gn](https://github.com/electron/electron/blob/v45.2.1/BUILD.gn) and
-[ZIP script](https://github.com/electron/electron/blob/v45.2.1/build/zip.py).
+[BUILD.gn](https://github.com/electron/electron/blob/v45.3.1/BUILD.gn) and
+[ZIP script](https://github.com/electron/electron/blob/v45.3.1/build/zip.py).
 The prepared Ports source also contains the BSD adaptations listed in the
 parent README. In particular, BSD does not select the Linux SUID helper, and
 the current ZIP script omits dummy ANGLE EGL/GLES files.

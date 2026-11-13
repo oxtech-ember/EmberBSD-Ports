@@ -40,3 +40,12 @@ EMBERBSD_NATIVE_TOOLSET_VERIFIED:=${_EMBER_NATIVE_TOOLSET_KEY}
 .export EMBERBSD_NATIVE_TOOLSET_VERIFIED
 .endif
 .include "${EMBERBSD_NATIVE_TOOLSET_MAKECONF}"
+
+# Resolve this optional tool when a PaX-marked package reaches install. The
+# dependency graph may install it after the native include was generated.
+_EMBER_SDK_PAXCTL_SELECTED:= yes
+_EMBER_SDK_PAXCTL:= ${EMBERBSD_HOST_PYTHON:Q} -B -E -S ${.PARSEDIR:Q}/prepare-native-tools.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} exec-tool --host-prefix ${EMBERBSD_HOST_PREFIX:Q} --compiler-family ${EMBERBSD_HOST_COMPILER_FAMILY:Q} --role paxctl --
+TOOLS_PLATFORM.paxctl:= ${_EMBER_SDK_PAXCTL}
+.if "${TOOLS_PLATFORM.paxctl}" != "${_EMBER_SDK_PAXCTL}"
+.error TOOLS_PLATFORM.paxctl differs from the selected Ports tool dispatcher
+.endif
