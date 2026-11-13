@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Origin: EmberBSD (AI-assisted), based on the official ONNX Runtime release.
-DISTNAME=	onnxruntime-1.31.0
-PKGREVISION=	5
+DISTNAME=	onnxruntime-1.31.1
 CATEGORIES=	math
-MASTER_SITES=	-https://codeload.github.com/microsoft/onnxruntime/tar.gz/refs/tags/v1.31.0
+MASTER_SITES=	-https://codeload.github.com/microsoft/onnxruntime/tar.gz/refs/tags/v1.31.1
 DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
 EXTRACT_ONLY=	${DISTNAME}${EXTRACT_SUFX}
 

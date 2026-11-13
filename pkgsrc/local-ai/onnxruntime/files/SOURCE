@@ -1,7 +1,7 @@
 Upstream: https://github.com/microsoft/onnxruntime
-Release: v1.31.0 (2026-10-09)
-Revision: 402979ac1bef89dcd55add41eaa7277c407599eb
-Archive SHA256: a7e84230b5d509e48fbd6b73c2453a56345ccb22da34a46dac1f0cb4a2d6507b
+Release: v1.31.1 (2026-10-26)
+Revision: 6af1a932e2286d5c58166085d24c68783033edee
+Archive SHA256: 92ffbf8b97872fd1e73c9eebdf3319d9a3b24919ae438d27db903b72ee08939e
 Primary license: MIT, Microsoft Corporation and contributors.
 Internal dependency licenses: copied from the actual _deps sources and
 upstream ThirdPartyNotices.txt. Internal libraries do not publish a second SDK.

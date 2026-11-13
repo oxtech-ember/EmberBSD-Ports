@@ -1,6 +1,7 @@
 # ONNX Runtime validation
 
-The selected provider is ONNX Runtime 1.31.0, GCC 16.2.0, C++20, a shared
+The following results describe the previously tested ONNX Runtime 1.31.0,
+not acceptance of the current 1.31.1 candidate. It used GCC 16.2.0, C++20, a shared
 CPU execution library and common Eigen 5.0.1. The build retains standard
 ONNX operators. The source, patches, dependency pins and feature boundaries
 are described in [PROVENANCE.md](PROVENANCE.md) and [README.md](README.md).

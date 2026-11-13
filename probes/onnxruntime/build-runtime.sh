@@ -23,10 +23,10 @@ protoc=${PROTOC_FOR_BUILD:-$compiler/bin/protoc}
 }
 sh "$recipe/fetch.sh" "$cache"
 mkdir -p "$out/source" "$out/logs" "$out/dependencies"
-tar -xf "$cache/onnxruntime-1.31.0.tar.gz" --strip-components=1 -C "$out/source"
+tar -xf "$cache/onnxruntime-1.31.1.tar.gz" --strip-components=1 -C "$out/source"
 mkdir -p "$out/source/onnxruntime/core/platform/netbsd"
 cp "$package/files/netbsd-device_discovery.cc" "$out/source/onnxruntime/core/platform/netbsd/device_discovery.cc"
-sha256sum "$cache/onnxruntime-1.31.0.tar.gz" "$package/features.cmake" "$0" "$package"/patches/patch-* > "$out/inputs.sha256"
+sha256sum "$cache/onnxruntime-1.31.1.tar.gz" "$package/features.cmake" "$0" "$package"/patches/patch-* > "$out/inputs.sha256"
 for patch in "$package"/patches/patch-*; do
     patch --fuzz=0 -d "$out/source" -p1 < "$patch" >> "$out/logs/patch.log" 2>&1
 done
@@ -95,4 +95,4 @@ sh "$package/files/install-licenses.sh" "$out/source" "$out/build" "$prefix" "$p
 (cd "$prefix" && find . \( -type f -o -type l \) -print | sed 's|^\./||' | LC_ALL=C sort) > "$out/files.txt"
 sed '/^@comment/d; /^${PLIST.webgpu}/d' "$package/PLIST" | LC_ALL=C sort > "$out/expected-files.txt"
 cmp "$out/expected-files.txt" "$out/files.txt"
-echo "Installed ONNX Runtime 1.31.0 ($mode): $prefix"
+echo "Installed ONNX Runtime 1.31.1 ($mode): $prefix"

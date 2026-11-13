@@ -19,7 +19,7 @@ LC_ALL=C; export LC_ALL
 unset LD_LIBRARY_PATH LD_PRELOAD
 if pkg_info -e onnxruntime >/dev/null 2>&1; then echo 'Preserve the installed runtime.' >&2; exit 2; fi
 mkdir -p "$out/first" "$out/reinstalled" "$out/controls" "$out/upstream"
-pkg_add "$packages/onnxruntime-1.31.0.tgz" > "$out/install.log" 2>&1
+pkg_add "$packages/onnxruntime-1.31.1.tgz" > "$out/install.log" 2>&1
 pkg_admin check onnxruntime > "$out/integrity.log" 2>&1
 pkg_info -B onnxruntime > "$out/build-info.txt"
 for program in onnx-cpu-c onnx-cpu-cxx onnx-pkgconfig-c onnx-contract onnx-thread-lifecycle onnx-affinity-contract silero-contract; do
@@ -129,7 +129,7 @@ if pkg_info -e onnxruntime >/dev/null 2>&1; then exit 1; fi
 for path in lib/libonnxruntime.so lib/libonnxruntime.so.1 include/onnxruntime/onnxruntime_c_api.h; do
     [ ! -e "/usr/pkg/$path" ] && [ ! -L "/usr/pkg/$path" ]
 done
-pkg_add "$packages/onnxruntime-1.31.0.tgz" > "$out/reinstall.log" 2>&1
+pkg_add "$packages/onnxruntime-1.31.1.tgz" > "$out/reinstall.log" 2>&1
 inference reinstalled
 for language in c cxx; do
     for batch in 1 3 32; do cmp "$out/first/$language-$batch.csv" "$out/reinstalled/$language-$batch.csv"; done

@@ -1,6 +1,6 @@
 # Installed C header and enum ABI control
 
-The upstream 1.31.0 C header initializes the UNKNOWN incompatibility flag with
+The upstream 1.31.1 C header initializes the UNKNOWN incompatibility flag with
 `1 << 31`. Shifting a signed 32-bit C value into that position has undefined
 behavior. It is also not a valid C integer constant expression.
 

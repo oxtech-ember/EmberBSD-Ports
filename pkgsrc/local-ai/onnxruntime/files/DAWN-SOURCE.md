@@ -1,6 +1,6 @@
 # Dawn source bundle
 
-The ONNX Runtime 1.31.0 `cmake/deps.txt` pins Dawn
+The ONNX Runtime 1.31.1 `cmake/deps.txt` pins Dawn
 `v20260916.214021` (SHA-1 `514e914f23a0787213c89eed879f74b5e275690d`).
 `dawn-sources.json` identifies that archive and the 19 source trees selected
 by Dawn's `tools/fetch_dawn_dependencies.py` from that version's `DEPS`.

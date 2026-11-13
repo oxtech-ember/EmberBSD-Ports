@@ -1,6 +1,6 @@
 # ONNX Runtime installed CPU inference API
 
-The [canonical ONNX Runtime 1.31.0 package](../../pkgsrc/local-ai/onnxruntime)
+The [canonical ONNX Runtime 1.31.1 package](../../pkgsrc/local-ai/onnxruntime)
 provides a shared C API and the upstream C++ wrappers. The CPU execution
 provider uses standard ONNX operators and baseline AArch64 NEON.
 See [provenance](PROVENANCE.md), [validation](VALIDATION.md),
@@ -54,7 +54,7 @@ or private source repository is needed. Its recipe declares GCC16, CMake,
 upstream Python generators, GNU patch and common Eigen, Abseil and protobuf providers.
 The runtime does not require Python at execution time.
 
-Installed consumers use `find_package(onnxruntime 1.31.0 EXACT CONFIG REQUIRED)`
+Installed consumers use `find_package(onnxruntime 1.31.1 EXACT CONFIG REQUIRED)`
 or `pkg-config libonnxruntime`. The installed file is `libonnxruntime.pc`;
 its internal `Name: onnxruntime` field does not change the module filename.
 C applications include `onnxruntime_c_api.h`;
@@ -65,7 +65,7 @@ uses these interfaces with a small independently generated ONNX graph.
 
 The [AI/audio source profile](../ai-engines/README.md) uses this same version,
 feature file and patches for its ORT and Silero consumers. Its older native
-1.30.0 record remains historical evidence and is not a 1.31.0 acceptance claim.
+1.30.0 record remains historical evidence and is not a 1.31.1 acceptance claim.
 
 The installed contracts build independently from the runtime build tree:
 
@@ -96,7 +96,7 @@ the original GCC16 constructor diagnostic and a successful patched compile.
 ```sh
 ruby probes/onnxruntime/check-selector-registry.rb \
   /absolute/cross-work/build/compile_commands.json \
-  /absolute/unmodified-onnxruntime-1.31.0 /absolute/new-regression-results
+  /absolute/unmodified-onnxruntime-1.31.1 /absolute/new-regression-results
 ```
 
 The helper preserves the source tree and all original warning flags. It
@@ -108,7 +108,7 @@ construction and compilation; it does not execute MatMulNBits inference.
 `run-target.sh PACKAGES TESTS NEW_RESULTS` runs on AArch64 EmberBSD with
 pkgtools and the coherent GCC16 runtime already present. It requires a fresh
 results directory and no installed ONNX Runtime package. It installs the
-actual `onnxruntime-1.31.0.tgz`, checks inference and errors, removes the
+actual `onnxruntime-1.31.1.tgz`, checks inference and errors, removes the
 package, reinstalls it and compares the results. Preserve its output.
 
 Install the example's C and C++ programs under `/usr/pkg/bin` first. Their

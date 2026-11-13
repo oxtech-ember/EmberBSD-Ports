@@ -1,8 +1,8 @@
 # EmberBSD: verified official source inputs and canonical port patches
 
-BLAKE2s (onnxruntime-1.31.0.tar.gz) = c185eb5bb0a14377bbc725637a9d6a2fa4f24c3ff3bb030ea8d0ad42d9c652ac
-SHA512 (onnxruntime-1.31.0.tar.gz) = 27bd751f68ccf5ae8057f9d2e04a36963d1c6bac85be557cb62d330a8564fa92f74170c673dbab614b034a609a1ad99af53b329dbb378842bd2b7ceb917a07d6
-Size (onnxruntime-1.31.0.tar.gz) = 280355422 bytes
+BLAKE2s (onnxruntime-1.31.1.tar.gz) = 6f9491a6da837d16d958c92ffb34baa978f95a168b1ecc2c0eee74ac7d8d2195
+SHA512 (onnxruntime-1.31.1.tar.gz) = 7fa5cb459c4d7d3146974db2ddae084f8c689e6b22dca3aad031aaf33b013dfa7b1ad1b116ec7a675a8c42ad6dd73873759d2129dab1301a5d885b1e34bf9568
+Size (onnxruntime-1.31.1.tar.gz) = 280354523 bytes
 BLAKE2s (ort-date.zip) = 47b92fc81248f0168dad1f2ccda2f023c1c6c9fafd6175170238b87136a30a8f
 SHA512 (ort-date.zip) = f70175801f665a200c7991ae39c284562febae382aca679a7458ae4926941da6a7bbc622233c0f40e3c04939cde604637248082308047fc313b7de03b2e8a503
 Size (ort-date.zip) = 941286 bytes

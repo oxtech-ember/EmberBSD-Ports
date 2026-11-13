@@ -1,13 +1,15 @@
 # ONNX Runtime source and patch provenance
 
-The official stable release **1.31.0**, published on **2026-10-09**, is pinned
-at revision `402979ac1bef89dcd55add41eaa7277c407599eb`.
-The [release](https://github.com/microsoft/onnxruntime/releases/tag/v1.31.0)
+The official stable release **1.31.1**, published on **2026-10-26**, is pinned
+at revision `6af1a932e2286d5c58166085d24c68783033edee`.
+The [release](https://github.com/microsoft/onnxruntime/releases/tag/v1.31.1)
 archive SHA256 is
-`a7e84230b5d509e48fbd6b73c2453a56345ccb22da34a46dac1f0cb4a2d6507b`.
+`92ffbf8b97872fd1e73c9eebdf3319d9a3b24919ae438d27db903b72ee08939e`.
 The primary source license is MIT, Microsoft Corporation and contributors.
 The installed `ThirdPartyNotices.txt` preserves the upstream third-party
 attribution. Original source copyright and SPDX identifiers are unchanged.
+Historical patch-validation results below were obtained on 1.31.0; the
+1.31.1 candidate has not yet completed build or target acceptance.
 
 [sources.tsv](sources.tsv) pins the runtime archive.
 [dependencies.tsv](dependencies.tsv) adds SHA256 checks to the selected
@@ -108,8 +110,8 @@ NetBSD CPU helper is MIT.
   does not claim runtime MatMulNBits numerical validation.
 
 The earlier source profile's GCC12 single-pointer assignment and BFloat16
-`isnan` adaptations are not applied to this GCC16/1.31.0 build. The real
-GCC16 target headers compile the original BFloat16 source. Older patches and numerical
+`isnan` adaptations are not applied to the GCC16/1.31.1 profile. The previous
+1.31.0 check compiled the unchanged original BFloat16 source with GCC16 target headers. Older patches and numerical
 measurements under `ai-engines` are historical artifacts. Current builders
 consume the canonical package patches and feature file.
 

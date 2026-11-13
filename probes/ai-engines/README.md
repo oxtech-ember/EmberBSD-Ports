@@ -1,6 +1,6 @@
 # Native CPU inference and audio probes
 
-This source probe prepares **ONNX Runtime 1.31.0**, **ncnn 20260526**,
+This source probe prepares **ONNX Runtime 1.31.1**, **ncnn 20260526**,
 **RNNoise 0.2** and **Silero VAD 6.2.3** for EmberBSD/NetBSD AArch64.
 It supplies installed C/C++ consumer checks, without Python application code,
 external inference services or an accelerator dependency.
@@ -18,7 +18,7 @@ support claim.
 
 ## Sources and profile
 
-The ONNX Runtime source pin is 1.31.0. The other
+The ONNX Runtime source pin is 1.31.1. The other
 components retain the release metadata checked on 2026-10-07. The release
 URLs, immutable revisions, licenses and local patches are described in
 [PROVENANCE.md](PROVENANCE.md). [sources.tsv](sources.tsv) pins source archives;

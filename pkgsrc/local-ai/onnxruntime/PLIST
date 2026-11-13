@@ -1,4 +1,4 @@
-@comment EmberBSD: ONNX Runtime 1.31.0 shared CPU payload + optional WebGPU plugin
+@comment EmberBSD: ONNX Runtime 1.31.1 shared CPU payload + optional WebGPU plugin
 include/onnxruntime/core/providers/custom_op_context.h
 include/onnxruntime/core/providers/resource.h
 include/onnxruntime/cpu_provider_factory.h
@@ -25,7 +25,7 @@ lib/cmake/onnxruntime/onnxruntimeTargets-release.cmake
 lib/cmake/onnxruntime/onnxruntimeTargets.cmake
 lib/libonnxruntime.so
 lib/libonnxruntime.so.1
-lib/libonnxruntime.so.1.31.0
+lib/libonnxruntime.so.1.31.1
 lib/libonnxruntime_providers_shared.so
 ${PLIST.webgpu}lib/libonnxruntime_providers_webgpu.so
 lib/pkgconfig/libonnxruntime.pc

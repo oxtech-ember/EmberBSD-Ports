@@ -1,6 +1,6 @@
 # AI engine source and patch provenance
 
-The current source profile uses **ONNX Runtime 1.31.0** and the
+The current source profile uses **ONNX Runtime 1.31.1** and the
 [canonical package patches and feature file](../onnxruntime/PROVENANCE.md).
 Its updated runtime archive is pinned in [sources.tsv](sources.tsv).
 The table and local adaptation descriptions below preserve the historical
