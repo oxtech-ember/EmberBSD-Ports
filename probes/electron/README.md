@@ -791,6 +791,25 @@ changes. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.
 Use a new output when those inputs have changed incompatibly.
 
+To move an existing producer to a different verified source workspace, run a
+separate `reconfigure` with `--previous-source` naming the workspace recorded
+in the saved configuration and `--refresh-source-view`. The controller checks
+the saved and selected source identities, provider payloads and build inputs;
+it does not build from the previous workspace. Under the work and source locks,
+the old view is checked read-only for ownership before retirement: every
+present entry must match the verified old source and provider callbacks remain
+strict. Source entries absent from the old view do not need to be created.
+This check does not establish that the old view is complete or suitable for a
+build. Ordinary build, new-view verification and candidate verification retain
+their full checks.
+
+The source-origin transition verifies the replacement before committing the new
+configuration. Its backup and saved configuration are temporary transaction
+state used for guarded recovery after interruption; old and backup verification
+never refresh or activate components. The sibling `work/out` and compatible
+Ninja objects remain in place. Provider, receipt and host buildlink checks
+remain in force, including checks of non-makefile inputs.
+
 Reconfigure accepts one scoped runtime-view update: pass a different protoc
 runtime-view directory that preserves every existing alias and canonical target
 and only adds aliases for libraries selected by the native buildlink and staged

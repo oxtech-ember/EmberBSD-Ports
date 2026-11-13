@@ -214,13 +214,14 @@ def _created_subtree(root, created_files):
     return rows
 
 
-def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None, nested_omit=frozenset(), created_files=None):
+def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None, nested_omit=frozenset(), created_files=None, retired=False):
     """Mirror source entries; verification may allow named regular GN outputs.
 
     Electron's GN build_electron_definitions action creates electron-api.json
     and electron.d.ts in the local electron source view. They are build
     products, not entries in the prepared source tree.
     """
+    require(not retired or (verify and updates is None), 'retired mirror must be read-only')
     origin = Path(origin)
     dest = Path(dest)
     nested_omit = {Path(path) for path in nested_omit}
@@ -266,7 +267,7 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
                 source_id = (info.st_dev, info.st_ino, info.st_mode, info.st_size,
                              info.st_mtime_ns, info.st_ctime_ns)
                 updates.append((dest / name, 'file', item.path, item.path, source_id, None))
-        require(set(local_entries) == names or (updates is not None and set(local_entries) <= names),
+        require(set(local_entries) == names or ((updates is not None or retired) and set(local_entries) <= names),
                 'mirrored view entries changed: ' + str(dest))
     else:
         dest.mkdir()
@@ -296,7 +297,7 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
                         'mirrored view directory changed: ' + str(output))
             nested = {Path(*p.parts[1:]) for p in nested_omit if len(p.parts) > 1 and p.parts[0] == name}
             mirror(item.path, output, verify=verify, updates=updates, nested_omit=nested,
-                   created_files=created_files)
+                   created_files=created_files, retired=retired)
         else:
             require(stat.S_ISREG(source_info.st_mode),
                     'unsupported mirrored view file type: ' + str(item.path))
@@ -555,7 +556,9 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, ml_names=(), ml_verify=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False, _created_files=None):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, ml_names=(), ml_verify=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False, _created_files=None, _retired=False):
+    require(not _retired or (_updates is None and not _refresh and not _migration and _initial_missing is None),
+            'retired view verification must be read-only')
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
@@ -595,10 +598,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                     'source view link changed: ' + str(link))
     root = destination / 'src'
     root_special = {'third_party', 'out'} | ({'v8'} if v8 else set())
-    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()), updates=_updates, created_files=_created_files)
+    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()), updates=_updates, created_files=_created_files, retired=_retired)
     if node_modules is not None:
         mirror(source / 'electron', root / 'electron', verify=True, omit={'node_modules'},
-               generated_files={'electron-api.json', 'electron.d.ts'}, updates=_updates, created_files=_created_files)
+               generated_files={'electron-api.json', 'electron.d.ts'}, updates=_updates, created_files=_created_files, retired=_retired)
     require({item.name for item in root.iterdir()} >= root_special, 'source view root entries changed')
     if v8:
         _check_provider_link(root / 'v8', v8, _updates)
@@ -612,7 +615,7 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         nested = {Path('src/node_modules')} if name == 'devtools-frontend' and node_modules is not None and not _legacy_devtools else frozenset()
         mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
                omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset(),
-               updates=_updates, nested_omit=nested, created_files=_created_files)
+               updates=_updates, nested_omit=nested, created_files=_created_files, retired=_retired)
         if nested:
             link = root / 'third_party' / name / 'src/node_modules'
             require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),

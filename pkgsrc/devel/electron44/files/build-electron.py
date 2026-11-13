@@ -2506,11 +2506,12 @@ def ensure_lastchange(workspace, native, environment, sdk):
 
 
 
-def gn_source(options, *, refresh_selected=False):
-    require(not refresh_selected or getattr(options, 'verify_selected_source_view', False),
-            'selected source refresh requires selected verification')
+def gn_source(options, *, retired=False):
+    require(not retired or getattr(options, 'verify_selected_source_view', False),
+            'retired source view requires selected verification')
     common = getattr(options, 'protobuf_source', None)
     if not (common or getattr(options, 'node_source', None) or getattr(options, 'perfetto_source', None) or getattr(options, 'v8_source', None) or getattr(options, 'shared_abseil', False) or getattr(options, 'shared_icu', False) or getattr(options, 'shared_re2', False)):
+        require(not retired, 'retired source view requires a mirrored view')
         return options.workspace / 'src'
     view = local_module('electron_protobuf_source_view', 'protobuf-source-view.py')
     sources = dict(node=getattr(options, 'node_source', None), perfetto=getattr(options, 'perfetto_source', None),
@@ -2525,8 +2526,8 @@ def gn_source(options, *, refresh_selected=False):
             'source view destination must be a sibling in the selected work directory')
     verify_selected = getattr(options, 'verify_selected_source_view', False)
     if verify_selected:
-        require(not refresh_selected or not any(destination.parent.glob('.' + destination.name + '.*-migration')),
-                'selected source refresh refuses pending component migration')
+        require(not retired or not any(destination.parent.glob('.' + destination.name + '.*-migration')),
+                'retired source view refuses pending component migration')
         require(options.phase == 'build' and not any(getattr(options, name, False) for name in
                 ('refresh_source_view', 'activate_common_ml', 'activate_common_providers',
                  'migrate_devtools_modules_only', 'resume_configure', 'retry_configure')),
@@ -3372,8 +3373,6 @@ def gn_source(options, *, refresh_selected=False):
         if transition:
             return finish_selection(transition_result)
         sources = selected_sources(ids, new_headers, new_media, new_compression, new_boring)
-    if refresh_selected:
-        return refresh_leaves(sources)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
         if ids or getattr(options, 'source_view_created_files', None):
@@ -3387,7 +3386,7 @@ def gn_source(options, *, refresh_selected=False):
         return view.complete_initial(options.workspace / 'src', common, destination, **sources)
     if getattr(options, 'retry_configure', False):
         return refresh_leaves(sources)
-    return view.verify(options.workspace / 'src', common, destination, **sources)
+    return view.verify(options.workspace / 'src', common, destination, **sources, **({'_retired': True} if retired else {}))
 
 
 
@@ -4082,11 +4081,6 @@ def equivalent_spirv_catalog(old_raw, new_raw):
     return True
 
 
-def refresh_old_source_view(path, work, options):
-    return (path == work / 'source-view' and options.refresh_source_view and
-            not os.path.lexists(work / 'reconfigure-incomplete'))
-
-
 def verify_source_origin_provider_invariants(old_environment, new_environment, *, verified_spirv=False):
     """Keep every other selected provider unchanged during an origin switch."""
     selections = {
@@ -4559,7 +4553,9 @@ def reconfigure(options):
                             'old source provider link changed: ' + relative)
                 previous_options = view_options(path, old_workspace, old_node, old_v8)
                 previous_options.spirv_selection = old_spirv
-                result = gn_source(previous_options, refresh_selected=refresh_old_source_view(path, work, options))
+                previous_options.source_view_created_files = None
+                previous_options.source_view_publication = None
+                result = gn_source(previous_options, retired=True)
                 require(result == path / 'src', 'old source view verification returned another path')
 
             def verify_new(path):
