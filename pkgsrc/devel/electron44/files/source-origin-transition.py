@@ -31,7 +31,7 @@ def sync_directory(path):
 
 
 def transition(work, *, saved_configuration, config_is_new, verify_old, verify_new,
-               build_new, commit_config):
+               build_new, prepare_existing_new, commit_config):
     """Switch an owned view; verify callbacks must check all selected providers.
 
     The existing reconfigure guard protects the whole operation. The retained
@@ -78,18 +78,24 @@ def transition(work, *, saved_configuration, config_is_new, verify_old, verify_n
         require(current.is_file() and not current.is_symlink() and
                 current.read_bytes() == saved_configuration and entry(previous),
                 'saved configuration changed before commit')
+        candidate_prepared = False
         if not entry(backup):
             require(entry(view) and entry(candidate), 'invalid pre-swap transition state')
             verify_old(view)
+            prepare_existing_new(candidate)
             verify_new(candidate)
+            candidate_prepared = True
             view.rename(backup)
             sync_directory(work)
         verify_old(backup)
         if entry(view):
             require(not entry(candidate), 'unexpected candidate with new stable view')
+            prepare_existing_new(view)
             verify_new(view)
         else:
             require(entry(candidate), 'missing new candidate')
+            if not candidate_prepared:
+                prepare_existing_new(candidate)
             verify_new(candidate)
             candidate.rename(view)
             sync_directory(work)
@@ -100,6 +106,7 @@ def transition(work, *, saved_configuration, config_is_new, verify_old, verify_n
                 'unexpected initial transition state')
         verify_old(view)
         if entry(candidate):
+            prepare_existing_new(candidate)
             verify_new(candidate)
         else:
             scratch = Path(tempfile.mkdtemp(prefix='.source-view-origin-factory-', dir=work))

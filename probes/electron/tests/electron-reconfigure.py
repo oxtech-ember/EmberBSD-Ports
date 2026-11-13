@@ -491,7 +491,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert (work/'reconfigure-incomplete').exists() and config.read_bytes()==before and (out/'args.gn').read_text()==b.gn_arguments(old)
     try: b.build(opt); raise AssertionError('accepted incomplete graph')
     except ValueError as e: assert 'incomplete reconfiguration' in str(e)
+    calls.update(verify=0, producer=0, gn_source=0, lastchange=0, ffmpeg=0, dsymutil=0, rust_std=0); phase_order.clear()
     gnfile.write_text('group("electron_dist_zip") {}\n'); b.reconfigure(opt)
+    assert calls['lastchange']==1 and phase_order[:2]==['lastchange','source-view']
     assert not (work/'reconfigure-incomplete').exists() and json.loads(config.read_text())['arguments']==new
     saved_after = json.loads(config.read_text())
     assert saved_after['environment']['EMBERBSD_HOST_TYPESCRIPT']=='/new'

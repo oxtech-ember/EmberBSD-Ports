@@ -809,6 +809,9 @@ state used for guarded recovery after interruption; old and backup verification
 never refresh or activate components. The sibling `work/out` and compatible
 Ninja objects remain in place. Provider, receipt and host buildlink checks
 remain in force, including checks of non-makefile inputs.
+Before GN, the controller prepares the selected workspace GN metadata. On
+recovery, it refreshes only an existing new view through the normal verified
+leaf transaction; the retired view and committed cleanup remain read-only.
 
 Internal ML aliases use relative paths, so a verified view survives the origin
 transaction's renames. To normalize legacy absolute aliases during this
@@ -819,6 +822,9 @@ the selected views and exact old targets before replacing aliases under the
 work lock. Recovery accepts only the expected old or relative target; ordinary
 verification accepts only the relative form. Initial normalization precedes
 the source-origin transaction and preserves the existing configuration and out.
+Once both aliases have been normalized, retry an interrupted origin transition
+without `--migrate-ml-alias-root`; ordinary recovery prepares current GN metadata
+and refreshes the verified new view.
 
 Reconfigure accepts one scoped runtime-view update: pass a different protoc
 runtime-view directory that preserves every existing alias and canonical target

@@ -2506,7 +2506,10 @@ def ensure_lastchange(workspace, native, environment, sdk):
 
 
 
-def gn_source(options, *, retired=False, legacy_ml_root=None):
+def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=False):
+    require(not refresh_selected or (getattr(options, 'verify_selected_source_view', False) and
+                                     not retired and legacy_ml_root is None),
+            'selected refresh requires a new frozen source view')
     require(legacy_ml_root is None or getattr(options, 'verify_selected_source_view', False),
             'legacy ML recovery requires selected verification')
     require(not retired or getattr(options, 'verify_selected_source_view', False),
@@ -2528,8 +2531,8 @@ def gn_source(options, *, retired=False, legacy_ml_root=None):
             'source view destination must be a sibling in the selected work directory')
     verify_selected = getattr(options, 'verify_selected_source_view', False)
     if verify_selected:
-        require(not retired or not any(destination.parent.glob('.' + destination.name + '.*-migration')),
-                'retired source view refuses pending component migration')
+        require(not (retired or refresh_selected) or not any(destination.parent.glob('.' + destination.name + '.*-migration')),
+                'selected source view refuses pending component migration')
         require(options.phase == 'build' and not any(getattr(options, name, False) for name in
                 ('refresh_source_view', 'activate_common_ml', 'activate_common_providers',
                  'migrate_devtools_modules_only', 'resume_configure', 'retry_configure')),
@@ -3376,6 +3379,8 @@ def gn_source(options, *, retired=False, legacy_ml_root=None):
         if transition:
             return finish_selection(transition_result)
         sources = selected_sources(ids, new_headers, new_media, new_compression, new_boring)
+    if refresh_selected:
+        return refresh_leaves(sources)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
         if ids or getattr(options, 'source_view_created_files', None):
@@ -4105,6 +4110,23 @@ def ml_alias_migration_mode(work, config_path, saved_bytes, legacy_root, *, orig
     return 'recovery'
 
 
+def complete_ml_alias_migration(mode, stable, backup, legacy_root, verify_old, verify_new, migrate, prepare_metadata):
+    """Verify and normalize both views before generating new source metadata."""
+    if mode == 'initial':
+        verify_old(stable, legacy_root=stable)
+        migrate(stable, stable)
+        verify_old(stable)
+    else:
+        require(mode == 'recovery', 'invalid ML alias migration mode')
+        verify_old(backup, legacy_root=stable)
+        verify_new(stable, legacy_root=legacy_root)
+        migrate(backup, stable)
+        migrate(stable, legacy_root)
+        verify_old(backup)
+        verify_new(stable)
+    prepare_metadata()
+
+
 def verify_source_origin_provider_invariants(old_environment, new_environment, *, verified_spirv=False):
     """Keep every other selected provider unchanged during an origin switch."""
     selections = {
@@ -4534,6 +4556,9 @@ def reconfigure(options):
         environment['CXX'] = shlex.quote(bound['cxx'])
         if build_after_reconfigure:
             prepare_build_inputs(options, native, environment, sdk)
+        elif (not cleanup_only and not getattr(options, 'migrate_devtools_modules_only', False) and
+              not getattr(options, 'migrate_ml_alias_root', None)):
+            ensure_lastchange(options.workspace, native, environment, sdk)
 
         if getattr(options, 'migrate_devtools_modules_only', False):
             require(not build_after_reconfigure, 'migration-only cannot build')
@@ -4590,6 +4615,11 @@ def reconfigure(options):
                                    legacy_ml_root=legacy_root)
                 require(result == path / 'src', 'new source view verification returned another path')
 
+            def prepare_existing_new(path):
+                result = gn_source(view_options(path, options.workspace, options.node_source, options.v8_source),
+                                   refresh_selected=True)
+                require(result == path / 'src', 'new source view refresh returned another path')
+
             def build_new(path):
                 result = gn_source(view_options(path, options.workspace, options.node_source, options.v8_source,
                                                 factory=True))
@@ -4622,20 +4652,14 @@ def reconfigure(options):
                                                marker_text=transition.MARKER)
                 ml = local_module('electron_ml_source_view', 'ml-source-view.py')
                 view = local_module('electron_protobuf_source_view', 'protobuf-source-view.py')
-                if mode == 'initial':
-                    verify_old(stable, legacy_root=stable)
-                    ml.migrate_aliases(view, stable, stable)
-                    verify_old(stable)
-                else:
-                    verify_old(backup, legacy_root=stable)
-                    verify_new(stable, legacy_root=legacy_factory)
-                    ml.migrate_aliases(view, backup, stable)
-                    ml.migrate_aliases(view, stable, legacy_factory)
-                    verify_old(backup)
-                    verify_new(stable)
+                complete_ml_alias_migration(
+                    mode, stable, backup, legacy_factory, verify_old, verify_new,
+                    lambda path, previous: ml.migrate_aliases(view, path, previous),
+                    lambda: ensure_lastchange(options.workspace, native, environment, sdk))
             transition.transition(work, saved_configuration=saved_bytes, config_is_new=config_is_new,
                                   verify_old=verify_old, verify_new=verify_new,
-                                  build_new=build_new, commit_config=commit_config)
+                                  build_new=build_new, prepare_existing_new=prepare_existing_new,
+                                  commit_config=commit_config)
             return
 
         # A failed or interrupted GN run may leave a partial graph. The marker

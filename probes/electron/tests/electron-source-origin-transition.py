@@ -17,6 +17,10 @@ def run(state, tamper=False, cleanup_failure=False):
   def new(p):check(p,'new')
   def build(p):mk(p,'new')
   def commit():cfg.write_text('new')
+  prepared=[]
+  def prepare(p):
+   assert p in (candidate,stable) and (p/'identity').read_text()=='new' and cfg.read_text()=='old'
+   prepared.append(p.name)
   mk(stable,'old')
   if state!='initial':
    mk(candidate,'new');(w/'.source-view-origin-old-configuration.json').write_bytes(b'old');marker.write_text('GN reconfiguration incomplete\nsource-origin-v1\n')
@@ -28,14 +32,15 @@ def run(state, tamper=False, cleanup_failure=False):
   if tamper:(backup/'foreign').write_text('do not remove')
   try:
    if cleanup_failure:
-    with patch.object(t.shutil,'rmtree',side_effect=OSError('injected cleanup failure')):t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=old,verify_new=new,build_new=build,commit_config=commit)
-   else:t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=old,verify_new=new,build_new=build,commit_config=commit)
+    with patch.object(t.shutil,'rmtree',side_effect=OSError('injected cleanup failure')):t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=old,verify_new=new,build_new=build,prepare_existing_new=prepare,commit_config=commit)
+   else:t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=old,verify_new=new,build_new=build,prepare_existing_new=prepare,commit_config=commit)
   except (ValueError,OSError):
    if not (tamper or cleanup_failure):raise
    assert backup.exists() and marker.exists()
    if tamper:assert (backup/'foreign').read_text()=='do not remove'
   else:
    assert not (tamper or cleanup_failure) and not backup.exists() and not marker.exists();new(stable)
+  assert prepared == ([] if tamper or state in ('initial','committed') else [candidate.name if state in ('before','missing') else stable.name])
   assert obj.read_bytes()==b'keep' and obj.stat().st_mtime_ns==before
 for s in ('initial','before','missing','newstable','committed'):run(s)
 run('newstable',tamper=True);run('newstable',cleanup_failure=True)
@@ -43,7 +48,7 @@ print('PASS: initial, three interrupted swaps, committed cleanup, foreign and cl
 with tempfile.TemporaryDirectory() as d:
  w=Path(d);view=w/'source-view';view.mkdir();(view/'identity').write_text('new');marker=w/'reconfigure-incomplete';marker.write_text('GN reconfiguration incomplete\nsource-origin-v1\n');cfg=w/'configuration.json';cfg.write_text('new')
  def verify_new(p):assert set(x.name for x in p.iterdir())=={'identity'} and (p/'identity').read_text()=='new'
- t.transition(w,saved_configuration=b'old',config_is_new=lambda:True,verify_old=lambda p:(_ for _ in ()).throw(AssertionError('no old backup')),verify_new=verify_new,build_new=lambda p:None,commit_config=lambda:None)
+ t.transition(w,saved_configuration=b'old',config_is_new=lambda:True,verify_old=lambda p:(_ for _ in ()).throw(AssertionError('no old backup')),verify_new=verify_new,build_new=lambda p:None,prepare_existing_new=lambda p:(_ for _ in ()).throw(AssertionError('cleanup refresh forbidden')),commit_config=lambda:None)
  assert not marker.exists()
 print('PASS: committed new view recovery after backup deletion')
 with tempfile.TemporaryDirectory() as d:
@@ -53,12 +58,12 @@ with tempfile.TemporaryDirectory() as d:
  def bad(p):p.mkdir();(p/'foreign').write_text('preserve');raise ValueError('factory failed')
  def good(p):p.mkdir();(p/'identity').write_text('new')
  def commit():cfg.write_text('new')
- try:t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=old,verify_new=new,build_new=bad,commit_config=commit)
+ try:t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=old,verify_new=new,build_new=bad,prepare_existing_new=lambda p:None,commit_config=commit)
  except ValueError:pass
  else:raise AssertionError('factory failure ignored')
  retained=list(w.glob('.source-view-origin-factory-*'));assert len(retained)==1 and (retained[0]/'source-view/foreign').read_text()=='preserve'
  assert not (w/'.source-view-origin-candidate').exists() and not (w/'reconfigure-incomplete').exists()
- t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=old,verify_new=new,build_new=good,commit_config=commit)
+ t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=old,verify_new=new,build_new=good,prepare_existing_new=lambda p:None,commit_config=commit)
  assert (retained[0]/'source-view/foreign').read_text()=='preserve' and obj.stat().st_mtime_ns==mtime
 print('PASS: failed factory retains unknown data and retry succeeds')
 for valid in (True,False):
@@ -66,7 +71,7 @@ for valid in (True,False):
   w=Path(d);view=w/'source-view';view.mkdir();(view/'identity').write_text('old');candidate=w/'.source-view-origin-candidate';candidate.mkdir();(candidate/'identity').write_text('new' if valid else 'foreign');cfg=w/'configuration.json';cfg.write_text('old')
   def check(p,x):
    if (p/'identity').read_text()!=x:raise ValueError('foreign')
-  try:t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=lambda p:check(p,'old'),verify_new=lambda p:check(p,'new'),build_new=lambda p:(_ for _ in ()).throw(AssertionError('must reuse candidate')),commit_config=lambda:cfg.write_text('new'))
+  try:t.transition(w,saved_configuration=b'old',config_is_new=lambda:cfg.read_text()=='new',verify_old=lambda p:check(p,'old'),verify_new=lambda p:check(p,'new'),build_new=lambda p:(_ for _ in ()).throw(AssertionError('must reuse candidate')),prepare_existing_new=lambda p:None,commit_config=lambda:cfg.write_text('new'))
   except ValueError:
    assert not valid and candidate.exists() and (candidate/'identity').read_text()=='foreign'
   else:assert valid and not candidate.exists() and cfg.read_text()=='new'
@@ -152,13 +157,58 @@ with tempfile.TemporaryDirectory() as temporary:
  try:t.transition(work,saved_configuration=b'old',config_is_new=lambda:False,
                   verify_old=lambda p:view.mirror(source,p,verify=True,retired=True),
                   verify_new=lambda p:None,build_new=lambda p:(_ for _ in ()).throw(ValueError('factory failure')),
-                  commit_config=lambda:None)
+                  prepare_existing_new=lambda p:None,commit_config=lambda:None)
  except ValueError as error:assert 'factory failure' in str(error)
  else:raise AssertionError('factory failure accepted')
  try:view.mirror(source,old,verify=True)
  except ValueError:pass
  else:raise AssertionError('ordinary build accepted incomplete old view after failure')
 print('PASS: precommit failure does not admit incomplete old view for build')
+
+# Existing new view refresh happens only after old proof and honors provider checks.
+for bad in (None, 'provider', 'foreign'):
+ with tempfile.TemporaryDirectory() as temporary:
+  root=Path(temporary).resolve();source=root/'source';source.mkdir();(source/'metadata').write_text('generated')
+  work=root/'work';work.mkdir();stable=work/'source-view';(stable/'src').mkdir(parents=True);backup=work/'.source-view-origin-backup';backup.mkdir();(backup/'identity').write_text('old')
+  config=work/'configuration.json';config.write_bytes(b'old');(work/'.source-view-origin-old-configuration.json').write_bytes(b'old');marker=work/'reconfigure-incomplete';marker.write_text(t.MARKER)
+  if bad=='foreign':(stable/'src/foreign').write_text('preserve')
+  def verify(source,protobuf,destination,*,_updates=None,_refresh=False,**kwargs):
+   if bad=='provider':raise ValueError('provider proof failed')
+   view.mirror(source,destination/'src',verify=True,updates=_updates)
+   return destination/'src'
+  saved_verify=view.verify;view.verify=verify;calls=[]
+  def old(p):assert p==backup and (p/'identity').read_text()=='old';calls.append('old')
+  def prepare(p):assert p==stable and calls and calls[-1]=='old';calls.append('prepare');view._refresh_leaves(source,None,p,{})
+  def new(p):calls.append('new');verify(source,None,p)
+  def commit():calls.append('commit');config.write_bytes(b'new')
+  try:
+   try:t.transition(work,saved_configuration=b'old',config_is_new=lambda:config.read_bytes()==b'new',verify_old=old,verify_new=new,build_new=lambda p:None,prepare_existing_new=prepare,commit_config=commit)
+   except ValueError:
+    if not bad:raise
+    assert config.read_bytes()==b'old' and marker.exists() and backup.exists()
+    if bad=='foreign':assert (stable/'src/foreign').read_text()=='preserve'
+   else:
+    assert bad is None and (stable/'src/metadata').read_text()=='generated' and calls[:4]==['old','prepare','new','commit']
+  finally:view.verify=saved_verify
+print('PASS: existing new view refresh honors old and provider proofs')
+
+# Combined legacy recovery checks existing views before hooks, then refreshes new only.
+with tempfile.TemporaryDirectory() as temporary:
+ root=Path(temporary).resolve();work=root/'work';work.mkdir();stable=work/'source-view';stable.mkdir();backup=work/'.source-view-origin-backup';backup.mkdir();factory=work/'.factory/source-view';events=[];source=root/'source';source.mkdir()
+ def old(p,*,legacy_root=None):assert p==backup and not (source/'metadata').exists();events.append('old-legacy' if legacy_root else 'old-strict')
+ def new(p,*,legacy_root=None):assert p==stable and not (source/'metadata').exists();events.append('new-legacy' if legacy_root else 'new-strict')
+ def migrate(p,previous):events.append('migrate-old' if p==backup else 'migrate-new')
+ def hooks():events.append('hooks');(source/'metadata').write_text('generated')
+ controller.complete_ml_alias_migration('recovery',stable,backup,factory,old,new,migrate,hooks)
+ assert events==['old-legacy','new-legacy','migrate-old','migrate-new','old-strict','new-strict','hooks']
+ config=work/'configuration.json';config.write_bytes(b'old');(work/'.source-view-origin-old-configuration.json').write_bytes(b'old');(work/'reconfigure-incomplete').write_text(t.MARKER)
+ def checked_old(p):assert p==backup;events.append('old-proof')
+ def refresh(p):assert p==stable and (source/'metadata').read_text()=='generated';events.append('refresh')
+ def checked_new(p):assert p==stable;events.append('new-proof')
+ def commit():events.append('gn');config.write_bytes(b'new')
+ t.transition(work,saved_configuration=b'old',config_is_new=lambda:config.read_bytes()==b'new',verify_old=checked_old,verify_new=checked_new,build_new=lambda p:None,prepare_existing_new=refresh,commit_config=commit)
+ assert events[7:11]==['old-proof','refresh','new-proof','gn']
+print('PASS: legacy recovery precedes hooks, new refresh and GN')
 
 # Explicit migration accepts only its initial or guarded interrupted state.
 with tempfile.TemporaryDirectory() as temporary:
