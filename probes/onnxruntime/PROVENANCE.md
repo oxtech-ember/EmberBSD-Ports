@@ -12,19 +12,17 @@ attribution. Original source copyright and SPDX identifiers are unchanged.
 [sources.tsv](sources.tsv) pins the runtime archive.
 [dependencies.tsv](dependencies.tsv) adds SHA256 checks to the selected
 upstream `cmake/deps.txt` archives. Upstream CMake verifies their SHA1 pins
-again when populating its local dependency mirror. The Linux host `protoc`
-archive is a build tool and is not part of the target payload.
+again when populating its local dependency mirror. Abseil and protobuf use
+the common Ports providers; protobuf's native generator is a build tool.
 
 | Internal source | Upstream pin | Principal license |
 |---|---|---|
-| Abseil | 20250814.0 | Apache-2.0 |
 | date | 3.0.1 | MIT |
 | FlatBuffers | 23.5.26 | Apache-2.0 |
 | nlohmann JSON | 3.11.3 | MIT |
 | Microsoft GSL | 4.2.1 | MIT |
 | Boost mp11 | 1.82.0 | BSL-1.0 |
 | ONNX | 1.22.0 | Apache-2.0 |
-| protobuf and host protoc | 33.6 | BSD-3-Clause and upstream notices |
 | RE2 | 2024-07-02 | BSD-3-Clause |
 | SafeInt | 3.0.28 | MIT |
 
@@ -37,6 +35,7 @@ The standalone mp11 archive omits `LICENSE_1_0.txt`. Its original header
 copyright notice and the unchanged Boost Software License 1.0 text are
 installed explicitly. The same license is retained in `ThirdPartyNotices.txt`.
 Eigen uses the separate common **5.0.1** provider, with its own MPL-2.0 notices.
+Common Abseil and protobuf carry their licenses in their own packages.
 Eigen template code is compiled into the runtime. Its current `COPYING*`
 files and exact source pin are also installed under `licenses/onnxruntime/eigen5`.
 These identify the current provider without changing the upstream notices.
@@ -54,7 +53,7 @@ upgrade. It does not add another inference engine or claim speech accuracy.
 ## Canonical local adaptations
 
 The [package patch directory](../../pkgsrc/local-ai/onnxruntime/patches)
-is the single current owner. Its ten patches are local, AI-assisted EmberBSD
+is the single current owner. Its patches are local, AI-assisted EmberBSD
 adaptations. They have not been submitted or accepted upstream.
 Patched files retain their original licenses. The POSIX `env.cc` and common
 threadpool sources retain their TensorFlow Apache-2.0 notices and Microsoft
@@ -84,6 +83,9 @@ NetBSD CPU helper is MIT.
   Failure reports the existing unknown/error value, `-1`.
 - `patch-installed-eigen` makes the upstream preinstalled-Eigen option
   select `find_package(Eigen3)`. It avoids another downloaded Eigen version.
+- `patch-common-providers` selects the common Ports Abseil and protobuf CMake
+  packages while retaining upstream's Abseil target list. Source fallback is
+  disabled, and the matching native protobuf generator is selected explicitly.
 - `patch-cpu-fused-helper` retains the existing CPU FP16 Conv activation
   helper when contrib operators are disabled. It does not register contrib
   operators. Strict final linking remains enabled.

@@ -24,8 +24,8 @@ python3 assemble-dawn.py --inputs /path/to/dawn-inputs \
 
 The expected bundle SHA-256 is
 `c7154feb8d5dbd1dea8418106c3d32f3ec4c4cfc63d97e0ae869bcf313747eab`.
-The intended GitHub release asset URL in the package Makefile is a publication
-destination: it is not usable until the archive has been reviewed and uploaded.
+The source bundle is published in the [pinned release](https://github.com/oxtech-ember/EmberBSD-Ports/releases/tag/onnxruntime-dawn-v20260916.214021).
+The package Makefile uses that release asset URL.
 Normal package builds verify the published bundle with `distinfo` and do not
 fetch submodules or run this assembler.
 

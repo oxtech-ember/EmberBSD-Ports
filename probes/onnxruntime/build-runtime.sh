@@ -17,9 +17,15 @@ case "$jobs" in ''|0|*[!0-9]*) exit 2;; esac
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
 ports=$(CDPATH= cd "$recipe/../.." && pwd -P)
 package=$ports/pkgsrc/local-ai/onnxruntime
+protoc=${PROTOC_FOR_BUILD:-$compiler/bin/protoc}
+[ -x "$protoc" ] && [ "$("$protoc" --version)" = 'libprotoc 36.2' ] || {
+    echo 'Select the native Ports protobuf 36.2 protoc with PROTOC_FOR_BUILD.' >&2; exit 2;
+}
 sh "$recipe/fetch.sh" "$cache"
 mkdir -p "$out/source" "$out/logs" "$out/dependencies"
 tar -xf "$cache/onnxruntime-1.31.0.tar.gz" --strip-components=1 -C "$out/source"
+mkdir -p "$out/source/onnxruntime/core/platform/netbsd"
+cp "$package/files/netbsd-device_discovery.cc" "$out/source/onnxruntime/core/platform/netbsd/device_discovery.cc"
 sha256sum "$cache/onnxruntime-1.31.0.tar.gz" "$package/features.cmake" "$0" "$package"/patches/patch-* > "$out/inputs.sha256"
 for patch in "$package"/patches/patch-*; do
     patch --fuzz=0 -d "$out/source" -p1 < "$patch" >> "$out/logs/patch.log" 2>&1
@@ -63,12 +69,15 @@ else
         "-DCMAKE_INSTALL_RPATH=$out/install/lib;/usr/local/lib64"
 fi
 [ -f "$sysroot/usr/pkg/share/eigen3/cmake/Eigen3Config.cmake" ]
+[ -f "$sysroot/usr/pkg/lib/cmake/protobuf/protobuf-config.cmake" ]
+[ -f "$sysroot/usr/pkg/lib/cmake/absl/abslConfig.cmake" ]
 if [ -n "${SSL_CERT_FILE:-}" ]; then
     set -- "$@" "-DCMAKE_TLS_CAINFO=$SSL_CERT_FILE"
 fi
 cmake -S "$out/source/cmake" -B "$out/build" -G Ninja -C "$package/features.cmake" \
     "$@" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DEigen3_DIR="$sysroot/usr/pkg/share/eigen3/cmake" \
+    -DCMAKE_PREFIX_PATH="$sysroot/usr/pkg" -DONNX_CUSTOM_PROTOC_EXECUTABLE="$protoc" \
     -Donnxruntime_CMAKE_DEPS_MIRROR_DIR="$out/dependencies" \
     -DPatch_EXECUTABLE="$(command -v patch)" -DPython_EXECUTABLE="$(command -v python3)" \
     -DCMAKE_TLS_VERIFY=ON -DFLATBUFFERS_BUILD_FLATC=OFF > "$out/logs/configure.log" 2>&1
@@ -84,6 +93,6 @@ else
 fi
 sh "$package/files/install-licenses.sh" "$out/source" "$out/build" "$prefix" "$package"
 (cd "$prefix" && find . \( -type f -o -type l \) -print | sed 's|^\./||' | LC_ALL=C sort) > "$out/files.txt"
-sed '/^@comment/d' "$package/PLIST" | LC_ALL=C sort > "$out/expected-files.txt"
+sed '/^@comment/d; /^${PLIST.webgpu}/d' "$package/PLIST" | LC_ALL=C sort > "$out/expected-files.txt"
 cmp "$out/expected-files.txt" "$out/files.txt"
 echo "Installed ONNX Runtime 1.31.0 ($mode): $prefix"

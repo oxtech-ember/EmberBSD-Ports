@@ -58,6 +58,9 @@ Requirements: native GCC 16.2.0 C/C++ compilers, CMake, Ninja, GNU make,
 GNU patch, curl, pkg-config, and Python 3.10 or newer. ONNX Runtime's upstream
 build generators require Python even though Python bindings are disabled.
 No project-owned helper uses Python. Model training is not part of this build.
+Install the common Abseil and protobuf 36.2 development packages and set
+`PROTOC_FOR_BUILD` to the native Ports protobuf 36.2 generator. `COMMON_PREFIX`
+selects their installed prefix (default `/usr/pkg`).
 
 Use a fresh absolute work path without whitespace. The build rejects an
 existing directory and defaults to `JOBS=1`. It installs only into that work
@@ -69,6 +72,7 @@ including source archives; allow at least 4 GiB of free disk space for headroom.
 ```sh
 export PATH=/usr/pkg/gcc16/bin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 export CC=/usr/pkg/gcc16/bin/gcc CXX=/usr/pkg/gcc16/bin/g++
+export PROTOC_FOR_BUILD=/usr/pkg/bin/protoc
 work=/var/tmp/ember-ai-engines
 sh probes/ai-engines/build.sh "$work"
 sh probes/ai-engines/test.sh "$work"
