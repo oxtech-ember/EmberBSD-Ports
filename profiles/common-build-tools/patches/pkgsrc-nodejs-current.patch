@@ -5406,3 +5406,31 @@
 +     },  # run_torque
 +     {
 +       'target_name': 'v8_maybe_icu',
+--- a/lang/nodejs/Makefile.common
++++ b/lang/nodejs/Makefile.common
+@@ -61,11 +61,15 @@
+ 
+ CHECK_INTERPRETER_SKIP+=	lib/node_modules/npm/*
+ 
+-.if defined(TOOLS_PLATFORM.paxctl)
++.if ${NATIVE_OPSYS} == "NetBSD" && defined(TOOLS_PLATFORM.paxctl)
+ SUBST_CLASSES+=		mktools
+ SUBST_STAGE.mktools=	post-configure
++.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++SUBST_FILES.mktools+=	out/tools/v8_gypfiles/mksnapshot.host.mk
++.  else
+ SUBST_FILES.mktools+=	out/tools/v8_gypfiles/mksnapshot.target.mk
+ SUBST_FILES.mktools+=	out/node_mksnapshot.target.mk
++.  endif
+ SUBST_SED.mktools+=	-e 's|call do_cmd,link)|call do_cmd,link)\${.newline}	${TOOLS_PLATFORM.paxctl} +m $$@|'
+ SUBST_NOOP_OK.mktools=	yes # because of the different affected files
+ .endif
+@@ -79,7 +83,7 @@
+ .PHONY: paxctl
+ post-install: paxctl
+ paxctl:
+-.if defined(TOOLS_PLATFORM.paxctl)
++.if ${OPSYS} == "NetBSD" && defined(TOOLS_PLATFORM.paxctl)
+ 	${TOOLS_PLATFORM.paxctl} +m ${DESTDIR}${PREFIX}/bin/node
+ .endif
+ 
