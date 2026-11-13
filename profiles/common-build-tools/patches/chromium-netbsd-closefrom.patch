@@ -1,0 +1,55 @@
+--- a/base/process/launch_posix.cc
++++ b/base/process/launch_posix.cc
+@@ -210,8 +210,6 @@
+ static const char kFDDir[] = "/dev/fd";
+ #elif BUILDFLAG(IS_OPENBSD)
+ static const char kFDDir[] = "/dev/fd";
+-#elif BUILDFLAG(IS_NETBSD)
+-static const char kFDDir[] = "/dev/fd";
+ #elif BUILDFLAG(IS_ANDROID)
+ static const char kFDDir[] = "/proc/self/fd";
+ #endif
+@@ -220,6 +218,35 @@
+   // DANGER: no calls to malloc or locks are allowed from now on:
+   // http://crbug.com/36678
+ 
++#if BUILDFLAG(IS_NETBSD)
++  // /dev/fd may be a static directory and omit high inherited descriptors.
++  // Keep only stdio and the final remap destinations below the highest one,
++  // then ask the kernel to close the entire remaining range.
++  int highest = STDERR_FILENO;
++  for (size_t i = 0; i < saved_mapping.size(); ++i) {
++    const int dest = saved_mapping[i].dest;
++    if (dest < 0 || dest == std::numeric_limits<int>::max()) {
++      _exit(127);
++    }
++    if (dest > highest) {
++      highest = dest;
++    }
++  }
++  for (int fd = STDERR_FILENO + 1; fd <= highest; ++fd) {
++    size_t i = 0;
++    for (; i < saved_mapping.size(); ++i) {
++      if (saved_mapping[i].dest == fd) {
++        break;
++      }
++    }
++    if (i == saved_mapping.size()) {
++      close(fd);
++    }
++  }
++  if (closefrom(highest + 1) != 0) {
++    _exit(127);
++  }
++#else
+   // Get the maximum number of FDs possible.
+   size_t max_fds = GetMaxFds();
+ 
+@@ -284,6 +311,7 @@
+     int ret = IGNORE_EINTR(close(static_cast<int>(fd)));
+     DPCHECK(ret == 0);
+   }
++#endif  // BUILDFLAG(IS_NETBSD)
+ }
+ 
+ Process LaunchProcess(const CommandLine& cmdline,

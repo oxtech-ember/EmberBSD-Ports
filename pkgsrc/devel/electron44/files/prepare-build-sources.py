@@ -26,7 +26,7 @@ def digest(data):
 
 def read_series(manifest, patch_root):
     value = json.loads(manifest.read_text())
-    require(value.get('version') == 1 and value.get('stage') == 'after-pinned-electron-upstream-and-bsd-patches',
+    require(value.get('version') == 2 and value.get('stage') == 'after-pinned-electron-upstream-and-bsd-patches',
             'unsupported Electron build source series')
     require(isinstance(value.get('patches'), list) and value['patches'], 'source series is empty')
     rows, seen = [], set()
@@ -42,22 +42,20 @@ def read_series(manifest, patch_root):
         else:
             package = bsd.relative(entry['owner'])
             name = bsd.relative(entry['file'])
-            require(len(package.parts) == 2 and len(name.parts) == 1,
-                    'invalid shared owner or file')
+            require(len(package.parts) > 1 and package.parts[0] in ('pkgsrc', 'profiles') and
+                    all(not part.startswith('.') for part in package.parts) and len(name.parts) == 1 and
+                    not name.name.startswith('.'), 'invalid shared owner or file')
             require(patch_root.name == 'patches' and patch_root.parent.name == 'electron' and
                     patch_root.parent.parent.name == 'probes', 'unexpected Electron patch root')
             ports = patch_root.parent.parent.parent.resolve(strict=True)
-            base = ports / 'pkgsrc'
-            require(not base.is_symlink() and base.resolve(strict=True).is_relative_to(ports),
-                    'pkgsrc escapes selected Ports')
-            filename = base / package / 'files' / name
-            current = base
-            for part in (*package.parts, 'files', *name.parts):
+            filename = ports / package / name
+            current = ports
+            for part in (*package.parts, *name.parts):
                 current = current / part
                 require(not current.is_symlink(), 'shared source patch path contains symlink')
-            require(filename.resolve(strict=True).is_relative_to(base.resolve(strict=True)),
+            require(filename.resolve(strict=True).is_relative_to(ports),
                     'shared source patch escapes selected Ports')
-            identity = f"pkgsrc/{package}/files/{name}"
+            identity = f"{package}/{name}"
         require(identity not in seen, 'duplicate source patch')
         seen.add(identity)
         directory = bsd.relative(entry['root']) if entry['root'] else PurePosixPath()

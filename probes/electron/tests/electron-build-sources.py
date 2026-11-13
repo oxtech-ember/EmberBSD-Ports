@@ -36,7 +36,7 @@ class BuildSources(unittest.TestCase):
             delta('BSD support\nfirst\n', 'BSD support\nfirst\nsecond\n', 'alpha.cc') +
             delta('', 'new Ports source\n', 'ports.cc'))
         self.manifest = self.root / 'source-series.json'
-        self.series = dict(version=1, stage='after-pinned-electron-upstream-and-bsd-patches', patches=[
+        self.series = dict(version=2, stage='after-pinned-electron-upstream-and-bsd-patches', patches=[
             dict(path=name, root='', strip=1) for name in ('first.patch', 'second.patch')])
         self.write_series()
 
@@ -210,6 +210,11 @@ class BuildSources(unittest.TestCase):
             helper.materialize(self.fixture.workspace, self.fixture.destination, result, git=options.git)
         self.assertEqual((self.fixture.src / 'alpha.cc').read_text(), 'Electron upstream\n')
 
+    def test_old_series_schema_refused(self):
+        self.series['version'] = 1; self.write_series()
+        with self.assertRaisesRegex(ValueError, 'unsupported'):
+            helper.read_series(self.manifest, self.patch_root)
+
     def test_duplicate_and_traversal_series_refused(self):
         for field, value in (('path', '../first.patch'), ('root', '../outside'), ('strip', True)):
             original = self.series['patches'][0][field]
@@ -226,22 +231,32 @@ class BuildSources(unittest.TestCase):
         owner.mkdir(parents=True)
         shared = owner / 'shared.patch'
         shared.write_text(delta('BSD support\nfirst\nsecond\n', 'BSD support\nfirst\nsecond\nshared\n', 'alpha.cc'))
-        entry = dict(owner='devel/inspector-protocol', file='shared.patch', root='', strip=1)
+        entry = dict(owner='pkgsrc/devel/inspector-protocol/files', file='shared.patch', root='', strip=1)
         self.series['patches'].append(entry); self.write_series()
         result = self.prepare()
-        self.assertEqual(result['patches'][-1]['owner'], 'devel/inspector-protocol')
+        self.assertEqual(result['patches'][-1]['owner'], 'pkgsrc/devel/inspector-protocol/files')
         self.assertEqual(result['patches'][-1]['file'], 'shared.patch')
-        for key, value in (('owner', '../outside'), ('file', '../shared.patch')):
+        for key, value in (('owner', '../outside'), ('owner', '/absolute'),
+                           ('owner', '.git/objects'), ('owner', '.local/secret'), ('owner', '.aws/secret'),
+                           ('owner', 'pkgsrc/.local/secret'),
+                           ('owner', 'devel/inspector-protocol'), ('file', '../shared.patch'),
+                           ('file', '.secret')):
             old = entry[key]; entry[key] = value; self.write_series()
             with self.assertRaises(ValueError): helper.read_series(self.manifest, self.patch_root)
             entry[key] = old
         self.write_series()
+        profile = self.ports / 'profiles/common/patches'
+        profile.mkdir(parents=True)
+        (profile / 'other.patch').write_text(shared.read_text())
+        entry['owner'] = 'profiles/common/patches'; entry['file'] = 'other.patch'; self.write_series()
+        self.assertEqual(helper.read_series(self.manifest, self.patch_root)[-1]['owner'], 'profiles/common/patches')
+        entry['owner'] = 'pkgsrc/devel/inspector-protocol/files'; entry['file'] = 'shared.patch'; self.write_series()
         shared.unlink(); shared.symlink_to(self.patch_root / 'first.patch')
         with self.assertRaisesRegex(ValueError, 'symlink'): helper.read_series(self.manifest, self.patch_root)
         shared.unlink(); shared.write_text('placeholder')
         base = self.ports / 'pkgsrc'; outside = self.root / 'outside-pkgsrc'
         base.rename(outside); base.symlink_to(outside, target_is_directory=True)
-        with self.assertRaisesRegex(ValueError, 'pkgsrc escapes'): helper.read_series(self.manifest, self.patch_root)
+        with self.assertRaisesRegex(ValueError, 'symlink'): helper.read_series(self.manifest, self.patch_root)
 
     def test_rename_patch_refused(self):
         filename = self.patch_root / 'first.patch'

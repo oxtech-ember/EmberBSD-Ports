@@ -1,7 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "stage": "after-pinned-electron-upstream-and-bsd-patches",
   "patches": [
+    {
+      "owner": "profiles/common-build-tools/patches",
+      "file": "chromium-netbsd-closefrom.patch",
+      "root": "",
+      "strip": 1
+    },
     {
       "path": "electron-version-shared-provider.patch",
       "root": "",
@@ -753,7 +759,7 @@
       "root": ""
     },
     {
-      "owner": "devel/inspector-protocol",
+      "owner": "pkgsrc/devel/inspector-protocol/files",
       "file": "chromium-integration.patch",
       "root": "",
       "strip": 1

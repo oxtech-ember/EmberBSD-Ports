@@ -248,6 +248,11 @@ Ports layer. It never runs gclient, hooks, configure or a compiler.
   --destination /absolute/new-source-preparation
 ```
 
+Shared source-series entries name an explicit owner directory relative to the Ports
+checkout under public `pkgsrc/` or `profiles/` and a plain file within it. Hidden
+components and symlinks are rejected.
+The Chromium package and Electron use the same common closefrom patch.
+
 Add `--apply` to materialize the result while holding the normal exclusive
 workspace ownership. Every target is checked before the first write. Only its
 exact committed preimage or exact prepared result is accepted, so the operation
