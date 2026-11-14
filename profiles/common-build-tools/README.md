@@ -1,5 +1,10 @@
 # Current common build tools
 
+The shared Chromium Web Serial patch connects NetBSD `ucom` inventory through
+read-only drvctl and validates the opened device instance before serial I/O.
+It requires the EmberBSD kernel `device-instance-id` property. Electron and
+Chromium consume the same patch; target runtime and FC acceptance remain pending.
+
 Native Darwin libxslt locates extension modules relative to the loaded library;
 `LIBXSLT_PLUGINS_PATH` remains an explicit override.
 `tests/libxslt-darwin-selection.py` checks native and target package revisions;

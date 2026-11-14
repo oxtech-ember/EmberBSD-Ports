@@ -1,0 +1,600 @@
+--- a/services/device/BUILD.gn
++++ b/services/device/BUILD.gn
+@@ -17,7 +17,7 @@
+ }
+ 
+ is_serial_enabled_platform =
+-    is_win || ((!is_bsd && is_linux || is_chromeos) && use_udev) || is_mac || is_android
++    is_netbsd || is_win || ((!is_bsd && is_linux || is_chromeos) && use_udev) || is_mac || is_android
+ 
+ source_set("lib") {
+   # This should be visible only to embedders of the Device Service, and the
+--- a/services/device/serial/BUILD.gn
++++ b/services/device/serial/BUILD.gn
+@@ -3,12 +3,13 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/features.gni")
++import("//testing/test.gni")
+ 
+ if (is_android) {
+   import("//third_party/jni_zero/jni_zero.gni")
+ }
+ 
+-if (is_win || ((!is_bsd && is_linux || is_chromeos) && use_udev) || is_mac || is_android) {
++if (is_netbsd || is_win || ((!is_bsd && is_linux || is_chromeos) && use_udev) || is_mac || is_android) {
+   config("platform_support") {
+     visibility = [ ":serial" ]
+     if (is_win) {
+@@ -20,6 +21,7 @@
+   source_set("serial") {
+     visibility = [
+       ":test_support",
++      ":netbsd_serial_refresh_unittests",
+       "//services/device:lib",
+       "//services/device:tests",
+     ]
+@@ -56,11 +58,19 @@
+       "//services/device/public/cpp/bluetooth",
+     ]
+ 
+-    if (is_linux || is_chromeos) {
++    if ((!is_bsd && is_linux) || is_chromeos) {
+       sources += [
+         "serial_device_enumerator_linux.cc",
+         "serial_device_enumerator_linux.h",
+       ]
++    }
++
++    if (is_netbsd) {
++      sources += [
++        "serial_device_enumerator_netbsd.cc",
++        "serial_device_enumerator_netbsd.h",
++      ]
++      libs = [ "prop" ]
+     }
+ 
+     if (is_mac) {
+@@ -127,6 +137,19 @@
+       deps += [
+         "//device/base",
+         "//third_party/re2",
++      ]
++    }
++  }
++
++  if (is_netbsd) {
++    test("netbsd_serial_refresh_unittests") {
++      sources = [ "serial_device_enumerator_unittest.cc" ]
++      deps = [
++        ":serial",
++        "//base",
++        "//base/test:run_all_unittests",
++        "//base/test:test_support",
++        "//testing/gtest",
+       ]
+     }
+   }
+--- a/services/device/serial/serial_device_enumerator.cc
++++ b/services/device/serial/serial_device_enumerator.cc
+@@ -12,7 +12,9 @@
+ #include "build/build_config.h"
+ #include "components/device_event_log/device_event_log.h"
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
++#if BUILDFLAG(IS_NETBSD)
++#include "services/device/serial/serial_device_enumerator_netbsd.h"
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
+ #include "services/device/serial/serial_device_enumerator_linux.h"
+ #elif BUILDFLAG(IS_MAC)
+ #include "services/device/serial/serial_device_enumerator_mac.h"
+@@ -27,7 +29,9 @@
+ // static
+ std::unique_ptr<SerialDeviceEnumerator> SerialDeviceEnumerator::Create(
+     scoped_refptr<base::SingleThreadTaskRunner> ui_task_runner) {
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
++#if BUILDFLAG(IS_NETBSD)
++  return std::make_unique<SerialDeviceEnumeratorNetBsd>();
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
+   return SerialDeviceEnumeratorLinux::Create();
+ #elif BUILDFLAG(IS_MAC)
+   return std::make_unique<SerialDeviceEnumeratorMac>();
+@@ -49,6 +53,9 @@
+ std::vector<mojom::SerialPortInfoPtr> SerialDeviceEnumerator::GetDevices() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++  if (!RefreshDevices()) {
++    return {};
++  }
+   std::vector<mojom::SerialPortInfoPtr> ports;
+   ports.reserve(ports_.size());
+   for (const auto& map_entry : ports_)
+@@ -71,6 +78,9 @@
+     bool use_alternate_path) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++  if (!RefreshDevices()) {
++    return std::nullopt;
++  }
+   auto it = ports_.find(token);
+   if (it == ports_.end())
+     return std::nullopt;
+--- a/services/device/serial/serial_device_enumerator.h
++++ b/services/device/serial/serial_device_enumerator.h
+@@ -53,6 +53,12 @@
+       scoped_refptr<base::SingleThreadTaskRunner> ui_task_runner);
+ 
+  protected:
++  // Refresh platforms with a read-only snapshot inventory before granting
++  // tokens or resolving them to an openable path. Return false to withhold
++  // a snapshot during reentrant observer calls. Event-driven backends need
++  // no additional work. Called on the enumerator sequence.
++  virtual bool RefreshDevices() { return true; }
++
+   // These helper methods take care of managing |ports_| and notifying
+   // observers. |port|s passed to AddPort() must be unique and the |token|
+   // passed to RemovePort() must have previously been added.
+--- a/services/device/serial/serial_io_handler_posix.h
++++ b/services/device/serial/serial_io_handler_posix.h
+@@ -25,6 +25,11 @@
+   SerialIoHandlerPosix& operator=(const SerialIoHandlerPosix&) = delete;
+ 
+  protected:
++  SerialIoHandlerPosix(
++      const base::FilePath& port,
++      scoped_refptr<base::SingleThreadTaskRunner> ui_thread_task_runner);
++  ~SerialIoHandlerPosix() override;
++
+   // SerialIoHandler impl.
+   void ReadImpl() override;
+   void WriteImpl() override;
+@@ -49,10 +54,6 @@
+   friend class SerialIoHandlerAndroid;
+   friend class SerialIoHandlerPosixTest;
+ 
+-  SerialIoHandlerPosix(
+-      const base::FilePath& port,
+-      scoped_refptr<base::SingleThreadTaskRunner> ui_thread_task_runner);
+-  ~SerialIoHandlerPosix() override;
+ 
+   void AttemptRead();
+ 
+--- a/services/device/serial/serial_io_handler_posix.cc
++++ b/services/device/serial/serial_io_handler_posix.cc
+@@ -211,6 +211,13 @@
+     // X but the IOSSIOSPEED ioctl is more reliable but has to be done after
+     // the rest of the port parameters are set or else it will be overwritten.
+     need_iossiospeed = true;
++#elif BUILDFLAG(IS_NETBSD)
++    // NetBSD speed_t is the numeric baud rate. The tty driver validates
++    // supported rates when applying the configuration below.
++    if (cfsetispeed(&config, options().bitrate) != 0 ||
++        cfsetospeed(&config, options().bitrate) != 0) {
++      return false;
++    }
+ #else
+     return false;
+ #endif
+--- a/services/device/serial/serial_port_manager_impl.cc
++++ b/services/device/serial/serial_port_manager_impl.cc
+@@ -90,6 +90,10 @@
+     observed_enumerator_.AddObservation(enumerator_.get());
+   }
+   auto devices = enumerator_->GetDevices();
++  if (!BluetoothAdapterFactory::IsBluetoothSupported()) {
++    std::move(callback).Run(std::move(devices));
++    return;
++  }
+ 
+   if (base::FeatureList::IsEnabled(features::kAvoidBluetoothPromptInGetPorts) &&
+       !allow_bluetooth_system_prompt) {
+@@ -133,6 +137,11 @@
+             std::move(client), std::move(watcher),
+             base::BindOnce(&OnPortOpened, std::move(callback),
+                            base::SequencedTaskRunner::GetCurrentDefault())));
++    return;
++  }
++
++  if (!BluetoothAdapterFactory::IsBluetoothSupported()) {
++    std::move(callback).Run(mojo::NullRemote());
+     return;
+   }
+ 
+--- a/services/device/serial/serial_device_enumerator_unittest.cc
++++ b/services/device/serial/serial_device_enumerator_unittest.cc
+@@ -4,7 +4,10 @@
+ 
+ #include "services/device/serial/serial_device_enumerator.h"
+ 
++#include <utility>
+ #include <vector>
++
++#include "base/files/file_path.h"
+ 
+ #include "base/test/task_environment.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+@@ -33,6 +36,57 @@
+   std::vector<mojom::SerialPortInfoPtr> devices = enumerator->GetDevices();
+ }
+ 
++// Add to services/device/serial/serial_device_enumerator_unittest.cc.
++// Exercises the real base GetDevices/GetPathFromToken, with only refresh result
++// supplied by the fixture; no NetBSD enumeration algorithm is copied.
++class RefreshResultEnumerator : public SerialDeviceEnumerator {
++ public:
++  void Insert(const base::UnguessableToken& token) {
++    auto port = mojom::SerialPortInfo::New();
++    port->token = token;
++    port->path = base::FilePath(FILE_PATH_LITERAL("/dev/test-serial"));
++    AddPort(std::move(port));
++  }
++  bool allow = true;
++  int calls = 0;
++ protected:
++  bool RefreshDevices() override { ++calls; return allow; }
++};
++
++TEST_F(SerialDeviceEnumeratorTest, FailedRefreshHidesStalePortAndPath) {
++  RefreshResultEnumerator enumerator;
++  const auto token = base::UnguessableToken::Create();
++  enumerator.Insert(token);
++  ASSERT_EQ(enumerator.GetDevices().size(), 1u);
++  ASSERT_TRUE(enumerator.GetPathFromToken(token, false));
++  EXPECT_EQ(enumerator.calls, 2);
++  enumerator.allow = false;
++  EXPECT_TRUE(enumerator.GetDevices().empty());
++  EXPECT_FALSE(enumerator.GetPathFromToken(token, false));
++  EXPECT_EQ(enumerator.calls, 4);
++  enumerator.allow = true;
++  EXPECT_EQ(enumerator.GetDevices().size(), 1u);
++  EXPECT_TRUE(enumerator.GetPathFromToken(token, false));
++}
++
++class DefaultRefreshEnumerator : public SerialDeviceEnumerator {
++ public:
++  void Insert(const base::UnguessableToken& token) {
++    auto port = mojom::SerialPortInfo::New();
++    port->token = token;
++    port->path = base::FilePath(FILE_PATH_LITERAL("/dev/test-serial"));
++    AddPort(std::move(port));
++  }
++};
++
++TEST_F(SerialDeviceEnumeratorTest, DefaultRefreshPreservesExistingBehavior) {
++  DefaultRefreshEnumerator enumerator;
++  const auto token = base::UnguessableToken::Create();
++  enumerator.Insert(token);
++  EXPECT_EQ(enumerator.GetDevices().size(), 1u);
++  EXPECT_TRUE(enumerator.GetPathFromToken(token, false));
++}
++
+ }  // namespace
+ 
+ }  // namespace device
+--- /dev/null
++++ b/services/device/serial/serial_device_enumerator_netbsd.h
+@@ -0,0 +1,43 @@
++// Copyright 2026 The EmberBSD Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef SERVICES_DEVICE_SERIAL_SERIAL_DEVICE_ENUMERATOR_NETBSD_H_
++#define SERVICES_DEVICE_SERIAL_SERIAL_DEVICE_ENUMERATOR_NETBSD_H_
++
++#include <map>
++#include <string>
++
++#include "base/timer/timer.h"
++#include "services/device/serial/serial_device_enumerator.h"
++
++namespace device {
++
++// USB serial endpoints from the kernel's read-only drvctl inventory. The
++// device-instance-id property is required; names alone never identify a grant.
++class SerialDeviceEnumeratorNetBsd : public SerialDeviceEnumerator {
++ public:
++  SerialDeviceEnumeratorNetBsd();
++  ~SerialDeviceEnumeratorNetBsd() override;
++  scoped_refptr<SerialIoHandler> CreateIoHandler(
++      const base::FilePath& path,
++      scoped_refptr<base::SingleThreadTaskRunner> ui_task_runner) override;
++
++ protected:
++  bool RefreshDevices() override;
++
++ private:
++  void Poll() { RefreshDevices(); }
++  struct Entry {
++    std::string device;
++    uint64_t instance;
++    uint64_t rdev;
++    base::UnguessableToken token;
++  };
++  std::map<base::FilePath, Entry> entries_;
++  bool refreshing_ = false;
++  base::RepeatingTimer timer_;
++};
++
++}  // namespace device
++#endif  // SERVICES_DEVICE_SERIAL_SERIAL_DEVICE_ENUMERATOR_NETBSD_H_
+--- /dev/null
++++ b/services/device/serial/serial_device_enumerator_netbsd.cc
+@@ -0,0 +1,278 @@
++// Copyright 2026 The EmberBSD Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "services/device/serial/serial_device_enumerator_netbsd.h"
++
++#include <fcntl.h>
++#include <sys/drvctlio.h>
++#include <sys/ioctl.h>
++#include <sys/stat.h>
++
++#include <cstdlib>
++#include <cstring>
++#include <memory>
++#include <optional>
++#include <set>
++#include <utility>
++#include <vector>
++
++#include "base/auto_reset.h"
++#include "base/files/scoped_file.h"
++#include "base/functional/bind.h"
++#include "base/posix/eintr_wrapper.h"
++#include "base/scoped_generic.h"
++#include "base/strings/string_number_conversions.h"
++#include "components/device_event_log/device_event_log.h"
++#include "services/device/serial/serial_io_handler_posix.h"
++
++namespace device {
++namespace {
++
++// NetBSD ucom tty minor ABI (sys/tty.h and etc/MAKEDEV.tmpl). The kernel
++// macros are not exported to userland; derive no device number from a path.
++constexpr uint32_t kUcomUnitMask = 0x3ffff;
++constexpr uint32_t kUcomDialoutMask = 0x80000;
++
++struct DictionaryTraits {
++  static prop_dictionary_t InvalidValue() { return nullptr; }
++  static void Free(prop_dictionary_t value) { prop_object_release(value); }
++};
++using Dictionary = base::ScopedGeneric<prop_dictionary_t, DictionaryTraits>;
++
++Dictionary Properties(int fd, const std::string& device) {
++  Dictionary request(prop_dictionary_create());
++  Dictionary arguments(prop_dictionary_create());
++  if (!request.is_valid() || !arguments.is_valid() ||
++      !prop_dictionary_set_string(request.get(), "drvctl-command", "get-properties") ||
++      !prop_dictionary_set_string(arguments.get(), "device-name", device.c_str()) ||
++      !prop_dictionary_set(request.get(), "drvctl-arguments", arguments.get())) {
++    return Dictionary();
++  }
++  prop_dictionary_t raw = nullptr;
++  const int error = prop_dictionary_sendrecv_ioctl(
++      request.get(), fd, DRVCTLCOMMAND, &raw);
++  Dictionary reply(raw);
++  int result = 0;
++  if (error || !reply.is_valid() ||
++      !prop_dictionary_get_int(reply.get(), "drvctl-error", &result) || result) {
++    return Dictionary();
++  }
++  auto data = prop_dictionary_get(reply.get(), "drvctl-result-data");
++  if (!data || prop_object_type(data) != PROP_TYPE_DICTIONARY) {
++    return Dictionary();
++  }
++  prop_object_retain(data);
++  return Dictionary(static_cast<prop_dictionary_t>(data));
++}
++
++std::string StringProperty(prop_dictionary_t properties, const char* key) {
++  const char* value = nullptr;
++  if (!prop_dictionary_get_string(properties, key, &value)) {
++    return {};
++  }
++  return value;
++}
++
++struct Port {
++  std::string device;
++  uint64_t instance;
++  uint64_t rdev;
++  mojom::SerialPortInfoPtr info;
++};
++
++// Query the kernel tree rather than the pre-created /dev entries. An error in
++// the traversal invalidates the complete snapshot; it is never a partial list.
++std::optional<std::vector<std::string>> Devices(int fd) {
++  constexpr size_t kMaxDevices = 4096;
++  std::vector<std::string> pending = {""};
++  std::set<std::string> seen;
++  for (size_t i = 0; i < pending.size(); ++i) {
++    struct devlistargs args = {};
++    if (pending[i].size() >= sizeof(args.l_devname)) {
++      return std::nullopt;
++    }
++    pending[i].copy(args.l_devname, pending[i].size());
++    if (ioctl(fd, DRVLISTDEV, &args) != 0 || args.l_children > kMaxDevices) {
++      return std::nullopt;
++    }
++    const size_t capacity = args.l_children;
++    if (!capacity) {
++      continue;
++    }
++    auto children = std::make_unique<char[][16]>(capacity);
++    args.l_childname = children.get();
++    if (ioctl(fd, DRVLISTDEV, &args) != 0 || args.l_children != capacity) {
++      return std::nullopt;
++    }
++    for (size_t j = 0; j < args.l_children; ++j) {
++      const size_t length = strnlen(children[j], sizeof(children[j]));
++      if (!length || length == sizeof(children[j]) ||
++          !seen.emplace(children[j], length).second || seen.size() > kMaxDevices) {
++        return std::nullopt;
++      }
++      pending.emplace_back(children[j], length);
++    }
++  }
++  return pending;
++}
++
++std::optional<Port> ReadPort(int fd, const std::string& device) {
++  Dictionary endpoint = Properties(fd, device);
++  uint64_t instance = 0;
++  uint32_t unit = 0;
++  if (!endpoint.is_valid() ||
++      StringProperty(endpoint.get(), "device-driver") != "ucom" ||
++      !prop_dictionary_get_uint64(endpoint.get(), "device-instance-id", &instance) ||
++      !instance || !prop_dictionary_get_uint32(endpoint.get(), "device-unit", &unit) ||
++      device != "ucom" + base::NumberToString(unit)) {
++    return std::nullopt;
++  }
++  auto info = mojom::SerialPortInfo::New();
++  info->path = base::FilePath("/dev/dtyU" + base::NumberToString(unit));
++  struct stat node = {};
++  const devmajor_t expected_major = getdevmajor("ucom", S_IFCHR);
++  if (unit > kUcomUnitMask || expected_major == static_cast<devmajor_t>(-1) ||
++      lstat(info->path.value().c_str(), &node) != 0 || !S_ISCHR(node.st_mode) ||
++      major(node.st_rdev) != expected_major ||
++      static_cast<uint64_t>(minor(node.st_rdev)) != (unit | kUcomDialoutMask)) {
++    return std::nullopt;
++  }
++  std::string parent = StringProperty(endpoint.get(), "device-parent");
++  std::set<std::string> ancestors;
++  while (!parent.empty() && ancestors.size() < 64 && ancestors.insert(parent).second) {
++    Dictionary properties = Properties(fd, parent);
++    if (!properties.is_valid()) {
++      return std::nullopt;
++    }
++    uint16_t vendor = 0, product = 0;
++    if (prop_dictionary_get_uint16(properties.get(), "vendor-id", &vendor) &&
++        prop_dictionary_get_uint16(properties.get(), "product-id", &product)) {
++      info->vendor_id = vendor;
++      info->has_vendor_id = true;
++      info->product_id = product;
++      info->has_product_id = true;
++      info->display_name = StringProperty(properties.get(), "product-string");
++      info->serial_number = StringProperty(properties.get(), "serialnumber");
++      info->connected = true;
++      // The ucom instance must still be the one whose parent we inspected.
++      Dictionary final = Properties(fd, device);
++      uint64_t current = 0;
++      if (!final.is_valid() ||
++          !prop_dictionary_get_uint64(final.get(), "device-instance-id", &current) ||
++          current != instance) {
++        return std::nullopt;
++      }
++      return Port{device, instance, static_cast<uint64_t>(node.st_rdev), std::move(info)};
++    }
++    parent = StringProperty(properties.get(), "device-parent");
++  }
++  return std::nullopt;
++}
++
++// Validate again after open, on the I/O sequence, before configuring or
++// exposing the port. ucom_detach revokes existing vnodes with vdevgone; an
++// already opened old instance cannot become a new device with the same minor.
++class SerialIoHandlerNetBsd final : public SerialIoHandlerPosix {
++ public:
++  SerialIoHandlerNetBsd(const base::FilePath& path,
++                       scoped_refptr<base::SingleThreadTaskRunner> runner,
++                       std::string device, uint64_t instance, uint64_t rdev)
++      : SerialIoHandlerPosix(path, std::move(runner)),
++        device_(std::move(device)), instance_(instance), rdev_(rdev) {}
++
++ private:
++  ~SerialIoHandlerNetBsd() override = default;
++  bool PostOpen() override {
++    struct stat opened = {};
++    base::ScopedFD fd(HANDLE_EINTR(open(DRVCTLDEV, O_RDONLY | O_CLOEXEC)));
++    if (!fd.is_valid() || fstat(file().GetPlatformFile(), &opened) != 0 ||
++        !S_ISCHR(opened.st_mode) || static_cast<uint64_t>(opened.st_rdev) != rdev_) {
++      return false;
++    }
++    Dictionary properties = Properties(fd.get(), device_);
++    uint64_t current = 0;
++    return properties.is_valid() &&
++           prop_dictionary_get_uint64(properties.get(), "device-instance-id", &current) &&
++           current == instance_ && SerialIoHandlerPosix::PostOpen();
++  }
++  const std::string device_;
++  const uint64_t instance_;
++  const uint64_t rdev_;
++};
++
++}  // namespace
++
++SerialDeviceEnumeratorNetBsd::SerialDeviceEnumeratorNetBsd() {
++  // drvctl's event FIFO is shared/destructive and requires write access.
++  // Read-only inventory polling leaves the system device monitor untouched.
++  timer_.Start(FROM_HERE, base::Seconds(1), this,
++               &SerialDeviceEnumeratorNetBsd::Poll);
++}
++
++SerialDeviceEnumeratorNetBsd::~SerialDeviceEnumeratorNetBsd() = default;
++
++bool SerialDeviceEnumeratorNetBsd::RefreshDevices() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (refreshing_) {
++    return false;
++  }
++  base::AutoReset<bool> guard(&refreshing_, true);
++  std::map<base::FilePath, Port> snapshot;
++  base::ScopedFD fd(HANDLE_EINTR(open(DRVCTLDEV, O_RDONLY | O_CLOEXEC)));
++  auto devices = fd.is_valid() ? Devices(fd.get()) : std::nullopt;
++  if (!devices) {
++    SERIAL_LOG(ERROR) << "Cannot obtain complete drvctl serial inventory";
++  } else {
++    for (const auto& device : *devices) {
++      if (!device.starts_with("ucom")) {
++        continue;
++      }
++      auto port = ReadPort(fd.get(), device);
++      if (!port) {
++        // A missing node/property or a raced detach invalidates this scan.
++        // Never retain grants from a partially inspected device inventory.
++        SERIAL_LOG(ERROR) << "Incomplete ucom inventory at " << device;
++        snapshot.clear();
++        break;
++      }
++      auto path = port->info->path;
++      snapshot.emplace(std::move(path), std::move(*port));
++    }
++  }
++  std::vector<base::FilePath> removed;
++  for (const auto& [path, entry] : entries_) {
++    const auto found = snapshot.find(path);
++    if (found == snapshot.end() || found->second.instance != entry.instance ||
++        found->second.rdev != entry.rdev) {
++      removed.push_back(path);
++    }
++  }
++  for (const auto& path : removed) {
++    const auto token = entries_.at(path).token;
++    entries_.erase(path);
++    RemovePort(token);
++  }
++  for (auto& [path, port] : snapshot) {
++    if (entries_.contains(path)) {
++      continue;
++    }
++    port.info->token = base::UnguessableToken::Create();
++    entries_.emplace(path, Entry{port.device, port.instance, port.rdev, port.info->token});
++    AddPort(std::move(port.info));
++  }
++  return true;
++}
++
++scoped_refptr<SerialIoHandler> SerialDeviceEnumeratorNetBsd::CreateIoHandler(
++    const base::FilePath& path,
++    scoped_refptr<base::SingleThreadTaskRunner> ui_task_runner) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  const auto found = entries_.find(path);
++  CHECK(found != entries_.end());
++  const auto& entry = found->second;
++  return new SerialIoHandlerNetBsd(path, std::move(ui_task_runner),
++                                 entry.device, entry.instance, entry.rdev);
++}
++
++}  // namespace device

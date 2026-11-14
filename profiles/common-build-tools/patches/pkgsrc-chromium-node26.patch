@@ -14,3 +14,14 @@ specifically. Not submitted upstream.
  
  MAINTAINER=			kikadf@NetBSD.org
  HOMEPAGE=			https://www.chromium.org/Home
+
+--- a/www/chromium/Makefile
++++ b/www/chromium/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=			chromium-${VERSION}
+ VERSION=			152.0.7977.82
++PKGREVISION=			1
+ CATEGORIES=			www
+ MASTER_SITES=			https://commondatastorage.googleapis.com/chromium-browser-official/
+ EXTRACT_SUFX_C=			.tar.xz

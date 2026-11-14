@@ -4,6 +4,12 @@
   "patches": [
     {
       "owner": "profiles/common-build-tools/patches",
+      "file": "chromium-netbsd-web-serial.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "owner": "profiles/common-build-tools/patches",
       "file": "chromium-netbsd-closefrom.patch",
       "root": "",
       "strip": 1
