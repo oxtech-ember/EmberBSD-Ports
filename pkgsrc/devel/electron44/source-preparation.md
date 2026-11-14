@@ -230,6 +230,13 @@ patch pair is a causal rejection test and retains Git's failed application state
 
 ## Ordered build sources
 
+During SQLite reconfiguration, the saved selection and exact owned projection
+can identify the retiring component even when its old link targets are gone.
+The replacement source, receipt and every generated file are fully verified
+before selection. This does not establish object equivalence or backdate files;
+Ninja evaluates the new inputs normally. Ordinary builds and unchanged
+selections retain full SQLite verification.
+
 [prepare-build-sources.py](files/prepare-build-sources.py) consumes the pinned
 BSD overlay and [source-series.json](files/source-series.json). This is the
 single full application order for the additional NetBSD and GN/C++ patches.

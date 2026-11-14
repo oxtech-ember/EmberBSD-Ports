@@ -111,11 +111,13 @@ def abseil_masks(source, replacements):
     return masks
 
 
-def dependency_view(origin, dest, replacements, masks, *, verify=False, current=Path()):
+def dependency_view(origin, dest, replacements, masks, *, verify=False, partial=False, current=Path()):
+    require(verify or not partial, 'partial dependency view requires verification')
     expected = {p.name for p in origin.iterdir() if current / p.name not in masks}
     if verify:
         require(dest.is_dir() and not dest.is_symlink(), 'dependency view component must be local')
-        require({p.name for p in dest.iterdir()} == expected, 'dependency view entries changed')
+        present = {p.name for p in dest.iterdir()}
+        require(present <= expected if partial else present == expected, 'dependency view entries changed')
     else:
         dest.mkdir()
     for item in origin.iterdir():
@@ -123,10 +125,12 @@ def dependency_view(origin, dest, replacements, masks, *, verify=False, current=
         if rel in masks:
             continue
         output = dest / item.name
+        if partial and not os.path.lexists(output):
+            continue
         descend = any(path != rel and rel in path.parents for path in set(replacements) | masks)
         if descend:
             require(item.is_dir() and not item.is_symlink(), 'invalid dependency view parent')
-            dependency_view(item, output, replacements, masks, verify=verify, current=rel)
+            dependency_view(item, output, replacements, masks, verify=verify, partial=partial, current=rel)
         else:
             target = replacements.get(rel, item)
             if verify:

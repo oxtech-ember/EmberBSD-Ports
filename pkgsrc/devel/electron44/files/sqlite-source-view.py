@@ -57,9 +57,30 @@ def replacements(selected):
     return result
 
 
-def component(view, origin, path, selected):
+def component(view, origin, path, selected, *, partial=False):
     repl = replacements(selected)
-    view.dependency_view(origin / NAME, path, repl, set(), verify=True)
+    view.dependency_view(origin / NAME, path, repl, set(), verify=True, partial=partial)
+
+
+def validate_retired_selection(view, selected):
+    view.require(isinstance(selected, dict) and set(selected) == {'path', 'source', 'receipt'},
+                 'invalid retired SQLite selection')
+    digest = selected['receipt']
+    view.require(isinstance(digest, str) and re.fullmatch(r'[0-9a-f]{64}', digest),
+                 'invalid retired SQLite receipt identity')
+    for key in ('path', 'source'):
+        value = selected[key]
+        view.require(isinstance(value, str) and os.path.isabs(value) and os.path.normpath(value) == value,
+                     'invalid retired SQLite ' + key)
+    view.require(Path(selected['path']).name == 'amalgamation-' + digest,
+                 'invalid retired SQLite amalgamation identity')
+
+
+def verify_retired_view(view, source, destination, selected):
+    validate_retired_selection(view, selected)
+    source, destination = Path(source).resolve(strict=True), Path(destination).resolve(strict=True)
+    component(view, source / 'third_party', destination / 'src/third_party' / NAME, selected)
+    return destination / 'src'
 
 
 def verify_view(view, source, destination, selected):
@@ -77,13 +98,13 @@ def activate(view, source, destination, selected, old, verify_old):
     if old == selected:
         view.require(not os.path.lexists(marker), 'unexpected SQLite migration marker')
         return verify_view(view, source, destination, selected)
+    if old is not None:
+        validate_retired_selection(view, old)
     identity = hashlib.sha256(json.dumps({'old': old, 'new': selected}, sort_keys=True).encode()).hexdigest()
     def check_old(path, name, partial):
         if old is None:
             return path.is_symlink() and os.readlink(path) == str(origin / name)
-        if partial:
-            return path.is_dir() and not path.is_symlink()
-        component(view, origin, path, old)
+        component(view, origin, path, old, partial=partial)
         return True
     def build(name, path):
         view.dependency_view(origin / name, path, replacements(selected), set())

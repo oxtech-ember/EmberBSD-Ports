@@ -11,7 +11,10 @@ owner=Path(__file__).resolve().parents[3]/'pkgsrc/devel/electron44/files/build-e
 spec=importlib.util.spec_from_file_location('electron',owner);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 with tempfile.TemporaryDirectory() as tmp:
  root=Path(tmp).resolve();work=root/'work';(work/'source-view').mkdir(parents=True);calls=[]
- def verify(*args,**kwargs): calls.append(('verify',tuple(kwargs.get('ml_names',()))));return work/'source-view/src'
+ def verify(*args,**kwargs):
+  calls.append(('verify',tuple(kwargs.get('ml_names',()))))
+  if kwargs.get('ml_verify'): kwargs['ml_verify']()
+  return work/'source-view/src'
  view=SimpleNamespace(verify=verify, _refresh_leaves=lambda *a: verify(), complete_initial=verify)
  ml=SimpleNamespace(NAMES=('litert',),verify_view=lambda *a:None)
  hdr=SimpleNamespace(NAMES=('eigen3',),verify_view=lambda *a:None)
@@ -19,10 +22,13 @@ with tempfile.TemporaryDirectory() as tmp:
  boring=SimpleNamespace(NAME='boringssl',verify_view=lambda *a:None)
  compression=SimpleNamespace(NAMES=('brotli','zstd'),verify_view=lambda *a:None)
  first={'path':'/first','receipt':'a'};second={'path':'/second','receipt':'b'}
- state={'present':None}
+ state={'present':None,'broken':False}
  def sqlite_verify(*args):
-  if state['present'] != args[-1]: raise ValueError('foreign SQLite view')
- sqlite=SimpleNamespace(NAME='sqlite',verify_view=sqlite_verify)
+  calls.append(('full',args[-1]))
+  if state['present'] != args[-1] or state['broken']: raise ValueError('foreign SQLite view')
+ def retired(*args):
+  calls.append(('retired',args[-1]));sqlite_verify(*args)
+ sqlite=SimpleNamespace(NAME='sqlite',verify_view=sqlite_verify,verify_retired_view=retired)
  def activate(view,src,dst,new,old,verify_old):
   calls.append(('activate',old,new));verify_old();state['present']=new
  sqlite.activate=activate
@@ -43,9 +49,21 @@ with tempfile.TemporaryDirectory() as tmp:
   if flag:setattr(o,flag,True)
   calls.clear();run();assert not any(row[0]=='activate' for row in calls)
  o.phase='reconfigure';o.retry_configure=False;o.resume_configure=False;o.old_sqlite_selection=first;o.sqlite_selection=second
- state['present']=first;calls.clear();run();assert ('activate',first,second) in calls
+ state['present']=first;calls.clear();run();assert ('activate',first,second) in calls and ('retired',first) in calls
+ assert ('full',second) in calls
  # Completed second projection with the old receipt still saved must be adopted.
  state['present']=second;calls.clear();run();assert not any(row[0]=='activate' for row in calls)
+ o.old_sqlite_selection=second;state['broken']=True;calls.clear()
+ try:run()
+ except ValueError:pass
+ else:raise AssertionError('unchanged corrupted selection accepted')
+ assert not any(row[0]=='retired' for row in calls)
+ o.phase='build';calls.clear()
+ try:run()
+ except ValueError:pass
+ else:raise AssertionError('build accepted corrupted selection')
+ assert not any(row[0]=='retired' for row in calls)
+ state['broken']=False;o.phase='reconfigure';o.old_sqlite_selection=first
  state['present']={'path':'/foreign','receipt':'x'}
  try:run()
  except ValueError:pass

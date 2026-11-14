@@ -2826,7 +2826,10 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
                     old_sqlite = sqlite.recover_equivalent_initial(
                         view, options.workspace / 'src', destination, new_sqlite)
                 require(old_sqlite is not None, 'foreign SQLite projection during recovery')
-                sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite)
+                if options.phase == 'reconfigure':
+                    sqlite.verify_retired_view(view, options.workspace / 'src', destination, old_sqlite)
+                else:
+                    sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite)
             else:
                 old_sqlite = new_sqlite
         minizip_root = compression_root / 'zlib'
@@ -2917,7 +2920,10 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
                 checks.append(lambda: spirv.verify_view(view, options.workspace / 'src', destination, old_spirv, sp))
             if old_sqlite:
                 names.append(sqlite.NAME)
-                checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
+                if options.phase == 'reconfigure' and new_sqlite and old_sqlite != new_sqlite:
+                    checks.append(lambda: sqlite.verify_retired_view(view, options.workspace / 'src', destination, old_sqlite))
+                else:
+                    checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
             if old_pffft:
                 names.extend(pffft_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, pffft_names))

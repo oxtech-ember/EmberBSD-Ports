@@ -128,8 +128,53 @@ with tempfile.TemporaryDirectory(prefix='electron-sqlite-view-') as temp:
     sqlite.activate(view, source, destination, second, first, lambda: saved(view,source,destination,first))
     sqlite.verify_view(view, source, destination, second)
     assert (third/'other').lstat().st_mtime_ns == sibling
-    (Path(second['path'])/'sqlite3.c').write_text('tampered')
-    try: sqlite.verify_view(view, source, destination, second)
+    third_selection = output('third')
+    shutil.rmtree(second['path'])
+    reject(lambda: sqlite.verify_view(view, source, destination, second))
+    sqlite.verify_retired_view(view, source, destination, second)
+    reject(lambda: sqlite.verify_retired_view(view, source, destination, dict(second, receipt='bad')))
+    reject(lambda: sqlite.activate(view, source, destination, second, second, lambda: None))
+    foreign = third/'sqlite/src/amalgamation/foreign'; foreign.write_text('foreign')
+    reject(lambda: sqlite.verify_retired_view(view, source, destination, second))
+    foreign.unlink()
+    link = third/'sqlite/src/amalgamation/sqlite3.h'; target = os.readlink(link)
+    link.unlink(); link.symlink_to('/foreign')
+    reject(lambda: sqlite.verify_retired_view(view, source, destination, second))
+    link.unlink(); link.symlink_to(target)
+    file = Path(third_selection['path'])/'sqlite3.c'; data = file.read_bytes(); file.write_bytes(b'foreign')
+    reject(lambda: sqlite.verify_view(view, source, destination, third_selection))
+    file.write_bytes(data)
+    receipt = Path(third_selection['path'])/'receipt.json'; data = receipt.read_bytes()
+    receipt.write_bytes(data + b' ')
+    reject(lambda: sqlite.verify_view(view, source, destination, third_selection))
+    receipt.write_bytes(data)
+    reject(lambda: view.dependency_view(source/'third_party/sqlite', root/'unused', {}, set(), partial=True))
+    # Interrupt committed cleanup after removing one owned leaf, then refuse
+    # foreign entries before continuing that same cleanup transaction.
+    remove = shutil.rmtree
+    def interrupted(path, *a, **kw):
+        if str(path).endswith('.sqlite-components-stage'):
+            (Path(path)/'old-sqlite/src/amalgamation/sqlite3.c').unlink()
+            raise RuntimeError('interrupted cleanup')
+        return remove(path, *a, **kw)
+    shutil.rmtree = interrupted
+    try:
+        sqlite.activate(view, source, destination, third_selection, second,
+                        lambda: sqlite.verify_retired_view(view, source, destination, second))
+    except RuntimeError: pass
+    else: raise AssertionError('cleanup interruption did not propagate')
+    finally: shutil.rmtree = remove
+    stage = destination.parent / ('.' + destination.name + '.sqlite-components-stage')
+    foreign = stage/'old-sqlite/src/amalgamation/foreign'; foreign.write_text('foreign')
+    reject(lambda: sqlite.activate(view, source, destination, third_selection, second,
+                                   lambda: sqlite.verify_retired_view(view, source, destination, second)))
+    assert foreign.is_file()
+    foreign.unlink()
+    sqlite.activate(view, source, destination, third_selection, second,
+                    lambda: sqlite.verify_retired_view(view, source, destination, second))
+    sqlite.verify_view(view, source, destination, third_selection)
+    (Path(third_selection['path'])/'sqlite3.c').write_text('tampered')
+    try: sqlite.verify_view(view, source, destination, third_selection)
     except (ValueError, RuntimeError): pass
     else: raise AssertionError('tampered amalgamation accepted')
 print('PASS: SQLite source view transition, interrupted retry, integrity and sibling mtime')
