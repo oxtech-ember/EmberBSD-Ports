@@ -17,15 +17,29 @@ token:
   MAKECONF), every regular file in the recipe directory, the distinfo file
   and every file under PATCHDIR, FILESDIR and LOCALPATCHES;
 * the evaluated values of the variables that the caller selects (options,
-  configure, compiler and source variables), as bmake printed them.
+  configure, compiler, toolchain-context and source variables), as bmake
+  printed them; PATH without directories in the work directory;
+* the toolchain: for CC, CXX, CPP, FC and NATIVE_CC, the resolved program, its SHA256
+  and its --version answer. With the cross tools context path (which names
+  the context hash), a replaced or rebuilt toolchain gives another digest.
 
 Only the logical lines that assign PKGREVISION, and integer assignments of
-variables that serve solely as its value (PKGREVISION= ${MESA_PORT_REVISION}),
-are left out. Any other change, including a comment, a conditional around
-the revision or an evaluated value that embeds the revision, gives another
-digest, so the package is compiled again. A recipe that names PKGREVISION,
-PKGVERSION or PKGNAME anywhere else binds the full PKGNAME into the digest.
-Files under the work directory (pkgsrc's generated makevars) are skipped.
+variables that give its value (PKGREVISION= ${MESA_PORT_REVISION}), are left
+out. Any other change, including a comment, a conditional around the
+revision or an evaluated value that embeds the revision, gives another
+digest, so the package is compiled again.
+
+The revision, its helpers, PKGVERSION and PKGNAME may reach package metadata
+in the recipe makefiles: dependency patterns (DEPENDS, TOOL_DEPENDS,
+BUILDLINK_ABI_DEPENDS.*, ...), CONFLICTS, PKGNAME, failure reasons, conditionals that
+set only those, and recipe variables that only feed them and that pkgsrc/mk
+does not name (MESA_GENERATORS_VERSION). Dependency patterns are not compile
+inputs here: cross-bulk compares the dependency lists of a kept work
+directory separately and stops when they changed. Any other use of these
+values (a build variable, a target command, another conditional) can reach
+the build: then the helpers stay in the digest and the full PKGNAME is bound
+into it. Files under the work directory (pkgsrc's generated makevars) are
+skipped. The versions of installed dependencies are not inputs.
 
 Usage: cross-bulk-inputs.py --pkgsrc DIR --wrkdir DIR --names 'NAME ...'
 The values follow on standard input, one line per name, in the same order.
@@ -38,16 +52,24 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
 
 SCHEMA = 'cross-bulk-inputs-v1'
 TOKEN = '@PKGSRCDIR@'
 TREES = ('PATCHDIR', 'FILESDIR')
-ASSIGN = re.compile(r'^\s*([A-Za-z_][A-Za-z0-9_.+-]*)\s*([?:!+]?=)(.*)$')
+ASSIGN = re.compile(r'^\s*([A-Za-z_][A-Za-z0-9_.+-]*?)\s*([?:!+]?=)(.*)$')
 REFERENCE = re.compile(r'\$[{(]([A-Za-z_][A-Za-z0-9_.]*)[:})]')
-SENSITIVE = re.compile(r'\$[{(](?:PKGREVISION|PKGVERSION|PKGNAME)[:})]')
 INTEGER = re.compile(r'^\s*[0-9]+\s*(?:#.*)?$')
 MAKEFILE_NAME = re.compile(r'^(?:Makefile.*|.*\.mk)$')
+# Package metadata that a revision may reach without reaching the build.
+NEUTRAL = frozenset(('PKGREVISION', 'PKGNAME', 'DEPENDS', 'BUILD_DEPENDS', 'TOOL_DEPENDS',
+                     'BOOTSTRAP_DEPENDS', 'TEST_DEPENDS', 'CONFLICTS', 'SUPERSEDES',
+                     'PKG_FAIL_REASON', 'PKG_SKIP_REASON'))
+NEUTRAL_PREFIXES = ('BUILDLINK_API_DEPENDS.', 'BUILDLINK_ABI_DEPENDS.')
+# Compiler variables whose programs identify the toolchain.
+TOOL_VARIABLES = ('CC', 'CXX', 'CPP', 'FC', 'NATIVE_CC')
 
 
 class InputError(ValueError):
@@ -72,48 +94,137 @@ def joined(line):
     return ' '.join(part[:-1] if part.endswith('\\') else part for part in line.split('\n'))
 
 
-def revision_variables(texts):
-    """Names whose assignments only feed PKGREVISION in the parsed makefiles."""
+def strip_comment(line):
+    """The text of a logical make line before its first unescaped #."""
+    out, i = [], 0
+    while i < len(line):
+        c = line[i]
+        if c == '\\' and i + 1 < len(line):
+            out.append(line[i:i + 2])
+            i += 2
+            continue
+        if c == '#':
+            break
+        out.append(c)
+        i += 1
+    return ''.join(out)
+
+
+def parsed(texts):
+    """Each makefile as a list of (kind, name, text) logical lines.
+
+    kind is 'assign' (name is the variable), 'directive' (name is the
+    directive word) or 'other' (shell commands, targets, includes)."""
+    result = {}
+    for file, text in texts.items():
+        lines = []
+        for line in logical_lines(text):
+            flat = strip_comment(joined(line)).strip()
+            if not flat:
+                continue
+            if flat.startswith('.'):
+                word = flat[1:].lstrip().split(None, 1)
+                lines.append(('directive', word[0] if word else '', flat))
+                continue
+            match = ASSIGN.match(flat)
+            if match and not line.startswith('\t'):
+                lines.append(('assign', match.group(1), match.group(3)))
+            else:
+                lines.append(('other', '', flat))
+        result[file] = lines
+    return result
+
+
+def revision_variables(lines):
+    """PKGREVISION and the integer variables that give its value."""
     names = {'PKGREVISION'}
     assignments = {}
-    references = {}
-    for text in texts.values():
-        for line in logical_lines(text):
-            flat = joined(line)
-            match = ASSIGN.match(flat)
-            if match and not flat.lstrip().startswith('#'):
-                name, value = match.group(1), match.group(3).split('#', 1)[0]
+    for entries in lines.values():
+        for kind, name, value in entries:
+            if kind == 'assign':
                 assignments.setdefault(name, []).append(value)
-                for ref in REFERENCE.findall(value):
-                    references.setdefault(ref, []).append(name)
-            else:
-                for ref in REFERENCE.findall(flat.split('#', 1)[0]):
-                    references.setdefault(ref, []).append(None)
     changed = True
     while changed:
         changed = False
         for name in list(names):
             for value in assignments.get(name, ()):
                 for ref in REFERENCE.findall(value):
-                    if ref in names:
-                        continue
                     values = assignments.get(ref, [])
-                    users = references.get(ref, [])
-                    # Strip a helper only when every assignment is a plain
-                    # integer and every use is a revision assignment.
-                    if (values and all(INTEGER.match(v) for v in values) and
-                            all(user in names or user == name for user in users)):
+                    if ref not in names and values and all(INTEGER.match(v) for v in values):
                         names.add(ref)
                         changed = True
     return names
 
 
+def neutral_name(name):
+    return name in NEUTRAL or name.startswith(NEUTRAL_PREFIXES)
+
+
+def neutral_block(entries, index):
+    """Whether the conditional that starts at entries[index] only sets
+    package metadata: dependency patterns, revisions or failure reasons."""
+    depth = 0
+    for kind, name, _ in entries[index:]:
+        if kind == 'directive':
+            if name.startswith('if'):
+                depth += 1
+            elif name == 'endif':
+                depth -= 1
+                if depth == 0:
+                    return True
+            elif name not in ('else', 'elif', 'elifdef', 'elifndef', 'elifmake', 'elifnmake'):
+                return False
+        elif kind == 'assign':
+            if not neutral_name(name):
+                return False
+        else:
+            return False
+    return False
+
+
+def revision_sensitive(lines, recipe_files, names, mk_text):
+    """Whether the revision can reach the build through a recipe makefile.
+
+    The revision, PKGVERSION, PKGNAME and the revision helpers are tainted.
+    A tainted value may only reach package metadata: dependency patterns,
+    PKGNAME, PKGREVISION, failure reasons, and conditionals that set only
+    those. A variable that a recipe assigns from a tainted value carries the
+    taint when the infrastructure (mk/) does not name it and the recipe
+    makefiles use it; every other use can reach the build."""
+    taint = set(names) | {'PKGVERSION', 'PKGNAME'}
+    used = set()
+    for file in recipe_files:
+        for kind, name, text in lines[file]:
+            used.update(REFERENCE.findall(text))
+    changed = True
+    while changed:
+        changed = False
+        for file in recipe_files:
+            entries = lines[file]
+            for index, (kind, name, text) in enumerate(entries):
+                refs = set(REFERENCE.findall(text)) & taint
+                if not refs:
+                    continue
+                if kind == 'assign':
+                    if name in taint or neutral_name(name):
+                        continue
+                    if name in used and not re.search(r'\b' + re.escape(name) + r'\b', mk_text):
+                        taint.add(name)
+                        changed = True
+                        continue
+                    return True
+                if kind == 'directive' and name.startswith(('if', 'elif')) and neutral_block(entries, index):
+                    continue
+                return True
+    return False
+
+
 def normalized(text, names):
     kept = []
     for line in logical_lines(text):
-        flat = joined(line)
+        flat = strip_comment(joined(line))
         match = ASSIGN.match(flat)
-        if match and match.group(1) in names and not flat.lstrip().startswith('#'):
+        if match and match.group(1) in names and not line.startswith('\t'):
             continue
         kept.append(line)
     return '\n'.join(kept)
@@ -127,10 +238,44 @@ def inside(path, root):
         return False
 
 
+def tool_identities(values, work, root):
+    """The identity of each compiler that the build uses: its resolved path,
+    the SHA256 of the program and its --version answer. A rebuilt or
+    replaced toolchain at the same path gives another digest."""
+    directories = [entry for entry in values.get('PATH', '').split(':')
+                   if entry and not (work is not None and inside(Path(entry).resolve(), work))]
+    # pkgsrc puts the cross tools context, not its bin directory, in PATH.
+    if values.get('EMBERBSD_CROSS_TOOLS'):
+        directories.append(os.path.join(values['EMBERBSD_CROSS_TOOLS'], 'bin'))
+    tools = {}
+    for name in TOOL_VARIABLES:
+        words = values.get(name, '').split()
+        if not words:
+            continue
+        program = words[0]
+        found = program if os.path.isabs(program) else shutil.which(program, path=os.pathsep.join(directories))
+        if not found or not os.path.isfile(found):
+            tools[name] = ['missing', program]
+            continue
+        real = os.path.realpath(found)
+        digest = hashlib.sha256()
+        with open(real, 'rb') as stream:
+            for block in iter(lambda: stream.read(1 << 20), b''):
+                digest.update(block)
+        try:
+            answer = subprocess.run([found, '--version'], stdin=subprocess.DEVNULL, capture_output=True,
+                                    timeout=60).stdout.decode('utf-8', 'replace')
+        except (OSError, subprocess.SubprocessError):
+            answer = ''
+        tools[name] = [real.replace(root, TOKEN), digest.hexdigest(), answer.replace(root, TOKEN)]
+    return tools
+
+
 def digest_inputs(pkgsrc, wrkdir, values):
     for required in ('.CURDIR', '.MAKE.MAKEFILES', 'PKGNAME'):
         if required not in values:
             raise InputError('missing variable ' + required)
+    given = os.path.abspath(pkgsrc)
     pkgsrc = Path(pkgsrc).resolve(strict=True)
     work = Path(wrkdir).resolve() if wrkdir else None
     curdir = Path(values['.CURDIR']).resolve(strict=True)
@@ -182,39 +327,48 @@ def digest_inputs(pkgsrc, wrkdir, values):
     texts = {}
     for name in sorted(makefiles):
         texts[name] = Path(name).read_bytes().decode('utf-8', 'surrogateescape')
-    names = revision_variables(texts)
-    sensitive = False
+
+    def key_of(name):
+        resolved = Path(name)
+        if inside(resolved, pkgsrc):
+            return 'pkgsrc/' + resolved.relative_to(pkgsrc).as_posix()
+        return 'external:' + hashlib.sha256(name.encode()).hexdigest()[:16]
+
+    lines = parsed(texts)
+    names = revision_variables(lines)
+    infrastructure = [name for name in texts if key_of(name).startswith('pkgsrc/mk/')]
+    mk_text = '\n'.join(texts[name] for name in infrastructure)
+    recipe_files = [name for name in texts if name not in infrastructure]
+    sensitive = revision_sensitive(lines, recipe_files, names, mk_text)
+    # When the revision reaches the build, the helpers stay in the text and
+    # the package name is part of the digest.
+    stripped = names if not sensitive else {'PKGREVISION'}
     records = []
     for name in sorted(files):
         path = files[name]
-        key = name
-        resolved = Path(name)
-        if inside(resolved, pkgsrc):
-            key = 'pkgsrc/' + resolved.relative_to(pkgsrc).as_posix()
+        key = key_of(name)
         if path is None:
             records.append([key, 'missing'])
             continue
         if name in texts:
-            text = normalized(texts[name], names)
-            # Infrastructure names PKGNAME for packaging; a recipe or
-            # configuration that names it may compile the revision in.
-            # Comments count too: an escaped \# is not a comment.
-            if not key.startswith('pkgsrc/mk/'):
-                sensitive = sensitive or bool(SENSITIVE.search(text))
-            data = text.encode('utf-8', 'surrogateescape')
+            data = normalized(texts[name], stripped).encode('utf-8', 'surrogateescape')
         else:
             data = path.read_bytes()
-        if not inside(resolved, pkgsrc):
-            key = 'external:' + hashlib.sha256(name.encode()).hexdigest()[:16]
         records.append([key, hashlib.sha256(data).hexdigest()])
     root = str(pkgsrc)
     variables = {}
     for name, value in values.items():
         if name in ('.MAKE.MAKEFILES', 'PKGNAME'):
             continue
-        variables[name] = value.replace(root, TOKEN)
+        if name == 'PATH':
+            value = ':'.join(entry for entry in value.split(':')
+                             if not (work is not None and entry and inside(Path(entry).resolve(), work)))
+        # The given root may name the resolved one through a symbolic link
+        # (/var and /private/var on macOS).
+        variables[name] = value.replace(root, TOKEN).replace(given, TOKEN)
     document = {'schema': SCHEMA, 'files': records, 'variables': variables,
-                'revision_variables': sorted(names)}
+                'revision_variables': sorted(stripped),
+                'tools': tool_identities(values, work, root)}
     if sensitive:
         document['package'] = values['PKGNAME']
     data = json.dumps(document, sort_keys=True, separators=(',', ':')).encode()

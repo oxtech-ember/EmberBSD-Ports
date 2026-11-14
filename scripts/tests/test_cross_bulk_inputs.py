@@ -10,7 +10,7 @@ import tempfile
 
 script = Path(__file__).resolve().parents[1] / 'cross-bulk-inputs.py'
 NAMES = ('PKGPATH PATCHDIR FILESDIR DISTINFO_FILE LOCALPATCHES CFLAGS CONFIGURE_ARGS '
-         '.MAKE.MAKEFILES PKGNAME .CURDIR')
+         'CC PATH EMBERBSD_CROSS_TOOLS .MAKE.MAKEFILES PKGNAME .CURDIR')
 
 
 def fixture(root):
@@ -36,7 +36,9 @@ def digest(root, conf, wrkdir, revision='4', **override):
         'PKGPATH': 'cat/demo', 'PATCHDIR': str(recipe / 'patches'),
         'FILESDIR': str(recipe / 'files'), 'DISTINFO_FILE': str(recipe / 'distinfo'),
         'LOCALPATCHES': '', 'CFLAGS': '-O2 -I' + str(root / 'cat/demo/files'),
-        'CONFIGURE_ARGS': '--prefix=/usr/pkg',
+        'CONFIGURE_ARGS': '--prefix=/usr/pkg', 'CC': 'democc -O2',
+        'PATH': str(wrkdir / '.cwrapper/bin') + ':' + str(root.parent.parent / 'tools') + ':/usr/bin',
+        'EMBERBSD_CROSS_TOOLS': '/tools/context-1',
         '.MAKE.MAKEFILES': 'Makefile common.mk ../../mk/bsd.pkg.mk ' + str(conf),
         'PKGNAME': 'demo-1.0nb' + revision, '.CURDIR': str(recipe)}
     values.update(override)
@@ -64,6 +66,9 @@ with tempfile.TemporaryDirectory() as temp:
     fixture(root)
     conf = temp / 'mk.conf'
     conf.write_text('MAKE_JOBS?=\t4\n')
+    (temp / 'tools').mkdir()
+    (temp / 'tools/democc').write_text('#!/bin/sh\necho "demo clang 1.0"\n')
+    (temp / 'tools/democc').chmod(0o755)
     work = temp / 'obj/cat/demo/work'
     work.mkdir(parents=True)
     base = digest(root, conf, work)
@@ -140,6 +145,63 @@ with tempfile.TemporaryDirectory() as temp:
     edit(recipe / 'Makefile', '.include "common.mk"\nDIST_SUBDIR= ${PKGNAME_NOREV}', '.include "common.mk"')
     assert digest(root, conf, work, revision='5') == base
 
+    # The revision may reach package metadata: dependency patterns through
+    # an intermediate variable, and a guard that only sets a failure reason.
+    meta = ('.include "common.mk"\n'
+            'DEMO_TOOL_VERSION= 1.0nb${DEMO_REVISION}\n'
+            'TOOL_DEPENDS+= demo-tool-${DEMO_TOOL_VERSION}:../../cat/tool\n'
+            'DEPENDS+= demo-lib-${PKGVERSION}:../../cat/lib\n'
+            'CONFLICTS+= ${PKGNAME:C/-[0-9].*$/-[0-9]*/:S/demo/demo-old/}\n'
+            'BUILDLINK_ABI_DEPENDS.demo+= demo>=1.0nb${DEMO_REVISION}\n'
+            '.if ${PKGREVISION} != ${DEMO_REVISION}\n'
+            'PKG_FAIL_REASON+= "revision ${PKGREVISION}"\n'
+            '.endif\n'
+            '# ${PKGNAME} in a comment\n')
+    edit(recipe / 'Makefile', '.include "common.mk"\n', meta)
+    metadata = digest(root, conf, work, revision='5')
+    edit(recipe / 'common.mk', 'DEMO_REVISION=\t5', 'DEMO_REVISION=\t6')
+    assert digest(root, conf, work, revision='6') == metadata
+    # The same value in a build command, a build variable, or a conditional
+    # that sets one, reaches the build.
+    for use in ('post-install:\n\techo ${DEMO_TOOL_VERSION} > ${DESTDIR}/version\n',
+                'MAKE_ENV+= TOOLV=${DEMO_TOOL_VERSION}\n',
+                '.if ${DEMO_REVISION} > 5\nCONFIGURE_ARGS+= --new\n.endif\n'):
+        edit(recipe / 'Makefile', '# ${PKGNAME} in a comment\n', '# ${PKGNAME} in a comment\n' + use)
+        first = digest(root, conf, work, revision='6')
+        edit(recipe / 'common.mk', 'DEMO_REVISION=\t6', 'DEMO_REVISION=\t7')
+        assert digest(root, conf, work, revision='7') != first, use
+        edit(recipe / 'common.mk', 'DEMO_REVISION=\t7', 'DEMO_REVISION=\t6')
+        edit(recipe / 'Makefile', '# ${PKGNAME} in a comment\n' + use, '# ${PKGNAME} in a comment\n')
+    # A variable that the infrastructure reads is the build.
+    edit(root / 'mk/bsd.pkg.mk', '# infrastructure', '# infrastructure\n_X= ${DEMO_TOOL_VERSION}')
+    named_by_mk = digest(root, conf, work, revision='6')
+    edit(recipe / 'common.mk', 'DEMO_REVISION=\t6', 'DEMO_REVISION=\t7')
+    assert digest(root, conf, work, revision='7') != named_by_mk
+    edit(recipe / 'common.mk', 'DEMO_REVISION=\t7', 'DEMO_REVISION=\t5')
+    edit(root / 'mk/bsd.pkg.mk', '# infrastructure\n_X= ${DEMO_TOOL_VERSION}', '# infrastructure')
+    edit(recipe / 'Makefile', meta, '.include "common.mk"\n')
+    assert digest(root, conf, work, revision='5') == base
+
+    # The toolchain identity: the compiler program, its --version answer, and
+    # the cross tools context. Wrapper directories in WRKDIR do not count.
+    compiler = temp / 'tools/democc'
+    changed(lambda: edit(compiler, 'echo', 'echo  '), lambda: edit(compiler, 'echo  ', 'echo'))
+    changed(lambda: edit(compiler, 'clang 1.0', 'clang 1.1'), lambda: edit(compiler, 'clang 1.1', 'clang 1.0'))
+    assert digest(root, conf, work, revision='5', EMBERBSD_CROSS_TOOLS='/tools/context-2') != base
+    (work / '.cwrapper/bin').mkdir(parents=True)
+    (work / '.cwrapper/bin/democc').write_text('#!/bin/sh\necho wrapper\n')
+    (work / '.cwrapper/bin/democc').chmod(0o755)
+    assert digest(root, conf, work, revision='5') == base
+    assert digest(root, conf, work, revision='5', CC='othercc') != base
+    # pkgsrc names the cross tools context in PATH; its compilers are in bin.
+    context = temp / 'context-1'
+    (context / 'bin').mkdir(parents=True)
+    (context / 'bin/crosscc').write_text('#!/bin/sh\necho "cross clang 1.0"\n')
+    (context / 'bin/crosscc').chmod(0o755)
+    cross = digest(root, conf, work, revision='5', CC='crosscc', EMBERBSD_CROSS_TOOLS=str(context))
+    edit(context / 'bin/crosscc', '1.0', '1.1')
+    assert digest(root, conf, work, revision='5', CC='crosscc', EMBERBSD_CROSS_TOOLS=str(context)) != cross
+
     # Incomplete answers give no digest.
     for override in ({'.CURDIR': str(temp / 'elsewhere')},):
         result = digest(root, conf, work, revision='5', expect_error=True, **override)
@@ -151,4 +213,4 @@ with tempfile.TemporaryDirectory() as temp:
                              '--names', 'PKGPATH'], input='cat/demo\n', capture_output=True, text=True)
     assert result.returncode == 1 and result.stdout == '' and 'missing variable' in result.stderr
 print('PASS: revision-only edits keep the build-input digest; source, patch, file, recipe, '
-      'infrastructure, configuration, option and revision-dependent changes change it')
+      'infrastructure, configuration, option, toolchain and revision-dependent changes change it')

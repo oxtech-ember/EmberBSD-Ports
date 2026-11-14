@@ -1077,12 +1077,14 @@ Do not change a revision for:
   of a provider (no recursive consumer bumps);
 - a failed build, upload or cleanup.
 
-When an external change (a toolchain or SDK fix outside the recipe) requires
-new objects, add a comment next to the revision that names the reason.
 `cross-bulk.sh` compares a digest of the recipe files without the revision
-lines: a revision change without other recipe changes repackages the kept
-objects, and the comment makes the digest different, so the package compiles
-again. See [revision-only changes](profiles/common-build-tools/cross/README.md#revision-only-changes).
+lines, and of the toolchain: a revision change without other recipe or
+toolchain changes repackages the kept objects. When another external change
+requires new objects, add a comment next to the revision that names the
+reason: the comment makes the digest different, so the package compiles
+again. Use `>=` dependency patterns where the ABI permits: an exact pattern
+with a revision changes the dependency lists and stops a kept work
+directory. See [revision-only changes](profiles/common-build-tools/cross/README.md#revision-only-changes).
 
 Preserve signed archives for publication recovery instead of rebuilding
 or resigning them under an immutable name. Check the evaluated selected graph

@@ -932,11 +932,20 @@ revision: the objects stay for an explicit recovery. Before a package builds,
 includes the makefiles that the parse read, all files in the package
 directory, the `distinfo` file, the patch and file directories, local
 patches, the sources, options, tools, configure arguments and compiler flags.
-It ignores the lines that set `PKGREVISION` and number variables that only
-`PKGREVISION` uses, such as `MESA_PORT_REVISION`. When a recipe uses the
-package name, version or revision in other variables, the digest includes
-the package name. A successful build writes the digest to
-`WRKDIR/.cross-bulk-inputs`.
+It also includes the toolchain: the cross tools context (`EMBERBSD_CROSS_TOOLS`,
+whose name is the context hash), the native toolset selection, the compiler
+families, and for `CC`, `CXX`, `CPP`, `FC` and `NATIVE_CC` the resolved program, its SHA256
+and its `--version` output. It ignores the lines that set `PKGREVISION` and
+number variables that give its value, such as `MESA_PORT_REVISION`.
+A successful build writes the digest to `WRKDIR/.cross-bulk-inputs`.
+
+The revision and the package name may go into package metadata without a
+change to the digest: dependency patterns (`DEPENDS`, `TOOL_DEPENDS`,
+`BUILDLINK_ABI_DEPENDS.*`), `CONFLICTS`, `PKGNAME`, `PKG_FAIL_REASON`, conditionals that
+set only these, and recipe variables that only feed them, such as
+`MESA_GENERATORS_VERSION`. When a recipe uses the revision, the package
+version or the package name for anything else, the digest includes the
+package name. The versions of installed dependencies are not in the digest.
 
 When the next pass finds a `WRKDIR` of the same upstream version with another
 package revision, and the recorded digest is the current one, the build does
@@ -947,13 +956,29 @@ the stage and packaged under the new name. The log of the package names this.
 This applies to target and native packages. A changed digest, a `WRKDIR`
 without a record (a build before this change), or changed dependency metadata
 stops the package as before and keeps the objects. A shared LLVM or Qtbase
-stage has no record. `patch-refresh` and
-`buildlink-refresh` remove the record.
+stage has no record. `patch-refresh` and `buildlink-refresh` remove the
+record.
 
-The digest does not include the toolchain, the SDK or files outside the pkgsrc
-tree that a recipe does not name. When such a change requires new objects,
-add a comment next to the revision change in the recipe: the comment changes
-the digest. After a manual edit in a `WRKDIR`, remove its
+Dependencies are checked apart from the digest. The kept `.depends` and
+`.rdepends` lists hold the dependency patterns. A pattern with an exact
+revision changes with that revision: for example, the `MesaLib` tool
+dependency `mesa-generators-${MESA_SOURCE_VERSION}nb${MESA_PORT_REVISION}`.
+Such a change stops the package as "dependency metadata changed", as before.
+Use `>=` patterns for dependencies whose ABI did not change, and change a
+dependency revision only for a changed payload, so that a revision does not
+cascade.
+
+The metadata path runs the install step of the package again. A Meson
+install (`ninja install`) rebuilds outputs that are older than their inputs.
+When the depends step installed newer dependency or tool packages (a newer
+code generator, Python or library), Ninja compiles the affected objects
+again, although the digest is the same. CMake builds skip this rebuild
+(`CMAKE_SKIP_INSTALL_ALL_DEPENDENCY`).
+
+The digest does not include files outside the pkgsrc tree that a recipe does
+not name, or the libraries that a compiler loads. When such a change requires
+new objects, add a comment next to the revision change in the recipe: the
+comment changes the digest. After a manual edit in a `WRKDIR`, remove its
 `.cross-bulk-inputs`. Binary package reuse from `PACKAGES` and the package
 catalog still compares the full package name.
 
