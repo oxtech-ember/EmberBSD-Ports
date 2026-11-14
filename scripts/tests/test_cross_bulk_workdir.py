@@ -4,6 +4,7 @@
 """Exercise retry classification and the actual shell workdir transition."""
 from pathlib import Path
 import os
+import json
 import subprocess
 import sys
 import tempfile
@@ -71,6 +72,35 @@ with tempfile.TemporaryDirectory() as temp:
         assert refused.returncode != 0 and 'revision changed' in refused.stderr, refused.stderr
         assert refused.stdout.strip() == ''
         assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    def explain(current, *, upstream='1.0'):
+        entries = sorted(work.iterdir())
+        saved = {p: (p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns)
+                 for p in entries if p.is_file()}
+        result = subprocess.run([sys.executable, str(classifier), '--explain',
+                                 str(work), 'fixture', upstream, current],
+                                capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert not result.stderr, result.stderr
+        report = json.loads(result.stdout)
+        assert report['schema'] == 'ports-workdir-explanation-v1'
+        assert report['read_only'] is True
+        assert sorted(work.iterdir()) == entries
+        assert {p: (p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns)
+                for p in saved} == saved
+        return report
+    report = explain('fixture-1.0nb2')
+    assert report['decision'] == 'preserve-and-stop'
+    assert report['reason'] == 'package-revision-changed'
+    assert report['recorded_package'] == 'fixture-1.0nb1'
+    assert report['requested_package'] == 'fixture-1.0nb2'
+    assert report['phase_cookie'] == '.extract_done'
+    assert 'package-install' in report['next_step']
+    report = explain('fixture-1.0nb1')
+    assert report['decision'] == 'same'
+    assert 'dependency' in report['next_step']
+    report = explain('fixture-2.0', upstream='2.0')
+    assert report['decision'] == 'incompatible'
+    assert report['reason'] == 'upstream-version-changed'
     refused = classify('fixture-1.0nb2')
     assert refused.returncode != 0 and (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     # Exercise the real controller path, not just the classifier. Selecting
@@ -89,8 +119,12 @@ with tempfile.TemporaryDirectory() as temp:
     assert not (root / 'work.retired').exists()
     (work / '.package_done').write_text('not-an-identity\n')
     ambiguous = run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0')
-    assert ambiguous.returncode != 0 and work.exists() and 'revision changed' in ambiguous.stderr, ambiguous.stderr
+    assert ambiguous.returncode != 0 and work.exists() and 'unknown phase identity' in ambiguous.stderr, ambiguous.stderr
     assert not (root / 'work.retired').exists()
+    report = explain('fixture-1.0nb2')
+    assert report['reason'] == 'unknown-phase-identity'
+    assert report['phase_cookie'] == '.package_done'
+    assert report['recorded_package'] == 'not-an-identity'
     (work / '.package_done').unlink()
     css = root / 'cssparser'
     css.mkdir()
@@ -183,4 +217,16 @@ with tempfile.TemporaryDirectory() as temp:
     resolved.pop('FIXTURE_CMP', None)
     assert run('fixture-1.0nb2', 'fixture-2.0', '2.0').returncode == 0
     assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
+    work.mkdir()
+    report = explain('fixture-1.0nb2')
+    assert report['reason'] == 'empty-directory'
+    assert report['recorded_package'] is None and report['phase_cookie'] is None
+    (work / 'kept.o').write_bytes(b'object')
+    report = explain('fixture-1.0nb2')
+    assert report['reason'] == 'missing-extract-identity'
+    (work / '.extract_done').write_text('fixture-1.0nb1\n')
+    (work / '.build_done').symlink_to(root / 'missing')
+    report = explain('fixture-1.0nb2')
+    assert report['reason'] == 'invalid-phase-identity'
+    assert report['phase_cookie'] == '.build_done'
 print('PASS: retry preserves objects, revision-only and unknown changes preserve and stop, dependency changes preserve and stop, incompatible upstream version retires')
