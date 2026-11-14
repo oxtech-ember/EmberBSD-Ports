@@ -782,3 +782,18 @@ test. The physical diagnostic passed on EmberBSD 11 amd64 with Electron
 package 45.3.2nb1 (runtime 45.3.2), a kernel providing `device-instance-id`,
 and an STM32F411 CRAZYBEEF4SX1280 controller with firmware 2026.6.2 and MSP
 API 1.48. Other hardware remains untested.
+
+A native WebSerial diagnostic with a USB controller checked one logical
+serial-driver detach and reattach, not a physical unplug. The initially
+selected port opened at 115200 and closed; after detach the old object rejected
+open and no port was listed. Following reattach with a new kernel instance,
+the old object again rejected open. The previously authorised same USB device
+was listed as a new object, consistent with Electron's stable serial-number
+permission within the BrowserContext. A separate fresh-process read-only MSP
+fixture subsequently checked five responses and closed normally. The first
+fresh-process attempt timed out while opening the port, so this observation
+does not establish reconnect reliability or stress and physical-replug results.
+
+The [Browser UI flow diagnostic](../../../pkgsrc/www/blanc/tests/README.md)
+is maintained with the Browser recipe; it uses an isolated profile and an
+explicitly selected installed Electron runtime.
