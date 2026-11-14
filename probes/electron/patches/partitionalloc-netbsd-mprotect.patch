@@ -1,0 +1,175 @@
+--- a/base/allocator/partition_allocator/src/partition_alloc/page_allocator_internals_posix.h
++++ b/base/allocator/partition_allocator/src/partition_alloc/page_allocator_internals_posix.h
+@@ -56,6 +56,16 @@
+ 
+ int GetAccessFlags(PageAccessibilityConfiguration accessibility);
+ 
++#if PA_BUILDFLAG(IS_NETBSD)
++// The page allocator permits subsequent permission changes independent of
++// the initial accessibility. Request their maximum without enabling any of
++// them now; NetBSD PaX still rejects active writable-executable mappings.
++int GetMmapAccessFlags(PageAccessibilityConfiguration accessibility) {
++  return GetAccessFlags(accessibility) |
++         PROT_MPROTECT(PROT_READ | PROT_WRITE | PROT_EXEC);
++}
++#endif  // PA_BUILDFLAG(IS_NETBSD)
++
+ uintptr_t SystemAllocPagesInternal(uintptr_t hint,
+                                    size_t length,
+                                    PageAccessibilityConfiguration accessibility,
+@@ -71,7 +81,11 @@
+   int fd = file_descriptor_for_shared_alloc;
+ #endif
+ 
++#if PA_BUILDFLAG(IS_NETBSD)
++  int access_flag = GetMmapAccessFlags(accessibility);
++#else
+   int access_flag = GetAccessFlags(accessibility);
++#endif
+   int map_flags = MAP_ANONYMOUS | MAP_PRIVATE;
+ 
+ #if PA_BUILDFLAG(IS_APPLE)
+@@ -254,7 +268,13 @@
+   // new mapping is established." As a consequence, the memory will be
+   // zero-initialized on next access.
+   void* ptr = reinterpret_cast<void*>(address);
+-  void* ret = mmap(ptr, length, PROT_NONE,
++#if PA_BUILDFLAG(IS_NETBSD)
++  const int access_flag = GetMmapAccessFlags(PageAccessibilityConfiguration(
++      PageAccessibilityConfiguration::kInaccessible));
++#else
++  const int access_flag = PROT_NONE;
++#endif
++  void* ret = mmap(ptr, length, access_flag,
+                    MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE, fd, 0);
+   if (ret == MAP_FAILED) {
+     // Decomitting may create additional VMAs (e.g. if we're decommitting pages
+--- /dev/null
++++ b/base/allocator/partition_allocator/src/partition_alloc/page_allocator_netbsd_unittest.cc
+@@ -0,0 +1,112 @@
++// Copyright 2026 The EmberBSD Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "partition_alloc/page_allocator.h"
++#include "partition_alloc/page_allocator_constants.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++#include <errno.h>
++#include <sys/mman.h>
++
++#include <cstdlib>
++
++namespace partition_alloc {
++namespace {
++
++using Permissions = PageAccessibilityConfiguration;
++
++struct ScopedPages {
++  uintptr_t address;
++  size_t size;
++  ~ScopedPages() {
++    if (address)
++      FreePages(address, size);
++  }
++};
++
++TEST(PartitionAllocNetBsdMprotectTest, InaccessibleDecommitAndRecommit) {
++  const size_t size = internal::PageAllocationGranularity();
++  const ScopedPages pages{
++      AllocPages(size, size, Permissions(Permissions::kInaccessible),
++                 PageTag::kPartitionAlloc),
++      size};
++  ASSERT_NE(pages.address, 0u);
++  ASSERT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadWrite)));
++  *reinterpret_cast<volatile unsigned char*>(pages.address) = 42;
++  ASSERT_TRUE(DecommitAndZeroSystemPages(pages.address, size,
++                                         PageTag::kPartitionAlloc));
++  ASSERT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadWrite)));
++  EXPECT_EQ(*reinterpret_cast<volatile unsigned char*>(pages.address), 0u);
++  EXPECT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadExecute)));
++}
++
++TEST(PartitionAllocNetBsdMprotectTest, ReadCanBecomeReadWrite) {
++  const size_t size = internal::PageAllocationGranularity();
++  const ScopedPages pages{
++      AllocPages(size, size, Permissions(Permissions::kRead),
++                 PageTag::kChromium),
++      size};
++  ASSERT_NE(pages.address, 0u);
++  EXPECT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadWrite)));
++}
++
++TEST(PartitionAllocNetBsdMprotectTest, ReadWriteCanBecomeReadExecute) {
++  const size_t size = internal::PageAllocationGranularity();
++  const ScopedPages pages{
++      AllocPages(size, size, Permissions(Permissions::kReadWrite),
++                 PageTag::kChromium),
++      size};
++  ASSERT_NE(pages.address, 0u);
++  EXPECT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadExecute)));
++}
++
++TEST(PartitionAllocNetBsdMprotectTest, ExplicitJitSurvivesDecommit) {
++  const size_t size = internal::PageAllocationGranularity();
++  const ScopedPages pages{
++      AllocPages(size, size,
++                 Permissions(Permissions::kInaccessibleWillJitLater),
++                 PageTag::kChromium),
++      size};
++  ASSERT_NE(pages.address, 0u);
++  ASSERT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadWrite)));
++  ASSERT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadExecute)));
++  ASSERT_TRUE(
++      DecommitAndZeroSystemPages(pages.address, size, PageTag::kChromium));
++  ASSERT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadWrite)));
++  EXPECT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadExecute)));
++}
++
++TEST(PartitionAllocNetBsdMprotectTest, PaxRejectsActiveRwx) {
++  const char* enabled = std::getenv("EMBERBSD_TEST_PAX_MPROTECT");
++  if (!enabled)
++    GTEST_SKIP() << "Set EMBERBSD_TEST_PAX_MPROTECT=1 only when PaX is active";
++  ASSERT_STREQ(enabled, "1");
++  const size_t size = internal::PageAllocationGranularity();
++  const ScopedPages pages{
++      AllocPages(size, size, Permissions(Permissions::kReadWrite),
++                 PageTag::kChromium),
++      size};
++  ASSERT_NE(pages.address, 0u);
++  ASSERT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadWrite)));
++  ASSERT_TRUE(TrySetSystemPagesAccess(pages.address, size,
++                                      Permissions(Permissions::kReadExecute)));
++  errno = 0;
++  EXPECT_EQ(mprotect(reinterpret_cast<void*>(pages.address), size,
++                     PROT_READ | PROT_WRITE | PROT_EXEC),
++            -1);
++  EXPECT_EQ(errno, EACCES);
++}
++
++}  // namespace
++}  // namespace partition_alloc
+--- a/services/device/serial/BUILD.gn
++++ b/services/device/serial/BUILD.gn
+@@ -143,7 +143,10 @@
+ 
+   if (is_netbsd) {
+     test("netbsd_serial_refresh_unittests") {
+-      sources = [ "serial_device_enumerator_unittest.cc" ]
++      sources = [
++        "//base/allocator/partition_allocator/src/partition_alloc/page_allocator_netbsd_unittest.cc",
++        "serial_device_enumerator_unittest.cc",
++      ]
+       deps = [
+         ":serial",
+         "//base",

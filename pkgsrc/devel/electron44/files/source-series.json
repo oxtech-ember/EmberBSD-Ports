@@ -1319,6 +1319,11 @@
       "path": "gn-absl-flags-marshalling.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "partitionalloc-netbsd-mprotect.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

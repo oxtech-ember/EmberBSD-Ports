@@ -830,6 +830,20 @@ consumers of Chromium's `absl_full_deps`, using the installed
 `--source`, selected `--patch-tool` and target `--sysroot`; it applies the
 actual patch with zero fuzz and checks the dependency and installed inputs.
 
+On NetBSD, the PartitionAlloc mmap adapter requests maximum future read,
+write and execute permissions so the generic page allocator can perform its
+supported later permission changes. These maximum permissions do not grant
+access immediately; PaX still rejects an active writable-executable mapping.
+This generic contract does not provide a per-heap non-executable guarantee.
+The selected serial test target also includes focused PartitionAlloc page
+permission and decommit regressions. To check PaX's active-RWX rejection, run
+without a debugger after confirming PaX is active and set
+`EMBERBSD_TEST_PAX_MPROTECT=1`; without that explicit input the PaX-specific
+test reports SKIP. The kernel's ordinary PaX policy remains in effect. Target
+Clang Static Analyzer on the affected page allocator translation unit fixed a
+new dead store and retains an existing `spinning_mutex.h` dead-store finding,
+also reproduced on the unmodified baseline; this is not a zero-warning result.
+
 The NetBSD serial regression can be selected explicitly in an existing output
 without replacing its Electron packaging root. Run `reconfigure` with
 `--test-target //services/device/serial:netbsd_serial_refresh_unittests` and
