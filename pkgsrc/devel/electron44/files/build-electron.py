@@ -2269,7 +2269,7 @@ def additive_protoc_selection(old_arguments, new_arguments, work, *, runtime_cha
 def apply_sanitizer_gn_args(values, enabled):
     if enabled:
         values.update(is_debug=False, is_official_build=False, is_asan=True, is_ubsan=True,
-                      is_ubsan_no_recover=True, use_allocator_shim=False, use_partition_alloc_as_malloc=False)
+                      is_ubsan_no_recover=True)
 
 
 def producer_inputs(options, sdk):
