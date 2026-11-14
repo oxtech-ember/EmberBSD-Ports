@@ -823,6 +823,19 @@ changes. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.
 Use a new output when those inputs have changed incompatibly.
 
+The NetBSD serial regression can be selected explicitly in an existing output
+without replacing its Electron packaging root. Run `reconfigure` with
+`--test-target //services/device/serial:netbsd_serial_refresh_unittests` and
+the same producer inputs, then use `build-test` with the same inputs, an
+absolute new `--diagnostic-output` outside all selected inputs, and a chosen
+`--jobs` budget. This builds the focused test only and writes its log there.
+Run the resulting executable on a compatible NetBSD target. To remove the
+extra root on a later reconfigure, pass `--clear-test-target`. A reconfigure
+without either flag retains the saved selection. Keep diagnostic output
+separate from package and release storage; the controller guards its known
+input paths, not arbitrary external release locations. This test does not
+instrument memory or replace the native GUI and hardware checks.
+
 For a package workflow, invoke every controller phase (configure, reconfigure,
 build and runtime installation) from the same current exported `FILESDIR`: for
 example, `$PKGSRCDIR/devel/electron44/files/build-electron.py`. Host buildlink
