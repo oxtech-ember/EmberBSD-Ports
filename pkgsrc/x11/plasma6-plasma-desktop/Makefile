@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.6 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-desktop-${PLASMAVER}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -30,7 +30,6 @@ USE_TOOLS+= msgmerge pkg-config
 # Select the Fcitx Kimpanel D-Bus backend. Its implementation is in Fcitx.
 CMAKE_CONFIGURE_ARGS+= -DBUILD_KIMPANEL_IBUS=OFF
 
-CMAKE_CONFIGURE_ARGS+=	-DKAUTH_DBUS_DIR=${PREFIX}/share/examples/plasma-desktop
 # Keep the inherited pkgsrc limits for unported tablet and X11 input backends.
 # The KWin Wayland mouse and touchpad backends retain their upstream defaults.
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_KCM_TABLET=OFF
@@ -49,11 +48,10 @@ MAKE_DIRS+=	${PKG_SYSCONFDIR}/xdg/autostart
 CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/autostart/kaccess.desktop \
 		${PKG_SYSCONFDIR}/xdg/autostart/kaccess.desktop
 
-CONF_FILES+=	${PREFIX}/share/examples/plasma-desktop/org.kde.kcontrol.kcmclock.conf \
-		${PKG_SYSCONFDIR}/dbus-1/system.d/org.kde.kcontrol.kcmclock.conf
-
-MAKE_DIRS+=		${PKG_SYSCONFDIR}/dbus-1/system.d
-INSTALLATION_DIRS+=	share/examples/plasma-desktop
+# pkgsrc patch(1) writes *.orig backups when it can. cmake install(DIRECTORY)
+# of a plasmoid would otherwise ship those backups in the package.
+post-patch:
+	${FIND} ${WRKSRC} \( -name "*.orig" -o -name "*.orig_dist" \) -type f -exec ${RM} -f {} +
 
 .include "../../mk/bsd.prefs.mk"
 
