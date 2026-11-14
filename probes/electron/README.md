@@ -744,6 +744,24 @@ This is a parallelism policy, not an aggregate memory limit for the build.
 
 ## Acceptance
 
+For the inherited-descriptor regression, run the installed Electron as an
+unprivileged user in a working target graphical session with a private HOME,
+XDG directories and session D-Bus. Select the target Python, installed Electron,
+expected version, and a new output directory explicitly:
+
+```sh
+/absolute/dbus-run-session -- /absolute/python3 -B \
+  probes/electron/tests/electron-closefrom-runtime.py \
+  --electron /absolute/electron --expected-electron VERSION \
+  --output /absolute/new-result-directory --timeout 30
+```
+
+The test passes descriptors 171 and 300 to Electron, starts a sandboxed
+renderer, and requires socket EOF while both processes remain alive, followed
+by a renderer proof and normal shutdown. It records logs and `result.json` in
+the new output directory and cleans up its owned process group on failure.
+This test covers descriptor closure; it is not full browser or sandbox acceptance.
+
 Run the installed package in the selected EmberBSD target. Check HTTPS navigation, tabs,
 Russian text input, file download, ad blocking, persistent profiles, private
 profile cleanup, site permissions, sandbox behavior, and package lifecycle.
