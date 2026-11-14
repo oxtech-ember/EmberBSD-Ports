@@ -6,6 +6,7 @@
 import argparse
 from contextlib import contextmanager
 import hashlib
+import fcntl
 import importlib
 import importlib.util
 import json
@@ -13,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import stat
 import sys
 import types
 import tempfile
@@ -266,8 +268,55 @@ def select_target_runtime(options, sdk):
     return stage, base, runtime
 
 
+@contextmanager
+def sanitizer_export_guard(options):
+    export = getattr(options, 'sanitizer_pkgsrc_export', None)
+    if export is None:
+        yield
+        return
+    path = Path(export) / '.pkgsrc-update.lock'
+    fd = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
+    try:
+        require(stat.S_ISREG(os.fstat(fd).st_mode), 'invalid sanitizer export lock')
+        fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        require(not os.path.lexists(Path(export) / '.pkgsrc-update-incomplete'),
+                'sanitizer pkgsrc export update incomplete')
+        yield
+    finally:
+        os.close(fd)
+
+
+def sanitizer_selection(options):
+    return (getattr(options, 'sanitizer_package', None),
+            getattr(options, 'sanitizer_package_sha256', None),
+            getattr(options, 'sanitizer_resource', None),
+            getattr(options, 'sanitizer_pkgsrc_export', None),
+            getattr(options, 'sanitizer_export_patch', None))
+
+
+def sanitizer_identity(options):
+    selected = sanitizer_selection(options)
+    return {'selection': [str(x) for x in selected],
+            'validator_sha256': hashlib.sha256(Path(__file__).with_name('sanitizer-diagnostic.py').read_bytes()).hexdigest()}
+
+
+def require_sanitizer_continuation(saved, options):
+    selected = sanitizer_selection(options)
+    previous = saved['environment'].get('EMBERBSD_DIAGNOSTIC_SANITIZER')
+    require((not previous and not any(selected)) or
+            (all(selected) and previous == json.dumps(sanitizer_identity(options), sort_keys=True)),
+            'diagnostic sanitizer selection differs from configured work')
+
+
 def target_inputs(options, sdk, native, environment, work):
     target = sdk['targets'].target_definition(options.target)
+    selection = sanitizer_selection(options)
+    if any(selection):
+        require(all(selection) and options.compiler_family == 'clang',
+                'diagnostic sanitizer package, digest, resource and Clang are required')
+        require((options.phase != 'build' or getattr(options, 'build_test', False)) and
+                not getattr(options, 'build_after_reconfigure', False),
+                'diagnostic sanitizer configuration only supports build-test')
     if options.compiler_family == 'clang':
         compiler = sdk['target_toolchain'].clang_compiler(str(options.compiler_prefix), target['triplet'],
                                                          host=native.host, env=environment)
@@ -282,6 +331,25 @@ def target_inputs(options, sdk, native, environment, work):
         record = dict(format='emberbsd-compiler-binding', version=1, commands=commands,
                       flags={name: [] for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags')},
                       aliases={}, link_flags=links)
+        if all(selection):
+            sanitizer = local_module('electron_sanitizer_diagnostic', 'sanitizer-diagnostic.py')
+            diagnostic_sdk = dict(sdk)
+            for name in ('binary_release', 'package_updates', 'elf'):
+                module = importlib.import_module('emberbsd_sdk.' + name)
+                require(Path(module.__file__).resolve() == Path(options.sdk_source).resolve(strict=True) / 'src/emberbsd_sdk' / (name + '.py'),
+                        'SDK diagnostic module origin differs: ' + name)
+                diagnostic_sdk[name] = module
+            resource, provenance = sanitizer.verify(*selection[:3], diagnostic_sdk, version=compiler['version'], target=options.target)
+            selector_spec = importlib.util.spec_from_file_location('sanitizer_pkgsrc_identity', options.ports_source / 'scripts/pkgsrc-source-identity.py')
+            selector = importlib.util.module_from_spec(selector_spec)
+            selector_spec.loader.exec_module(selector)
+            exported = selector.shared_export(str(selection[3]), str(options.ports_source), str(options.git),
+                                              str(options.sdk_source), str(selection[4]))
+            owner = options.ports_source / 'pkgsrc/lang/compiler-rt'
+            expected = recipe_source_metadata(owner)
+            validate_package_source_data(provenance, expected, exported / 'lang/compiler-rt',
+                                         distinfo=True, package_path='lang/compiler-rt')
+            sanitizer.bind(record, resource, compiler['resource_dir'] + '/include')
         stage_sha256 = None
         if stage:
             with (Path(stage) / 'runtime.json').open('rb') as handle:
@@ -758,10 +826,15 @@ def recipe_source_metadata(recipe, *, allow_empty_patches=False):
 
 
 def validate_package_source(package, expected, export_recipe, *, distinfo, package_path, allow_empty_patches=False):
+    return validate_package_source_data((package / '+BUILD_VERSION').read_text(), expected, export_recipe,
+                                        distinfo=distinfo, package_path=package_path, allow_empty_patches=allow_empty_patches)
+
+
+def validate_package_source_data(data, expected, export_recipe, *, distinfo, package_path, allow_empty_patches=False):
     require(recipe_source_metadata(export_recipe, allow_empty_patches=allow_empty_patches) == expected,
             'selected pkgsrc patch inventory or distinfo differs from common owner')
     metadata = {}
-    for line in (package / '+BUILD_VERSION').read_text().splitlines():
+    for line in data.splitlines():
         name, separator, digest = line.partition(': ')
         # pkgsrc may record a PATCHDIR with a relative path through the
         # package directory (e.g. fonts/harfbuzz/../../fonts/harfbuzz).
@@ -2197,6 +2270,8 @@ def producer_inputs(options, sdk):
     native, environment, providers = _native_inputs(options, sdk)
     environment['EMBERBSD_DEVTOOLS_PROVIDER_SHA256'] = devtools_provider_identity(options, sdk, native, environment)
     tools = target_inputs(options, sdk, native, environment, options.work)
+    if getattr(options, 'sanitizer_package', None):
+        environment['EMBERBSD_DIAGNOSTIC_SANITIZER'] = json.dumps(sanitizer_identity(options), sort_keys=True)
     host_binding = native_runtime_binding(options, sdk, native, environment, tools)
     if tools.get('runtime_stage_sha256'):
         environment['EMBERBSD_TARGET_RUNTIME_SHA256'] = tools['runtime_stage_sha256']
@@ -2214,6 +2289,9 @@ def producer_inputs(options, sdk):
     launcher = shlex.join([native.tool('python'), str(options.sdk_source / 'scripts/link-launcher.py'),
                           '--lock-root', str(options.lock_root), '--context', str(options.link_context), '--'])
     values = arguments(options, native, tools, rust, launcher, providers=providers)
+    if getattr(options, 'sanitizer_package', None):
+        values.update(is_debug=False, is_asan=True, is_ubsan=True, is_ubsan_no_recover=True,
+                      use_allocator_shim=False, use_partition_alloc_as_malloc=False)
     if getattr(options, 'node_source', None):
         abi, hashes = selected_node_abi(options.node_source, native, environment, sdk)
         values['node_module_version'] = abi
@@ -3552,12 +3630,40 @@ def require_electron_static_assets(options):
                 'missing common Electron octicon asset: ' + entry)
 
 
+def initial_configuration_selection(options):
+    test_target = selected_test({}, getattr(options, 'test_target', None))
+    selected = sanitizer_selection(options)
+    require(not any(selected) or all(selected), 'diagnostic sanitizer selection is incomplete')
+    sanitizer = sanitizer_identity(options) if all(selected) else None
+    if sanitizer:
+        require(test_target == SERIAL_TEST_LABEL, 'diagnostic sanitizer configure requires the focused test target')
+    fonts_source = getattr(options, 'test_fonts_source', None)
+    require(bool(fonts_source) == bool(test_target),
+            'focused initial configure requires the prepared test-fonts source')
+    identity = {'test_target': test_target, 'sanitizer': sanitizer,
+                'test_fonts_source': str(fonts_source) if fonts_source else None}
+    marker = options.work / 'pending-initial-selection.json'
+    if getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False):
+        if os.path.lexists(marker):
+            require(not marker.is_symlink() and marker.is_file() and json.loads(marker.read_text()) == identity,
+                    'initial configuration selection changed during configure retry')
+        else:
+            require(not test_target and not sanitizer, 'initial configuration selection was not recorded')
+    return identity
+
+
 def configure(options):
+    initial_selection = initial_configuration_selection(options)
+    test_target = initial_selection['test_target']
     require_common_v8(options)
     require_common_node(options)
     require_common_perfetto(options)
     require_common_dependencies(options)
     sdk = load_sdk(options.sdk_source)
+    fonts = local_module('electron_test_fonts', 'test-fonts-source.py') if test_target else None
+    font_target = fonts.validate(sdk, options.workspace, options.git, options.test_fonts_source) if fonts else None
+    if fonts and options.work.exists():
+        fonts.recover(options.work, options.workspace, font_target)
     with configure_stage('source verify'):
         verify_source(options.workspace, options.ports_source, options.git)
         require_electron_static_assets(options)
@@ -3576,6 +3682,9 @@ def configure(options):
     else:
         require(not work.exists(), 'configure output must be new; retain an unsuccessful output for diagnosis')
         work.mkdir()
+        if test_target or initial_selection['sanitizer']:
+            local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(
+                work / 'pending-initial-selection.json', initial_selection)
         output = work / 'out'
     with configure_stage('producer inputs'):
         native, environment, values = producer_inputs(options, sdk)
@@ -3611,15 +3720,26 @@ def configure(options):
         finally:
             temporary.unlink(missing_ok=True)
     with configure_stage('GN'):
-        sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
-            '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
-            '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
-            str(work / 'configure.log'), cwd=str(source_root), env=environment,
-            append=retry and os.path.lexists(work / 'configure.log'))
+        command = [native.tool('gn'), 'gen', str(output),
+                   '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
+                   *root_patterns(test_target)]
+        if fonts:
+            try:
+                with fonts.linked(work, options.workspace, font_target):
+                    sdk['process'].run_logged(command, str(work / 'configure.log'), cwd=str(source_root),
+                                              env=environment, append=retry and os.path.lexists(work / 'configure.log'))
+            finally:
+                fonts.validate(sdk, options.workspace, options.git, options.test_fonts_source)
+                verify_source(options.workspace, options.ports_source, options.git)
+        else:
+            sdk['process'].run_logged(command, str(work / 'configure.log'), cwd=str(source_root),
+                                      env=environment, append=retry and os.path.lexists(work / 'configure.log'))
     # This is the actual producer invocation, not a qualification record.
     local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(work / 'configuration.json',
-        dict(arguments=values, environment=environment, source=str(options.workspace),
-             sdk=str(options.sdk_source), host_prefix=str(options.host_prefix), target=options.target))
+        test_configuration(values, environment, options.workspace, options.sdk_source,
+                           options.host_prefix, options.target, test_target))
+    if test_target or initial_selection['sanitizer']:
+        (work / 'pending-initial-selection.json').unlink()
 
 
 
@@ -4292,6 +4412,7 @@ def reconfigure(options):
     saved_bytes = (options.origin_saved_configuration if origin else
                    (work / 'configuration.json').read_bytes())
     saved = json.loads(saved_bytes)
+    require_sanitizer_continuation(saved, options)
     test_target = selected_test(saved, getattr(options, 'test_target', None), getattr(options, 'clear_test_target', False))
     cleanup_only = bool(origin and saved['source'] == str(options.workspace))
     require(saved['source'] == str(options.workspace if cleanup_only or not origin else origin) and
@@ -4779,10 +4900,11 @@ def build(options):
         fonts = local_module('electron_test_fonts', 'test-fonts-source.py')
         font_target = fonts.validate(sdk, options.workspace, options.git, options.test_fonts_source)
         fonts.recover(options.work, options.workspace, font_target)
+    saved = json.loads((options.work / 'configuration.json').read_text())
+    require_sanitizer_continuation(saved, options)
     verify_source(options.workspace, options.ports_source, options.git)
     native, environment, values = producer_inputs(options, sdk)
     prepare_build_inputs(options, native, environment, sdk)
-    saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
             'build inputs differ from configuration')
@@ -4880,6 +5002,11 @@ def main():
                      'v8-metagen-libclang-so', 'v8-metagen-bindings-dir', 'v8-metagen-runtime-view',
                      'host-tool-runtime-view', 'boringssl-source', 'boringssl-archive', 'ml-patch', 'ml-pkgsrc-export', 'ml-ports-source', 'ml-export-patch', *( 'ml-' + name + '-' + role for name in ML_PROVIDERS for role in ('source', 'archive'))):
             command.add_argument('--' + name, type=Path)
+        command.add_argument('--sanitizer-package', type=Path)
+        command.add_argument('--sanitizer-package-sha256')
+        command.add_argument('--sanitizer-resource', type=Path)
+        command.add_argument('--sanitizer-pkgsrc-export', type=Path)
+        command.add_argument('--sanitizer-export-patch', type=Path)
         command.add_argument('--v8-metagen-runtime-extra', type=Path, action='append', default=[])
         for provider in ML_PROVIDERS:
             for role in ('ports-source', 'pkgsrc-export', 'export-patch'):
@@ -4929,6 +5056,9 @@ def main():
                                  help='recompose generated sources, preserving existing Ninja objects')
             command.add_argument('--build-after-reconfigure', action='store_true',
                                  help='run Ninja after a successful reconfigure without releasing input locks')
+        if phase == 'configure':
+            command.add_argument('--test-target', choices=(SERIAL_TEST_LABEL,))
+            command.add_argument('--test-fonts-source', type=Path)
         if phase == 'reconfigure':
             selection = command.add_mutually_exclusive_group()
             selection.add_argument('--test-target', choices=(SERIAL_TEST_LABEL,))
@@ -4995,6 +5125,8 @@ def main():
                             options.v8_source, options.v8_ports_source, options.v8_pkgsrc,
                             options.v8_metagen_libclang_so, options.v8_metagen_bindings_dir, options.v8_metagen_runtime_view,
                             options.target_runtime_stage, options.target_runtime_base, options.host_runtime_root, options.protoc_runtime_view,
+                            options.sanitizer_package, options.sanitizer_resource,
+                            options.sanitizer_pkgsrc_export, options.sanitizer_export_patch,
                             options.host_prefix, options.sysroot, options.host_buildlink_pkgsrc,
                             getattr(options, 'test_fonts_source', None),
                             options.boringssl_source, options.boringssl_archive,
@@ -5013,7 +5145,8 @@ def main():
                         *(v for k, v in vars(options).items()
                           if isinstance(v, Path) and k != 'diagnostic_output'))
                 with sdk['process'].ContextLocks(shared, str(options.lock_root), shared=True):
-                    {'configure': configure, 'reconfigure': reconfigure, 'build': build}[options.phase](options)
+                    with sanitizer_export_guard(options):
+                        {'configure': configure, 'reconfigure': reconfigure, 'build': build}[options.phase](options)
     except Exception as error:
         parser.exit(1, 'Electron ' + options.phase + ' failed: ' + str(error) + '\n')
 

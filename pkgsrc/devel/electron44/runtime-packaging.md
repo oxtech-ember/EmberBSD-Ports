@@ -212,3 +212,36 @@ This EmberBSD producer omits the optional SwiftShader software Vulkan/GL
 fallback, including Dawn’s optional fallback adapter. Hardware Vulkan, GL and
 ANGLE remain selected independently; actual
 hardware renderer acceptance is established on the target device.
+
+## Focused sanitizer diagnostics
+
+For the selected NetBSD amd64 serial gtest, configure a **new** diagnostic
+`--work` with the ordinary source, SDK, target and host selections and add:
+
+```
+--sanitizer-package /absolute/compiler-rt-package.tgz
+--sanitizer-package-sha256 <sha256-of-that-package>
+--sanitizer-resource /absolute/staged/usr/pkg/lib/clang/23
+--sanitizer-pkgsrc-export /absolute/shared-export
+--sanitizer-export-patch /absolute/selected-patch
+```
+
+Select `--test-target //services/device/serial:netbsd_serial_refresh_unittests`
+on the initial configure together with `--test-fonts-source` pointing to the
+verified prepared test fonts. Repeat the five sanitizer options and the same
+test-fonts source for `build-test`; that phase additionally requires a new
+`--diagnostic-output`. A diagnostic configuration refuses the ordinary
+production build and build-after-reconfigure. Initial resume/retry accepts only
+the same saved diagnostic selection. The selected compiler-rt package and
+all exposed staged resources are verified against each other and against the
+current shared owner/export; this does not install either. The normal SDK FULL runtime continues to own C++/CRT/unwinder and sysroot
+selection. The selected compiler-rt resource supplies sanitizer libraries and
+builtins at link time; native Clang builtin headers remain selected from the
+host SDK.
+
+The GN configuration selects ASan and UBSan, disables the malloc shim and
+PartitionAlloc-as-malloc, and instruments the focused test closure. Target
+system libraries remain uninstrumented. For NetBSD ASan, apply `paxctl +a`
+only to a copied diagnostic executable before execution; do not alter global
+ASLR or production artifacts. Confirm actual compile/link commands, allocator
+flags and positive controls before interpreting test results.
