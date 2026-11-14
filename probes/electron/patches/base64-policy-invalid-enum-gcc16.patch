@@ -1,13 +1,19 @@
 diff --git a/base/base64.cc b/base/base64.cc
-index 6260074c6f..3b47f258fd 100644
 --- a/base/base64.cc
 +++ b/base/base64.cc
-@@ -29,6 +29,8 @@ ModpDecodePolicy GetModpPolicy(Base64DecodePolicy policy) {
+@@ -12,6 +12,7 @@
+ #include "base/check.h"
+ #include "base/containers/span.h"
+ #include "base/features.h"
++#include "base/notreached.h"
+ #include "base/numerics/checked_math.h"
+ #include "base/simdutf_shim.h"
+ #include "base/strings/string_util.h"
+@@ -29,6 +30,7 @@
      case Base64DecodePolicy::kForgiving:
        return ModpDecodePolicy::kForgiving;
    }
-+  CHECK(false);
-+  return ModpDecodePolicy::kStrict;
++  NOTREACHED();
  }
  
  void Base64EncodeAppendModpB64(span<const uint8_t> input, std::string* output) {
