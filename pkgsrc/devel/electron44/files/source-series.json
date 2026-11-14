@@ -1314,6 +1314,11 @@
       "path": "gn-codec-public-headers.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-absl-flags-marshalling.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

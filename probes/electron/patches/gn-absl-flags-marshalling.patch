@@ -1,0 +1,31 @@
+--- a/build/linux/unbundle/absl_flags.gn
++++ b/build/linux/unbundle/absl_flags.gn
+@@ -11,6 +11,10 @@
+   packages = [ "absl_flags" ]
+ }
+ 
++pkg_config("system_absl_flags_marshalling") {
++  packages = [ "absl_flags_marshalling" ]
++}
++
+ pkg_config("system_absl_flags_parse") {
+   packages = [ "absl_flags_parse" ]
+ }
+@@ -51,6 +55,17 @@
+   public_configs = [ ":system_absl_flags" ]
+ }
+ 
++absl_shim_headers("marshalling_shim") {
++  root_path = "."
++  prefix = "absl/flags/"
++  headers = [ "marshalling.h" ]
++}
++
++source_set("marshalling") {
++  deps = [ ":marshalling_shim" ]
++  public_configs = [ ":system_absl_flags_marshalling" ]
++}
++
+ absl_shim_headers("parse_shim") {
+   root_path = "."
+   prefix = "absl/flags/"

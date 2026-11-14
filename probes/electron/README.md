@@ -823,6 +823,13 @@ changes. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.
 Use a new output when those inputs have changed incompatibly.
 
+The selected system Abseil unbundle shim exports `flags:marshalling` for
+consumers of Chromium's `absl_full_deps`, using the installed
+`absl_flags_marshalling` pkg-config entry. The focused regression
+`tests/abseil-flags-marshalling.py` accepts a prepared pre-patch Chromium
+`--source`, selected `--patch-tool` and target `--sysroot`; it applies the
+actual patch with zero fuzz and checks the dependency and installed inputs.
+
 The NetBSD serial regression can be selected explicitly in an existing output
 without replacing its Electron packaging root. Run `reconfigure` with
 `--test-target //services/device/serial:netbsd_serial_refresh_unittests` and
