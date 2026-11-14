@@ -2266,6 +2266,12 @@ def additive_protoc_selection(old_arguments, new_arguments, work, *, runtime_cha
             'protoc selection migration changed unrelated inputs')
     return {'emberbsd_protoc_runtime_inputs'}
 
+def apply_sanitizer_gn_args(values, enabled):
+    if enabled:
+        values.update(is_debug=False, is_official_build=False, is_asan=True, is_ubsan=True,
+                      is_ubsan_no_recover=True, use_allocator_shim=False, use_partition_alloc_as_malloc=False)
+
+
 def producer_inputs(options, sdk):
     native, environment, providers = _native_inputs(options, sdk)
     environment['EMBERBSD_DEVTOOLS_PROVIDER_SHA256'] = devtools_provider_identity(options, sdk, native, environment)
@@ -2289,9 +2295,7 @@ def producer_inputs(options, sdk):
     launcher = shlex.join([native.tool('python'), str(options.sdk_source / 'scripts/link-launcher.py'),
                           '--lock-root', str(options.lock_root), '--context', str(options.link_context), '--'])
     values = arguments(options, native, tools, rust, launcher, providers=providers)
-    if getattr(options, 'sanitizer_package', None):
-        values.update(is_debug=False, is_asan=True, is_ubsan=True, is_ubsan_no_recover=True,
-                      use_allocator_shim=False, use_partition_alloc_as_malloc=False)
+    apply_sanitizer_gn_args(values, bool(getattr(options, 'sanitizer_package', None)))
     if getattr(options, 'node_source', None):
         abi, hashes = selected_node_abi(options.node_source, native, environment, sdk)
         values['node_module_version'] = abi

@@ -5,6 +5,11 @@ from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--owner',type=Path,required=True);a=p.parse_args()
 spec=importlib.util.spec_from_file_location('electron',a.owner/'build-electron.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 from types import SimpleNamespace
+gn={'is_official_build':True};m.apply_sanitizer_gn_args(gn,False);assert gn=={'is_official_build':True}
+m.apply_sanitizer_gn_args(gn,True)
+assert gn['is_official_build'] is False and gn['is_asan'] is True and gn['is_ubsan'] is True
+assert gn['use_allocator_shim'] is False and gn['use_partition_alloc_as_malloc'] is False
+assert 'is_ubsan_vptr' not in gn
 opts=SimpleNamespace(sanitizer_package=Path('/package'),sanitizer_package_sha256='a'*64,sanitizer_resource=Path('/resource'),sanitizer_pkgsrc_export=Path('/export'),sanitizer_export_patch=Path('/patch'),compiler_family='clang',target='amd64',phase='build',build_test=False,build_after_reconfigure=False)
 sdk={'targets':SimpleNamespace(target_definition=lambda target:{})}
 def refused(fn):
