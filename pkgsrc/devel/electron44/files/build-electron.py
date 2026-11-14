@@ -3468,6 +3468,42 @@ def keep_going_limit(options):
     return value
 
 
+SERIAL_TEST_LABEL = '//services/device/serial:netbsd_serial_refresh_unittests'
+
+def selected_test(saved, requested=None, clear=False):
+    previous = saved.get('test_target')
+    require(previous in (None, SERIAL_TEST_LABEL), 'invalid saved test selection')
+    require(requested in (None, SERIAL_TEST_LABEL), 'unsupported test target')
+    require(not (clear and requested), 'cannot select and clear test target')
+    return None if clear else requested or previous
+
+def test_configuration(arguments, environment, source, sdk, host_prefix, target, test_target):
+    config = dict(arguments=arguments, environment=environment, source=str(source),
+                  sdk=str(sdk), host_prefix=str(host_prefix), target=target)
+    if test_target is not None:
+        config['test_target'] = test_target
+    return config
+
+def root_patterns(test_target):
+    result = ['--root-target=//electron', '--root-pattern=//electron:electron_dist_zip']
+    if test_target:
+        require(test_target == SERIAL_TEST_LABEL, 'unsupported test target')
+        result.append('--root-pattern=' + test_target)
+    return result + ['--fail-on-unused-args']
+
+def run_test_ninja(options, sdk, native, source_root, environment):
+    output = options.work / 'out'
+    logdir = options.diagnostic_output
+    require(logdir.is_absolute() and not os.path.lexists(logdir), 'diagnostic output must be new')
+    logdir = logdir.parent.resolve(strict=True) / logdir.name
+    for root in options.diagnostic_inputs:
+        root = Path(root).resolve(strict=False)
+        require(not (logdir == root or logdir in root.parents or root in logdir.parents), 'diagnostic output overlaps input')
+    logdir.mkdir(mode=0o700)
+    sdk['process'].run_logged([native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
+        '-k', str(keep_going_limit(options)), 'netbsd_serial_refresh_unittests'],
+        str(logdir / 'build.log'), cwd=str(source_root), env=dict(environment, PYTHON_CPU_COUNT='1'))
+
 def run_ninja(options, sdk, native, source_root, environment):
     output = options.work / 'out'
     # Ninja owns the job budget. Mojo and Blink otherwise create a full CPU
@@ -4250,6 +4286,7 @@ def reconfigure(options):
     saved_bytes = (options.origin_saved_configuration if origin else
                    (work / 'configuration.json').read_bytes())
     saved = json.loads(saved_bytes)
+    test_target = selected_test(saved, getattr(options, 'test_target', None), getattr(options, 'clear_test_target', False))
     cleanup_only = bool(origin and saved['source'] == str(options.workspace))
     require(saved['source'] == str(options.workspace if cleanup_only or not origin else origin) and
             saved['sdk'] == str(options.sdk_source) and
@@ -4595,9 +4632,8 @@ def reconfigure(options):
             return
 
         if origin:
-            expected_config = dict(arguments=values, environment=environment, source=str(options.workspace),
-                                   sdk=str(options.sdk_source), host_prefix=str(options.host_prefix),
-                                   target=options.target)
+            expected_config = test_configuration(values, environment, options.workspace, options.sdk_source,
+                                                 options.host_prefix, options.target, test_target)
             config_path = work / 'configuration.json'
             def config_is_new():
                 return (config_path.is_file() and not config_path.is_symlink() and
@@ -4663,7 +4699,7 @@ def reconfigure(options):
                     (output / 'args.gn').write_text(gn_arguments(values))
                     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
                         '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
-                        '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
+                        *root_patterns(test_target)],
                         str(work / 'reconfigure.log'), cwd=str(work / 'source-view/src'), env=environment,
                         append=(work / 'reconfigure.log').exists())
                     local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(
@@ -4704,13 +4740,13 @@ def reconfigure(options):
             (output / 'args.gn').write_text(gn_arguments(values))
             sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
                 '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
-                '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
+                *root_patterns(test_target)],
                 str(work / 'reconfigure.log'), cwd=str(source_root), env=environment,
                 append=(work / 'reconfigure.log').exists())
             local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(
                 work / 'configuration.json',
-                dict(arguments=values, environment=environment, source=str(options.workspace),
-                     sdk=str(options.sdk_source), host_prefix=str(options.host_prefix), target=options.target))
+                test_configuration(values, environment, options.workspace, options.sdk_source,
+                                   options.host_prefix, options.target, test_target))
         except BaseException:
             (output / 'args.gn').write_text(old_args)
             raise
@@ -4774,7 +4810,11 @@ def build(options):
     output = options.work / 'out'
     require((output / 'args.gn').read_text() == gn_arguments(values), 'configured GN arguments changed')
     source_root = gn_source(options)
-    run_ninja(options, sdk, native, source_root, saved_env)
+    if getattr(options, 'build_test', False):
+        require(selected_test(saved) == SERIAL_TEST_LABEL, 'test target not configured; reconfigure first')
+        run_test_ninja(options, sdk, native, source_root, saved_env)
+    else:
+        run_ninja(options, sdk, native, source_root, saved_env)
 
 
 def context_keys(*paths):
@@ -4799,7 +4839,7 @@ def main():
     for name in ('workspace', 'ports-source', 'pkgsrc', 'archive', 'destination', 'git', 'patch'):
         source.add_argument('--' + name, type=Path, required=True)
     source.add_argument('--previous-prepared', type=Path)
-    for phase in ('configure', 'reconfigure', 'build'):
+    for phase in ('configure', 'reconfigure', 'build', 'build-test'):
         command = sub.add_parser(phase)
         for name in ('workspace', 'ports-source', 'sdk-source', 'host-prefix', 'compiler-prefix',
                      'sysroot', 'work', 'git', 'lock-root', 'link-context'):
@@ -4870,10 +4910,16 @@ def main():
                                  help='recompose generated sources, preserving existing Ninja objects')
             command.add_argument('--build-after-reconfigure', action='store_true',
                                  help='run Ninja after a successful reconfigure without releasing input locks')
+        if phase == 'reconfigure':
+            selection = command.add_mutually_exclusive_group()
+            selection.add_argument('--test-target', choices=(SERIAL_TEST_LABEL,))
+            selection.add_argument('--clear-test-target', action='store_true')
+        if phase == 'build-test':
+            command.add_argument('--diagnostic-output', type=Path, required=True)
         command.add_argument('--macos-minimum')
         command.add_argument('--gcc-platform-reason')
         command.add_argument('--jobs', type=int)
-        if phase in ('reconfigure', 'build'):
+        if phase in ('reconfigure', 'build', 'build-test'):
             command.add_argument('--keep-going', type=nonnegative_integer, default=1,
                                  help='continue independent Ninja jobs until N jobs fail (0 means no failure limit)')
     options = parser.parse_args()
@@ -4886,7 +4932,10 @@ def main():
         else:
             sdk = load_sdk(options.sdk_source)
             options.jobs = sdk['cpu_capacity'].resolve_jobs(options.jobs)
-            exclusive = context_keys(options.workspace, options.work)
+            options.build_test = options.phase == 'build-test'
+            if options.build_test:
+                options.phase = 'build'
+            exclusive = context_keys(options.workspace, options.work, getattr(options, 'diagnostic_output', None))
             with sdk['process'].ContextLocks(exclusive, str(options.lock_root)):
                 origin_roots = ()
                 if getattr(options, 'previous_source', None):
@@ -4936,6 +4985,11 @@ def main():
                             *(getattr(options, 'ml_' + name.replace('-', '_') + '_' + role)
                               for name in ML_PROVIDERS for role in ('source', 'archive', 'ports_source', 'pkgsrc_export', 'export_patch')))
                 shared = [key for key in context_keys(*selected, *origin_roots) if key not in exclusive]
+                if options.build_test:
+                    options.diagnostic_inputs = context_keys(
+                        *selected, *origin_roots, options.work, options.workspace,
+                        *(v for k, v in vars(options).items()
+                          if isinstance(v, Path) and k != 'diagnostic_output'))
                 with sdk['process'].ContextLocks(shared, str(options.lock_root), shared=True):
                     {'configure': configure, 'reconfigure': reconfigure, 'build': build}[options.phase](options)
     except Exception as error:

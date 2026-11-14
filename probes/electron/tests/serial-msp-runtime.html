@@ -1,0 +1,62 @@
+<!doctype html><meta charset="utf-8"><title>Web Serial MSP read-only diagnostic</title>
+<button id="start">Run read-only diagnostic</button><pre id="result">Waiting for user gesture.</pre>
+<script>
+'use strict';
+const commands = Object.freeze([[1,'API_VERSION'],[2,'FC_VARIANT'],[3,'FC_VERSION'],[4,'BOARD_INFO'],[101,'STATUS']]);
+const output = document.querySelector('#result');
+const report = {scope:'isolated diagnostic; not native chooser or Betaflight UI acceptance', commands:[], passed:false};
+function frame(code) { if (!commands.some(row => row[0] === code)) throw Error('command not allowed'); return new Uint8Array([36,77,60,0,code,code]); }
+function timeout(ms) { return new Promise((_,reject) => setTimeout(() => reject(Error('operation timeout')),ms)); }
+function bounded(promise, ms) { return Promise.race([promise, timeout(ms)]); }
+function popFrame(buffer, expected) {
+  if (buffer.length > 4096) throw Error('receive bound exceeded');
+  while (buffer.length >= 3 && !(buffer[0]===36 && buffer[1]===77 && (buffer[2]===62 || buffer[2]===33))) buffer.shift();
+  if (buffer.length < 6) return null;
+  const length=buffer[3]; if (length===255) throw Error('jumbo MSP frame unsupported');
+  if (buffer.length < length+6) return null;
+  const bytes=buffer.splice(0,length+6), code=bytes[4]; let sum=length^code;
+  for (let i=0;i<length;i++) sum ^= bytes[5+i];
+  if (sum!==bytes[5+length]) throw Error('MSP checksum mismatch');
+  if (bytes[2]===33) throw Error('MSP error response');
+  if (code!==expected) throw Error('unexpected MSP response');
+  return bytes.slice(5,5+length);
+}
+document.querySelector('#start').addEventListener('click', async event => {
+  if (!event.isTrusted || !navigator.userActivation.isActive) { output.textContent='Trusted active user gesture required.'; return; }
+  event.currentTarget.disabled=true;
+  window.fixturePhase='request-port';
+  let port, reader, writer;
+  try {
+    port=await bounded(navigator.serial.requestPort({filters:[{usbVendorId:0x0483,usbProductId:0x5740}]}),15000);
+    window.fixturePhase='port-selected';
+    const info=port.getInfo();
+    if (info.usbVendorId!==0x0483 || info.usbProductId!==0x5740) throw Error('returned USB identity differs');
+    await bounded(port.open({baudRate:115200,dataBits:8,stopBits:1,parity:'none',flowControl:'none'}),5000);
+    window.fixturePhase='port-open';
+    reader=port.readable.getReader(); writer=port.writable.getWriter();
+    const buffer=[];
+    for (const [code,label] of commands) {
+      await bounded(writer.write(frame(code)),5000);
+      const deadline=Date.now()+3000; let payload=null;
+      while (payload===null) {
+        const remaining=deadline-Date.now(); if (remaining<=0) throw Error('response timeout');
+        const {value,done}=await Promise.race([reader.read(), timeout(remaining)]);
+        if (done) throw Error('serial stream closed');
+        buffer.push(...value); payload=popFrame(buffer,code);
+      }
+      report.commands.push({code,label,length:payload.length,payloadHex:payload.map(n=>n.toString(16).padStart(2,'0')).join('')});
+    }
+    report.passed=true;
+  } catch (error) { report.error=String(error); }
+  finally {
+    if (reader) { try { await bounded(reader.cancel(),3000); } catch {} try { reader.releaseLock(); } catch {} }
+    if (writer) { try { writer.releaseLock(); } catch {} }
+    if (port) { try { await bounded(port.close(),3000); report.closed=true; } catch(error) { report.passed=false; report.closeError=String(error); } }
+    output.textContent=JSON.stringify(report,null,2);
+    console.log('MSP_DIAGNOSTIC_RESULT '+JSON.stringify(report));
+    // Terminate pending permission/open operations if any timeout occurred.
+    if (!report.passed) window.close();
+  }
+}, {once:true});
+window.fixtureReady=true;window.fixturePhase='ready';
+</script>

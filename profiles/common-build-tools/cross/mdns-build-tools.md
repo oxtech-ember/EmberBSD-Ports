@@ -24,6 +24,18 @@ removes that private-only log operand and its format fields. Both resolver
 event logs and their public values remain. The patch changes no resolver
 decisions, public interfaces or daemon command-line behavior.
 
+The mDNSCore policy patch restores the documented `mDNS_Init` contract:
+`mDNS_Init_AdvertiseLocalAddresses` creates the local A/AAAA and reverse PTR
+records for each advertised interface even before any `Target_AutoHost` service
+is registered. `mDNS_Init_DontAdvertiseLocalAddresses` remains suitable for
+client-only and proxy-registration users; explicit `AutoTargetServices` still
+drives interface records where its interface advertises. Removing the last
+AutoHost service no longer withdraws local-address records when initialization
+requested them. The existing actual-function regression covers both init
+modes, zero and one AutoTarget service, last-service removal and the per-
+interface `Advertise` gate. This is source-policy validation only: the updated
+prepared source and a rebuilt daemon's runtime network behavior remain pending.
+
 Daemon startup now stops if `F_GETFL` fails. A startup error closes a listening
 socket created by that call and invalidates its saved descriptor. Caller-owned
 launch sockets remain open. This repairs the confirmed descriptor leak in the

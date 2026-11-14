@@ -37,7 +37,17 @@ Origin: EmberBSD contributors (AI-assisted).
  // Snapshot whether this is a genuinely new Blanc profile before Chromium's
  // ready phase creates its own directories. settings.json is not sufficient:
  // old versions did not write it until a setting changed, while session.json
-@@ -13183,8 +13173,8 @@
+@@ -11570,7 +11560,8 @@
+     // killed the main process. closeTab (see its own `if (wc && ...)` guard)
+     // already treats this as nullable; this path did not.
+     const wc = liveContents(tab);
+-    if (wc && lastMainFrameMethod.get(wc.id) !== 'POST') wc.reload();
++    // Cached subresources can bypass the updated blocking policy.
++    if (wc && lastMainFrameMethod.get(wc.id) !== 'POST') wc.reloadIgnoringCache();
+   });
+ }
+ 
+@@ -13183,8 +13174,8 @@
  
  function profileWindowTitle(profile) {
    return profile?.id === DEFAULT_PROFILE_ID

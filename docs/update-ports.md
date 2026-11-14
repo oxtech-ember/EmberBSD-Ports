@@ -10,23 +10,15 @@ source checkout with `PORTS_PLAN_API = 1`. The first compatible SDK revision is
 `3d27627020c9070415d5232c7f72130c3d2ba90f`. The SDK owns graph validation,
 input keys, plans, evidence receipts, hashing, and JSON file writes.
 
-## Package revisions are not bookkeeping
+## Iteration identities and recovery
 
-Do not raise `PKGREVISION` to record an audit, a successful test, a new Git
-commit, or a documentation-only change. Record that work in Git history or
-validation evidence. A new upstream version is not the only reason for a new
-package: changed installed bytes, security fixes, ABI, runtime dependencies,
-PLIST, install/deinstall scripts or other consumer-visible package metadata
-still require the normal package revision policy. A corrected installed path
-is a real package change even if the compiled objects can be reused.
-
-Before increasing a revision, describe what changes in the delivered package
-and which build phase must run. Do not mechanically strip `PKGREVISION` from
-input hashes: recipes can interpolate it into generated sources, configure
-arguments and installed payload. A revision-only diff is a review candidate,
-not proof that two artifacts are equivalent. Do not lower a published revision,
-rename an old archive to a new package name, or replace published bytes under
-an existing immutable artifact identity.
+Follow the [package revision rules](#package-revisions): accounting changes
+belong in Git or validation evidence, not `PKGREVISION`. Before increasing a
+revision, describe the delivered package change and the phase that must run.
+Do not mechanically strip the revision from input hashes: recipes can use it
+in generated sources, configure arguments and installed payload. Do not lower
+a published revision, rename an old archive to a new name, or replace bytes
+under an immutable artifact identity.
 
 Keep these identities separate:
 
@@ -62,11 +54,15 @@ For a read-only explanation of the bulk work-directory identity check:
 
 ```sh
 python3 scripts/cross-bulk-workdir.py --explain \
-  /absolute/workdir package-base upstream-version full-package-name
+  /absolute/workdir package-base upstream-version full-package-name [build-input-digest]
 ```
 
 The `ports-workdir-explanation-v1` JSON reports `decision`, `reason`, the latest
-`phase_cookie`, recorded/requested package names and `next_step`. Inspection
+`phase_cookie`, recorded/requested package names, digest presence/match and
+`next_step`. The optional digest must be the current cross-bulk input digest;
+`metadata` means eligible for subsequent dependency checks, not unconditional
+reuse. Empty or record-only directories are `fresh`; a null recorded-digest
+field means that early classification did not inspect the record. Inspection
 returns success when it can report a decision, including `preserve-and-stop`;
 **do not use its exit status as permission to reuse a directory**. The normal
 bulk caller uses the unchanged non-JSON protocol and performs dependency and
@@ -340,6 +336,19 @@ A compatibility patch requires a fresh export, lock, and plan. Follow the
 for unchanged dependencies and reusable artifacts.
 Reuse follows the common [input key rule](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/input-keys.md). A matching key means reuse
 without rereading, rehashing or re-archiving sources, stages or outputs. Use the recorded Git hash or input key to identify those unchanged inputs.
+
+## Package revisions
+
+A changed package revision changes the package name, so every build host makes
+the package again: it compiles it, or repackages a kept work directory. Change a
+revision only when the installed files of that package change for the built
+role and architecture, and follow the
+[package revision rules](../README.md#package-revisions). Do not change the
+revisions of consumers when a provider keeps its ABI. Do not change a
+revision for test, documentation or alignment changes. A revision-only change
+of a package with a kept work directory repackages its objects without
+compiling; see
+[revision-only changes](../profiles/common-build-tools/cross/README.md#revision-only-changes).
 
 ## Checks and limits
 

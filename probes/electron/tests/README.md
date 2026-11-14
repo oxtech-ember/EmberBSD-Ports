@@ -757,3 +757,43 @@ The GN fixture uses the selected Node source's actual embedder conditionals and
 the producer's selection. It checks that empty settings omit the define and
 source, while the selected target adds the generated source exactly once and
 depends on its producer. Full Electron graph, link and runtime remain separate.
+
+## Native Web Serial MSP diagnostic
+
+`serial-msp-runtime.cjs` and `serial-msp-runtime.html` exercise Electron Web
+Serial with a physical flight controller in a fresh isolated HOME and XDG
+profile. Run the installed Electron with the CJS file, then pass
+`--expected-electron=45.3.2 --port=dtyU0` as the final arguments, replacing
+them with the installed version and the exact previously observed device
+basename. Press the diagnostic button with a real user gesture. The USB
+identity is fixed at `0483:5740`; the callback selects exactly one matching
+port. Use a controller on which a read-only serial session is appropriate.
+
+The test opens 115200 baud and sends only the five MSP v1 read commands
+API_VERSION, FC_VARIANT, FC_VERSION, BOARD_INFO and STATUS. It checks frame
+lengths and checksums and bounds its operations with timeouts. It sends no
+write, configuration, arming or firmware commands. Check the displayed JSON
+for `passed: true`, `closed: true` and all five responses. On failure the
+window closes after logging `MSP_DIAGNOSTIC_RESULT` to the process output.
+Promise timeouts alone do not abort all pending operations; use a supervisor
+with an overall timeout and owned-process cleanup. The Electron selection
+callback is programmatic, so this is not a native chooser or Betaflight UI
+test. The physical diagnostic passed on EmberBSD 11 amd64 with Electron
+package 45.3.2nb1 (runtime 45.3.2), a kernel providing `device-instance-id`,
+and an STM32F411 CRAZYBEEF4SX1280 controller with firmware 2026.6.2 and MSP
+API 1.48. Other hardware remains untested.
+
+A native WebSerial diagnostic with a USB controller checked one logical
+serial-driver detach and reattach, not a physical unplug. The initially
+selected port opened at 115200 and closed; after detach the old object rejected
+open and no port was listed. Following reattach with a new kernel instance,
+the old object again rejected open. The previously authorised same USB device
+was listed as a new object, consistent with Electron's stable serial-number
+permission within the BrowserContext. A separate fresh-process read-only MSP
+fixture subsequently checked five responses and closed normally. The first
+fresh-process attempt timed out while opening the port, so this observation
+does not establish reconnect reliability or stress and physical-replug results.
+
+The [Browser UI flow diagnostic](../../../pkgsrc/www/blanc/tests/README.md)
+is maintained with the Browser recipe; it uses an isolated profile and an
+explicitly selected installed Electron runtime.

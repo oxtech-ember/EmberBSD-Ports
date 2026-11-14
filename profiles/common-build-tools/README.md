@@ -49,6 +49,9 @@ resetting package staging. A numeric `PKGREVISION` change for the same package
 and upstream version can reuse compatible extracted/configured objects; an
 upstream or package-base change is refused before the work directory is touched.
 The normal build path still applies pkgsrc's ordinary version guard.
+A bulk `build` uses this path by itself only when the recorded build inputs
+of the work directory match; see
+[revision-only changes](cross/README.md#revision-only-changes).
 
 Pkgsrc `repackage` re-enters its build barrier after cleaning a work directory
 for a changed package revision. `tests/pkgsrc-repackage-revision.py` checks a

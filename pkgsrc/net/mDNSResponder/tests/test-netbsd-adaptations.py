@@ -80,6 +80,7 @@ def main():
     posix = (source / 'mDNSPosix/PosixDaemon.c').read_text()
     net = (source / 'mDNSPosix/mDNSPosix.c').read_text()
     common = (source / 'mDNSShared/PlatformCommon.c').read_text()
+    core = (source / 'mDNSCore/mDNS.c').read_text()
 
     route_fixture = r'''#include <assert.h>
 #include <stdint.h>
@@ -275,7 +276,78 @@ static void fixture_loginfo(const char *fmt, ...) { (void)fmt; info_logs++; }
     platform_code = platform + function(common, 'mDNSexport void mDNSPlatformSourceAddrForDest(') + platform_main
     compile_run(args.cc, work, 'source-address-probe', platform_code,
                 flags=('-DNOT_HAVE_SA_LEN',), includes=(source / 'mDNSCore', source / 'mDNSShared'))
-    print('mDNS NetBSD source adaptations: production-function regressions passed')
+
+    advertise_fixture = r'''#include <assert.h>
+#include <stdint.h>
+typedef unsigned int mDNSu32;
+typedef struct NetworkInterfaceInfo NetworkInterfaceInfo;
+struct NetworkInterfaceInfo { int Advertise; NetworkInterfaceInfo *next; };
+typedef struct { int rrtype; } ResourceRecord;
+typedef struct { ResourceRecord resrec; int AutoTarget; } AuthRecord;
+typedef struct {
+    int AdvertiseLocalAddresses;
+    mDNSu32 AutoTargetServices;
+    NetworkInterfaceInfo *HostInterfaces;
+} mDNS;
+enum { kDNSType_SRV = 33, Target_AutoHost = 1, kDeadvertiseFlag_NormalHostname = 1 };
+#define mDNSlocal static
+#define PRI_S "%s"
+#define RRLocalOnly(rr) 0
+#define AuthRecord_uDNS(rr) 0
+#define LogRedact(...) ((void)0)
+#define ARDisplayString(m, rr) "record"
+static unsigned advertisements, deadvertisements;
+static void AdvertiseInterface(mDNS *m, NetworkInterfaceInfo *set)
+{ (void)m; assert(set->Advertise); advertisements++; }
+static void DeadvertiseInterface(mDNS *m, NetworkInterfaceInfo *set, int flags)
+{ (void)m; assert(set->Advertise && flags == kDeadvertiseFlag_NormalHostname); deadvertisements++; }
+'''
+    advertise_functions = '\n'.join((
+        function(core, 'mDNSlocal void AdvertiseInterfaceIfNeeded(mDNS *const m, NetworkInterfaceInfo *set)\n{'),
+        function(core, 'mDNSlocal void AdvertiseNecessaryInterfaceRecords(mDNS *const m)'),
+        function(core, 'mDNSlocal void DecrementAutoTargetServices('),
+    ))
+    advertise_main = r'''int main(void)
+{
+    mDNS m = {0};
+    NetworkInterfaceInfo interface = {1, 0};
+    AuthRecord service = {{kDNSType_SRV}, Target_AutoHost};
+    m.HostInterfaces = &interface;
+
+    /* The interface-registration helper honors Init(true) with no AutoTarget service. */
+    m.AdvertiseLocalAddresses = 1;
+    AdvertiseInterfaceIfNeeded(&m, &interface);
+    assert(advertisements == 1 && deadvertisements == 0);
+
+    /* Keep the interface Advertise gate and the client-only Init(false) contract. */
+    interface.Advertise = 0;
+    AdvertiseNecessaryInterfaceRecords(&m);
+    assert(advertisements == 1);
+    interface.Advertise = 1;
+    m.AdvertiseLocalAddresses = 0;
+    AdvertiseInterfaceIfNeeded(&m, &interface);
+    assert(advertisements == 1);
+    m.AutoTargetServices = 1;
+    AdvertiseInterfaceIfNeeded(&m, &interface);
+    assert(advertisements == 2);
+
+    /* Removing the last AutoHost service must retain Init(true) host records. */
+    m.AdvertiseLocalAddresses = 1;
+    m.AutoTargetServices = 1;
+    DecrementAutoTargetServices(&m, &service);
+    assert(m.AutoTargetServices == 0 && deadvertisements == 0);
+
+    /* Init(false) still removes records that existed only for AutoHost service. */
+    m.AdvertiseLocalAddresses = 0;
+    m.AutoTargetServices = 1;
+    DecrementAutoTargetServices(&m, &service);
+    assert(m.AutoTargetServices == 0 && deadvertisements == 1);
+    return 0;
+}
+'''
+    compile_run(args.cc, work, 'core-advertise-local-addresses',
+                advertise_fixture + advertise_functions + advertise_main)
+    print('mDNS NetBSD/core source adaptations: production-function regressions passed')
     return 0
 
 
