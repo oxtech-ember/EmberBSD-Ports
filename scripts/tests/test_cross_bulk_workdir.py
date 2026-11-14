@@ -183,4 +183,87 @@ with tempfile.TemporaryDirectory() as temp:
     resolved.pop('FIXTURE_CMP', None)
     assert run('fixture-1.0nb2', 'fixture-2.0', '2.0').returncode == 0
     assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
-print('PASS: retry preserves objects, revision-only and unknown changes preserve and stop, dependency changes preserve and stop, incompatible upstream version retires')
+    # A recorded build-input digest equal to the current one turns a
+    # revision-only change into metadata repackaging; nothing else does.
+    meta = root / 'meta'
+    meta.mkdir()
+    for leaf in ('.extract_done', '.configure_done', '.build_done', '.package_done'):
+        (meta / leaf).write_text('meta-1.0nb1\n')
+    (meta / 'kept.o').write_bytes(b'compiled object')
+    saved = {p: (p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns) for p in meta.iterdir()}
+    digest, other = 'a' * 64, 'b' * 64
+    def meta_classify(current, inputs=None, upstream='1.0'):
+        argv = [sys.executable, str(root / 'cross-bulk-workdir.py'), str(meta), 'meta', upstream, current]
+        return subprocess.run(argv + ([inputs] if inputs is not None else []),
+                              capture_output=True, text=True)
+    record = meta / '.cross-bulk-inputs'
+    no_record = meta_classify('meta-1.0nb2', digest)
+    assert no_record.returncode != 0 and 'no recorded build inputs' in no_record.stderr
+    assert 'revision changed' in no_record.stderr
+    record.write_text('cross-bulk-inputs-v1 ' + digest + '\n')
+    saved[record] = (record.read_bytes(), record.stat().st_ino, record.stat().st_mtime_ns)
+    same_inputs = meta_classify('meta-1.0nb2', digest)
+    assert same_inputs.returncode == 0 and same_inputs.stdout.strip() == 'metadata', same_inputs.stderr
+    assert meta_classify('meta-1.0', digest).stdout.strip() == 'metadata'
+    changed_inputs = meta_classify('meta-1.0nb2', other)
+    assert changed_inputs.returncode != 0 and 'build inputs changed' in changed_inputs.stderr
+    without = meta_classify('meta-1.0nb2')
+    assert without.returncode != 0 and 'revision changed' in without.stderr
+    assert meta_classify('meta-1.0nb1', digest).stdout.strip() == 'same'
+    assert meta_classify('meta-2.0', digest, upstream='2.0').stdout.strip() == 'incompatible'
+    assert meta_classify('meta-1.0nb2', 'not-a-digest').returncode != 0
+    for bad in ('cross-bulk-inputs-v0 ' + digest, digest, 'cross-bulk-inputs-v1 ' + digest + ' extra'):
+        record.write_text(bad + '\n')
+        refused = meta_classify('meta-1.0nb2', digest)
+        assert refused.returncode != 0 and 'no recorded build inputs' in refused.stderr, bad
+    record.unlink()
+    record.symlink_to(root / 'elsewhere')
+    (root / 'elsewhere').write_text('cross-bulk-inputs-v1 ' + digest + '\n')
+    assert meta_classify('meta-1.0nb2', digest).returncode != 0
+    record.unlink()
+    record.write_text('cross-bulk-inputs-v1 ' + digest + '\n')
+    os.utime(record, ns=(saved[record][2], saved[record][2]))
+    record_ino = record.stat().st_ino
+    saved[record] = (record.read_bytes(), record_ino, saved[record][2])
+    assert {p: (p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns) for p in meta.iterdir()} == saved
+    # A directory with only a record has no objects.
+    empty = root / 'empty'
+    empty.mkdir()
+    (empty / '.cross-bulk-inputs').write_text('cross-bulk-inputs-v1 ' + digest + '\n')
+    fresh = subprocess.run([sys.executable, str(root / 'cross-bulk-workdir.py'), str(empty), 'meta',
+                            '1.0', 'meta-1.0nb2', digest], capture_output=True, text=True)
+    assert fresh.returncode == 0 and fresh.stdout.strip() == 'fresh', fresh.stderr
+    # finish_build_inputs records the inputs after a successful build;
+    # record_build_inputs keeps an equal record before a build and drops one
+    # that no longer describes the kept objects. Neither creates WRKDIR.
+    def function(fname):
+        start = text.index(fname + '()\n')
+        return text[start:text.index('\n}\n', start) + 3]
+    functions = function('record_build_inputs') + function('finish_build_inputs')
+    store = root / 'store'
+    def record_as(mode, value, call='record_build_inputs'):
+        shell = root / 'record.sh'
+        shell.write_text('#!/bin/sh\n' + functions + 'inputs_record="$2"; inputs_digest="$3"\n'
+                         + call + ' "$1"\n')
+        return subprocess.run(['/bin/sh', str(shell), str(store), mode, value],
+                              capture_output=True, text=True)
+    def finish_as(mode, value):
+        return record_as(mode, value, 'finish_build_inputs')
+    stored = store / '.cross-bulk-inputs'
+    assert record_as('write', digest).returncode == 0 and not store.exists()
+    assert finish_as('write', digest).returncode == 0 and not store.exists()
+    store.mkdir()
+    assert finish_as('same', digest).returncode == 0 and not stored.exists()
+    assert finish_as('write', digest).returncode == 0
+    assert stored.read_text() == 'cross-bulk-inputs-v1 ' + digest + '\n'
+    assert record_as('same', digest).returncode == 0 and stored.exists()
+    assert record_as('keep', other).returncode == 0 and stored.exists()
+    assert record_as('same', other).returncode == 0 and not stored.exists()
+    assert finish_as('write', digest).returncode == 0 and stored.exists()
+    assert record_as('same', '').returncode == 0 and not stored.exists()
+    assert finish_as('write', '').returncode == 0 and not stored.exists()
+    assert finish_as('write', digest).returncode == 0 and stored.exists()
+    assert record_as('write', digest).returncode == 0 and not stored.exists()
+    assert finish_as('write', digest).returncode == 0 and stored.exists()
+    assert record_as('', digest).returncode == 0 and not stored.exists()
+print('PASS: retry preserves objects, revision-only changes with recorded equal inputs repackage, other revision and unknown changes preserve and stop, dependency changes preserve and stop, incompatible upstream version retires')

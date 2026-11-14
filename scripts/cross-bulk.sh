@@ -983,6 +983,74 @@ retire()
     mv "$1" "$trash/$stamp.$2" 2> /dev/null && [ ! -e "$1" ]
 }
 
+# The build-input digest (scripts/cross-bulk-inputs.py) of package $1 with
+# bmake arguments $2..., in inputs_digest; empty when it cannot be computed
+# or when the package uses a shared stage in this run. A work directory
+# keeps the digest of the inputs it was built from in .cross-bulk-inputs:
+# a revision-only change (nbN) with the same digest repackages the kept
+# objects instead of compiling them (see prepare_wrkdir).
+# The last name always has a value: command substitution drops trailing
+# empty lines.
+build_input_names='PKGPATH PKGVERSION_NOREV DISTINFO_FILE PATCHDIR FILESDIR LOCALPATCHES DISTFILES PATCHFILES PKG_OPTIONS USE_LANGUAGES USE_TOOLS CONFIGURE_ARGS CONFIGURE_ENV MESON_ARGS CMAKE_ARGS CMAKE_CONFIGURE_ARGS CFLAGS CXXFLAGS CPPFLAGS LDFLAGS .MAKE.MAKEFILES PKGNAME .CURDIR'
+build_inputs()
+{
+    bi_path=$1
+    shift
+    inputs_digest=
+    [ -n "${host_python:-}" ] && [ -x "$host_python" ] || return 0
+    if [ "${bi_role:-target}" = target ]; then
+        shared_pair_for_path "$bi_path" || :
+        if [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ]; then
+            return 0
+        fi
+    fi
+    bi_vars=$(pkg_vars "$bi_path" "$build_input_names" "$@" 2>> "$log") || return 0
+    bi_digest=$(printf '%s\n' "$bi_vars" | "$host_python" -B -E -S "$(dirname "$0")/cross-bulk-inputs.py" \
+        --pkgsrc "$PKGSRCDIR" --wrkdir "$wrkdir" --names "$build_input_names" 2>> "$log") || return 0
+    case "$bi_digest" in ''|*[!0123456789abcdef]*) return 0 ;; esac
+    [ "${#bi_digest}" -eq 64 ] || return 0
+    inputs_digest=$bi_digest
+}
+
+# Before a build, keep or drop the build-input record of WRKDIR $1 as
+# prepare_wrkdir (or a stage-local run) decided in inputs_record. A new
+# record (write) is made only by finish_build_inputs after the package was
+# made, so a failed build leaves no record and the WRKDIR is not created
+# early.
+record_build_inputs()
+{
+    rbi_file=$1/.cross-bulk-inputs
+    case "${inputs_record:-}" in
+    write) rm -f "$rbi_file" ;;
+    same)
+        # Objects built from other inputs make the record unknown.
+        if [ -z "$inputs_digest" ] || [ ! -f "$rbi_file" ] ||
+            [ "$(cat "$rbi_file" 2>/dev/null)" != "cross-bulk-inputs-v1 $inputs_digest" ]; then
+            rm -f "$rbi_file"
+        fi ;;
+    keep) ;;
+    *) rm -f "$rbi_file" ;;
+    esac
+    return 0
+}
+
+# After a successful build, record the build inputs of the new objects in
+# WRKDIR $1. A record that cannot be written is removed: the next revision
+# change then stops as before.
+finish_build_inputs()
+{
+    fbi_file=$1/.cross-bulk-inputs
+    [ "${inputs_record:-}" = write ] || return 0
+    [ -n "$inputs_digest" ] && [ -d "$1" ] && [ ! -L "$1" ] || return 0
+    if printf 'cross-bulk-inputs-v1 %s\n' "$inputs_digest" > "$fbi_file.tmp" &&
+        mv "$fbi_file.tmp" "$fbi_file"; then
+        :
+    else
+        rm -f "$fbi_file.tmp" "$fbi_file"
+    fi
+    return 0
+}
+
 # Set clean to the clean target, or to nothing when the WRKDIR ($1) went to
 # the trash: each target-mode bmake run parses the whole package again
 # (seconds each), and the clean step would have nothing to remove.
@@ -991,15 +1059,28 @@ prepare_wrkdir()
 {
     clean=clean
     prepare_wrkdir_error=
+    prepare_wrkdir_metadata=no
+    inputs_record=write
     if [ -e "$1" ] || [ -L "$1" ]; then
-        work_identity=$("$host_python" -B -E -S "$(dirname "$0")/cross-bulk-workdir.py" "$1" "$base" "$version" "$name") || return 1
+        work_identity=$("$host_python" -B -E -S "$(dirname "$0")/cross-bulk-workdir.py" "$1" "$base" "$version" "$name" ${inputs_digest:+"$inputs_digest"}) || return 1
         case "$work_identity" in
-        same)
+        fresh) clean=; return 0 ;;
+        same|metadata)
             # Dependency names alone cannot establish object compatibility.
             # Keep the stage and stop on changes or resolver errors.
             work_dependencies_current "$@"
             case $? in
-            0) clean=; return 0 ;;
+            0)
+                clean=
+                if [ "$work_identity" = metadata ]; then
+                    # Only nbN changed and the recorded build inputs of the
+                    # kept objects are the current ones: repackage them.
+                    prepare_wrkdir_metadata=yes
+                    inputs_record=keep
+                else
+                    inputs_record=same
+                fi
+                return 0 ;;
             1)
                 echo "$3: dependency metadata changed; WRKDIR preserved: $1" >&2
                 echo "$3: inspect the dependency change, then use scoped package/package-install or reconfigure recovery for compatible inputs; rebuild incompatible objects explicitly" >&2
@@ -1204,7 +1285,7 @@ stage_configure_preserve_target()
     if [ "$install" = package-install ]; then
         set -- "$@" PKGSRC_KEEP_BIN_PKGS=yes
     fi
-    if [ "${stage_local:-no}" = yes ]; then
+    if [ "${stage_local:-no}" = yes ] || [ "${metadata_repackage:-no}" = yes ]; then
         set -- "$@" _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
             "_EMBER_STAGE_LOCAL_PKGPATH=$1" "_EMBER_STAGE_LOCAL_WRKDIR=$2"
     fi
@@ -1338,6 +1419,9 @@ build_native()
         return 0
     fi
     stage_local_metadata_changed=no
+    prepare_wrkdir_metadata=no
+    inputs_record=same
+    inputs_digest=
     if [ "${stage_local:-no}" = yes ]; then
         : > "$log"
         stage_local_identity=$(stage_local_preflight "$wrkdir" "$base" "$version" "$name" "$log") || {
@@ -1345,6 +1429,9 @@ build_native()
             return 0
         }
         [ "$stage_local_identity" != revision ] || stage_local_metadata_changed=yes
+        bi_role=native
+        build_inputs "$path" "$@"
+        bi_role=target
         set -- "$@" _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
             "_EMBER_STAGE_LOCAL_PKGPATH=$path" \
             "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir"
@@ -1367,10 +1454,22 @@ build_native()
     set +f
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
+        bi_role=native
+        build_inputs "$path" "$@"
+        bi_role=target
         prepare_wrkdir "$wrkdir" "$job.$key" "$path" "$@" || { result "$key" "failed $nnode ${prepare_wrkdir_error:-incompatible-workdir}"; return 0; }
     fi
     [ "${stage_local:-no}" = yes ] || : > "$log"
+    if [ "$prepare_wrkdir_metadata" = yes ]; then
+        # The same stage-local metadata path as an explicit package-install.
+        echo "$nnode: only the package revision changed and the recorded build inputs match; repackaging $name from the kept WRKDIR without compiling" >> "$log"
+        set -- "$@" _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
+            "_EMBER_STAGE_LOCAL_PKGPATH=$path" \
+            "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir"
+        stage_local_metadata_changed=yes
+    fi
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
+        record_build_inputs "$wrkdir" &&
         { [ "${stage_local_metadata_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" depends-clean _package-clean < /dev/null >> "$log" 2>&1; } &&
         stage_configure_preserve "$path" "$wrkdir" "$@" _AUTOMATIC=yes >> "$log" 2>&1 &&
         if [ "${package_only:-no}" = yes ]; then
@@ -1387,6 +1486,7 @@ build_native()
         else
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1
         fi; then
+        [ "${stage_local:-no}" = yes ] || finish_build_inputs "$wrkdir"
         [ "${stage_local:-no}" = yes ] || clean_success "$@"
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $nnode" >> "$state/progress"
         result "$key" "built $nnode $name native"
@@ -1484,7 +1584,7 @@ target_install()
     fi
     for target do
         if [ -n "$shared_arg" ]; then
-            if [ "${stage_local:-no}" = yes ]; then
+            if [ "${stage_local:-no}" = yes ] || [ "${metadata_repackage:-no}" = yes ]; then
                 target_install_bmake "$target" -C "$PKGSRCDIR/$tpath" "$shared_arg" \
                     _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
                     "_EMBER_STAGE_LOCAL_PKGPATH=$tpath" \
@@ -1493,7 +1593,7 @@ target_install()
                 target_install_bmake "$target" -C "$PKGSRCDIR/$tpath" "$shared_arg" || return 1
             fi
         else
-            if [ "${stage_local:-no}" = yes ]; then
+            if [ "${stage_local:-no}" = yes ] || [ "${metadata_repackage:-no}" = yes ]; then
                 target_install_bmake "$target" -C "$PKGSRCDIR/$tpath" \
                     _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
                     "_EMBER_STAGE_LOCAL_PKGPATH=$tpath" \
@@ -1764,11 +1864,16 @@ build_one()
         result "$key" "skipped $path $skip"
         return 0
     fi
+    prepare_wrkdir_metadata=no
+    metadata_repackage=no
+    inputs_record=same
+    inputs_digest=
     if [ "${stage_local:-no}" = yes ]; then
         stage_local_identity=$(stage_local_preflight "$wrkdir" "$base" "$version" "$name" "$log") || {
             result "$key" "failed $path incompatible-stage"
             return 0
         }
+        build_inputs "$path"
         stage_local_metadata_changed=no
         [ "$stage_local_identity" != revision ] || stage_local_metadata_changed=yes
         : > "$log"
@@ -1823,7 +1928,17 @@ build_one()
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
+        build_inputs "$path"
         prepare_wrkdir "$wrkdir" "$job.$key" "$path" || { result "$key" "failed $path ${prepare_wrkdir_error:-incompatible-workdir}"; return 0; }
+    fi
+    if [ "$prepare_wrkdir_metadata" = yes ]; then
+        # The same stage-local metadata path as an explicit package-install.
+        echo "$path: only the package revision changed and the recorded build inputs match; repackaging $name from the kept WRKDIR without compiling" >> "$log"
+        if ! bmk -C "$PKGSRCDIR/$path" depends-clean _package-clean < /dev/null >> "$log" 2>&1; then
+            result "$key" "failed $path package-clean"
+            return 0
+        fi
+        metadata_repackage=yes
     fi
     # One package-install run does depends, package and the install: each
     # target-mode bmake run parses the package again, and the pkg_add wrapper
@@ -1843,6 +1958,7 @@ build_one()
     fi
     set +f
     { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
+        record_build_inputs "$wrkdir" &&
         stage_configure_preserve_target "$path" "$wrkdir" >> "$log" 2>&1 &&
         target_install "$path" $install >> "$log" 2>&1 &&
         { [ -z "$replace" ] || if [ "${stage_local:-no}" = yes ]; then
@@ -1872,6 +1988,7 @@ build_one()
             result "$key" "failed $path package-hash"
             return 0
         fi
+        [ "${stage_local:-no}" = yes ] || finish_build_inputs "$wrkdir"
         shared_pair_producer_succeeded "$path"
         if ! shared_pair_ready "$path"; then
             [ "${stage_local:-no}" = yes ] || clean_success
@@ -1969,6 +2086,8 @@ package_install_one()
     fi
     if [ "$mode" = buildlink-refresh ]; then
         : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
+        # Changed links leave the recorded build inputs unknown.
+        rm -f "$CROSS_BULK_LOCKED_WORK/.cross-bulk-inputs"
         : "${CROSS_BULK_BUILDLINK_PROVIDER:?Select a buildlink provider}"
         set -- --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
             --expected-work "$CROSS_BULK_LOCKED_WORK" --provider "$CROSS_BULK_BUILDLINK_PROVIDER"
@@ -1985,6 +2104,8 @@ package_install_one()
     fi
     if [ "$mode" = patch-refresh ]; then
         : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
+        # Refreshed sources leave the recorded build inputs unknown.
+        rm -f "$CROSS_BULK_LOCKED_WORK/.cross-bulk-inputs"
         set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
             --expected-work "$CROSS_BULK_LOCKED_WORK"
         if [ "$role" = native ]; then
