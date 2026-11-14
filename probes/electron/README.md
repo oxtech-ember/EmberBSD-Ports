@@ -791,6 +791,12 @@ changes. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.
 Use a new output when those inputs have changed incompatibly.
 
+For a package workflow, invoke every controller phase (configure, reconfigure,
+build and runtime installation) from the same current exported `FILESDIR`: for
+example, `$PKGSRCDIR/devel/electron44/files/build-electron.py`. Host buildlink
+identity records the owner file paths. A standalone canonical checkout is also
+supported when every phase uses that checkout.
+
 To move an existing producer to a different verified source workspace, run a
 separate `reconfigure` with `--previous-source` naming the workspace recorded
 in the saved configuration and `--refresh-source-view`. The controller checks
@@ -807,11 +813,18 @@ The source-origin transition verifies the replacement before committing the new
 configuration. Its backup and saved configuration are temporary transaction
 state used for guarded recovery after interruption; old and backup verification
 never refresh or activate components. The sibling `work/out` and compatible
-Ninja objects remain in place. Provider, receipt and host buildlink checks
+Ninja objects remain in place. When creating an initial replacement view,
+unchanged first-party Chromium mirror files reuse the verified old view only
+after a full content and mode comparison. Git metadata, created files, Electron,
+V8 and third-party provider projections use their normal source paths. Provider,
+receipt and host buildlink checks
 remain in force, including checks of non-makefile inputs.
-Before GN, the controller prepares the selected workspace GN metadata. On
-recovery, it refreshes only an existing new view through the normal verified
-leaf transaction; the retired view and committed cleanup remain read-only.
+Before composing the view, the controller prepares generated source inputs:
+GN metadata, nonshared FFmpeg configuration and the selected Darwin dsymutil
+binding. Rust standard libraries are required only for a build. Leaf refresh
+adds a tool link only for an explicitly selected binding. On recovery, it
+refreshes only an existing new view through the normal verified leaf transaction;
+the retired view and committed cleanup remain read-only.
 
 Internal ML aliases use relative paths, so a verified view survives the origin
 transaction's renames. To normalize legacy absolute aliases during this

@@ -6,6 +6,7 @@ import os
 import re
 import ast
 import hashlib
+import errno
 import stat
 from pathlib import Path
 
@@ -214,7 +215,141 @@ def _created_subtree(root, created_files):
     return rows
 
 
-def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None, nested_omit=frozenset(), created_files=None, retired=False):
+def _open_real_directory(path):
+    """Open each directory without following symbolic links."""
+    path = Path(path)
+    require(path.is_absolute() and '..' not in path.parts, 'invalid mirror directory')
+    fd = os.open('/', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for component in path.parts[1:]:
+            next_fd = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = next_fd
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _reuse_firstparty(origin, old, output):
+    """Reuse a verified old regular file only after a stable full comparison."""
+    descriptors = []
+    created = False
+    created_inode = None
+    try:
+        try:
+            old_dir = _open_real_directory(old.parent)
+        except FileNotFoundError:
+            return False
+        descriptors.append(old_dir)
+        new_dir = _open_real_directory(origin.parent)
+        descriptors.append(new_dir)
+        output_dir = _open_real_directory(output.parent)
+        descriptors.append(output_dir)
+        try:
+            old_info = os.stat(old.name, dir_fd=old_dir, follow_symlinks=False)
+            if not stat.S_ISREG(old_info.st_mode):
+                return False
+            old_fd = os.open(old.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=old_dir)
+        except FileNotFoundError:
+            return False
+        descriptors.append(old_fd)
+        new_fd = os.open(origin.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=new_dir)
+        descriptors.append(new_fd)
+        before_old, before_new = os.fstat(old_fd), os.fstat(new_fd)
+        def identity(info):
+            return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        require(identity(before_old) == identity(old_info), 'first-party old file changed before open')
+        if (before_old.st_dev, before_old.st_ino) == (before_new.st_dev, before_new.st_ino):
+            return False
+        if not (stat.S_ISREG(before_old.st_mode) and stat.S_ISREG(before_new.st_mode)):
+            return False
+        if (stat.S_IMODE(before_old.st_mode), before_old.st_size) != (stat.S_IMODE(before_new.st_mode), before_new.st_size):
+            return False
+        while True:
+            a, b = os.read(old_fd, 1024 * 1024), os.read(new_fd, 1024 * 1024)
+            if a != b:
+                return False
+            if not a:
+                break
+        require(identity(os.fstat(old_fd)) == identity(before_old) and
+                identity(os.fstat(new_fd)) == identity(before_new) and
+                identity(os.stat(old.name, dir_fd=old_dir, follow_symlinks=False)) == identity(before_old) and
+                identity(os.stat(origin.name, dir_fd=new_dir, follow_symlinks=False)) == identity(before_new),
+                'first-party mirror input changed during comparison')
+        try:
+            created_inode = (before_old.st_dev, before_old.st_ino)
+            os.link(old.name, output.name, src_dir_fd=old_dir, dst_dir_fd=output_dir, follow_symlinks=False)
+            created = True
+            result = os.stat(output.name, dir_fd=output_dir, follow_symlinks=False)
+            old_after = os.fstat(old_fd)
+            require((old_after.st_dev, old_after.st_ino, old_after.st_mode, old_after.st_size, old_after.st_mtime_ns) ==
+                    (before_old.st_dev, before_old.st_ino, before_old.st_mode, before_old.st_size, before_old.st_mtime_ns) and
+                    (result.st_dev, result.st_ino, result.st_mode, result.st_size, result.st_mtime_ns) ==
+                    (before_old.st_dev, before_old.st_ino, before_old.st_mode, before_old.st_size, before_old.st_mtime_ns) and
+                    identity(os.fstat(new_fd)) == identity(before_new) and
+                    identity(os.stat(origin.name, dir_fd=new_dir, follow_symlinks=False)) == identity(before_new),
+                    'first-party hardlink or new input changed')
+        except OSError as error:
+            if created or error.errno != errno.EXDEV:
+                raise
+            fd = os.open(output.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                         stat.S_IMODE(before_old.st_mode), dir_fd=output_dir)
+            created = True
+            created_info = os.fstat(fd)
+            created_inode = (created_info.st_dev, created_info.st_ino)
+            descriptors.append(fd)
+            os.lseek(old_fd, 0, os.SEEK_SET)
+            while True:
+                chunk = os.read(old_fd, 1024 * 1024)
+                if not chunk:
+                    break
+                data = memoryview(chunk)
+                while data:
+                    count = os.write(fd, data)
+                    require(count > 0, 'short write to first-party copy')
+                    data = data[count:]
+            os.fchmod(fd, stat.S_IMODE(before_old.st_mode))
+            os.utime(fd, ns=(before_old.st_atime_ns, before_old.st_mtime_ns))
+            result = os.fstat(fd)
+            require((result.st_mode, result.st_size, result.st_mtime_ns) ==
+                    (before_old.st_mode, before_old.st_size, before_old.st_mtime_ns),
+                    'first-party copy metadata changed')
+            require(identity(os.fstat(old_fd)) == identity(before_old), 'first-party source changed during copy')
+            copied = os.open(output.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=output_dir)
+            descriptors.append(copied)
+            require(identity(os.fstat(copied)) == identity(result) and
+                    identity(os.stat(output.name, dir_fd=output_dir, follow_symlinks=False)) == identity(result),
+                    'first-party copied file changed before verification')
+            os.lseek(old_fd, 0, os.SEEK_SET)
+            while True:
+                a, b = os.read(old_fd, 1024 * 1024), os.read(copied, 1024 * 1024)
+                require(a == b, 'first-party copy content changed')
+                if not a:
+                    break
+            require(identity(os.fstat(copied)) == identity(result) and
+                    identity(os.fstat(fd)) == identity(result) and
+                    identity(os.stat(output.name, dir_fd=output_dir, follow_symlinks=False)) == identity(result) and
+                    identity(os.fstat(old_fd)) == identity(before_old) and
+                    identity(os.fstat(new_fd)) == identity(before_new) and
+                    identity(os.stat(origin.name, dir_fd=new_dir, follow_symlinks=False)) == identity(before_new),
+                    'first-party source changed after copy')
+        return True
+    except BaseException:
+        if created and created_inode is not None:
+            try:
+                current = os.stat(output.name, dir_fd=output_dir, follow_symlinks=False)
+                if (current.st_dev, current.st_ino) == created_inode:
+                    os.unlink(output.name, dir_fd=output_dir)
+            except FileNotFoundError:
+                pass
+        raise
+    finally:
+        for fd in reversed(descriptors):
+            os.close(fd)
+
+
+def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None, nested_omit=frozenset(), created_files=None, created_links=None, retired=False, previous=None, firstparty_root=False):
     """Mirror source entries; verification may allow named regular GN outputs.
 
     Electron's GN build_electron_definitions action creates electron-api.json
@@ -262,6 +397,14 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
                     snapshot = _created_subtree(item.path, created_files)
                     updates.append((dest / name, 'directory', item.path, item.path, snapshot, None))
                     continue
+                if stat.S_ISLNK(info.st_mode):
+                    target = os.readlink(item.path)
+                    if not created_links or created_links.get(str(item.path)) != target:
+                        raise _LayoutChanged('mirrored view entries changed: ' + str(dest))
+                    source_id = (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                                 info.st_mtime_ns, info.st_ctime_ns)
+                    updates.append((dest / name, 'link', target, item.path, source_id, None))
+                    continue
                 if not stat.S_ISREG(info.st_mode):
                     raise _LayoutChanged('mirrored view entries changed: ' + str(dest))
                 source_id = (info.st_dev, info.st_ino, info.st_mode, info.st_size,
@@ -296,12 +439,20 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
                 require(stat.S_ISDIR(output_info.st_mode),
                         'mirrored view directory changed: ' + str(output))
             nested = {Path(*p.parts[1:]) for p in nested_omit if len(p.parts) > 1 and p.parts[0] == name}
+            old_child = (Path(previous) / name if previous is not None and name != '.git' and
+                         not (firstparty_root and name in {'third_party', 'electron', 'v8', 'out'}) else None)
+            if old_child is not None and (not old_child.is_dir() or old_child.is_symlink()):
+                old_child = None
             mirror(item.path, output, verify=verify, updates=updates, nested_omit=nested,
-                   created_files=created_files, retired=retired)
+                   created_files=created_files, created_links=created_links, retired=retired, previous=old_child)
         else:
             require(stat.S_ISREG(source_info.st_mode),
                     'unsupported mirrored view file type: ' + str(item.path))
             if not verify:
+                old_leaf = Path(previous) / name if previous is not None and name != '.git' else None
+                if (old_leaf is not None and str(item.path) not in (created_files or {}) and
+                        _reuse_firstparty(Path(item.path), old_leaf, output)):
+                    continue
                 try:
                     os.link(item.path, output)
                 except OSError:
@@ -473,7 +624,7 @@ def python_view(protobuf, dest, protoc, *, verify=False):
     mirror_generated_python(protobuf / 'python', dest, generated, verify=verify)
 
 
-def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None):
+def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, previous_view=None, created_files=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     v8 = Path(v8).resolve(strict=True) if v8 is not None else None
@@ -481,6 +632,10 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         require((v8 / 'BUILD.gn').is_file() and (v8 / 'include/v8-version.h').is_file(),
                 'incomplete common V8 source')
     destination = Path(destination)
+    if previous_view is not None:
+        previous_view = Path(previous_view)
+        require(previous_view.is_absolute() and previous_view.is_dir() and not previous_view.is_symlink(),
+                'previous source view must be an absolute real directory')
     require(destination.is_absolute() and not os.path.lexists(destination),
             'source view destination must be a new absolute path')
     destination = destination.resolve()
@@ -505,7 +660,9 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         dest.mkdir()
         for name, item in entries(origin, omit).items():
             (dest / name).symlink_to(item, target_is_directory=item.is_dir())
-    mirror(source, destination / 'src', omit={'third_party', 'out'} | ({'v8'} if v8 else set()))
+    mirror(source, destination / 'src', omit={'third_party', 'out'} | ({'v8'} if v8 else set()),
+           previous=(Path(previous_view) / 'src') if previous_view is not None else None,
+           created_files=created_files, firstparty_root=True)
     if v8:
         (destination / 'src/v8').symlink_to(v8, target_is_directory=True)
     (destination / 'src/out').mkdir()
@@ -556,7 +713,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, ml_names=(), ml_verify=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False, _created_files=None, _retired=False):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, ml_names=(), ml_verify=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False, _created_files=None, _created_links=None, _retired=False):
     require(not _retired or (_updates is None and not _refresh and not _migration and _initial_missing is None),
             'retired view verification must be read-only')
     source = Path(source).resolve(strict=True)
@@ -598,10 +755,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                     'source view link changed: ' + str(link))
     root = destination / 'src'
     root_special = {'third_party', 'out'} | ({'v8'} if v8 else set())
-    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()), updates=_updates, created_files=_created_files, retired=_retired)
+    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()), updates=_updates, created_files=_created_files, created_links=_created_links, retired=_retired)
     if node_modules is not None:
         mirror(source / 'electron', root / 'electron', verify=True, omit={'node_modules'},
-               generated_files={'electron-api.json', 'electron.d.ts'}, updates=_updates, created_files=_created_files, retired=_retired)
+               generated_files={'electron-api.json', 'electron.d.ts'}, updates=_updates, created_files=_created_files, created_links=_created_links, retired=_retired)
     require({item.name for item in root.iterdir()} >= root_special, 'source view root entries changed')
     if v8:
         _check_provider_link(root / 'v8', v8, _updates)
@@ -615,7 +772,7 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         nested = {Path('src/node_modules')} if name == 'devtools-frontend' and node_modules is not None and not _legacy_devtools else frozenset()
         mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
                omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset(),
-               updates=_updates, nested_omit=nested, created_files=_created_files, retired=_retired)
+               updates=_updates, nested_omit=nested, created_files=_created_files, created_links=_created_links, retired=_retired)
         if nested:
             link = root / 'third_party' / name / 'src/node_modules'
             require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
@@ -766,7 +923,7 @@ def _copy_leaf(source, destination, *, hardlink=False):
         shutil.copy2(source, destination)
 
 
-def _refresh_leaves(source, protobuf, destination, sources, *, created_files=None, publication=None):
+def _refresh_leaves(source, protobuf, destination, sources, *, created_files=None, created_links=None, publication=None):
     """Update only verified leaves under the caller's exclusive source lock.
 
     Ordinary failures restore the previous leaves. An interrupted process
@@ -786,6 +943,8 @@ def _refresh_leaves(source, protobuf, destination, sources, *, created_files=Non
                 'invalid source view refresh marker')
     updates = []
     extra = {'_created_files': created_files} if created_files is not None else {}
+    if created_links is not None:
+        extra['_created_links'] = created_links
     verify(source, protobuf, destination, **sources, _updates=updates, _refresh=True, **extra)
     if not updates:
         if recovering:
@@ -829,7 +988,9 @@ def _refresh_leaves(source, protobuf, destination, sources, *, created_files=Non
                 require(publication is not None and _created_subtree(origin, created_files) == expected_source,
                         'created source subtree changed before staging')
             elif origin is not None:
-                require(_leaf_identity(origin) == expected_source, 'source leaf changed before staging')
+                require(_leaf_identity(origin) == expected_source and
+                        (kind != 'link' or os.readlink(origin) == value),
+                        'source leaf changed before staging')
             new = staged / ('new-' + str(index))
             if kind == 'link':
                 new.symlink_to(value)
@@ -852,7 +1013,9 @@ def _refresh_leaves(source, protobuf, destination, sources, *, created_files=Non
             else:
                 _copy_leaf(Path(value), new)
             if origin is not None and kind != 'directory':
-                require(_leaf_identity(origin) == expected_source, 'source leaf changed during staging')
+                require(_leaf_identity(origin) == expected_source and
+                        (kind != 'link' or os.readlink(origin) == value),
+                        'source leaf changed during staging')
             if expected_old is not None:
                 _copy_leaf(output, staged / ('old-' + str(index)), hardlink=True)
                 current_old = _leaf_identity(output)
@@ -886,7 +1049,9 @@ def _refresh_leaves(source, protobuf, destination, sources, *, created_files=Non
                     require(_created_subtree(origin, created_files) == expected_source,
                             'created source subtree changed before install')
                 elif origin is not None:
-                    require(_leaf_identity(origin) == expected_source, 'source leaf changed before install')
+                    require(_leaf_identity(origin) == expected_source and
+                            (kind != 'link' or os.readlink(origin) == value),
+                            'source leaf changed before install')
                 fd = parent_fds[output.parent]
                 if kind == 'directory':
                     _, tree = created_trees[index]
@@ -911,6 +1076,9 @@ def _refresh_leaves(source, protobuf, destination, sources, *, created_files=Non
                     os.replace(staged / ('new-' + str(index)), output.name, dst_dir_fd=fd)
                 require(_leaf_identity(output.name, dir_fd=fd)[:5] == new_identities[index],
                         'installed source view leaf changed')
+                if origin is not None and kind == 'link':
+                    require(_leaf_identity(origin) == expected_source and os.readlink(origin) == value,
+                            'source link changed during install')
                 if expected_old is None:
                     continue
                 # Installing one name can change ctime of other names for

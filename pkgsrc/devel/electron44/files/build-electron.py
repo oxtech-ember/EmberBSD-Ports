@@ -2428,14 +2428,16 @@ def require_rust_std(host_prefix, target):
 def ensure_host_dsymutil(workspace, native):
     """Bind Chromium's macOS tool path to the selected native-prefix tool."""
     if native.host['os'] != 'Darwin':
-        return
+        return {}
     src = Path(native.tool('dsymutil')).resolve(strict=True)
     dest = workspace / 'src/tools/clang/dsymutil/bin/dsymutil'
     if dest.exists() or dest.is_symlink():
-        require(dest.resolve(strict=True) == src, 'existing dsymutil differs from selected native tool')
-        return
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.symlink_to(src)
+        require(dest.is_symlink() and os.readlink(dest) == str(src),
+                'existing dsymutil differs from selected native tool')
+    else:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.symlink_to(src)
+    return {str(dest): str(src)}
 
 
 def ensure_ffmpeg_netbsd_config(workspace):
@@ -2506,7 +2508,11 @@ def ensure_lastchange(workspace, native, environment, sdk):
 
 
 
-def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=False):
+def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=False, previous_view=None):
+    require(previous_view is None or (getattr(options, 'phase', '') == 'configure' and
+            not getattr(options, 'verify_selected_source_view', False) and
+            Path(previous_view) == options.work.parent / 'source-view'),
+            'previous source view is only available to an initial origin factory')
     require(not refresh_selected or (getattr(options, 'verify_selected_source_view', False) and
                                      not retired and legacy_ml_root is None),
             'selected refresh requires a new frozen source view')
@@ -2541,6 +2547,9 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
         created = getattr(options, 'source_view_created_files', None)
         extra = ({'created_files': created,
                   'publication': options.source_view_publication} if created else {})
+        links = getattr(options, 'source_view_created_links', None)
+        if links:
+            extra['created_links'] = links
         return view._refresh_leaves(options.workspace / 'src', common, destination,
                                     current, **extra)
 
@@ -3148,7 +3157,8 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
         new_view = not os.path.lexists(destination)
         if new_view:
             require(getattr(options, 'phase', '') == 'configure', 'common source view is missing')
-            view.create(options.workspace / 'src', common, destination, **sources)
+            view.create(options.workspace / 'src', common, destination, **sources,
+                        previous_view=previous_view, created_files=getattr(options, 'source_view_created_files', None))
             # Only a successfully created view in a fresh ordinary configure
             # may reuse verified selections within this invocation.
             if fresh_selection:
@@ -3383,7 +3393,8 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
         return refresh_leaves(sources)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
-        if ids or getattr(options, 'source_view_created_files', None):
+        if (ids or getattr(options, 'source_view_created_files', None) or
+                getattr(options, 'source_view_created_links', None)):
             return refresh_leaves(sources)
         return view.refresh(options.workspace / 'src', common, destination, **sources)
     if not os.path.lexists(destination):
@@ -3427,11 +3438,15 @@ def require_common_perfetto(options):
             'Electron 45 requires the verified common Perfetto source, owner, archive and patch')
 
 
-def prepare_build_inputs(options, native, environment, sdk):
+def prepare_source_inputs(options, native, environment, sdk):
     ensure_lastchange(options.workspace, native, environment, sdk)
     if not getattr(options, 'shared_ffmpeg', False):
         ensure_ffmpeg_netbsd_config(options.workspace)
-    ensure_host_dsymutil(options.workspace, native)
+    options.source_view_created_links = ensure_host_dsymutil(options.workspace, native) or {}
+
+
+def prepare_build_inputs(options, native, environment, sdk):
+    prepare_source_inputs(options, native, environment, sdk)
     require_rust_std(options.host_prefix, options.target)
 
 
@@ -4558,7 +4573,7 @@ def reconfigure(options):
             prepare_build_inputs(options, native, environment, sdk)
         elif (not cleanup_only and not getattr(options, 'migrate_devtools_modules_only', False) and
               not getattr(options, 'migrate_ml_alias_root', None)):
-            ensure_lastchange(options.workspace, native, environment, sdk)
+            prepare_source_inputs(options, native, environment, sdk)
 
         if getattr(options, 'migrate_devtools_modules_only', False):
             require(not build_after_reconfigure, 'migration-only cannot build')
@@ -4606,6 +4621,7 @@ def reconfigure(options):
                 previous_options = view_options(path, old_workspace, old_node, old_v8)
                 previous_options.spirv_selection = old_spirv
                 previous_options.source_view_created_files = None
+                previous_options.source_view_created_links = None
                 previous_options.source_view_publication = None
                 result = gn_source(previous_options, retired=True, legacy_ml_root=legacy_root)
                 require(result == path / 'src', 'old source view verification returned another path')
@@ -4622,7 +4638,7 @@ def reconfigure(options):
 
             def build_new(path):
                 result = gn_source(view_options(path, options.workspace, options.node_source, options.v8_source,
-                                                factory=True))
+                                                factory=True), previous_view=work / 'source-view')
                 require(result == path / 'src', 'source view factory returned another path')
 
             def commit_config():
@@ -4655,7 +4671,7 @@ def reconfigure(options):
                 complete_ml_alias_migration(
                     mode, stable, backup, legacy_factory, verify_old, verify_new,
                     lambda path, previous: ml.migrate_aliases(view, path, previous),
-                    lambda: ensure_lastchange(options.workspace, native, environment, sdk))
+                    lambda: prepare_source_inputs(options, native, environment, sdk))
             transition.transition(work, saved_configuration=saved_bytes, config_is_new=config_is_new,
                                   verify_old=verify_old, verify_new=verify_new,
                                   build_new=build_new, prepare_existing_new=prepare_existing_new,

@@ -2,6 +2,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 import argparse,importlib.util,os,shutil,subprocess,sys,tempfile
 from pathlib import Path
+from types import SimpleNamespace
 parser=argparse.ArgumentParser()
 parser.add_argument('--source',type=Path,required=True);parser.add_argument('--git',type=Path,required=True)
 a=parser.parse_args();assert a.source.is_absolute() and a.git.is_absolute()
@@ -21,11 +22,19 @@ with tempfile.TemporaryDirectory() as d:
  consumer=dest/'src/build/compute_build_timestamp.py'
  before=subprocess.run([python,'-B',str(consumer),'official'],capture_output=True,env=env);assert before.returncode and b'LASTCHANGE.committime' in before.stderr
  class Native:
-  def tool(self,n): assert n=='python';return python
+  host={'os': 'Darwin' if sys.platform == 'darwin' else 'Linux'}
+  def tool(self,n):
+   if n=='python': return python
+   assert n=='dsymutil'; return str((Path(python).parent/'dsymutil').resolve(strict=True))
  class Proc:
   @staticmethod
   def capture(argv,**kwargs):return subprocess.run(argv,check=True,stdout=subprocess.PIPE,**kwargs)
- m.ensure_lastchange(w/'workspace',Native(),env,{'process':Proc})
+ opt=SimpleNamespace(workspace=w/'workspace',shared_ffmpeg=True)
+ m.prepare_source_inputs(opt,Native(),env,{'process':Proc})
+ if sys.platform == 'darwin':
+  link=src/'tools/clang/dsymutil/bin/dsymutil'
+  assert opt.source_view_created_links == {str(link):str(Path(Native().tool('dsymutil')).resolve())}
+  assert link.is_symlink() and os.readlink(link)==opt.source_view_created_links[str(link)]
  def verify(source,protobuf,destination,*,_updates=None,_refresh=False,**kw):v.mirror(source/'build',destination/'src/build',verify=True,updates=_updates);return destination/'src'
  v.verify=verify;v._refresh_leaves(src,None,dest,{})
  after=subprocess.run([python,'-B',str(consumer),'official'],capture_output=True,env=env);assert after.returncode==0,(after.stdout,after.stderr)
