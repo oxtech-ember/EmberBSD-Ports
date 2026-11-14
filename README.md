@@ -1045,6 +1045,8 @@ each query reuses the build-host facts (`OSX_*` and `NATIVE_*`) from
 missing provider or a failed query makes it exit 1.
 `python3 scripts/tests/test_check_export_depends.py` tests it on a fixture.
 
+### Package revisions
+
 Some packages set `PKGREVISION` only for the cross build or only for the
 native build, and some `buildlink3.mk` pins name such a revision. A pin that
 the build cannot satisfy makes the pkgsrc depends step rebuild the provider
@@ -1055,9 +1057,34 @@ revision than the cross or native build that it applies to sets for the same
 version. It also checks an export when given its path.
 `python3 scripts/tests/test_check_cross_revisions.py` tests it.
 
-Keep a package revision tied to a change in installed payload or package
-metadata. A failed build, upload or cleanup does not by itself require another
-revision. Preserve signed archives for publication recovery instead of rebuilding
+A package revision (`PKGREVISION`, the `nbN` of the package name) causes a
+rebuild: binary reuse and the `STATE/done` records compare the full package
+name. Change it only when the installed files of that package change for the
+role and architecture that are built: a patch or recipe change in the
+compiled source, new options, flags or configure arguments, a dependency
+whose ABI changed, or a changed `PLIST`, install script or file. When the
+change applies to one role (native or cross) or one architecture, change only
+the revision of that build with a conditional revision (see above).
+Do not change a revision for:
+
+- a test, documentation, comment or license-text change that is not installed;
+- the same number on all targets ("alignment") or a preserved number;
+- a dependency pattern change that the installed providers already satisfy;
+  `bmake repackage-metadata` refreshes such package metadata from a
+  completed build. A new runtime dependency that the package needs is a
+  package change;
+- an update of a consumer whose provider kept its ABI, or of each consumer
+  of a provider (no recursive consumer bumps);
+- a failed build, upload or cleanup.
+
+When an external change (a toolchain or SDK fix outside the recipe) requires
+new objects, add a comment next to the revision that names the reason.
+`cross-bulk.sh` compares a digest of the recipe files without the revision
+lines: a revision change without other recipe changes repackages the kept
+objects, and the comment makes the digest different, so the package compiles
+again. See [revision-only changes](profiles/common-build-tools/cross/README.md#revision-only-changes).
+
+Preserve signed archives for publication recovery instead of rebuilding
 or resigning them under an immutable name. Check the evaluated selected graph
 before compiling, including exact runtime/SDK dependencies and native tool roles.
 
@@ -1070,6 +1097,8 @@ devel dependency metadata needs its own revision before publication. Complete th
 The [bmake metadata regression](pkgsrc/x11/qt6-qtbase/tests/package-revisions.py)
 checks both target architectures, invalid overrides and a simulated single
 revision edit; it does not compile Qt or qualify package installation.
+
+### Probes and toolkit recipes
 
 Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary

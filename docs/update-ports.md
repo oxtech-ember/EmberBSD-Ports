@@ -253,6 +253,18 @@ for unchanged dependencies and reusable artifacts.
 Reuse follows the common [input key rule](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/input-keys.md). A matching key means reuse
 without rereading, rehashing or re-archiving sources, stages or outputs. Use the recorded Git hash or input key to identify those unchanged inputs.
 
+## Package revisions
+
+A changed package revision makes every pass build the package again. Change a
+revision only when the installed files of that package change for the built
+role and architecture, and follow the
+[package revision rules](../README.md#package-revisions). Do not change the
+revisions of consumers when a provider keeps its ABI. Do not change a
+revision for test, documentation or alignment changes. A revision-only change
+of a package with a kept work directory repackages its objects without
+compiling; see
+[revision-only changes](../profiles/common-build-tools/cross/README.md#revision-only-changes).
+
 ## Checks and limits
 
 The libzip consumer `textproc/ebook-tools` uses CMake on the build host.

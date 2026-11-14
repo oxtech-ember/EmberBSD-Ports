@@ -923,6 +923,46 @@ otherwise become unintended test inputs on NetBSD. Do not count a host
 execution or version string as target acceptance. The [Libtool record](../libtool.md)
 explains source regeneration and target script conversion.
 
+## Revision-only changes
+
+A bulk `build` keeps a `WRKDIR` whose phase cookies name the same package, and
+stops for a `WRKDIR` of the same upstream version with another package
+revision: the objects stay for an explicit recovery. Before a package builds,
+`scripts/cross-bulk-inputs.py` makes a digest of its build inputs. The digest
+includes the makefiles that the parse read, all files in the package
+directory, the `distinfo` file, the patch and file directories, local
+patches, the sources, options, tools, configure arguments and compiler flags.
+It ignores the lines that set `PKGREVISION` and number variables that only
+`PKGREVISION` uses, such as `MESA_PORT_REVISION`. When a recipe uses the
+package name, version or revision in other variables, the digest includes
+the package name. A successful build writes the digest to
+`WRKDIR/.cross-bulk-inputs`.
+
+When the next pass finds a `WRKDIR` of the same upstream version with another
+package revision, and the recorded digest is the current one, the build does
+not compile. It removes the old package metadata and staging (`depends-clean
+_package-clean`) and runs the stage-local metadata path of `package-install`
+(`_EMBER_STAGE_LOCAL_PACKAGE_INSTALL`): the kept objects are installed into
+the stage and packaged under the new name. The log of the package names this.
+This applies to target and native packages. A changed digest, a `WRKDIR`
+without a record (a build before this change), or changed dependency metadata
+stops the package as before and keeps the objects. A shared LLVM or Qtbase
+stage has no record. `patch-refresh` and
+`buildlink-refresh` remove the record.
+
+The digest does not include the toolchain, the SDK or files outside the pkgsrc
+tree that a recipe does not name. When such a change requires new objects,
+add a comment next to the revision change in the recipe: the comment changes
+the digest. After a manual edit in a `WRKDIR`, remove its
+`.cross-bulk-inputs`. Binary package reuse from `PACKAGES` and the package
+catalog still compares the full package name.
+
+`python3 scripts/tests/test_cross_bulk_inputs.py` checks the digest.
+`python3 scripts/tests/test_cross_bulk_workdir.py` checks the `WRKDIR`
+decisions. `scripts/tests/cross-bulk-revision-metadata.sh NEW_OUTPUT` checks a
+revision-only repackage for both roles, and the stop for changed inputs and for
+a `WRKDIR` without a record.
+
 ## Cached file-check recovery
 
 The common export makes each file-check result depend on its output directory.
