@@ -3465,10 +3465,13 @@ def keep_going_limit(options):
 
 def run_ninja(options, sdk, native, source_root, environment):
     output = options.work / 'out'
+    # Ninja owns the job budget. Mojo and Blink otherwise create a full CPU
+    # pool in every concurrent Python action, multiplying --jobs by CPU count.
+    ninja_environment = dict(environment, PYTHON_CPU_COUNT='1')
     sdk['process'].run_logged([native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
                               '-k', str(keep_going_limit(options)),
                               'electron_dist_zip'], str(options.work / 'build.log'),
-                             cwd=str(source_root), env=environment,
+                             cwd=str(source_root), env=ninja_environment,
                              append=(options.work / 'build.log').exists())
     archive = output / 'dist.zip'
     require(archive.is_file(), 'Electron producer did not create dist.zip')

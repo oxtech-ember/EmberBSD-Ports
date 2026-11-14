@@ -728,6 +728,20 @@ cd /absolute/chromium/src/v8
 Use the [V8 GCC16 regression guide](tests/v8-gcc16-netbsd.md) to replay the
 production target commands.
 
+## Build parallelism
+
+`--jobs` (the recipe's `EMBERBSD_ELECTRON_JOBS`, defaulting to `MAKE_JOBS`)
+controls Ninja's concurrent actions. The controller sets `PYTHON_CPU_COUNT=1`
+only in Ninja's execution environment: the selected Ports Python exposes one
+CPU to the nested Mojo and Blink multiprocessing pools. Each generator thus
+runs its Python work serially instead of multiplying the Ninja job budget by
+the host CPU count. Source verification and saved configuration are unchanged;
+changing the job count does not require clearing compatible objects.
+
+[The generator regression](tests/electron-generator-jobs.py) uses real selected
+Ninja and Python to check both CPU discovery APIs and nested worker counts.
+This is a parallelism policy, not an aggregate memory limit for the build.
+
 ## Acceptance
 
 Run the installed package in the selected EmberBSD target. Check HTTPS navigation, tabs,
