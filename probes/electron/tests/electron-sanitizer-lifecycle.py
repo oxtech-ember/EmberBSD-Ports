@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory() as td:
   try:yield
   finally:active.pop()
  def run_logged(cmd,*args,**kw):
-  assert active;commands.append(cmd)
+  assert active and kw['env']['PYTHON_CPU_COUNT']=='1';commands.append(cmd)
  fonts=SimpleNamespace(validate=lambda *args:(validations.append(True) or root/'fonts'),recover=lambda *args:None,linked=linked)
  sdk={'process':SimpleNamespace(run_logged=run_logged)}
  def atomic(path,data):

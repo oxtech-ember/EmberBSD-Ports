@@ -3727,7 +3727,8 @@ def configure(options):
             try:
                 with fonts.linked(work, options.workspace, font_target):
                     sdk['process'].run_logged(command, str(work / 'configure.log'), cwd=str(source_root),
-                                              env=environment, append=retry and os.path.lexists(work / 'configure.log'))
+                                              env=dict(environment, PYTHON_CPU_COUNT='1'),
+                                              append=retry and os.path.lexists(work / 'configure.log'))
             finally:
                 fonts.validate(sdk, options.workspace, options.git, options.test_fonts_source)
                 verify_source(options.workspace, options.ports_source, options.git)
