@@ -10,8 +10,10 @@ only the package revision (nbN) changed and that BUILD_INPUTS, the
 scripts/cross-bulk-inputs.py digest of the current recipe, equals the
 digest that cross-bulk recorded in RECORD after it built these objects: the
 objects can be repackaged with the new metadata without compiling them.
-Every other revision change stops for an explicit decision.
+Every other revision change stops for an explicit decision. --explain emits
+a read-only JSON diagnostic, not permission to skip subsequent dependency checks.
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -19,13 +21,39 @@ from pathlib import Path
 RECORD = '.cross-bulk-inputs'
 SCHEMA = 'cross-bulk-inputs-v1'
 
-if len(sys.argv) not in (5, 6):
+args = sys.argv[1:]
+explain = bool(args and args[0] == '--explain')
+if explain:
+    args = args[1:]
+if len(args) not in (4, 5):
     sys.exit('cross-bulk: work directory check needs a directory, package base, version, and name')
-root, base, version, current = Path(sys.argv[1]), *sys.argv[2:5]
-inputs = sys.argv[5] if len(sys.argv) == 6 else ''
-def fail(message):
-    sys.exit('cross-bulk: cannot safely reuse work directory: ' + message +
-             '; inspect it and explicitly clean if incompatible')
+root, base, version, current = Path(args[0]), *args[1:4]
+inputs = args[4] if len(args) == 5 else ''
+report = {'schema': 'ports-workdir-explanation-v1', 'read_only': True,
+          'requested_package': current, 'requested_upstream_version': version,
+          'recorded_package': None, 'phase_cookie': None,
+          'build_inputs_supplied': bool(inputs), 'build_inputs_recorded': None,
+          'build_inputs_match': None, 'dependency_checks': 'not-performed'}
+
+
+def finish(decision, reason, message, next_step):
+    if explain:
+        report.update(decision=decision, reason=reason, detail=message, next_step=next_step)
+        print(json.dumps(report, sort_keys=True))
+        sys.exit(0)
+    if decision == 'preserve-and-stop':
+        sys.exit('cross-bulk: cannot safely reuse work directory: ' + message +
+                 '; WRKDIR preserved; ' + next_step)
+    print(decision)
+    sys.exit(0)
+
+
+def fail(message, reason='package-revision-changed'):
+    finish('preserve-and-stop', reason, message,
+           'inspect effective inputs and dependencies; explicitly reconfigure/rebuild '
+           'or use scoped metadata package-install; clean only if incompatible')
+
+
 def recorded():
     path = root / RECORD
     if path.is_symlink() or not path.is_file():
@@ -40,39 +68,48 @@ def recorded():
 if inputs and not re.fullmatch(r'[0-9a-f]{64}', inputs):
     sys.exit('cross-bulk: invalid build-input digest')
 if root.is_symlink() or not root.is_dir():
-    fail('not a real directory')
+    fail('not a real directory', 'invalid-directory')
 if not any(path.name != RECORD for path in root.iterdir()):
-    print('fresh')
-    sys.exit(0)
+    finish('fresh', 'empty-directory', 'no retained build state', 'continue the ordinary build')
 cookie = root / '.extract_done'
 if cookie.is_symlink() or not cookie.is_file():
-    fail('missing extract identity')
+    fail('missing extract identity', 'missing-extract-identity')
 old = cookie.read_text(encoding='utf-8').strip()
+report.update(recorded_package=old, phase_cookie='.extract_done')
+stored_inputs = recorded()
+report.update(build_inputs_recorded=bool(stored_inputs),
+              build_inputs_match=(stored_inputs == inputs) if stored_inputs and inputs else None)
 pattern = re.compile(re.escape(base) + r'-([0-9][A-Za-z0-9._+~-]*?)(?:nb[0-9]+)?\Z')
 a, b = pattern.fullmatch(old), pattern.fullmatch(current)
 if not a or not b or b.group(1) != version:
-    fail('unknown package identity')
+    fail('unknown package identity', 'unknown-package-identity')
 if a.group(1) != version:
-    print('incompatible')
+    finish('incompatible', 'upstream-version-changed', old + ' -> ' + current,
+           'ordinary bulk preparation retires this upstream-version work directory')
 else:
     latest = old
     # .patch_done contains applied patch paths, not a package identity.
     for name in ('.configure_done', '.build_done', '.install_done', '.package_done'):
         phase = root / name
         if phase.is_symlink() or (phase.exists() and not phase.is_file()):
-            fail('invalid phase identity ' + name)
+            report['phase_cookie'] = name
+            fail('invalid phase identity ' + name, 'invalid-phase-identity')
         if phase.is_file():
             latest = phase.read_text(encoding='utf-8').strip()
+            report.update(recorded_package=latest, phase_cookie=name)
     if latest != current:
         changed = pattern.fullmatch(latest)
-        if changed and changed.group(1) == version and inputs and recorded() == inputs:
+        if changed and changed.group(1) == version and inputs and stored_inputs == inputs:
             # Only the revision changed, and the recorded recipe inputs of
             # these objects are the current ones.
-            print('metadata')
-            sys.exit(0)
+            finish('metadata', 'revision-only-inputs-match', 'revision changed with matching recorded build inputs',
+                   'continue dependency checks; only then repackage metadata from retained objects')
         # Selecting a source build does not prove that its objects are
         # incompatible. Preserve them for explicit scoped recovery.
-        detail = ('build inputs changed since this work directory was built' if inputs and recorded()
+        if not changed or changed.group(1) != version:
+            fail('unknown phase identity ' + report['phase_cookie'], 'unknown-phase-identity')
+        detail = ('build inputs changed since this work directory was built' if inputs and stored_inputs
                   else 'no recorded build inputs for this work directory')
-        fail('revision changed (' + detail + '); explicitly reconfigure/rebuild or use metadata package-install')
-    print('same')
+        fail('revision changed (' + detail + ')')
+    finish('same', 'package-identity-matches', 'latest recorded package identity matches',
+           'continue dependency and normal phase checks; identity alone does not prove compatible inputs')

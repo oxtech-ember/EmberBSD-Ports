@@ -91,6 +91,10 @@ case "\$target" in
     show-vars)
         for v in \$varnames; do
             case "\$v" in
+                NATIVE_PKG_ADD_CMD) echo "$out/pkg_add" ;;
+                PKG_INFO) if [ "\$native" = yes ]; then echo "$out/pkg_info -K $out/native-db"; else echo "$out/pkg_info -K $out/target-db"; fi ;;
+                CROSSTARGETSETTINGS) echo ;;
+                PACKAGES) echo "$out/packages" ;;
                 OPSYS) echo NetBSD ;;
                 MACHINE_ARCH) echo aarch64 ;;
                 MACHINE_GNU_PLATFORM) echo aarch64--netbsd ;;

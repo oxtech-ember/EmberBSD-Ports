@@ -89,7 +89,7 @@ with tempfile.TemporaryDirectory() as temp:
     assert not (root / 'work.retired').exists()
     (work / '.package_done').write_text('not-an-identity\n')
     ambiguous = run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0')
-    assert ambiguous.returncode != 0 and work.exists() and 'revision changed' in ambiguous.stderr, ambiguous.stderr
+    assert ambiguous.returncode != 0 and work.exists() and 'unknown phase identity' in ambiguous.stderr, ambiguous.stderr
     assert not (root / 'work.retired').exists()
     (work / '.package_done').unlink()
     css = root / 'cssparser'
