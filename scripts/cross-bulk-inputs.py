@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Print the build-input digest of one evaluated pkgsrc package.
+r"""Print the build-input digest of one evaluated pkgsrc package.
 
 cross-bulk records this digest in a work directory after a successful build
 there, and compares it when only the package revision (nbN) changes. Equal
