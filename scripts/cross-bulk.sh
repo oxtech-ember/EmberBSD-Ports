@@ -1945,16 +1945,28 @@ package_install_one()
         echo "CROSS_BULK_MAKE_JOBS=$make_jobs exceeds resolved CPU capacity=$cpus" >&2
         return 2
     fi
-    real_pkg_add=$(var pkgtools/pkg_install NATIVE_PKG_ADD_CMD)
+    # These selections share the same recipe and query context. Read them
+    # in one parse per process instead of four, without persisting a cache.
+    # PACKAGES is last and nonempty, so shell command substitution cannot
+    # discard an empty optional CROSSTARGETSETTINGS row.
+    recovery_vars=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" show-vars \
+        VARNAMES='NATIVE_PKG_ADD_CMD PKG_INFO CROSSTARGETSETTINGS PACKAGES' < /dev/null) || return 2
+    [ "$(printf '%s\n' "$recovery_vars" | wc -l | tr -d ' ')" = 4 ] || {
+        echo 'Unexpected package recovery environment metadata' >&2
+        return 2
+    }
+    real_pkg_add=$(printf '%s\n' "$recovery_vars" | sed -n 1p)
+    target_pkg_info=$(printf '%s\n' "$recovery_vars" | sed -n 2p)
+    target_settings=$(printf '%s\n' "$recovery_vars" | sed -n 3p)
+    packages=$(printf '%s\n' "$recovery_vars" | sed -n 4p)
     [ -n "$real_pkg_add" ] || { echo 'NATIVE_PKG_ADD_CMD is empty' >&2; return 2; }
+    [ -n "$target_pkg_info" ] || { echo 'The target PKG_INFO is empty' >&2; return 2; }
+    [ -n "$packages" ] || { echo 'PACKAGES is empty' >&2; return 2; }
     pkg_add_wrapper "$real_pkg_add" > "$run/pkg_add"
     chmod +x "$run/pkg_add"
-    target_pkg_info=$(var pkgtools/pkg_install PKG_INFO)
-    [ -n "$target_pkg_info" ] || { echo 'The target PKG_INFO is empty' >&2; return 2; }
     if [ "$role" = native ]; then native_info; fi
-    packages=$(var pkgtools/pkg_install PACKAGES)/All
+    packages=$packages/All
     native_packages=${packages%/All}-native
-    target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
     if [ "$role" = native ]; then
         awk '$1 ~ /@native$/ && $2 !~ /@native$/ { print $1 }' "$state/edges" | sort -u > "$run/crossfed"
     else

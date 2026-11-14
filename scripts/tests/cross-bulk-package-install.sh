@@ -171,6 +171,10 @@ case "\$target" in
     show-vars)
         for v in \$varnames; do
             case "\$v" in
+                NATIVE_PKG_ADD_CMD) echo $out/pkg_add;;
+                PKG_INFO) if [ "\$native" = yes ]; then echo "$out/pkg_info -K $out/native-db"; else echo "$out/pkg_info -K $out/db"; fi;;
+                CROSSTARGETSETTINGS) echo TARGET_SETTING=selected;;
+                PACKAGES) if [ "\$native" = yes ]; then echo $out/packages-native; else echo $out/packages; fi;;
                 PKGNAME) echo demo-1.0;;
                 PKGVERSION_NOREV) echo 1.0;;
                 WRKDIR) if [ "\$native" = yes ]; then echo $out/work/demo-native; else echo $out/work/demo; fi;;

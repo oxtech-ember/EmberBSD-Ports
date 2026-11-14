@@ -10,6 +10,94 @@ source checkout with `PORTS_PLAN_API = 1`. The first compatible SDK revision is
 `3d27627020c9070415d5232c7f72130c3d2ba90f`. The SDK owns graph validation,
 input keys, plans, evidence receipts, hashing, and JSON file writes.
 
+## Package revisions are not bookkeeping
+
+Do not raise `PKGREVISION` to record an audit, a successful test, a new Git
+commit, or a documentation-only change. Record that work in Git history or
+validation evidence. A new upstream version is not the only reason for a new
+package: changed installed bytes, security fixes, ABI, runtime dependencies,
+PLIST, install/deinstall scripts or other consumer-visible package metadata
+still require the normal package revision policy. A corrected installed path
+is a real package change even if the compiled objects can be reused.
+
+Before increasing a revision, describe what changes in the delivered package
+and which build phase must run. Do not mechanically strip `PKGREVISION` from
+input hashes: recipes can interpolate it into generated sources, configure
+arguments and installed payload. A revision-only diff is a review candidate,
+not proof that two artifacts are equivalent. Do not lower a published revision,
+rename an old archive to a new package name, or replace published bytes under
+an existing immutable artifact identity.
+
+Keep these identities separate:
+
+* **Provenance:** Git revision, audit notes and validation history. The graph's
+  top-level `provenance.revision` is not a package revision.
+* **Build inputs:** effective prepared sources/patches, commands, options,
+  toolchain, target/sysroot and dependencies used by the build. A future
+  semantic key must bind these inputs, including indirect consumers of recipe
+  variables; the current `input_sha256` is a conservative recipe/input hash,
+  not a proof of identical compiled output.
+* **Package identity:** installed payload, PLIST, scripts and dependency
+  metadata, identified by the full package name and verified artifact digest.
+  Repackaging can change this identity without recompiling objects.
+
+The current `ports-graph-v1` API and exact package matching remain unchanged.
+Do not introduce an optional build-equivalence field as a trusted reuse key
+until its producer and consumer validate the same versioned contract.
+
+### Local iteration is not publication
+
+Local edits do not require a signed release, upload to S3, or package revision
+bump merely to try the change. Keep the work directory and use the narrowest
+existing recovery operation described below: regenerate an asset, refresh
+verified patches, reconfigure, rebuild changed objects, or repackage metadata.
+Normal dependency and phase checks still apply. Do not force a full clean or
+repeat source downloads merely because an accounting record changed.
+Recovery reads the package-install command, package database, target settings
+and package destination in one package metadata query per process, without a
+persistent cache. This reduces repeated recipe parsing, not validation scope;
+it is not a measured wall-time improvement.
+
+For a read-only explanation of the bulk work-directory identity check:
+
+```sh
+python3 scripts/cross-bulk-workdir.py --explain \
+  /absolute/workdir package-base upstream-version full-package-name
+```
+
+The `ports-workdir-explanation-v1` JSON reports `decision`, `reason`, the latest
+`phase_cookie`, recorded/requested package names and `next_step`. Inspection
+returns success when it can report a decision, including `preserve-and-stop`;
+**do not use its exit status as permission to reuse a directory**. The normal
+bulk caller uses the unchanged non-JSON protocol and performs dependency and
+phase checks afterwards. The explanation neither mutates files nor proves ABI
+compatibility. The `package-revision-changed` reason means the work is preserved and
+points to scoped recovery instead of recommending an unconditional clean.
+
+### Paths belong to roles, not one workstation
+
+Keep the native tools prefix, logical target prefix (normally `/usr/pkg`),
+physical sysroot, staging root (`DESTDIR`) and build/work roots distinct.
+Configure target metadata with the logical prefix; apply the physical sysroot
+once in the consuming toolchain. Never fix a relocation error by embedding the
+current developer's work or staging root into a recipe.
+
+Use the common [target metadata normalization contract](../profiles/common-build-tools/cross/pkgconfig.md)
+for `.pc`, CMake, libtool and related installed metadata; fix the shared
+producer/consumer boundary before adding recipe-local substitutions. CMake
+can consume that contract but switching build systems does not make cached
+absolute paths, generated scripts or runtime resource lookups relocatable.
+An installed text metadata fix may only need repackaging; generated source or
+compiled runtime resource paths need rebuilding the affected objects.
+
+For a portability claim, test a relocated prefix/sysroot B with original A
+unavailable, exercising the relevant consumer and runtime resource lookup.
+A text scan alone is not runtime evidence. Keep this targeted validation local
+during iteration; it does not require a publication signature. Publishing a
+reusable artifact still requires the existing integrity and compatibility
+checks. Never silently share artifacts across targets, incompatible ABIs or
+unverified dependency inputs to avoid a rebuild.
+
 ## Shared base dependencies
 
 Keep one canonical Ports recipe for each third-party library shared with the OS
