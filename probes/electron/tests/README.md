@@ -775,6 +775,16 @@ lengths and checksums and bounds its operations with timeouts. It sends no
 write, configuration, arming or firmware commands. Check the displayed JSON
 for `passed: true`, `closed: true` and all five responses. On failure the
 window closes after logging `MSP_DIAGNOSTIC_RESULT` to the process output.
+Failure output records `errorPhase` before cleanup and `closeErrorPhase` when
+close fails; timeout messages name the operation and MSP command where relevant.
+Run the host regression with the selected native Node:
+
+```sh
+/path/to/native-prefix/bin/node probes/electron/tests/serial-msp-observability.cjs
+```
+
+The regression runs the actual HTML script with mocked Web Serial; it verifies
+phase reporting and read-only frames, not a physical device or native chooser.
 Promise timeouts alone do not abort all pending operations; use a supervisor
 with an overall timeout and owned-process cleanup. The Electron selection
 callback is programmatic, so this is not a native chooser or Betaflight UI
@@ -791,8 +801,9 @@ the old object again rejected open. The previously authorised same USB device
 was listed as a new object, consistent with Electron's stable serial-number
 permission within the BrowserContext. A separate fresh-process read-only MSP
 fixture subsequently checked five responses and closed normally. The first
-fresh-process attempt timed out while opening the port, so this observation
-does not establish reconnect reliability or stress and physical-replug results.
+fresh-process attempt timed out after opening the port; its prior logs do not
+distinguish serial write from read. This observation does not establish
+reconnect reliability or stress and physical-replug results.
 
 The [Browser UI flow diagnostic](../../../pkgsrc/www/blanc/tests/README.md)
 is maintained with the Browser recipe; it uses an isolated profile and an
