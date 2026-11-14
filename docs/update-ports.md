@@ -265,6 +265,10 @@ revision for test, documentation or alignment changes. A revision-only change
 of a package with a kept work directory repackages its objects without
 compiling; see
 [revision-only changes](../profiles/common-build-tools/cross/README.md#revision-only-changes).
+A local change that you only try does not need a revision change, a signed
+release or an upload: keep the work directory and use the narrowest scoped
+recovery (`patch-refresh`, `buildlink-refresh`, reconfigure or
+`package-install`).
 
 ## Checks and limits
 

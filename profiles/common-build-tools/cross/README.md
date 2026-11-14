@@ -994,6 +994,22 @@ recipe: the comment changes the digest. After a manual edit in a `WRKDIR`, remov
 `.cross-bulk-inputs`. Binary package reuse from `PACKAGES` and the package
 catalog still compares the full package name.
 
+To see the decision for a kept `WRKDIR` without changing it, run:
+
+```sh
+python3 scripts/cross-bulk-workdir.py --explain WRKDIR PKGBASE \
+    PKGVERSION_NOREV PKGNAME [DIGEST]
+```
+
+The JSON (`ports-workdir-explanation-v1`) names the `decision` (`fresh`,
+`same`, `metadata`, `incompatible` or `preserve-and-stop`), the `reason`, the
+latest phase cookie and its package name, whether the record exists and
+matches `DIGEST`, the handling of the record (`inputs_record`: `write`,
+`same`, `keep` or `unchanged`) and the next step. It exits 0 whenever it
+reports a decision, also for `preserve-and-stop`. Without `DIGEST`, a
+revision change reports `preserve-and-stop`. The bulk build still checks the
+dependency lists after a `same` or `metadata` decision; `--explain` does not.
+
 `python3 scripts/tests/test_cross_bulk_inputs.py` checks the digest.
 `scripts/tests/test_cross_bulk_inputs_export.py` checks real recipes (Python,
 Mesa, Qtbase, LMDB) in a scratch export that `CROSS_BULK_TEST_PKGSRC` and

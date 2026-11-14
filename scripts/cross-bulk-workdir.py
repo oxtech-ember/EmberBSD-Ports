@@ -10,8 +10,15 @@ only the package revision (nbN) changed and that BUILD_INPUTS, the
 scripts/cross-bulk-inputs.py digest of the current recipe, equals the
 digest that cross-bulk recorded in RECORD after it built these objects: the
 objects can be repackaged with the new metadata without compiling them.
-Every other revision change stops for an explicit decision. --explain emits
-a read-only JSON diagnostic, not permission to skip subsequent dependency checks.
+Every other revision change stops for an explicit decision.
+
+--explain prints the same decision as read-only JSON, with the handling of
+the build-input record that a bulk build then applies (inputs_record):
+write (the objects are compiled from an empty or retired work directory and
+a successful build writes the record), same (a present record is kept only
+when it equals the current digest; none is written), keep (the metadata path
+keeps the matching record) or unchanged (the build stops). A bulk build still
+checks the dependency lists afterwards; --explain does not.
 """
 import json
 import re
@@ -36,9 +43,16 @@ report = {'schema': 'ports-workdir-explanation-v1', 'read_only': True,
           'build_inputs_match': None, 'dependency_checks': 'not-performed'}
 
 
+# How a bulk build handles WRKDIR/RECORD after each decision (prepare_wrkdir
+# and record_build_inputs in cross-bulk.sh).
+INPUTS_RECORD = {'fresh': 'write', 'incompatible': 'write', 'same': 'same',
+                 'metadata': 'keep', 'preserve-and-stop': 'unchanged'}
+
+
 def finish(decision, reason, message, next_step):
     if explain:
-        report.update(decision=decision, reason=reason, detail=message, next_step=next_step)
+        report.update(decision=decision, reason=reason, detail=message, next_step=next_step,
+                      inputs_record=INPUTS_RECORD[decision])
         print(json.dumps(report, sort_keys=True))
         sys.exit(0)
     if decision == 'preserve-and-stop':
@@ -108,8 +122,12 @@ else:
         # incompatible. Preserve them for explicit scoped recovery.
         if not changed or changed.group(1) != version:
             fail('unknown phase identity ' + report['phase_cookie'], 'unknown-phase-identity')
-        detail = ('build inputs changed since this work directory was built' if inputs and stored_inputs
-                  else 'no recorded build inputs for this work directory')
+        if not stored_inputs:
+            detail = 'no recorded build inputs for this work directory'
+        elif not inputs:
+            detail = 'current build inputs unavailable to compare with the record'
+        else:
+            detail = 'build inputs changed since this work directory was built'
         fail('revision changed (' + detail + ')')
     finish('same', 'package-identity-matches', 'latest recorded package identity matches',
            'continue dependency and normal phase checks; identity alone does not prove compatible inputs')

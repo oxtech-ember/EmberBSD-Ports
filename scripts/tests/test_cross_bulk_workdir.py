@@ -209,6 +209,7 @@ with tempfile.TemporaryDirectory() as temp:
     assert changed_inputs.returncode != 0 and 'build inputs changed' in changed_inputs.stderr
     without = meta_classify('meta-1.0nb2')
     assert without.returncode != 0 and 'revision changed' in without.stderr
+    assert 'current build inputs unavailable' in without.stderr, without.stderr
     assert meta_classify('meta-1.0nb1', digest).stdout.strip() == 'same'
     assert meta_classify('meta-2.0', digest, upstream='2.0').stdout.strip() == 'incompatible'
     assert meta_classify('meta-1.0nb2', 'not-a-digest').returncode != 0

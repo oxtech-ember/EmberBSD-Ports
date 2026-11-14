@@ -26,6 +26,8 @@ with tempfile.TemporaryDirectory() as tmp:
         assert report['decision'] == decision and report['reason'] == reason, report
         assert report['read_only'] and report['dependency_checks'] == 'not-performed'
         assert report['schema'] == 'ports-workdir-explanation-v1'
+        assert report['inputs_record'] == {'fresh': 'write', 'incompatible': 'write', 'same': 'same',
+                                           'metadata': 'keep', 'preserve-and-stop': 'unchanged'}[decision]
         assert (shell.returncode != 0) == (decision == 'preserve-and-stop'), shell
         if decision != 'preserve-and-stop':
             assert shell.stdout.strip() == decision

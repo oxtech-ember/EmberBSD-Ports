@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD contributors (AI-assisted).
 """Verify the actual batched recovery query preserves values and errors."""
 from pathlib import Path
 import os
