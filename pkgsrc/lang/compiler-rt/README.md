@@ -617,3 +617,16 @@ builtins and static libunwind stages, using `riscv32--netbsd`, RV32IMAC and
 `ilp32` soft-float. These stages supply an intermediate C foundation, not a
 complete SDK or target execution result. The SDK validates ELF class and
 floating-point ABI flags on each installed runtime archive member.
+
+`patch-15-sanitizer-netbsd-aslr-diagnostic` avoids reading process arguments
+before startup when NetBSD ASan rejects enabled PaX ASLR. NetBSD ASan requires
+ASLR disabled for the diagnostic executable: use `paxctl +a /path/to/test`
+on that test file only. It does not require changing the system ASLR policy.
+
+Compile `tests/native-clean.c` and `tests/native-uaf.c` with the selected target
+Clang and `-fsanitize=address,undefined`; compile `tests/native-overflow.c`
+with `-fsanitize=undefined -fno-sanitize-recover=undefined`. Run
+`tests/netbsd-asan-aslr.py --clean CLEAN --uaf UAF --ubsan OVERFLOW --paxctl
+/usr/sbin/paxctl --work NEW_DIRECTORY` on NetBSD. It explicitly enables ASLR on a copy to check the early refusal,
+then modifies only copies in the new directory for the
+clean and use-after-free ASan controls and checks UBSan overflow.

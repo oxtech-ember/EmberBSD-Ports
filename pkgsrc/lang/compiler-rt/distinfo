@@ -23,3 +23,4 @@ SHA1 (patch-20-libunwind-library-probes) = ee7df93e2fa272ca5a5bc92a77222474fa802
 SHA1 (patch-21-libunwind-index-miss) = fce99a875a595f04a5e8e3f8dd17d0e3abb520a6
 SHA1 (patch-30-libcxx-netbsd-c-locale) = 92fa363ae3b9545980cb137db3ba9a9560aa7a1b
 SHA1 (patch-14-profile-filename-init) = 5b65757bca705bac510310ffa301db519c43903d
+SHA1 (patch-15-sanitizer-netbsd-aslr-diagnostic) = 2c90f26c13f42af0d9ddcb50801ba3f72e6437d9

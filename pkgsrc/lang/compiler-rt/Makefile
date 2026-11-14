@@ -78,6 +78,10 @@ TEST_TARGET=	check-compiler-rt
 
 .if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 PKGREVISION=	14
+.if ${MACHINE_ARCH} == "x86_64"
+# The NetBSD sanitizer runtime changes; other host payloads are unchanged.
+PKGREVISION=	15
+.endif
 .if ${MACHINE_ARCH} == "riscv32"
 # RV32 previously installed a separate libatomic lock domain.
 PKGREVISION=	15
@@ -86,6 +90,10 @@ PKGREVISION=	15
 .if !empty(EMBERBSD_CROSS_HOST_PREFIX:M/*)
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_NM:FILEPATH=${EMBERBSD_CROSS_HOST_PREFIX:Q}/bin/llvm-nm
 .endif
+.endif
+
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	14
 .endif
 
 .if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "riscv32" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"

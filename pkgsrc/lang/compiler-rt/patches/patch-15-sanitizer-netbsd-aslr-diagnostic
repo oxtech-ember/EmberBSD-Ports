@@ -1,0 +1,18 @@
+$NetBSD$
+
+Avoid reading process arguments before startup when ASLR is enabled on NetBSD.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/compiler-rt/lib/sanitizer_common/sanitizer_linux.cpp
++++ b/compiler-rt/lib/sanitizer_common/sanitizer_linux.cpp
+@@ -2823,8 +2823,8 @@
+   if (UNLIKELY(paxflags & CTL_PROC_PAXFLAGS_ASLR)) {
+     Printf(
+         "This sanitizer is not compatible with enabled ASLR.\n"
+-        "To disable ASLR, please run \"paxctl +a %s\" and try again.\n",
+-        GetArgv()[0]);
++        "To disable ASLR for this executable, run \"paxctl +a <executable>\" "
++        "and try again.\n");
+     Die();
+   }
+ #  elif SANITIZER_FREEBSD
