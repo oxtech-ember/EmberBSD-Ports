@@ -18,3 +18,11 @@ geolocation block prompt for the normal and private profiles, normal denial
 persistence across a normal restart, and a fresh prompt in a new private tab.
 It does not test permission allow, microphone capture, notification delivery,
 or location accuracy.
+
+## Ad blocking
+
+Add `--adblock` to the permission runner arguments to exercise the protection
+switch in a fresh profile with the normal cache enabled. A local EasyList-matching
+script must be blocked initially, then allowed, blocked, allowed and blocked
+across four real UI switches and reloads. This test requires the installed
+blocking engine and its filter data; it does not contact external websites.

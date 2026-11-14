@@ -14,6 +14,7 @@ import threading
 import time
 
 p=argparse.ArgumentParser()
+p.add_argument('--adblock',action='store_true',help='test protection switch instead of geolocation')
 p.add_argument('--browser',required=True,help='absolute installed Browser executable')
 p.add_argument('--electron',required=True,help='absolute matching Electron executable')
 p.add_argument('--electron-version',required=True)
@@ -32,6 +33,10 @@ for name in ('home','config','cache','data','results','fixture'):(root/name).mkd
 fixture=root/'fixture'
 for name in ('fixture.html','private-policy.html'):
     (fixture/name).write_text("""<!doctype html><title>Browser permission fixture</title><button id=permission>Request location</button><script>window.permissionResult='idle';window.permissionRequests=0;document.querySelector('#permission').onclick=()=>{window.permissionRequests++;window.permissionResult='pending';navigator.geolocation.getCurrentPosition(()=>window.permissionResult='unexpected-grant',e=>window.permissionResult=e.code===1?'denied':'position-error-'+e.code,{timeout:8000,maximumAge:0});};</script>""")
+if a.adblock:
+    (fixture/'ads').mkdir()
+    (fixture/'ads'/'custom_ads.js').write_text('window.adScriptRan=true;')
+    (fixture/'fixture.html').write_text("<!doctype html><title>Adblock fixture</title><script src=/ads/custom_ads.js></script><script>window.documentToken=crypto.randomUUID()</script>")
 class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*args): pass
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Handler,directory=str(fixture)))
@@ -40,7 +45,7 @@ target=f'http://127.0.0.1:{server.server_port}/fixture.html'
 env=dict(os.environ,HOME=str(root/'home'),XDG_CONFIG_HOME=str(root/'config'),XDG_CACHE_HOME=str(root/'cache'),XDG_DATA_HOME=str(root/'data'))
 env.pop('ELECTRON_RUN_AS_NODE',None)
 driver=Path(__file__).resolve().with_name('browser-permissions.mjs')
-owned=[]; result={'directory':str(root),'scope':'isolated Browser geolocation permission'}
+owned=[]; result={'directory':str(root),'scope':'isolated Browser adblock switch' if a.adblock else 'isolated Browser geolocation permission'}
 def stop(process):
     for sig,seconds in ((signal.SIGTERM,5),(signal.SIGKILL,5)):
         try: os.killpg(process.pid,sig)
@@ -54,7 +59,7 @@ def stop(process):
     raise RuntimeError('owned process group did not exit')
 def start(phase):
     args=[a.browser,'--remote-debugging-port=0','--remote-debugging-address=127.0.0.1']
-    if phase=='initial': args.append(target)
+    if phase in ('initial','adblock'): args.append(target)
     logpath=root/(phase+'-app.log')
     with logpath.open('xb') as log:
         proc=subprocess.Popen(args,env=env,cwd=root,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
@@ -69,7 +74,7 @@ def start(phase):
         time.sleep(.2)
     raise RuntimeError('CDP startup timeout')
 try:
-    for phase in ('initial','restart'):
+    for phase in (('adblock',) if a.adblock else ('initial','restart')):
         app,endpoint=start(phase)
         proc=subprocess.run([a.electron,str(driver),endpoint,target,str(root/'results'),phase,a.electron_version],env=dict(env,ELECTRON_RUN_AS_NODE='1'),cwd=root,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=180)
         (root/(phase+'-driver.log')).write_text(proc.stdout)

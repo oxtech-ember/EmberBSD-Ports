@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
 const [base, initialURL, out, phase, expectedElectron] = process.argv.slice(2);
-assert(['initial','restart'].includes(phase) && expectedElectron, 'phase and Electron version required');
+assert(['initial','restart','adblock'].includes(phase) && expectedElectron, 'phase and Electron version required');
 const ep = new URL(base), origin = new URL(initialURL).origin;
 assert(ep.protocol === 'http:' && ep.hostname === '127.0.0.1');
 assert(new URL(initialURL).hostname === '127.0.0.1');
@@ -50,7 +50,21 @@ try {
     await click(prompt,'#permBlockBtn');await until(()=>c.ev("window.permissionResult==='denied'"),'permission denial');
 
   }
-  if(phase==='initial'){
+  if(phase==='adblock'){
+    step='initial blocking'; assert.equal(await page.ev('window.adScriptRan===true'),false);
+    for(let cycle=1;cycle<=4;cycle++){
+      step='adblock switch '+cycle;
+      const expected=cycle%2===1, before=await page.ev('window.documentToken');
+      if(await overlay.ev("document.body.dataset.mode!=='shield'")) await click(shell,'#pillShield');
+      await until(()=>overlay.ev("!document.querySelector('#shieldPop').hidden"),'shield popup');
+      assert.equal(await overlay.ev("document.querySelector('#shieldPopToggle').getAttribute('aria-checked')"),expected?'true':'false');
+      await click(overlay,'#shieldPopToggle');
+      await until(()=>page.ev('window.documentToken && window.documentToken!=='+JSON.stringify(before)+" && document.readyState==='complete'"),'page reload');
+      assert.equal(await page.ev('window.adScriptRan===true'),expected);
+      report.checks.push({cycle,allowed:expected});
+    }
+    await quit(page);
+  }else if(phase==='initial'){
     step='normal permission deny';await requestAndBlock(page);report.checks.push('normal geolocation prompt/deny');
     step='remember deny';const normalCount=await page.ev('window.permissionRequests');await click(page,'#permission');await until(()=>page.ev(`window.permissionRequests===${normalCount+1} && window.permissionResult==='denied'`),'remembered denial');
     step='private permission';await openPanel();await click(overlay,'#footerNewPrivate');const priv=await navigate(origin+'/private-policy.html');
