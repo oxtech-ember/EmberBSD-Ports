@@ -991,7 +991,7 @@ retire()
 # objects instead of compiling them (see prepare_wrkdir).
 # The last name always has a value: command substitution drops trailing
 # empty lines.
-build_input_names='PKGPATH PKGVERSION_NOREV DISTINFO_FILE PATCHDIR FILESDIR LOCALPATCHES DISTFILES PATCHFILES PKG_OPTIONS USE_LANGUAGES USE_TOOLS CONFIGURE_ARGS CONFIGURE_ENV MESON_ARGS CMAKE_ARGS CMAKE_CONFIGURE_ARGS CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CC CXX CPP FC NATIVE_CC PATH MACHINE_GNU_PLATFORM EMBERBSD_CROSS_TOOLS EMBERBSD_CROSS_TARGET EMBERBSD_CROSS_LIBC_MODE EMBERBSD_CROSS_COMPILER_FAMILY EMBERBSD_HOST_COMPILER_FAMILY EMBERBSD_NATIVE_TOOLSET_VERIFIED .MAKE.MAKEFILES PKGNAME .CURDIR'
+build_input_names='PKGPATH PKGVERSION_NOREV DISTINFO_FILE PATCHDIR FILESDIR LOCALPATCHES DISTFILES PATCHFILES PKG_OPTIONS USE_LANGUAGES USE_TOOLS CONFIGURE_ARGS CONFIGURE_ENV MESON_ARGS CMAKE_ARGS CMAKE_CONFIGURE_ARGS CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CC CXX CPP FC NATIVE_CC LD AS AR NM RANLIB OBJCOPY STRIP PATH MACHINE_GNU_PLATFORM EMBERBSD_CROSS_TOOLS EMBERBSD_CROSS_TARGET EMBERBSD_CROSS_LIBC_MODE EMBERBSD_CROSS_COMPILER_FAMILY EMBERBSD_HOST_COMPILER_FAMILY EMBERBSD_NATIVE_TOOLSET_VERIFIED .MAKE.MAKEFILES PKGNAME .CURDIR'
 build_inputs()
 {
     bi_path=$1
@@ -1035,8 +1035,13 @@ record_build_inputs()
 }
 
 # After a successful build, record the build inputs of the new objects in
-# WRKDIR $1. A record that cannot be written is removed: the next revision
-# change then stops as before.
+# WRKDIR $1. Only a build that compiled its objects from a clean or empty
+# WRKDIR writes a record (inputs_record=write from prepare_wrkdir). A retry
+# in a kept WRKDIR and every stage-local run (package-install, patch-refresh,
+# buildlink-refresh) only keep a present record that equals the current
+# digest: they do not compile all objects from the current inputs. A record
+# that cannot be written is removed: the next revision change then stops as
+# before.
 finish_build_inputs()
 {
     fbi_file=$1/.cross-bulk-inputs

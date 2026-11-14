@@ -10,7 +10,7 @@ import tempfile
 
 script = Path(__file__).resolve().parents[1] / 'cross-bulk-inputs.py'
 NAMES = ('PKGPATH PATCHDIR FILESDIR DISTINFO_FILE LOCALPATCHES CFLAGS CONFIGURE_ARGS '
-         'CC PATH EMBERBSD_CROSS_TOOLS .MAKE.MAKEFILES PKGNAME .CURDIR')
+         'CC LD PATH EMBERBSD_CROSS_TOOLS .MAKE.MAKEFILES PKGNAME .CURDIR')
 
 
 def fixture(root):
@@ -36,7 +36,7 @@ def digest(root, conf, wrkdir, revision='4', **override):
         'PKGPATH': 'cat/demo', 'PATCHDIR': str(recipe / 'patches'),
         'FILESDIR': str(recipe / 'files'), 'DISTINFO_FILE': str(recipe / 'distinfo'),
         'LOCALPATCHES': '', 'CFLAGS': '-O2 -I' + str(root / 'cat/demo/files'),
-        'CONFIGURE_ARGS': '--prefix=/usr/pkg', 'CC': 'democc -O2',
+        'CONFIGURE_ARGS': '--prefix=/usr/pkg', 'CC': 'democc -O2', 'LD': '',
         'PATH': str(wrkdir / '.cwrapper/bin') + ':' + str(root.parent.parent / 'tools') + ':/usr/bin',
         'EMBERBSD_CROSS_TOOLS': '/tools/context-1',
         '.MAKE.MAKEFILES': 'Makefile common.mk ../../mk/bsd.pkg.mk ' + str(conf),
@@ -87,6 +87,26 @@ with tempfile.TemporaryDirectory() as temp:
     edit(recipe / 'Makefile', 'PKGREVISION=\t7\n', 'PKGREVISION=\t8\n')
     assert digest(root, conf, work, revision='8') == direct
     edit(recipe / 'Makefile', 'PKGREVISION=\t8\n', 'PKGREVISION=\t${DEMO_REVISION}\n')
+    assert digest(root, conf, work, revision='5') == base
+
+    # A comment on the revision line names a rebuild reason: it changes the
+    # digest, and later number changes on that line keep it.
+    edit(recipe / 'common.mk', 'DEMO_REVISION=\t5\n', 'DEMO_REVISION=\t5 # compiler runtime library replaced\n')
+    commented = digest(root, conf, work, revision='5')
+    assert commented != base
+    edit(recipe / 'common.mk', 'DEMO_REVISION=\t5 #', 'DEMO_REVISION=\t6 #')
+    assert digest(root, conf, work, revision='6') == commented
+    edit(recipe / 'common.mk', 'DEMO_REVISION=\t6 # compiler runtime library replaced\n', 'DEMO_REVISION=\t5\n')
+    edit(recipe / 'Makefile', 'PKGREVISION=\t${DEMO_REVISION}\n', 'PKGREVISION=\t9\t# new runtime\n')
+    direct_commented = digest(root, conf, work, revision='9')
+    assert direct_commented != base and direct_commented != direct
+    edit(recipe / 'Makefile', 'PKGREVISION=\t9\t# new runtime\n', 'PKGREVISION=\t${DEMO_REVISION}\n')
+    # A continued revision assignment stays whole: its number counts.
+    edit(recipe / 'Makefile', 'PKGREVISION=\t${DEMO_REVISION}\n', 'PKGREVISION=\t\\\n\t9\n')
+    continued = digest(root, conf, work, revision='9')
+    edit(recipe / 'Makefile', '\t\\\n\t9\n', '\t\\\n\t10\n')
+    assert digest(root, conf, work, revision='10') != continued
+    edit(recipe / 'Makefile', 'PKGREVISION=\t\\\n\t10\n', 'PKGREVISION=\t${DEMO_REVISION}\n')
     assert digest(root, conf, work, revision='5') == base
 
     # Generated makevars in the work directory do not count.
@@ -172,6 +192,25 @@ with tempfile.TemporaryDirectory() as temp:
         assert digest(root, conf, work, revision='7') != first, use
         edit(recipe / 'common.mk', 'DEMO_REVISION=\t7', 'DEMO_REVISION=\t6')
         edit(recipe / 'Makefile', '# ${PKGNAME} in a comment\n' + use, '# ${PKGNAME} in a comment\n')
+    # subst.mk substitutes the value of each variable that SUBST_VARS names:
+    # a bare PKGVERSION, PKGNAME or revision helper there reaches the build.
+    # So does a PLIST_SUBST, FILES_SUBST or MESSAGE_SUBST value.
+    for use in ('SUBST_VARS.pc+= PREFIX PKGVERSION\n', 'SUBST_VARS.paths= PKGNAME\n',
+                'SUBST_VARS= DEMO_REVISION\n', 'PLIST_SUBST+= DEMOV=${PKGVERSION}\n',
+                'FILES_SUBST+= DEMOV=${PKGVERSION}\n', 'MESSAGE_SUBST+= DEMOV=${DEMO_TOOL_VERSION}\n'):
+        edit(recipe / 'Makefile', '# ${PKGNAME} in a comment\n', '# ${PKGNAME} in a comment\n' + use)
+        first = digest(root, conf, work, revision='6')
+        edit(recipe / 'common.mk', 'DEMO_REVISION=\t6', 'DEMO_REVISION=\t7')
+        assert digest(root, conf, work, revision='7') != first, use
+        edit(recipe / 'common.mk', 'DEMO_REVISION=\t7', 'DEMO_REVISION=\t6')
+        edit(recipe / 'Makefile', '# ${PKGNAME} in a comment\n' + use, '# ${PKGNAME} in a comment\n')
+    # PKGVERSION_NOREV in SUBST_VARS does not name the revision.
+    edit(recipe / 'Makefile', '# ${PKGNAME} in a comment\n', '# ${PKGNAME} in a comment\nSUBST_VARS.v= PKGVERSION_NOREV\n')
+    norev = digest(root, conf, work, revision='6')
+    edit(recipe / 'common.mk', 'DEMO_REVISION=\t6', 'DEMO_REVISION=\t7')
+    assert digest(root, conf, work, revision='7') == norev
+    edit(recipe / 'common.mk', 'DEMO_REVISION=\t7', 'DEMO_REVISION=\t6')
+    edit(recipe / 'Makefile', '# ${PKGNAME} in a comment\nSUBST_VARS.v= PKGVERSION_NOREV\n', '# ${PKGNAME} in a comment\n')
     # A variable that the infrastructure reads is the build.
     edit(root / 'mk/bsd.pkg.mk', '# infrastructure', '# infrastructure\n_X= ${DEMO_TOOL_VERSION}')
     named_by_mk = digest(root, conf, work, revision='6')
@@ -193,6 +232,12 @@ with tempfile.TemporaryDirectory() as temp:
     (work / '.cwrapper/bin/democc').chmod(0o755)
     assert digest(root, conf, work, revision='5') == base
     assert digest(root, conf, work, revision='5', CC='othercc') != base
+    # The linker and other binutils from the cross tools context count too.
+    (temp / 'tools/demold').write_text('#!/bin/sh\necho "demo ld 1.0"\n')
+    (temp / 'tools/demold').chmod(0o755)
+    linked = digest(root, conf, work, revision='5', LD=str(temp / 'tools/demold'))
+    edit(temp / 'tools/demold', '1.0', '1.1')
+    assert digest(root, conf, work, revision='5', LD=str(temp / 'tools/demold')) != linked
     # pkgsrc names the cross tools context in PATH; its compilers are in bin.
     context = temp / 'context-1'
     (context / 'bin').mkdir(parents=True)

@@ -255,7 +255,8 @@ without rereading, rehashing or re-archiving sources, stages or outputs. Use the
 
 ## Package revisions
 
-A changed package revision makes every pass build the package again. Change a
+A changed package revision changes the package name, so every build host makes
+the package again: it compiles it, or repackages a kept work directory. Change a
 revision only when the installed files of that package change for the built
 role and architecture, and follow the
 [package revision rules](../README.md#package-revisions). Do not change the

@@ -19,15 +19,19 @@ token:
 * the evaluated values of the variables that the caller selects (options,
   configure, compiler, toolchain-context and source variables), as bmake
   printed them; PATH without directories in the work directory;
-* the toolchain: for CC, CXX, CPP, FC and NATIVE_CC, the resolved program, its SHA256
-  and its --version answer. With the cross tools context path (which names
-  the context hash), a replaced or rebuilt toolchain gives another digest.
+* the toolchain: for CC, CXX, CPP, FC, NATIVE_CC, LD, AS, AR, NM, RANLIB,
+  OBJCOPY and STRIP, the resolved program, its SHA256 and its --version
+  answer. With the cross tools context path (which names the context hash),
+  a replaced or rebuilt toolchain gives another digest.
 
-Only the logical lines that assign PKGREVISION, and integer assignments of
-variables that give its value (PKGREVISION= ${MESA_PORT_REVISION}), are left
-out. Any other change, including a comment, a conditional around the
-revision or an evaluated value that embeds the revision, gives another
-digest, so the package is compiled again.
+Only the bare number of a single-line assignment to PKGREVISION, or to an
+integer variable that gives its value (PKGREVISION= ${MESA_PORT_REVISION}),
+is replaced by a fixed token. The rest of that line stays: a comment on the
+revision line or next to it, a conditional around the revision, or an
+evaluated value that embeds the revision gives another digest, so the
+package is compiled again. A revision assignment continued over several
+lines (PKGREVISION=\ and the number on the next line) stays whole: any
+change of it compiles the package again.
 
 The revision, its helpers, PKGVERSION and PKGNAME may reach package metadata
 in the recipe makefiles: dependency patterns (DEPENDS, TOOL_DEPENDS,
@@ -36,8 +40,8 @@ set only those, and recipe variables that only feed them and that pkgsrc/mk
 does not name (MESA_GENERATORS_VERSION). Dependency patterns are not compile
 inputs here: cross-bulk compares the dependency lists of a kept work
 directory separately and stops when they changed. Any other use of these
-values (a build variable, a target command, another conditional) can reach
-the build: then the helpers stay in the digest and the full PKGNAME is bound
+values (a build variable, a target command, another conditional, or a bare
+name in SUBST_VARS) can reach the build: then the helpers stay in the digest and the full PKGNAME is bound
 into it. Files under the work directory (pkgsrc's generated makevars) are
 skipped. The versions of installed dependencies are not inputs.
 
@@ -68,8 +72,13 @@ NEUTRAL = frozenset(('PKGREVISION', 'PKGNAME', 'DEPENDS', 'BUILD_DEPENDS', 'TOOL
                      'BOOTSTRAP_DEPENDS', 'TEST_DEPENDS', 'CONFLICTS', 'SUPERSEDES',
                      'PKG_FAIL_REASON', 'PKG_SKIP_REASON'))
 NEUTRAL_PREFIXES = ('BUILDLINK_API_DEPENDS.', 'BUILDLINK_ABI_DEPENDS.')
+# A single-line assignment of a bare number, with an optional comment.
+REVISION_NUMBER = re.compile(r'^(\s*([A-Za-z_][A-Za-z0-9_.+-]*?)\s*[?:!+]?=\s*)([0-9]+)(\s*(?:#.*)?)$')
+# pkgsrc substitutes the values of the variables that these lists name.
+NAME_LISTS = re.compile(r'^SUBST_VARS(?:\..*)?$')
 # Compiler variables whose programs identify the toolchain.
-TOOL_VARIABLES = ('CC', 'CXX', 'CPP', 'FC', 'NATIVE_CC')
+TOOL_VARIABLES = ('CC', 'CXX', 'CPP', 'FC', 'NATIVE_CC', 'LD', 'AS', 'AR', 'NM', 'RANLIB',
+                  'OBJCOPY', 'STRIP')
 
 
 class InputError(ValueError):
@@ -190,7 +199,9 @@ def revision_sensitive(lines, recipe_files, names, mk_text):
     PKGNAME, PKGREVISION, failure reasons, and conditionals that set only
     those. A variable that a recipe assigns from a tainted value carries the
     taint when the infrastructure (mk/) does not name it and the recipe
-    makefiles use it; every other use can reach the build."""
+    makefiles use it; every other use can reach the build. A tainted name as
+    a bare word in SUBST_VARS reaches the build: subst.mk substitutes the
+    value of each variable that the list names."""
     taint = set(names) | {'PKGVERSION', 'PKGNAME'}
     used = set()
     for file in recipe_files:
@@ -202,6 +213,9 @@ def revision_sensitive(lines, recipe_files, names, mk_text):
         for file in recipe_files:
             entries = lines[file]
             for index, (kind, name, text) in enumerate(entries):
+                if kind == 'assign' and NAME_LISTS.match(name) and set(text.split()) & taint:
+                    # subst.mk substitutes the value of each named variable.
+                    return True
                 refs = set(REFERENCE.findall(text)) & taint
                 if not refs:
                     continue
@@ -220,12 +234,16 @@ def revision_sensitive(lines, recipe_files, names, mk_text):
 
 
 def normalized(text, names):
+    """The text with the bare number of each revision assignment replaced.
+
+    Only an integer value on a single-line assignment to a name in names is
+    replaced; the rest of the line, including an end-of-line comment, stays,
+    so that a comment that names a rebuild reason changes the digest."""
     kept = []
     for line in logical_lines(text):
-        flat = strip_comment(joined(line))
-        match = ASSIGN.match(flat)
-        if match and match.group(1) in names and not line.startswith('\t'):
-            continue
+        match = REVISION_NUMBER.match(line)
+        if match and match.group(2) in names and '\n' not in line:
+            line = match.group(1) + '@REVISION@' + match.group(4)
         kept.append(line)
     return '\n'.join(kept)
 

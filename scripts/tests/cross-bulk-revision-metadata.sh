@@ -5,7 +5,10 @@
 # PKGREVISION changes later, the kept objects are repackaged through the
 # stage-local metadata path without clean or compilation, for target and
 # native nodes. A revision change with changed inputs, or without a record,
-# still preserves the work directory and stops.
+# still preserves the work directory and stops. A stage-local recovery
+# (package-install, patch-refresh) never writes a record and keeps only a
+# matching one: after a recovery from changed inputs, the next revision-only
+# change stops instead of repackaging stale objects.
 set -eu
 [ "$#" = 1 ] || { echo 'Usage: cross-bulk-revision-metadata.sh NEW_OUTPUT' >&2; exit 2; }
 out=$1
@@ -16,7 +19,7 @@ ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 selected_shell=${CROSS_BULK_TEST_SHELL:-$(command -v sh)}
 host_python=${CROSS_BULK_TEST_PYTHON:-$(command -v python3)}
 : "${CROSS_BULK_TEST_SDK_SOURCE:?Set CROSS_BULK_TEST_SDK_SOURCE to the selected SDK source}"
-mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/demo/patches" "$out/tree/mk" \
+mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/demo/patches" "$out/tree/mk/package" \
     "$out/packages/All" "$out/packages-native/All" "$out/native-db" "$out/target-db" \
     "$out/state/logs" "$out/sdk/scripts"
 ln -s "$CROSS_BULK_TEST_SDK_SOURCE/src" "$out/sdk/src"
@@ -24,6 +27,14 @@ printf 'print(2)\n' > "$out/sdk/scripts/resolve-jobs.py"
 : > "$out/mk.conf"
 : > "$out/tree/pkgtools/pkg_install/Makefile"
 printf '%s\n' '# shared infrastructure' > "$out/tree/mk/bsd.pkg.mk"
+# The stage-local identity check of package-install: same or revision.
+cat > "$out/tree/mk/package/repackage-metadata-check.py" <<'PY'
+import sys
+from pathlib import Path
+work, current = Path(sys.argv[2]), sys.argv[5]
+package = work / '.package_done'
+print('same' if package.is_file() and package.read_text().strip() == current else 'revision')
+PY
 cat > "$out/tree/cat/demo/Makefile" <<'MK'
 DISTNAME=	demo-1.0
 PKGREVISION=	1
@@ -178,6 +189,40 @@ grep -q '^TARGET install yes stage=yes$' "$out/targets" || fail "native did not 
 [ "$(cat "$target_work/.cross-bulk-inputs")" = "$target_record" ] || fail 'metadata path changed the input record'
 grep -q 'only the package revision changed' "$out/state/logs/cat_demo.log" || fail 'metadata path is not explained in the package log'
 
+# Explicit stage-local recovery: package-install, or patch-refresh with a
+# stub for the stage patch transaction in a copy of the scripts.
+mkdir -p "$out/ports"
+cp -R "$ports/scripts" "$out/ports/scripts"
+printf '%s\n' 'print("stub patch refresh")' > "$out/ports/scripts/stage-local-patch-refresh.py"
+recover()
+{
+    rlog=$1 rmode=$2
+    shift 2
+    for node do
+        env BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
+            CROSS_BULK_TEST_HOST_PYTHON="$host_python" CROSS_BULK_TEST_SDK_SOURCE="$out/sdk" \
+            CROSS_BULK_VARS_CACHE=no CROSS_BULK_TEST_CPUS=2 CROSS_BULK_MAKE_JOBS=1 \
+            "$selected_shell" "$out/ports/scripts/cross-bulk.sh" "$rmode" "$node" "$out/state" \
+            >> "$out/$rlog.log" 2>&1 || fail "$rmode of $node: $(cat "$out/$rlog.log") $(cat "$out/state/logs/"*.log)"
+    done
+}
+no_records()
+{
+    for w in "$target_work" "$native_work"; do
+        [ ! -e "$w/.cross-bulk-inputs" ] || fail "$1 left a build-input record in $w"
+    done
+}
+stops()
+{
+    : > "$out/targets"
+    rc=0
+    bulk "$1" || rc=$?
+    [ "$rc" -ne 0 ] || fail "$1: a revision-only change after recovery did not stop: $(cat "$out/targets")"
+    grep -q 'no recorded build inputs for this work directory' "$out/state/logs/"*worker.log ||
+        fail "$1: the refusal is unclear: $(cat "$out/state/logs/"*worker.log)"
+    ! grep -q '^TARGET' "$out/targets" || fail "$1: stale objects were repackaged: $(cat "$out/targets")"
+}
+
 # PKGREVISION and a patch change: the stage is preserved and the build stops.
 revision 3
 printf '%s\n' '+changed' >> "$out/tree/cat/demo/patches/patch-demo.c"
@@ -190,15 +235,51 @@ grep -q 'build inputs changed since this work directory was built' "$out/state/l
 ! grep -q '^TARGET' "$out/targets" || fail "changed inputs ran package targets: $(cat "$out/targets")"
 [ "$(cat "$target_work/demo.o")" = 'object of demo-1.0nb1' ] || fail 'changed-input refusal touched target objects'
 
-# A work directory without a record keeps the earlier explicit stop.
-restored=$(sed '$d' "$out/tree/cat/demo/patches/patch-demo.c")
-printf '%s\n' "$restored" > "$out/tree/cat/demo/patches/patch-demo.c"
-rm -f "$target_work/.cross-bulk-inputs" "$native_work/.cross-bulk-inputs"
+# A package-install recovery repackages the objects of the older inputs: it
+# drops the stale record and writes none, so the next revision-only change
+# stops instead of repackaging stale objects.
 : > "$out/targets"
-rc=0
-bulk unrecorded || rc=$?
-[ "$rc" -ne 0 ] || fail 'a revision change without a record did not stop'
-grep -q 'no recorded build inputs for this work directory' "$out/state/logs/"*worker.log ||
-    fail 'unrecorded refusal is unclear'
-! grep -q '^TARGET' "$out/targets" || fail 'unrecorded stage ran package targets'
-echo 'PASS: revision-only changes repackage kept target/native stages; changed or unrecorded inputs preserve and stop'
+recover recovery-changed package-install cat/demo cat/demo@native
+! grep -q '^COMPILE' "$out/targets" || fail 'package-install recovery compiled'
+no_records 'package-install after a patch change'
+revision 4
+stops after-changed-recovery
+
+# A clean build compiles the objects from the current inputs and records them.
+rm -rf "$target_work" "$native_work"
+: > "$out/targets"
+bulk clean || fail "clean build: $(cat "$out/clean.log")"
+[ "$(grep -c '^COMPILE demo-1.0nb4' "$out/targets")" -eq 2 ] || fail "clean build did not compile both roles: $(cat "$out/targets")"
+target_record=$(cat "$target_work/.cross-bulk-inputs")
+native_record=$(cat "$native_work/.cross-bulk-inputs")
+
+# A metadata-only package-install keeps a matching record unchanged, and the
+# next revision-only bulk build repackages.
+revision 5
+: > "$out/targets"
+recover recovery-metadata package-install cat/demo cat/demo@native
+! grep -q '^COMPILE' "$out/targets" || fail 'metadata package-install compiled'
+[ "$(cat "$target_work/.cross-bulk-inputs")" = "$target_record" ] &&
+    [ "$(cat "$native_work/.cross-bulk-inputs")" = "$native_record" ] ||
+    fail 'metadata package-install changed a matching record'
+revision 6
+: > "$out/targets"
+bulk after-metadata-recovery || fail "build after metadata recovery: $(cat "$out/after-metadata-recovery.log") $(cat "$out/state/logs/"*.log)"
+grep -q '^TARGET package-install no stage=yes$' "$out/targets" &&
+    grep -q '^TARGET install yes stage=yes$' "$out/targets" ||
+    fail "revision-only change after metadata recovery did not repackage: $(cat "$out/targets")"
+! grep -q '^COMPILE' "$out/targets" || fail 'revision-only change after metadata recovery compiled'
+
+# patch-refresh and package-install do not compile every object from the
+# current inputs: no record afterwards, and the next revision-only change stops.
+printf '%s\n' '+refreshed' >> "$out/tree/cat/demo/patches/patch-demo.c"
+: > "$out/targets"
+recover refresh patch-refresh cat/demo cat/demo@native
+no_records 'patch-refresh'
+recover refresh-install package-install cat/demo cat/demo@native
+! grep -q '^COMPILE' "$out/targets" || fail 'package-install after patch-refresh compiled'
+no_records 'package-install after patch-refresh'
+revision 7
+stops after-refresh-recovery
+
+echo 'PASS: revision-only changes repackage kept target/native stages; changed or unrecorded inputs preserve and stop; stage-local recovery never writes a record and keeps only a matching one'

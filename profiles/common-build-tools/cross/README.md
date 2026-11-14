@@ -934,10 +934,20 @@ directory, the `distinfo` file, the patch and file directories, local
 patches, the sources, options, tools, configure arguments and compiler flags.
 It also includes the toolchain: the cross tools context (`EMBERBSD_CROSS_TOOLS`,
 whose name is the context hash), the native toolset selection, the compiler
-families, and for `CC`, `CXX`, `CPP`, `FC` and `NATIVE_CC` the resolved program, its SHA256
-and its `--version` output. It ignores the lines that set `PKGREVISION` and
-number variables that give its value, such as `MESA_PORT_REVISION`.
-A successful build writes the digest to `WRKDIR/.cross-bulk-inputs`.
+families, and for `CC`, `CXX`, `CPP`, `FC`, `NATIVE_CC`, `LD`, `AS`, `AR`, `NM`,
+`RANLIB`, `OBJCOPY` and `STRIP` the resolved program, its SHA256 and its
+`--version` output. It ignores only the number in a line that sets
+`PKGREVISION`, or a number variable that gives its value, such as
+`MESA_PORT_REVISION`. A comment on that line or next to it is part of the
+digest. A revision assignment continued over several lines with `\` is kept
+whole, so each change of it compiles the package again.
+Only a successful build that compiled its objects from a clean or empty
+`WRKDIR` writes the digest to `WRKDIR/.cross-bulk-inputs`. A bulk retry in a
+kept `WRKDIR` and every explicit stage-local run (`package-install`,
+`patch-refresh`, `buildlink-refresh`) keep a record only when it is present
+and equals the current digest; they never create or replace one. A kept
+`WRKDIR` without a record, or with another digest, therefore stops at the
+next revision change until a clean build.
 
 The revision and the package name may go into package metadata without a
 change to the digest: dependency patterns (`DEPENDS`, `TOOL_DEPENDS`,
@@ -945,7 +955,9 @@ change to the digest: dependency patterns (`DEPENDS`, `TOOL_DEPENDS`,
 set only these, and recipe variables that only feed them, such as
 `MESA_GENERATORS_VERSION`. When a recipe uses the revision, the package
 version or the package name for anything else, the digest includes the
-package name. The versions of installed dependencies are not in the digest.
+package name. This includes a bare `PKGVERSION`, `PKGNAME` or revision
+variable in `SUBST_VARS`: `subst.mk` substitutes its value into source files
+before the build, and the metadata path does not run that step again. The versions of installed dependencies are not in the digest.
 
 When the next pass finds a `WRKDIR` of the same upstream version with another
 package revision, and the recorded digest is the current one, the build does
@@ -955,7 +967,7 @@ _package-clean`) and runs the stage-local metadata path of `package-install`
 the stage and packaged under the new name. The log of the package names this.
 This applies to target and native packages. A changed digest, a `WRKDIR`
 without a record (a build before this change), or changed dependency metadata
-stops the package as before and keeps the objects. A shared LLVM or Qtbase
+stops the package as before and keeps the objects. A shared LLVM, Qtbase or ICU
 stage has no record. `patch-refresh` and `buildlink-refresh` remove the
 record.
 
@@ -977,12 +989,15 @@ again, although the digest is the same. CMake builds skip this rebuild
 
 The digest does not include files outside the pkgsrc tree that a recipe does
 not name, or the libraries that a compiler loads. When such a change requires
-new objects, add a comment next to the revision change in the recipe: the
-comment changes the digest. After a manual edit in a `WRKDIR`, remove its
+new objects, add a comment on the revision line or next to it in the
+recipe: the comment changes the digest. After a manual edit in a `WRKDIR`, remove its
 `.cross-bulk-inputs`. Binary package reuse from `PACKAGES` and the package
 catalog still compares the full package name.
 
 `python3 scripts/tests/test_cross_bulk_inputs.py` checks the digest.
+`scripts/tests/test_cross_bulk_inputs_export.py` checks real recipes (Python,
+Mesa, Qtbase, LMDB) in a scratch export that `CROSS_BULK_TEST_PKGSRC` and
+`CROSS_BULK_TEST_MAKECONF` name; the test edits recipe files and restores them.
 `python3 scripts/tests/test_cross_bulk_workdir.py` checks the `WRKDIR`
 decisions. `scripts/tests/cross-bulk-revision-metadata.sh NEW_OUTPUT` checks a
 revision-only repackage for both roles, and the stop for changed inputs and for

@@ -1078,10 +1078,10 @@ Do not change a revision for:
 - a failed build, upload or cleanup.
 
 `cross-bulk.sh` compares a digest of the recipe files without the revision
-lines, and of the toolchain: a revision change without other recipe or
+numbers, and of the toolchain: a revision change without other recipe or
 toolchain changes repackages the kept objects. When another external change
-requires new objects, add a comment next to the revision that names the
-reason: the comment makes the digest different, so the package compiles
+requires new objects, add a comment on the revision line or next to it
+that names the reason: the comment makes the digest different, so the package compiles
 again. Use `>=` dependency patterns where the ABI permits: an exact pattern
 with a revision changes the dependency lists and stops a kept work
 directory. See [revision-only changes](profiles/common-build-tools/cross/README.md#revision-only-changes).
