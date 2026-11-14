@@ -14,8 +14,19 @@ python3 -B source.py --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$OUTPUT" --archive "$ARCHIVE" --patch "$PATCH"
 ```
 
-Preparation and verification check source identity and archive integrity;
-they do not build or validate a target runtime.
+All three commands accept `--pkgsrc-export "$EXPORT_ROOT" --export-patch "$EXPORT_PATCH"`
+to use a shared export authenticated against current inputs. `EXPORT_ROOT` is
+the directory containing `pkgsrc-export.json` and `pkgsrc/`. The caller holds
+its `.pkgsrc-update.lock` shared for the entire access; an export writer takes
+that lock exclusively. The selector does not acquire this lock. Without a shared
+export, preparation creates an export.
+
+Preparation and verification that replays a changed receipt check the archive
+hashes, patch inventory and checksums, and prepared tree. The current-receipt
+fast path checks the tree and effective identity without rereading the archive.
+`refresh-source` uses the same verification, which may take either path, then
+updates only the source receipt; the caller holds exclusive source ownership.
+These operations do not build or validate a target runtime.
 
 The focused `test-portability.py` regression uses the prepared source, selected
 host C++ compiler and Python, and a generated Perfetto build-flags directory.

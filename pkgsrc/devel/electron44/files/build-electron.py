@@ -1178,9 +1178,14 @@ def common_embedder_sources(options, sdk, native, environment):
     if perfetto:
         owner = perfetto_owner / 'scripts/source-inputs/perfetto/source.py'
         require(owner.is_file(), 'common Perfetto source owner is missing')
-        commands.append(('PERFETTO', [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
-                                      '--git', selected_control_git(options.git), 'verify-source', '--source', str(perfetto),
-                                      '--archive', str(perfetto_archive), '--patch', str(perfetto_patch)]))
+        command = [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
+                   '--git', selected_control_git(options.git), 'verify-source', '--source', str(perfetto),
+                   '--archive', str(perfetto_archive), '--patch', str(perfetto_patch)]
+        if getattr(options, 'perfetto_pkgsrc_export', None):
+            command += ['--pkgsrc-export', str(options.perfetto_pkgsrc_export)]
+        if getattr(options, 'perfetto_export_patch', None):
+            command += ['--export-patch', str(options.perfetto_export_patch)]
+        commands.append(('PERFETTO', command))
     if node and perfetto:
         values['node_shared_perfetto'] = True
     for name, command in commands:
@@ -4812,7 +4817,7 @@ def main():
                      'sqlite-pkgsrc-export', 'sqlite-export-patch',
                      'protobuf-source', 'protobuf-ports-source', 'protobuf-archive', 'protobuf-patch',
                      'node-source', 'node-pkgsrc', 'node-ports-source', 'gyp-source', 'gyp-pkgsrc', 'perfetto-source', 'perfetto-ports-source',
-                     'perfetto-archive', 'perfetto-patch', 'v8-source', 'v8-ports-source', 'v8-pkgsrc',
+                     'perfetto-archive', 'perfetto-patch', 'perfetto-pkgsrc-export', 'perfetto-export-patch', 'v8-source', 'v8-ports-source', 'v8-pkgsrc',
                      'v8-metagen-libclang-so', 'v8-metagen-bindings-dir', 'v8-metagen-runtime-view',
                      'host-tool-runtime-view', 'boringssl-source', 'boringssl-archive', 'ml-patch', 'ml-pkgsrc-export', 'ml-ports-source', 'ml-export-patch', *( 'ml-' + name + '-' + role for name in ML_PROVIDERS for role in ('source', 'archive'))):
             command.add_argument('--' + name, type=Path)
@@ -4916,6 +4921,7 @@ def main():
                             options.protobuf_ports_source, options.protobuf_archive, options.protobuf_patch,
                             options.node_source, options.node_pkgsrc, options.node_ports_source, options.gyp_source, options.gyp_pkgsrc, options.perfetto_source,
                             options.perfetto_ports_source, options.perfetto_archive, options.perfetto_patch,
+                            options.perfetto_pkgsrc_export, options.perfetto_export_patch,
                             options.v8_source, options.v8_ports_source, options.v8_pkgsrc,
                             options.v8_metagen_libclang_so, options.v8_metagen_bindings_dir, options.v8_metagen_runtime_view,
                             options.target_runtime_stage, options.target_runtime_base, options.host_runtime_root, options.protoc_runtime_view,

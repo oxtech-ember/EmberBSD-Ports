@@ -959,9 +959,15 @@ are recorded in a write-on-change GN input.
 `--node-source` and `--node-pkgsrc` select a prepared common Node tree and its
 export; `--gyp-source` and `--gyp-pkgsrc` select the verified common GYP
 source and its export for Node configure and regeneration. `--perfetto-source`, `--perfetto-ports-source`, `--perfetto-archive`,
-and `--perfetto-patch` select common Perfetto. Each producer verifies its own
-source and recipe inputs; the local source view only connects the selected
-trees. Native generator actions may select the same runtime with
+and `--perfetto-patch` select common Perfetto. Set `--perfetto-pkgsrc-export`
+to the shared export root and `--perfetto-export-patch` to its patch tool; the
+corresponding profile variables are `EMBERBSD_ELECTRON_PERFETTO_PKGSRC_EXPORT`
+and `EMBERBSD_ELECTRON_PERFETTO_EXPORT_PATCH`. OTS accepts the same selection
+through `EMBERBSD_ELECTRON_OTS_PKGSRC_EXPORT` and `EMBERBSD_ELECTRON_OTS_EXPORT_PATCH`.
+The caller holds the export root's `.pkgsrc-update.lock` shared throughout use;
+the export writer holds it exclusively. The selector does not acquire this lock.
+Each producer verifies its source and recipe inputs; the local source view only
+connects the selected trees. Native generator actions may select the same runtime with
 `--node-scoped-runtime` and `--perfetto-scoped-runtime` alongside
 `--protoc-runtime-view`. `--host-tool-runtime-view` selects a scoped runtime view for
 Chromium `compiled_action` host tools, run through the same SDK launcher; it

@@ -98,12 +98,14 @@ def recipe(exported):
     return identity, patches
 
 
-def verify(source, git, archive=None, patch=None):
+def verify(source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
     identity = source_identity(git)
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
     record = sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=old)
     prepared_receipt.require_current_identity(old, PACKAGE)
+    shared = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, export_patch)
+              if pkgsrc_export and export_patch is not None else None)
     if identity_module().current_git_package(old, identity['owner_sha256'], lambda: git_effective_identity(git)):
         require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
         return record
@@ -112,14 +114,22 @@ def verify(source, git, archive=None, patch=None):
         require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
         require(archive and os.path.isabs(archive),
                 'changed perfetto inputs require an explicit archive for payload comparison')
-        prepared = prepare(archive, Path(tmp) / 'expected', patch, git)
+        if pkgsrc_export and shared is None:
+            shared = identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+        prepared = prepare(archive, Path(tmp) / 'expected', patch, git, exported=shared)
         require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
         require(prepared['tree_sha256'] == record['tree_sha256'],
                 'prepared perfetto differs from current effective source')
     return record
 
 
-def prepare(archive, output, patch, git):
+def refresh(source, git, archive, patch, pkgsrc_export=None, export_patch=None):
+    return prepared_receipt.refresh(
+        source, identity=lambda: (source_identity(git), git_effective_identity(git)),
+        verify=lambda: verify(source, git, archive, patch, pkgsrc_export, export_patch))
+
+
+def prepare(archive, output, patch, git, exported=None):
     require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
     output = Path(output)
     require(output.is_absolute(), 'prepared source output must be absolute')
@@ -129,10 +139,11 @@ def prepare(archive, output, patch, git):
     identity = source_identity(git)
     with tempfile.TemporaryDirectory(prefix='.perfetto-source-', dir=output.parent) as tmp:
         tmp = Path(tmp)
-        exported = tmp / 'pkgsrc'
-        process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
-                         str(exported), '--git', git, '--patch', patch],
-                        env=process.sanitized_environment())
+        if exported is None:
+            exported = tmp / 'pkgsrc'
+            process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
+                             str(exported), '--git', git, '--patch', patch],
+                            env=process.sanitized_environment())
         metadata, patches = recipe(exported)
         archive = Path(paths.canonical_existing(archive))
         require(archive.name == metadata['archive'], 'perfetto archive filename differs from recipe')
@@ -172,16 +183,33 @@ def main():
     produce.add_argument('--archive', required=True)
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
+    produce.add_argument('--pkgsrc-export')
+    produce.add_argument('--export-patch')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
     check.add_argument('--archive')
     check.add_argument('--patch')
+    check.add_argument('--pkgsrc-export')
+    check.add_argument('--export-patch')
+    refresh_parser = sub.add_parser('refresh-source')
+    refresh_parser.add_argument('--source', required=True)
+    refresh_parser.add_argument('--archive', required=True)
+    refresh_parser.add_argument('--patch', required=True)
+    refresh_parser.add_argument('--pkgsrc-export')
+    refresh_parser.add_argument('--export-patch')
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output, selected.patch, selected.git)
+            shared = (identity_module().shared_export(selected.pkgsrc_export, PORTS, selected.git, SDK_SOURCE,
+                                                      selected.export_patch or selected.patch)
+                      if selected.pkgsrc_export else None)
+            record = prepare(selected.archive, selected.output, selected.patch, selected.git, exported=shared)
+        elif selected.action == 'refresh-source':
+            record = refresh(selected.source, selected.git, selected.archive, selected.patch,
+                             selected.pkgsrc_export, selected.export_patch)
         else:
-            record = verify(selected.source, selected.git, selected.archive, selected.patch)
+            record = verify(selected.source, selected.git, selected.archive, selected.patch,
+                            selected.pkgsrc_export, selected.export_patch)
         sys.stdout.buffer.write(jsonio.json_bytes(record))
     except (SDKError, OSError, ValueError) as exc:
         sdk_source.exit_error(exc, 'perfetto source: ')
