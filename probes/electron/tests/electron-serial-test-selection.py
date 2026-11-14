@@ -25,6 +25,7 @@ with tempfile.TemporaryDirectory() as t:
  root=Path(t)
  for n in ('work','workspace','sysroot','host','ports','sdk','source','packages','release'): (root/n).mkdir()
  o=SimpleNamespace(work=root/'work',workspace=root/'workspace',sysroot=root/'sysroot',host_prefix=root/'host',ports_source=root/'ports',sdk_source=root/'sdk',diagnostic_output=root/'diag',jobs=4,keep_going=1)
+ o.test_dry_run=False
  o.diagnostic_inputs=m.context_keys(o.work,o.workspace,o.sysroot,o.host_prefix,o.ports_source,o.sdk_source,root/'packages',root/'release')
  calls=[]
  sdk={'process':SimpleNamespace(run_logged=lambda *a,**kw:calls.append((a,kw)))}
@@ -33,6 +34,10 @@ with tempfile.TemporaryDirectory() as t:
  argv=calls[0][0][0]
  assert argv==['/selected/bin/ninja','-C',str(root/'work'/'out'),'-j','4','-k','1','netbsd_serial_refresh_unittests']
  assert calls[0][1]['env']['PYTHON_CPU_COUNT']=='1'
+ o.test_dry_run=True; o.diagnostic_output=root/'dry'
+ m.run_test_ninja(o,sdk,native,root/'source',{})
+ assert calls[-1][0][0][-2:]==['-n','netbsd_serial_refresh_unittests']
+ o.test_dry_run=False; o.diagnostic_output=root/'diag'
  try: m.run_test_ninja(o,sdk,native,root/'source',{})
  except Exception: pass
  else: raise AssertionError('existing diagnostic output accepted')

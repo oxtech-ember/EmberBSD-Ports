@@ -3500,8 +3500,12 @@ def run_test_ninja(options, sdk, native, source_root, environment):
         root = Path(root).resolve(strict=False)
         require(not (logdir == root or logdir in root.parents or root in logdir.parents), 'diagnostic output overlaps input')
     logdir.mkdir(mode=0o700)
-    sdk['process'].run_logged([native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
-        '-k', str(keep_going_limit(options)), 'netbsd_serial_refresh_unittests'],
+    command = [native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
+               '-k', str(keep_going_limit(options))]
+    if options.test_dry_run:
+        command.append('-n')
+    command.append('netbsd_serial_refresh_unittests')
+    sdk['process'].run_logged(command,
         str(logdir / 'build.log'), cwd=str(source_root), env=dict(environment, PYTHON_CPU_COUNT='1'))
 
 def run_ninja(options, sdk, native, source_root, environment):
@@ -4251,6 +4255,8 @@ def verify_saved_source_provider(options, sdk, native, environment, saved, role,
 
 
 def reconfigure(options):
+    require(not os.path.lexists(options.work / 'serial-test-fonts-link.json'),
+            'unfinished test-fonts link; recover with the selected build-test input')
     keep_going_limit(options)
     build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
     require(not getattr(options, 'migrate_ml_alias_root', None) or
@@ -4765,6 +4771,14 @@ def build(options):
     require(not (options.work / 'reconfigure-incomplete').exists(),
             'incomplete reconfiguration; rerun reconfigure before build')
     sdk = load_sdk(options.sdk_source)
+    fonts = None
+    if not getattr(options, 'build_test', False):
+        require(not os.path.lexists(options.work / 'serial-test-fonts-link.json'),
+                'unfinished test-fonts link; recover with the selected build-test input')
+    if getattr(options, 'build_test', False):
+        fonts = local_module('electron_test_fonts', 'test-fonts-source.py')
+        font_target = fonts.validate(sdk, options.workspace, options.git, options.test_fonts_source)
+        fonts.recover(options.work, options.workspace, font_target)
     verify_source(options.workspace, options.ports_source, options.git)
     native, environment, values = producer_inputs(options, sdk)
     prepare_build_inputs(options, native, environment, sdk)
@@ -4812,7 +4826,12 @@ def build(options):
     source_root = gn_source(options)
     if getattr(options, 'build_test', False):
         require(selected_test(saved) == SERIAL_TEST_LABEL, 'test target not configured; reconfigure first')
-        run_test_ninja(options, sdk, native, source_root, saved_env)
+        try:
+            with fonts.linked(options.work, options.workspace, font_target):
+                run_test_ninja(options, sdk, native, source_root, saved_env)
+        finally:
+            fonts.validate(sdk, options.workspace, options.git, options.test_fonts_source)
+            verify_source(options.workspace, options.ports_source, options.git)
     else:
         run_ninja(options, sdk, native, source_root, saved_env)
 
@@ -4916,6 +4935,8 @@ def main():
             selection.add_argument('--clear-test-target', action='store_true')
         if phase == 'build-test':
             command.add_argument('--diagnostic-output', type=Path, required=True)
+            command.add_argument('--test-fonts-source', type=Path, required=True)
+            command.add_argument('--test-dry-run', action='store_true')
         command.add_argument('--macos-minimum')
         command.add_argument('--gcc-platform-reason')
         command.add_argument('--jobs', type=int)
@@ -4975,6 +4996,7 @@ def main():
                             options.v8_metagen_libclang_so, options.v8_metagen_bindings_dir, options.v8_metagen_runtime_view,
                             options.target_runtime_stage, options.target_runtime_base, options.host_runtime_root, options.protoc_runtime_view,
                             options.host_prefix, options.sysroot, options.host_buildlink_pkgsrc,
+                            getattr(options, 'test_fonts_source', None),
                             options.boringssl_source, options.boringssl_archive,
                             options.ots_source, options.ots_archive, options.ots_patch, options.ots_pkgsrc_export, options.ots_export_patch,
                             options.leveldb_source, options.leveldb_archive, options.leveldb_patch, options.leveldb_pkgsrc_export, options.leveldb_export_patch,

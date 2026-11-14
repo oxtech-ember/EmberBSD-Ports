@@ -834,9 +834,25 @@ The NetBSD serial regression can be selected explicitly in an existing output
 without replacing its Electron packaging root. Run `reconfigure` with
 `--test-target //services/device/serial:netbsd_serial_refresh_unittests` and
 the same producer inputs, then use `build-test` with the same inputs, an
-absolute new `--diagnostic-output` outside all selected inputs, and a chosen
-`--jobs` budget. This builds the focused test only and writes its log there.
-Run the resulting executable on a compatible NetBSD target. To remove the
+absolute new `--diagnostic-output` outside all selected inputs, a prepared
+`--test-fonts-source`, and a chosen `--jobs` budget. Add `--test-dry-run` to
+measure this target without compiling. This builds the focused test only and
+writes its log there. Run the resulting executable with its generated
+`test_fonts` and `etc/fontconfig` data on a compatible NetBSD target.
+
+Prepare the selected font input with the owner's `test-fonts-source.py`,
+passing absolute `--workspace`, `--ports-source`, `--sdk-source`, `--archive`,
+`--destination`, `--git` and `--lock-root` paths. Supply the object named by
+the selected Chromium DEPS entry from its `chromium-fonts` GCS bucket; the
+owner checks the exact object, generation, size and SHA-256 before using the
+SDK archive and prepared-tree receipt. The package identifier in that receipt
+identifies a selected fixture, not an installed runtime package. The Chromium
+`third_party/test_fonts/LICENSE` supplies the font attribution. The test
+controller uses a guarded temporary link and removes it before final source
+validation; after interruption, repeat with the same selected font source to
+recover its own link. Foreign links are rejected.
+
+ To remove the
 extra root on a later reconfigure, pass `--clear-test-target`. A reconfigure
 without either flag retains the saved selection. Keep diagnostic output
 separate from package and release storage; the controller guards its known
