@@ -14,3 +14,19 @@ recipe identity.
 
 The OS native OpenSSH integration has additional NetBSD-specific requirements;
 this source producer alone does not establish OS compatibility or runtime support.
+
+The LDAP public-key patch keeps its saved argument count only under
+`WITH_NETBSD_LPK`; the saved argument vector remains available for re-exec in
+both profiles. Check the real OS translation unit with the selected wrapper's
+compiler and warning flags:
+
+```sh
+python3 pkgsrc/security/openssh/tests/ldap/compile-profiles.py \
+  --sdk-source /absolute/EmberBSD-SDK --host-prefix /absolute/host-pkg-llvm \
+  --os-source /absolute/EmberBSD --nbmake /absolute/selected-nbmake \
+  --source /absolute/prepared-openssh --sysroot /absolute/ldap-off-dest \
+  --ldap-sysroot /absolute/ldap-enabled-dest --work-dir /absolute/check-work
+```
+
+This checks `sshd-session.c` with `MKLDAP=no` and `MKLDAP=yes` without linking
+or running target code. The enabled sysroot must retain the LDAP headers.
