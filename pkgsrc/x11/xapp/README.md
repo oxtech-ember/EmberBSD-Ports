@@ -21,7 +21,4 @@ with AI assistance; it makes Meson fail if the selected backend cannot find
 its declared inputs rather than silently changing the package capability.
 The upstream license is LGPL-3.0 (see `COPYING.LESSER`).
 
-Cross-GI uses `devel/gobject-introspection/cross.mk`. The amd64 dump under
-`files/gi-dump` was captured from an EmberBSD amd64 target during GIR generation. Its replay with
-the scanner's actual type list remains to be verified. Staged install, GI
-runtime import and target behavior remain separate acceptance checks.
+Cross-GI uses `devel/gobject-introspection/cross.mk`. The captured amd64 dump was replayed against the scanner's actual type list. Native target acceptance imported the installed XApp typelib through PyGObject and checked the GTK3 and `XApp.IconChooserButton` types. This confirms the exercised type and import path; it does not claim compositor support for xapp-shell or acceptance of every XApp API.
