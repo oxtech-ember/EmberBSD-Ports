@@ -5,8 +5,9 @@ Status: local; not submitted upstream.
 Keep the upstream DRM 3.59 requirement on other systems. NetBSD's AMDGPU
 driver reports DRM 3.36. RadeonSI has compatibility paths for older kernels,
 including a no-op submission after reset when reset-in-progress is unavailable.
-Mesa 26.3 assumes that new VRAM is zeroed (DRM 3.59). Keep clearing new VA
-surfaces on older kernels so they never expose stale VRAM contents.
+Mesa 26.3 also drops the has_gpuvm_fault_query and gfx12_supports_display_dcc
+DRM gates (debug-only fault query; GFX12 is not supported on NetBSD).
+The VA surface clear for older kernels is in the radeonsi si_mm_screen.c patch.
 
 --- src/amd/common/ac_gpu_info.c.orig
 +++ src/amd/common/ac_gpu_info.c
@@ -29,15 +30,3 @@ surfaces on older kernels so they never expose stale VRAM contents.
        return false;
     }
  
---- src/gallium/drivers/radeonsi/mm/si_mm_screen.c.orig
-+++ src/gallium/drivers/radeonsi/mm/si_mm_screen.c
-@@ -38,7 +38,8 @@ static int si_video_get_param(struct pipe_screen *screen, enum pipe_video_profil
-       return 1;
- 
-    case PIPE_VIDEO_CAP_SKIP_CLEAR_SURFACE:
--      return 1;
-+      /* Kernels before DRM 3.59 do not zero new VRAM by default. */
-+      return sscreen->info.drm_minor >= 59;
- 
-    default:
-       break;

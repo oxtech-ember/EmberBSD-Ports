@@ -18,7 +18,7 @@ import tarfile
 
 sys.dont_write_bytecode = True
 PORTS = Path(__file__).resolve().parents[3]
-ARCHIVE_SHA256 = 'b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92'
+ARCHIVE_SHA256 = '91d729aa68bb89e4ec857841300bbe922bcb3e52b1f97566ca83930d3b28343a'
 
 
 def section(source, begin, end):

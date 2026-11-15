@@ -19,7 +19,7 @@ sys.path.insert(0, str(PORTS / 'profiles/common-graphics/cross'))
 import sdk_source
 import mesa_generator_host
 
-MESA_SHA256 = 'b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92'
+MESA_SHA256 = '91d729aa68bb89e4ec857841300bbe922bcb3e52b1f97566ca83930d3b28343a'
 
 
 def sha(path):

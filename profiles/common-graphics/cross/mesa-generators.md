@@ -77,7 +77,7 @@ Mesa RTTI follows the installed LLVM configuration. The native CLC embeds its
 OpenCL headers even with shared LLVM so it remains usable after relocation.
 
 The source must match the pinned Mesa archive and the applicable source patches:
-the A733 BVNC addition and the shared Objective-C, GoogleTest and dynarray patches.
+the A733 BVNC addition and the shared Objective-C and GoogleTest patches.
 The target verifier also binds the shared dynarray header used by the generators.
 The Objective-C patch keeps Objective-C enabled for macOS graphics consumers.
 Generators without those consumers use only C and C++.

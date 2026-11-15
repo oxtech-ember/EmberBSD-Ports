@@ -55,7 +55,7 @@ DEPENDS+= vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
 PLIST.powervr= yes
 .else
 MESON_ARGS+= -Dvulkan-drivers=
-# Mesa 26.2 uses auto, not disabled, for these optional compiler choices.
+# Mesa 26.3 uses auto, not disabled, for these optional compiler choices.
 MESON_ARGS+= -Dmesa-clc=auto -Dprecomp-compiler=auto -Dspirv-tools=disabled
 .endif
 .else

@@ -314,7 +314,10 @@ def source_checks(distfiles):
         and "if (info->drm_minor < AC_AMDGPU_DRM_MINOR)" in mesa_amd
         and "only compatible with %u.%u.0 (kernel 6.11.2+)" in mesa_amd,
     )
-    patch_path = REPOSITORY / "pkgsrc/graphics/MesaLib/patches/patch-src_amd_common_ac_gpu_info.c"
+    patch_paths = [
+        REPOSITORY / "pkgsrc/graphics/MesaLib/patches/patch-src_amd_common_ac_gpu_info.c",
+        REPOSITORY / "pkgsrc/graphics/MesaLib/patches/patch-src_gallium_drivers_radeonsi_mm_si__mm__screen.c",
+    ]
     with tempfile.TemporaryDirectory(prefix="ember-mesa-drm-api-") as temp:
         work = Path(temp).resolve()
         source_path = work / "src/amd/common/ac_gpu_info.c"
@@ -323,14 +326,20 @@ def source_checks(distfiles):
         video_path = work / "src/gallium/drivers/radeonsi/mm/si_mm_screen.c"
         video_path.parent.mkdir(parents=True)
         video_path.write_text(mesa_video)
-        result = subprocess.run(
-            ["patch", "-p0", "--batch", "--forward", "-i", str(patch_path)],
-            cwd=work,
-            capture_output=True,
-            text=True,
-            check=False,
+        results = [
+            subprocess.run(
+                ["patch", "-p0", "--batch", "--forward", "-i", str(patch_path)],
+                cwd=work,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            for patch_path in patch_paths
+        ]
+        check(
+            "Mesa NetBSD DRM compatibility patches apply to the pinned source",
+            all(result.returncode == 0 for result in results),
         )
-        check("Mesa NetBSD DRM compatibility patch applies to the pinned source", result.returncode == 0)
         patched = source_path.read_text()
         patched_video = video_path.read_text()
     check(

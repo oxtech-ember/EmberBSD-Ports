@@ -250,9 +250,9 @@ def main():
                        '-C', str(reference), *['mesa-26.3.0/' + name for name in files]]
             subprocess.run(command, check=True, capture_output=True, env=env, timeout=60)
             original = {name: sealer.sha(reference / name) for name in files}
-            patches = [(PORTS / 'probes/powervr/host-tools/mesa-26.2.4-pco-bvnc.patch', 1, []),
-                       (PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc', 0, []),
-                       (PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h', 0, ['84'])]
+            patches = [(PORTS / 'probes/powervr/host-tools/mesa-26.2.4-pco-bvnc.patch', 1, ['2']),
+                       (PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc', 0, ['13', '20']),
+                       (PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h', 0, ['96'])]
             for source_patch, strip, offsets in patches:
                 command = list(map(str, sealer.patch_command(selected, reference, source_patch, strip)))
                 result = subprocess.run(command, capture_output=True, text=True, env=env, timeout=30)
