@@ -1,0 +1,21 @@
+$NetBSD$
+
+Use the current common setuptools after verifying the pure-Python wheel,
+metadata, RECORD, licence payload and runtime decoding with 84.2.1.
+The yanked 84.1 release does not constrain the repaired common provider.
+Origin: EmberBSD contributors (AI-assisted).
+
+$NetBSD$
+
+Use the current shared setuptools version. Pure-Python wheel construction and
+runtime imports were checked with setuptools 84.2.1. Local to EmberBSD.
+
+--- pyproject.toml
++++ pyproject.toml
+@@ -1,5 +1,5 @@
+ [build-system]
+-requires = ["setuptools>=68,<84.1"]
++requires = ["setuptools>=84.2.1"]
+ build-backend = "backend"
+ backend-path = ["_build_hook"]
+ 

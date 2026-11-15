@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (pillow-13.0.0.tar.gz) = 520c842345849f6cc58cdb04aff3090d9f4b261031c234564ec078270d796738
+SHA512 (pillow-13.0.0.tar.gz) = 6c5c105cb28adef0e521e52638b89ce70904bb8275bcfd7915f5ff9c881a00e0012dee252c6b1a7988abe3e86c3b1dd2c300506ef51bad1b5b3bfb6d78817cec
+Size (pillow-13.0.0.tar.gz) = 47058631 bytes
+SHA1 (patch-setup.py) = 5f28aca4aa1d458c2e359814573ff17dae20c36b

@@ -1,0 +1,7 @@
+@comment $NetBSD$
+${PYSITELIB}/${WHEEL_INFODIR}/METADATA
+${PYSITELIB}/${WHEEL_INFODIR}/RECORD
+${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
+${PYSITELIB}/zipremove/__init__.py
+${PYSITELIB}/zipremove/__init__.pyc
+${PYSITELIB}/zipremove/__init__.pyo

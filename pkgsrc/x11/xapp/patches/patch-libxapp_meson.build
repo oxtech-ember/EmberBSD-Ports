@@ -1,0 +1,19 @@
+$NetBSD$
+
+Make the display backend an explicit package build input. Local to EmberBSD.
+
+--- libxapp/meson.build
++++ libxapp/meson.build
+@@ -30,9 +30,9 @@
+ xapp_backend_sources = [ 'xapp-gtk-window-x11.c' ]
+ xapp_wayland_generated = []
+ 
+-wayland_scanner_dep = dependency('wayland-scanner', required: false, native: true)
+-wayland_client_dep = dependency('wayland-client', required: false)
+-gdk_wayland_dep = dependency('gdk-wayland-3.0', required: false)
++wayland_scanner_dep = dependency('wayland-scanner', required: get_option('wayland-backend'), native: true)
++wayland_client_dep = dependency('wayland-client', required: get_option('wayland-backend'))
++gdk_wayland_dep = dependency('gdk-wayland-3.0', required: get_option('wayland-backend'))
+ 
+ if wayland_scanner_dep.found() and wayland_client_dep.found() and gdk_wayland_dep.found()
+     wayland_scanner = find_program(wayland_scanner_dep.get_variable(pkgconfig: 'wayland_scanner'),

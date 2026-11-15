@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (pygobject-3.58.1.tar.gz) = 15bbfdec02d2c8de8099584b6f1c4c2a9dabac988b474c0c57e8e2ed9eb0680b
+SHA512 (pygobject-3.58.1.tar.gz) = d1e0f6fd446443042aeee655661112ba3ba1812b9343e0510022a9ffbfc47f84d8b55c766d247fe905e5a1e59c0efbe282e6d1283aa4ea6fec0fa36d449a43c1
+Size (pygobject-3.58.1.tar.gz) = 1408671 bytes

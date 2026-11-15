@@ -548,7 +548,7 @@ def run_node_tests(stream, source_root, native, work):
     sys.stdout.buffer.write(output)
     env = child_environment(native, work)
     env['EMBER_BROWSER_SOURCE'] = str(source_root)
-    for filename in ('test-netbsd-system-updater.cjs', 'test-netbsd-telemetry.cjs'):
+    for filename in ('test-netbsd-system-updater.cjs', 'test-netbsd-telemetry.cjs', 'test-webapp-mode.cjs'):
         output = run_host_tool(stream, [native.tool('node'), str(Path(__file__).parent / filename)],
                                cwd=source_root, env=env, timeout=300)
         sys.stdout.buffer.write(output)
@@ -648,6 +648,7 @@ def main():
     copy_regular(Path(__file__).parent / 'ember-browser.svg', pages / 'ember-browser.svg')
     copy_regular(Path(__file__).parent / 'ember-browser.png', pages / 'ember-browser.png')
     copy_regular(Path(__file__).parent / 'netbsd-system-updater.js', app_root / 'src/main/netbsd-system-updater.js')
+    copy_regular(Path(__file__).parent / 'webapp-mode.js', app_root / 'src/main/webapp-mode.js')
     copy_module_tree(runtime_root, app_root / 'node_modules')
     copy_allowlist(source_root, source_manifest['buildInputs'] + source_manifest['generatedFiles'], seed_root)
     # Generate only the consumer-facing desktop catalogs from upstream messages.

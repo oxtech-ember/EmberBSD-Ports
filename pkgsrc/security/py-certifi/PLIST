@@ -1,0 +1,23 @@
+@comment $NetBSD: PLIST,v 1.8 2026/07/22 08:27:23 adam Exp $
+${PYSITELIB}/${WHEEL_INFODIR}/METADATA
+${PYSITELIB}/${WHEEL_INFODIR}/RECORD
+${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
+${PYSITELIB}/${WHEEL_INFODIR}/licenses/LICENSE
+${PYSITELIB}/${WHEEL_INFODIR}/top_level.txt
+${PYSITELIB}/certifi/__init__.py
+${PYSITELIB}/certifi/__init__.pyc
+${PYSITELIB}/certifi/__init__.pyo
+${PYSITELIB}/certifi/__main__.py
+${PYSITELIB}/certifi/__main__.pyc
+${PYSITELIB}/certifi/__main__.pyo
+${PYSITELIB}/certifi/cacert.pem
+${PYSITELIB}/certifi/core.py
+${PYSITELIB}/certifi/core.pyc
+${PYSITELIB}/certifi/core.pyo
+${PYSITELIB}/certifi/py.typed
+${PYSITELIB}/certifi/tests/__init__.py
+${PYSITELIB}/certifi/tests/__init__.pyc
+${PYSITELIB}/certifi/tests/__init__.pyo
+${PYSITELIB}/certifi/tests/test_certify.py
+${PYSITELIB}/certifi/tests/test_certify.pyc
+${PYSITELIB}/certifi/tests/test_certify.pyo

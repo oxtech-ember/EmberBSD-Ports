@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (charset_normalizer-3.5.2.tar.gz) = 51dc1a1e2acd782b918d1a53c5368786c2887a6f8448768d030d0ed7748a31e5
+SHA512 (charset_normalizer-3.5.2.tar.gz) = 342e94ae5b4a3d378860aab316d76947e67cc26d62529e2a9c0e062766ed2c48e4641497b0277c9e291a7ba40fe6861c5b6d4814f38c0775fad59a3b761468d3
+Size (charset_normalizer-3.5.2.tar.gz) = 172659 bytes
+SHA1 (patch-pyproject.toml) = 9ebc0756ec32466e2516cdf4439e27602c09e034

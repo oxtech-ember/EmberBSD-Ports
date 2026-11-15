@@ -583,3 +583,15 @@ x11/gtksourceview5
 graphics/netpbm
 sysutils/upower
 graphics/potrace
+devel/py-gobject3
+graphics/py-cairo
+net/py-tldextract
+graphics/py-Pillow
+sysutils/py-setproctitle
+devel/py-filelock
+www/py-idna
+security/py-certifi
+converters/py-charset-normalizer
+www/py-urllib3
+devel/py-gobject3-common
+graphics/py-cairo-shared

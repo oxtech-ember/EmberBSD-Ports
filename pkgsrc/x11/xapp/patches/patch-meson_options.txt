@@ -1,0 +1,16 @@
+$NetBSD$
+
+Make the display backend an explicit package build input. Local to EmberBSD.
+
+--- meson_options.txt
++++ meson_options.txt
+@@ -63,3 +63,9 @@
+     value: 'auto',
+     description: 'Build XAppKbdLayoutController (requires libgnomekbd).'
+ )
++
++option('wayland-backend',
++    type: 'feature',
++    value: 'auto',
++    description: 'Build the XAppGtkWindow Wayland backend.'
++)

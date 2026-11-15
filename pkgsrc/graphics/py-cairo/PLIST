@@ -1,0 +1,11 @@
+@comment $NetBSD: PLIST,v 1.17 2024/09/13 08:24:44 wiz Exp $
+${PYSITELIB}/cairo/__init__.py
+${PYSITELIB}/cairo/__init__.pyc
+${PYSITELIB}/cairo/__init__.pyi
+${PYSITELIB}/cairo/__init__.pyo
+${PYSITELIB}/cairo/_cairo.so
+${PYSITELIB}/cairo/include/py3cairo.h
+${PYSITELIB}/cairo/py.typed
+${PYSITELIB}/${WHEEL_INFODIR}/METADATA
+${PYSITELIB}/${WHEEL_INFODIR}/RECORD
+${PYSITELIB}/${WHEEL_INFODIR}/WHEEL

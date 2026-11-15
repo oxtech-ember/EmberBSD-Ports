@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (tldextract-5.4.0.tar.gz) = 6f282bc510185d951d158590c1e56694af9b8f0847d9a5b69062a6bf4eeecdc8
+SHA512 (tldextract-5.4.0.tar.gz) = a38515bcc8a764cb3686df8155273899e15e1f8be0ef841fc778361d79dda73720f8d7442bd8690db929d163c7cf55e238794f4d0327c68ab4b114b14d661d03
+Size (tldextract-5.4.0.tar.gz) = 197271 bytes
+

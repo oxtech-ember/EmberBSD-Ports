@@ -1,0 +1,7 @@
+# Ember Browser WebApp mode (draft)
+
+Launch the installed browser with `--webapp-id=ID --webapp-url=HTTPS_URL --webapp-name=NAME` and optional `--webapp-private`. ID contains 1–64 ASCII letters, digits, `_` or `-`. URL must be HTTP(S) without credentials or control/space characters; name is nonempty and at most 200 characters. Normal mode uses `<appData>/Ember Browser/webapps/<ID>`; private mode uses the separate `webapps-private/<ID>` namespace and in-memory sessions for every tab. A second launch with the same ID and privacy mode focuses its existing window. If its address changed, a dialog asks the user to close and reopen the app; a changed name does not block focus. Arbitrary additional switches are rejected; the standard X11/GPU launcher switches remain supported. Normal Browser startup is unchanged.
+
+Implementation keeps the Browser lifecycle, blocker startup gate, permission/download/navigation handling, and hidden chrome handshake; the content view fills a native-framed window. Startup ignores saved tabs, uses a private startup page when selected, then opens only the requested URL after the blocker decision. Blocker errors remain visible in the startup page.
+
+This draft needs target integration acceptance: real GTK launcher, WM_CLASS/XWayland, same-ID and cross-ID processes, private cookie lifetime, popup/OAuth, downloads, permission prompts, external schemes, failure/retry UI, resize, and clean shutdown. Do not claim those scenarios from unit tests alone.
