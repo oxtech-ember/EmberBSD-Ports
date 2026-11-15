@@ -11,6 +11,7 @@ COMMENT=	Python Imaging Library (Fork)
 LICENSE=	hpnd
 
 TOOL_DEPENDS+=	${PYPKGPREFIX}-setuptools>=78:../../devel/py-setuptools
+TOOL_DEPENDS+=	${PYPKGPREFIX}-pybind11-[0-9]*:../../devel/py-pybind11
 TEST_DEPENDS+=	netpbm-[0-9]*:../../graphics/netpbm
 TEST_DEPENDS+=	ghostscript-[0-9]*:../../print/ghostscript
 TEST_DEPENDS+=	${PYPKGPREFIX}-numpy-[0-9]*:../../math/py-numpy
