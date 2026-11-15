@@ -21,8 +21,7 @@ with AI assistance; it makes Meson fail if the selected backend cannot find
 its declared inputs rather than silently changing the package capability.
 The upstream license is LGPL-3.0 (see `COPYING.LESSER`).
 
-Cross-GI uses `devel/gobject-introspection/cross.mk`. The default replay
-requires a captured, verified XApp dump in this package's `files/gi-dump`;
-no such dump is included yet. Supply a real target query and use the common
-live/capture procedure before claiming a cross build. Staged install, GI
-runtime import and target behavior remain to be verified.
+Cross-GI uses `devel/gobject-introspection/cross.mk`. The amd64 dump under
+`files/gi-dump` was captured from an EmberBSD amd64 target during GIR generation. Its replay with
+the scanner's actual type list remains to be verified. Staged install, GI
+runtime import and target behavior remain separate acceptance checks.

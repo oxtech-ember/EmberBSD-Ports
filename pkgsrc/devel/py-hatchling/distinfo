@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (hatchling-1.33.0.tar.gz) = a298f6939d7d20a6689f27c2856d7f03a9e4d0f77937c155968c632eceb4e868
+SHA512 (hatchling-1.33.0.tar.gz) = e5bf8b63b80cb49776571a5e3a5161017035dfbc66dac4cc8c4a6b5854ca76aeca84536318dc76484b1e625e048ffaa4f4d3f17c6157c79bf56ef515b971a116
+Size (hatchling-1.33.0.tar.gz) = 58079 bytes

@@ -596,3 +596,6 @@ www/py-urllib3
 devel/py-gobject3-common
 graphics/py-cairo-shared
 www/py-soupsieve
+devel/py-hatchling
+archivers/py-brotlicffi
+archivers/py-zstandard

@@ -1,0 +1,16 @@
+@comment $NetBSD: PLIST,v 1.11 2025/09/21 16:31:15 wiz Exp $
+${PYSITELIB}/${WHEEL_INFODIR}/METADATA
+${PYSITELIB}/${WHEEL_INFODIR}/RECORD
+${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
+${PYSITELIB}/${WHEEL_INFODIR}/licenses/LICENSE
+${PYSITELIB}/${WHEEL_INFODIR}/top_level.txt
+${PYSITELIB}/zstandard/__init__.py
+${PYSITELIB}/zstandard/__init__.pyc
+${PYSITELIB}/zstandard/__init__.pyi
+${PYSITELIB}/zstandard/__init__.pyo
+${PYSITELIB}/zstandard/_cffi.so
+${PYSITELIB}/zstandard/backend_c.so
+${PYSITELIB}/zstandard/backend_cffi.py
+${PYSITELIB}/zstandard/backend_cffi.pyc
+${PYSITELIB}/zstandard/backend_cffi.pyo
+${PYSITELIB}/zstandard/py.typed

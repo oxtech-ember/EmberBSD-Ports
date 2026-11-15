@@ -10,6 +10,7 @@ USE_TOOLS+= pkg-config msgfmt xgettext gdbus-codegen
 MESON_BINARIES+= gdbus-codegen
 MESON_BINARY.gdbus-codegen= ${TOOLS_CMD.gdbus-codegen}
 USE_PKGLOCALEDIR= yes
+PLIST_SUBST+= PYSITELIB=${PYSITELIB}
 REPLACE_TOOL_PYTHON+= schemas/meson_install_schemas.py
 GLIB_SCHEMAS+= org.x.apps.gschema.xml
 DEPENDS+= ${PYPKGPREFIX}-gobject3-[0-9]*:../../devel/py-gobject3
