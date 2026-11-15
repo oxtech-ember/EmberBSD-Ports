@@ -21,6 +21,10 @@ TEST_DEPENDS+=	${PYPKGPREFIX}-test-timeout-[0-9]*:../../devel/py-test-timeout
 
 USE_TOOLS+=	pkg-config
 
+# One extension at a time; parallel C compilation uses the package job budget.
+WHEEL_ARGS+=	-Cparallel=1
+MAKE_ENV+=	MAX_CONCURRENCY=${MAKE_JOBS:U1}
+
 # Pillow otherwise probes the build host's /usr/local and /usr/lib paths
 # while cross compiling. Retain pkg-config and declared buildlink inputs.
 .include "../../mk/bsd.prefs.mk"
