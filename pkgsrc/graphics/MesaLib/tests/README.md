@@ -27,7 +27,7 @@ It does not select a compiler, admit a tool into an SDK, or build Mesa.
 
 ```sh
 "$PYTHON" -B tests/prepare-prime-import.py \
-    /absolute/mesa-26.2.6.tar.xz /absolute/new-prime-work \
+    /absolute/mesa-26.3.0.tar.xz /absolute/new-prime-work \
     --patch-tool /absolute/source-regression/patch
 ```
 
@@ -93,7 +93,8 @@ runtime behavior.
 
 MesaLib 26.2.5nb3 uses upstream in-tree shader generators for native NetBSD
 builds. The selected GCC16 compiles the C and C++ objects. Mesa then runs
-`mesa_clc`, `vtn_bindgen2` and, on AArch64, `pco_clc` from that same build.
+`mesa_clc`, `vtn_bindgen2` and, on AArch64, `pco_clc` and `pdsc_precomp` from
+that same build.
 Both generator installation options are false. No generator enters the
 Mesa package PLIST.
 
@@ -152,7 +153,7 @@ From the Ports root, run the actual Meson configuration-fragment check:
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B -E profiles/common-graphics/tests/mesa-host-objc.py \
-    /absolute/mesa-26.2.6.tar.xz "$HOST_PREFIX/bin/meson" \
+    /absolute/mesa-26.3.0.tar.xz "$HOST_PREFIX/bin/meson" \
     "$HOST_PREFIX/bin/nbpatch" /absolute/new-test-work
 ```
 

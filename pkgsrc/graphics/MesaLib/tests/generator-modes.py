@@ -10,7 +10,7 @@ import tempfile
 
 RECIPE = Path(__file__).resolve().parents[1]
 FIELDS = ('PKG_FAIL_REASON', 'MESON_ARGS', 'MESON_NATIVE_ARGS', 'DEPENDS', 'TOOL_DEPENDS',
-          'TOOLS_PATH.mesa_clc', 'TOOLS_PATH.vtn_bindgen2', 'TOOLS_PATH.pco_clc',
+          'TOOLS_PATH.mesa_clc', 'TOOLS_PATH.vtn_bindgen2', 'TOOLS_PATH.pco_clc', 'TOOLS_PATH.pdsc_precomp',
           '_EMBERBSD_MESA_NATIVE', '_EMBERBSD_MESA_GENERATOR_NAMES',
           'BUILDLINK_DEPMETHOD.clang', 'BUILDLINK_DEPMETHOD.spirv-tools',
           'BUILDLINK_DEPMETHOD.spirv-llvm-translator',
@@ -121,7 +121,7 @@ def oracle(values, arch, cross, sealed, provider_version, tests=False):
             require(('mesa-generators-' + provider_version + ':../mesa-generators') in
                     values['TOOL_DEPENDS'].split(),
                     'The normal cross path does not depend on the matching native generator package')
-            for name in (('mesa_clc', 'vtn_bindgen2', 'pco_clc') if arch == 'aarch64'
+            for name in (('mesa_clc', 'vtn_bindgen2', 'pco_clc', 'pdsc_precomp') if arch == 'aarch64'
                          else ('mesa_clc', 'vtn_bindgen2')):
                 require(values['TOOLS_PATH.' + name] == '/usr/pkg/bin/' + name,
                         'The normal cross path did not select the native package tool: ' + name)
@@ -167,7 +167,7 @@ show:
                                                   str(source_vars), 'show'], cwd=RECIPE, text=True).splitlines()
         distname, mesa_version, revision, generator_version, patchdir, distinfo = source_values
         require(distname == 'mesa-' + mesa_version and
-                generator_version == mesa_version + 'nb' + revision,
+                generator_version == mesa_version + ('' if revision == '0' else 'nb' + revision),
                 'Mesa source and generator package versions are not shared')
         require(patchdir.endswith('/MesaLib/patches') and distinfo.endswith('/MesaLib/distinfo'),
                 'The generator package does not share the Mesa source patch set and archive digest')
@@ -217,7 +217,7 @@ show:
                                                    str(provider_query), 'show'],
                                                   cwd=provider_path, text=True).splitlines()
         expected_name = 'mesa-generators-' + mesa_version
-        expected_pkgver = mesa_version + 'nb' + revision
+        expected_pkgver = generator_version
         require(provider_values[0:4] == [expected_name, revision, mesa_version, expected_pkgver],
                 'The provider package name/version metadata is cyclic or does not match Mesa')
         require(provider_values[4] == distname and provider_values[5].endswith('/MesaLib/patches') and
@@ -237,7 +237,7 @@ show:
                                             '/selected/host-prefix/bin/flex'],
                 'The provider fell back to a platform Bison/Flex tool')
         provider_plist = (RECIPE.parent / 'mesa-generators/PLIST').read_text().splitlines()
-        require({'bin/mesa_clc', 'bin/vtn_bindgen2', 'bin/pco_clc'} ==
+        require({'bin/mesa_clc', 'bin/vtn_bindgen2', 'bin/pco_clc', 'bin/pdsc_precomp'} ==
                 {line for line in provider_plist if line.startswith('bin/')},
                 'The native package installed generator interface is incomplete')
         require(not any(name in provider_make for name in ('py-lxml', 'py-rnc2rng', 'py-rply', 'py-appdirs')),
@@ -253,7 +253,7 @@ show:
                                tools if selected is True else '' if selected is None else work / 'missing')
                 oracle(values, arch, cross, selected, expected_pkgver)
                 if cross and selected is None:
-                    for name in ('mesa_clc', 'vtn_bindgen2', 'pco_clc'):
+                    for name in ('mesa_clc', 'vtn_bindgen2', 'pco_clc', 'pdsc_precomp'):
                         path = work / 'native-prefix/bin' / name
                         path.parent.mkdir(parents=True, exist_ok=True)
                         path.write_text('#!/bin/sh\nexit 0\n')

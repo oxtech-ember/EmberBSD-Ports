@@ -33,7 +33,7 @@ def test(arguments):
     verifier = PORTS / 'pkgsrc/graphics/MesaLib/verify-mesa-generators.sh'
     source = work / 'source'
     source.mkdir()
-    (source / 'VERSION').write_text('26.2.6\n')
+    (source / 'VERSION').write_text('26.3.0\n')
     origin = Path(json.loads((sealed / 'receipt.json').read_text())['source'])
     for line in (sealed / 'interface.sha256').read_text().splitlines():
         _, name = line.split()
@@ -66,7 +66,7 @@ def test(arguments):
         shutil.copy2(sealed / 'HOST', fixture / 'HOST')
     (fixture / 'receipt.json').write_text('{}\n')
     shutil.copy2(sealed / 'interface.sha256', fixture / 'interface.sha256')
-    for name in ('mesa_clc', 'vtn_bindgen2', 'pco_clc'):
+    for name in ('mesa_clc', 'vtn_bindgen2', 'pco_clc', 'pdsc_precomp'):
         binary = fixture / 'bin' / name
         binary.write_text('never executed\n')
         binary.chmod(0o755)

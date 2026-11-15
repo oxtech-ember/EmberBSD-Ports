@@ -5,7 +5,8 @@
 Cross `graphics/MesaLib` adds the matching `graphics/mesa-generators` package
 as a native `TOOL_DEPENDS` only when its selected driver closure needs shader
 generators. The package builds the same Mesa source and patch set, installs
-`mesa_clc`, `vtn_bindgen2` and `pco_clc` into the selected native prefix, and
+`mesa_clc`, `vtn_bindgen2`, `pco_clc` and `pdsc_precomp` into the selected
+native prefix, and
 provides the paths through Meson's native file. Its version and package
 revision track MesaLib, so a changed shader compiler interface rebuilds the
 host tools with the target package. Native Mesa builds continue to use their
@@ -23,7 +24,7 @@ passed build, PLIST checks and sysroot installation with PowerVR, V3D and the
 other default drivers retained. These checks do not establish target rendering
 or a complete KiCad session.
 
-Mesa 26.2.6 uses CLC for Iris shaders even when Rusticl is disabled.
+Mesa 26.3.0 uses CLC for Iris shaders even when Rusticl is disabled.
 The default `mesa-clc=auto` selects the target CLC dependency closure.
 Cross builds instead use `mesa-clc=system` and `precomp-compiler=system`.
 Mesa runs native `mesa_clc` and `vtn_bindgen2` through its native file.
@@ -34,8 +35,8 @@ dependencies. They do not need a sealed cross-host generator directory. See the
 [recipe selection and metadata check](../../../pkgsrc/graphics/MesaLib/tests/README.md#native-and-cross-shader-generators).
 
 The [PowerVR workflow](powervr.md#native-build-tools) already prepares these
-two generic tools. `pco_clc` is specific to PowerVR and is optional for an
-Intel-only seal. The target package still builds the complete Iris shaders.
+two generic tools. `pco_clc` and `pdsc_precomp` are specific to PowerVR and are
+optional for an Intel-only seal. The target package still builds the complete Iris shaders.
 No shader path or driver feature is disabled to avoid the host dependency.
 
 ## Prepare the native tools
@@ -51,7 +52,7 @@ Build these tools and dependencies through the common Ports recipes.
 The native LLVM and Clang libraries and the generators need a compatible host
 C++ runtime. GCC16 remains an explicit host compiler alternative.
 
-The current inputs are Mesa 26.2.6, LLVM/Clang 23.1.4, Translator 23.1.2,
+The current inputs are Mesa 26.3.0, LLVM/Clang 23.1.4, Translator 23.1.2,
 SPIRV-Tools 2026.4 and SPIRV-Headers 1.4.363.0. Use the common Ports patches
 in both modes. `--test` additionally requires GoogleTest 1.18.0 from the external
 provider. The producer checks selected package predicates, Python module origins
@@ -123,7 +124,7 @@ pass `--host-compiler-family gcc`; the default is `clang`.
 python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" \
     --host-prefix "$HOST_PREFIX" --profile intel \
     --pkgdb "$HOST_PKGDB" --lock-directory "$LOCK_DIRECTORY" \
-    /absolute/mesa-26.2.6.tar.xz /absolute/native-mesa-source \
+    /absolute/mesa-26.3.0.tar.xz /absolute/native-mesa-source \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-intel-tools
 ```
 
@@ -142,7 +143,7 @@ This workflow does not qualify Iris rendering, KMS, input or a Plasma session.
 
 Set `EMBERBSD_MESA_GENERATORS=/absolute/new-intel-tools` in the private
 cross MAKECONF. The x86_64 Mesa recipe selects Iris and both system generators.
-Its native Meson file contains no `pco_clc` entry unless PowerVR is also selected.
+Its native Meson file contains no `pco_clc` or `pdsc_precomp` entry unless PowerVR is also selected.
 Target SPIRV-Tools, Translator and Clang CLC libraries are not required by
 this path. Keep the selected target LLVM runtime for llvmpipe and ORC.
 
@@ -156,7 +157,7 @@ BMAKE=/absolute/native/bmake python3 ../tests/amd64-targets.py \
 python3 ../tests/amd64-targets.py --skip-bmake \
     --distfiles /absolute/verified/distfiles
 ruby ../tests/iris-clc-configure.rb /absolute/native/python3.15 \
-    /absolute/meson-1.12.1/meson.py /absolute/mesa-26.2.6
+    /absolute/meson-1.12.1/meson.py /absolute/mesa-26.3.0
 ```
 
 The profile fixture runs the production shell verifier and native-file target.

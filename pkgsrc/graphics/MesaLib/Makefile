@@ -95,7 +95,7 @@ MESON_ARGS+= -Dmesa-clc=system -Dprecomp-compiler=system
 MESON_ARGS+= -Dspirv-tools=disabled
 _EMBERBSD_MESA_GENERATOR_NAMES= mesa_clc vtn_bindgen2
 .if !empty(_EMBERBSD_MESA_GENERATOR_PROFILES:Mpowervr)
-_EMBERBSD_MESA_GENERATOR_NAMES+= pco_clc
+_EMBERBSD_MESA_GENERATOR_NAMES+= pco_clc pdsc_precomp
 .endif
 .include "mesa-generators.mk"
 .else

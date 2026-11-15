@@ -12,7 +12,7 @@ checks = 0
 Dir.mktmpdir('mesa-generator-profiles-', '/tmp') do |d|
   tools = d + '/tools'; source = d + '/source'
   FileUtils.mkdir_p([tools + '/bin', source + '/src/compiler/nir', source + '/src/util'])
-  File.write(source + '/VERSION', "26.2.6\n")
+  File.write(source + '/VERSION', "26.3.0\n")
   File.write(source + '/src/compiler/nir/nir.h', 'interface fixture')
   File.write(source + '/src/util/u_dynarray.h', 'shared generator interface')
   File.write(tools + '/FORMAT', "ember-mesa-generators-2\n")
@@ -98,8 +98,10 @@ Dir.mktmpdir('mesa-generator-profiles-', '/tmp') do |d|
   File.write(tools + '/PROFILES', "intel,powervr\n")
   manifest.call
   check.call('PowerVR still needs PCO tool', 'powervr', false)
-  File.write(tools + '/bin/pco_clc', "#!/bin/sh\nexit 99\n")
-  File.chmod(0755, tools + '/bin/pco_clc')
+  %w[pco_clc pdsc_precomp].each do |name|
+    File.write(tools + '/bin/' + name, "#!/bin/sh\nexit 99\n")
+    File.chmod(0755, tools + '/bin/' + name)
+  end
   manifest.call
   check.call('Combined seal supplies both', 'intel,powervr', true)
   File.unlink(tools + '/PROFILES')

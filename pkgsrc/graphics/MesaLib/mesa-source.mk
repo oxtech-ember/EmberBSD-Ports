@@ -1,8 +1,12 @@
 # Shared source identity and complete Ports patch set for Mesa and its
 # build-host generator package.
-MESA_SOURCE_VERSION= 26.2.6
-MESA_PORT_REVISION= 24
+MESA_SOURCE_VERSION= 26.3.0
+MESA_PORT_REVISION= 0
+.if ${MESA_PORT_REVISION} == 0
+MESA_GENERATORS_VERSION= ${MESA_SOURCE_VERSION}
+.else
 MESA_GENERATORS_VERSION= ${MESA_SOURCE_VERSION}nb${MESA_PORT_REVISION}
+.endif
 DISTNAME= mesa-${MESA_SOURCE_VERSION}
 EXTRACT_SUFX= .tar.xz
 MASTER_SITES= https://archive.mesa3d.org/

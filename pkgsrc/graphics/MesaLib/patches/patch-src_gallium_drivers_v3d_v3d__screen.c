@@ -1,12 +1,12 @@
 Origin: EmberBSD; AI-assisted V3D mutex lifecycle repair, not submitted upstream.
 
-Initialize the BO cache mutex before a screen can publish it. Check both
-mutex initializations. Unwind only acquired resources on creation errors.
+Mesa 26.3 initializes the BO cache mutex before the screen is published.
+Check both mutex initializations. Unwind only acquired resources on creation errors.
 Drain the BO cache before destroying its mutex on normal screen teardown.
 
 --- src/gallium/drivers/v3d/v3d_screen.c.orig
 +++ src/gallium/drivers/v3d/v3d_screen.c
-@@ -79,6 +79,8 @@
+@@ -79,6 +79,8 @@ v3d_screen_destroy(struct pipe_screen *pscreen)
  
          _mesa_hash_table_destroy(screen->bo_handles, NULL);
          v3d_bufmgr_destroy(pscreen);
@@ -15,7 +15,7 @@ Drain the BO cache before destroying its mutex on normal screen teardown.
          slab_destroy_parent(&screen->transfer_pool);
          if (screen->ro)
                  screen->ro->destroy(screen->ro);
-@@ -779,6 +781,9 @@
+@@ -782,6 +784,9 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
          struct v3d_screen *screen = rzalloc(NULL, struct v3d_screen);
          struct pipe_screen *pscreen;
  
@@ -25,10 +25,11 @@ Drain the BO cache before destroying its mutex on normal screen teardown.
          pscreen = &screen->base;
  
          pscreen->destroy = v3d_screen_destroy;
-@@ -791,8 +796,13 @@
+@@ -794,9 +799,13 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
          screen->ro = ro;
  
          list_inithead(&screen->bo_cache.time_list);
+-        (void)mtx_init(&screen->bo_cache.lock, mtx_plain);
 -        (void)mtx_init(&screen->bo_handles_mutex, mtx_plain);
 +        if (mtx_init(&screen->bo_cache.lock, mtx_plain) != thrd_success)
 +                goto fail_screen;
@@ -40,7 +41,7 @@ Drain the BO cache before destroying its mutex on normal screen teardown.
  
  #if USE_V3D_SIMULATOR
          screen->sim_file = v3d_simulator_init(screen->fd);
-@@ -880,7 +890,17 @@
+@@ -884,7 +893,17 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
          return pscreen;
  
  fail:

@@ -83,8 +83,8 @@ supports Linux x86_64 with Clang and macOS ARM64 with Clang or the explicit GCC
 alternative; select `--profile powervr` or `--profile all`.
 
 That owner documents the compiler selection, current versions, native build,
-shader checks and sealing. It supplies `mesa_clc`, `vtn_bindgen2` and `pco_clc`
-from one compatible source and host ABI. Rebuild affected generators after
+shader checks and sealing. It supplies `mesa_clc`, `vtn_bindgen2`, `pco_clc` and
+`pdsc_precomp` from one compatible source and host ABI. Rebuild affected generators after
 a dependency ABI changes; retain compatible objects. Host code generation
 does not establish GPU execution.
 

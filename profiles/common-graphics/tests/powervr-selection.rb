@@ -37,7 +37,7 @@ query = lambda do |name, options, *overrides|
     vars.zip(lines).to_h
 end
 pvr = query.call('default', 'llvm x11 wayland')
-check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaLib-26.2.6nb14', 'the default AArch64 package selects PowerVR')
+check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaLib-26.3.0', 'the default AArch64 package selects PowerVR')
 check.call(pvr.fetch('PKG_SUPPORTED_OPTIONS').split.include?('powervr'), 'the small graphics set can select PowerVR')
 %w[-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink -Dplatforms=x11,wayland -Dllvm=enabled -Dshared-llvm=enabled -Dvulkan-drivers=imagination,broadcom -Dmesa-clc=system -Dprecomp-compiler=system -Dimagination-srv=false].each do |option|
     check.call(pvr.fetch('MESON_ARGS').split.include?(option), "keeps #{option}")
@@ -65,7 +65,7 @@ check.call(!complete.call(missing_defaults), 'causal missing driver defaults fai
 native = pvr.fetch('_EMBERBSD_MESA_NATIVE')
 FileUtils.mkdir_p(File.dirname(native))
 run.call('native-file', native, 'PKG_OPTIONS.MesaLib=llvm x11 wayland')
-%w[mesa_clc vtn_bindgen2 pco_clc].each do |name|
+%w[mesa_clc vtn_bindgen2 pco_clc pdsc_precomp].each do |name|
     check.call(File.read(native).include?("#{name} = '#{generators}/bin/#{name}'"), "native Meson file binds #{name}")
 end
 # Prepare only the verifier's selected tool, without package dependencies.
@@ -90,7 +90,7 @@ check.call(small.fetch('MESON_NATIVE_ARGS').include?('--native-file'), 'the smal
 small_native = small.fetch('_EMBERBSD_MESA_NATIVE')
 FileUtils.mkdir_p(File.dirname(small_native))
 run.call('small-native-file', small_native, small_work, 'PKG_OPTIONS.MesaLib=' + small_options)
-%w[mesa_clc vtn_bindgen2 pco_clc].each do |name|
+%w[mesa_clc vtn_bindgen2 pco_clc pdsc_precomp].each do |name|
     check.call(File.read(small_native).include?("#{name} = '#{generators}/bin/#{name}'"), "the small set binds #{name}")
 end
 run.call('small-awk-tool', small.fetch('TOOLS_CMD.awk'), small_work, 'PKG_OPTIONS.MesaLib=' + small_options)

@@ -90,7 +90,7 @@ USE_PKGSRC_GCC_RUNTIME=no
 _TOOLS_USE_PKGSRC.flex=no
 PKGPATH?=graphics/MesaLib
 PKG_OPTIONS=llvm x11 wayland
-DISTNAME=mesa-26.2.6
+DISTNAME=mesa-26.3.0
 PKGREVISION=10
 .if ${{USE_CROSS_COMPILE:Uno:tl}} == "yes"
 EMBERBSD_GRAPHICS_LLVM_CONFIG={work}/helper/bin/llvm-config
@@ -281,12 +281,18 @@ def source_checks(distfiles):
             except (KeyError, AttributeError) as error:
                 raise SystemExit(f"missing source member {member}: {error}") from error
 
-    mesa_top = source_text("mesa-26.2.6.tar.xz", "mesa-26.2.6/meson.build")
+    mesa_top = source_text("mesa-26.3.0.tar.xz", "mesa-26.3.0/meson.build")
     mesa_dri = source_text(
-        "mesa-26.2.6.tar.xz", "mesa-26.2.6/src/gallium/targets/dril/meson.build"
+        "mesa-26.3.0.tar.xz", "mesa-26.3.0/src/gallium/targets/dril/meson.build"
     )
     mesa_amd = source_text(
-        "mesa-26.2.6.tar.xz", "mesa-26.2.6/src/amd/common/ac_gpu_info.c"
+        "mesa-26.3.0.tar.xz", "mesa-26.3.0/src/amd/common/ac_gpu_info.c"
+    )
+    mesa_family = source_text(
+        "mesa-26.3.0.tar.xz", "mesa-26.3.0/src/amd/common/amd_family.h"
+    )
+    mesa_video = source_text(
+        "mesa-26.3.0.tar.xz", "mesa-26.3.0/src/gallium/drivers/radeonsi/mm/si_mm_screen.c"
     )
     drm_amdgpu = source_text(
         "libdrm-2.4.134.tar.xz", "libdrm-2.4.134/amdgpu/meson.build"
@@ -294,9 +300,8 @@ def source_checks(distfiles):
     drm_data = source_text("libdrm-2.4.134.tar.xz", "libdrm-2.4.134/data/meson.build")
     check(
         "Mesa source links RadeonSI to libdrm_amdgpu >= 2.4.133",
-        "_drm_amdgpu_ver = '2.4.133'" in mesa_top
-        and "with_gallium_radeonsi" in mesa_top
-        and "'libdrm_' + d[0]" in mesa_top
+        "'amdgpu': {\n    'version': '2.4.133',\n    'enabled': (with_amd_vk and not with_platform_windows) or with_gallium_radeonsi," in mesa_top
+        and "'libdrm_' + name" in mesa_top
         and "dep_libdrm_amdgpu" in mesa_top,
     )
     check(
@@ -304,9 +309,10 @@ def source_checks(distfiles):
         "[with_gallium_radeonsi, ['radeonsi']]" in mesa_dri,
     )
     check(
-        "Mesa source retains the AMDGPU DRM 3.54 runtime API gate",
-        "if (info->drm_minor < 54)" in mesa_amd
-        and "only compatible with 3.54.0" in mesa_amd,
+        "Mesa source retains the AMDGPU DRM 3.59 runtime API gate",
+        "#define AC_AMDGPU_DRM_MINOR 59" in mesa_family
+        and "if (info->drm_minor < AC_AMDGPU_DRM_MINOR)" in mesa_amd
+        and "only compatible with %u.%u.0 (kernel 6.11.2+)" in mesa_amd,
     )
     patch_path = REPOSITORY / "pkgsrc/graphics/MesaLib/patches/patch-src_amd_common_ac_gpu_info.c"
     with tempfile.TemporaryDirectory(prefix="ember-mesa-drm-api-") as temp:
@@ -314,6 +320,9 @@ def source_checks(distfiles):
         source_path = work / "src/amd/common/ac_gpu_info.c"
         source_path.parent.mkdir(parents=True)
         source_path.write_text(mesa_amd)
+        video_path = work / "src/gallium/drivers/radeonsi/mm/si_mm_screen.c"
+        video_path.parent.mkdir(parents=True)
+        video_path.write_text(mesa_video)
         result = subprocess.run(
             ["patch", "-p0", "--batch", "--forward", "-i", str(patch_path)],
             cwd=work,
@@ -323,11 +332,17 @@ def source_checks(distfiles):
         )
         check("Mesa NetBSD DRM compatibility patch applies to the pinned source", result.returncode == 0)
         patched = source_path.read_text()
+        patched_video = video_path.read_text()
     check(
-        "Mesa uses DRM 3.36 only on NetBSD and retains the 3.54 gate elsewhere",
+        "Mesa uses DRM 3.36 only on NetBSD and retains the 3.59 gate elsewhere",
         "#if defined(__NetBSD__)\n   if (info->drm_minor < 36)" in patched
-        and "#else\n   if (info->drm_minor < 54)" in patched
-        and "#endif\n      return AC_QUERY_GPU_INFO_FAIL;" in patched,
+        and "#else\n   if (info->drm_minor < AC_AMDGPU_DRM_MINOR)" in patched
+        and "#endif\n      return false;" in patched,
+    )
+    check(
+        "RadeonSI clears new VA surfaces when the kernel does not zero VRAM",
+        "case PIPE_VIDEO_CAP_SKIP_CLEAR_SURFACE:\n      /* Kernels before DRM 3.59 do not zero new VRAM by default. */\n"
+        "      return sscreen->info.drm_minor >= 59;" in patched_video,
     )
     check(
         "libdrm source installs linked AMDGPU library, header and pkg-config metadata",

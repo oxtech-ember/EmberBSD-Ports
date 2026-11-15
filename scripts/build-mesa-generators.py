@@ -245,11 +245,10 @@ def build(arguments, sdk_root):
         etnaviv_tests_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_etnaviv_isa_meson.build'
         gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'
         gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
-        dynarray_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_util_u__dynarray.h'
         scripts = [Path(__file__).resolve(), graphics / 'cross/seal-mesa-generators.py',
                    graphics / 'cross/mesa_generator_host.py',
                    helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch, etnaviv_tests_patch,
-                   gtest_patch, gtest_provider_patch, dynarray_patch,
+                   gtest_patch, gtest_provider_patch,
                    PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
                    graphics / 'sources.tsv']
         scripts.append(selector_path)
@@ -303,7 +302,7 @@ def build(arguments, sdk_root):
                     require(destination.is_file() and sha256_file(str(destination.resolve(strict=True))) == digest, 'Wrong archive SHA256: ' + name)
                 return destination.resolve(strict=True)
 
-            mesa_archive = fetch('mesa-26.2.6.tar.xz', graphics / 'sources.tsv')
+            mesa_archive = fetch('mesa-26.3.0.tar.xz', graphics / 'sources.tsv')
             require(query([tools['llvm-config'], '--version']) == '23.1.4',
                     'Native LLVM must match the shared Mesa dependency')
             llvm_prefix = Path(query([tools['llvm-config'], '--prefix'])).resolve(strict=True)
@@ -312,12 +311,10 @@ def build(arguments, sdk_root):
             extract = work / 'mesa-extract'
             extract.mkdir()
             run([tools['bsdtar'], '-xJf', mesa_archive, '-C', extract], 'mesa-extract')
-            source = extract / 'mesa-26.2.6'
+            source = extract / 'mesa-26.3.0'
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p1', '-d', source, '-i', helpers / 'mesa-26.2.4-pco-bvnc.patch'], 'mesa-bvnc-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
                  '-d', source, '-i', objc_patch], 'mesa-host-objc-patch')
-            run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
-                 '-d', source, '-i', dynarray_patch], 'mesa-dynarray-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
                  '-d', source, '-i', gtest_patch], 'mesa-gtest-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',

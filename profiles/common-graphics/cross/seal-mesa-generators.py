@@ -352,19 +352,20 @@ def seal_locked(args):
             'Validator must be the selected host-prefix spirv-val')
     profiles = profiles_for(args.profile)
     require(sha(archive) == MESA_SHA256, 'Wrong Mesa source archive')
-    require((source / 'VERSION').read_text().strip() == '26.2.6', 'Wrong Mesa source version')
+    require((source / 'VERSION').read_text().strip() == '26.3.0', 'Wrong Mesa source version')
     metadata = build / 'meson-info'
     info = json.loads((metadata / 'meson-info.json').read_text())
     require(Path(info['directories']['source']).resolve(strict=True) == source,
             'Native build uses another source tree')
     project = json.loads((metadata / 'intro-projectinfo.json').read_text())
-    require(project['version'] == '26.2.6', 'Wrong Mesa build version')
+    require(project['version'] == '26.3.0', 'Wrong Mesa build version')
     options = {row['name']: row['value'] for row in json.loads((metadata / 'intro-buildoptions.json').read_text())}
     require(options['b_ndebug'] == 'false', 'Native tools must retain assertions')
     require('23.1.4' in (build / 'build.ninja').read_text(), 'Native tools must use LLVM23')
     tools = {'mesa_clc': 'src/compiler/clc/mesa_clc', 'vtn_bindgen2': 'src/compiler/spirv/vtn_bindgen2'}
     if 'powervr' in profiles:
         tools['pco_clc'] = 'src/imagination/pco/uscgen/pco_clc'
+        tools['pdsc_precomp'] = 'src/imagination/pdsc/pdsc_precomp'
     commands = []
     with ContextLocks([str(work)], str(work.parent)):
         work.mkdir()
@@ -432,11 +433,10 @@ def seal_locked(args):
         gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'
         gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
         interface_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h'
-        dynarray_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_util_u__dynarray.h'
         inputs = [Path(__file__).resolve(), PORTS / 'profiles/common-graphics/cross/mesa_generator_host.py',
                   archive, validator, build / 'build.ninja',
                   build / 'compile_commands.json', bvnc_patch, objc_patch, etnaviv_tests_patch,
-                  gtest_patch, gtest_provider_patch, interface_patch, dynarray_patch]
+                  gtest_patch, gtest_provider_patch, interface_patch]
         targets = json.loads((metadata / 'intro-targets.json').read_text())
         for name, path in tools.items():
             selected = [row for row in targets if row['name'] == name and row['type'] == 'executable']
@@ -463,7 +463,6 @@ def seal_locked(args):
             run(patch_command(native, reference, gtest_provider_patch, 0), 'gtest-provider-patch')
         if sha(reference / 'src/etnaviv/isa/meson.build') != sha(source / 'src/etnaviv/isa/meson.build'):
             run(patch_command(native, reference, etnaviv_tests_patch, 0), 'etnaviv-tests-patch')
-        run(patch_command(native, reference, dynarray_patch, 0), 'dynarray-patch')
         source_hashes = {}
         for path in sorted(reference.rglob('*')):
             if path.is_file():
@@ -485,7 +484,7 @@ def seal_locked(args):
         run(patch_command(native, reference, interface_patch, 0), 'interface-patch')
         interfaces = ['src/util/u_dynarray.h', 'src/compiler/nir/nir.h', 'src/compiler/nir/nir_serialize.c', 'src/compiler/nir/nir_intrinsics.py', 'src/compiler/spirv/spirv_to_nir.c']
         if 'powervr' in profiles:
-            interfaces += ['src/imagination/' + p for p in ('common/pvr_iface.h', 'pco/pco.h', 'pco/pco_common.h.py', 'pco/usclib/common.cl', 'pco/usclib/sync.cl', 'pco/usclib/tex.cl')]
+            interfaces += ['src/imagination/' + p for p in ('common/pvr_iface.h', 'pco/pco.h', 'pdsc/pdsc.h', 'pco/pco_common.h.py', 'pco/usclib/common.cl', 'pco/usclib/sync.cl', 'pco/usclib/tex.cl')]
         if 'intel' in profiles:
             interfaces += ['src/intel/shaders/' + p for p in ('libintel_shaders.h', 'dgc.cl', 'dgc_debug.cl', 'generate.cl', 'generate_draws.cl', 'generate_draws_iris.cl', 'query_copy.cl', 'util.cl')]
         (work / 'interface.sha256').write_text(''.join(f'{sha(reference / path)}  {path}\n' for path in interfaces))
@@ -530,18 +529,21 @@ def seal_locked(args):
             run([work / 'bin/pco_clc', work / 'smoke/pco_usclib.spv', work / 'smoke/pco_uscgen_programs.h', work / 'smoke/pco_uscgen_programs.c'],
                 'common-pco', {'PCO_DEBUG': 'no_pred_cf'})
             outputs += ['pco_uscgen_programs.h', 'pco_uscgen_programs.c']
+            run([work / 'bin/pdsc_precomp', work / 'smoke/pdsc_precomp_programs.h', work / 'smoke/pdsc_precomp_programs.c'],
+                'common-pdsc')
+            outputs += ['pdsc_precomp_programs.h', 'pdsc_precomp_programs.c']
         require(all((work / 'smoke' / path).stat().st_size > 0 for path in outputs), 'Empty generated output')
         input_hashes.update(shader_hashes)
         require(all(sha(path) == digest for path, digest in input_hashes.items()), 'Native build changed during sealing')
         require(all(sha(source / path) == digest for path, digest in source_hashes.items()), 'Native source changed during sealing')
         scope = 'Pinned native source and real compiled tools. Upstream common OpenCL to SPIR-V/NIR smoke.'
         if 'powervr' in profiles:
-            scope += ' PowerVR PCO generation is checked.'
+            scope += ' PowerVR PCO and PDS generation is checked.'
         if 'intel' in profiles:
             scope += ' Intel shader interfaces are bound; full Intel shader generation is a separate target build gate.'
         scope += ' No target execution.'
         host_record = '/'.join((host_policy['os'], host_policy['cpu'], host_policy['compiler_family']))
-        write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-2', mesa='26.2.6', llvm='23.1.4',
+        write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-2', mesa='26.3.0', llvm='23.1.4',
                    source=str(source), build=str(build), archive_sha256=MESA_SHA256, profiles=profiles,
                    host=host_record, host_prefix=str(prefix),
                    commands=commands, inputs=input_hashes, directory_inputs=directory_inputs,
@@ -552,7 +554,7 @@ def seal_locked(args):
         shutil.rmtree(reference)
         files = [path for path in sorted(work.rglob('*')) if path.is_file()]
         (work / 'installed.sha256').write_text(''.join(f'{sha(path)}  {path.relative_to(work)}\n' for path in files))
-    print('PASS: sealed native Mesa 26.2.6 generators: ' + str(work))
+    print('PASS: sealed native Mesa 26.3.0 generators: ' + str(work))
 
 
 if __name__ == '__main__':

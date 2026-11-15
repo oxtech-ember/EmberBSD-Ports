@@ -54,7 +54,7 @@ def main():
     source = work / 'source'
     source.mkdir()
     with tarfile.open(archive) as bundle:
-        upstream = bundle.extractfile('mesa-26.2.6/meson.build').read().decode()
+        upstream = bundle.extractfile('mesa-26.3.0/meson.build').read().decode()
     (source / 'meson.build').write_text(upstream)
     shared_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
     patch_data = b''.join(line for line in shared_patch.read_bytes().splitlines(keepends=True)
