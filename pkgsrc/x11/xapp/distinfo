@@ -3,5 +3,5 @@ $NetBSD$
 BLAKE2s (xapp-3.4.0.tar.gz) = a9529bf886670c526f9d83bb0a94df955e92d5d2cfb52f1f03e4a9b66202c7dd
 SHA512 (xapp-3.4.0.tar.gz) = 43c117a4a975eedf59d1c22b558b223017428d900b4ac3f68e5dbfad3a2c96f7c3e21566a7c6938faccec9c79e346abc5d65d7663a846e9a8cf7661568c8d4a1
 Size (xapp-3.4.0.tar.gz) = 294132 bytes
-SHA1 (patch-libxapp_meson.build) = 2ee660124494d16f9c7b2f01f2c5afce2dd88aad
-SHA1 (patch-meson_options.txt) = cbb8ac41ff97b978352ddb67a7bfafcce63de8d9
+SHA1 (patch-libxapp_meson.build) = 5232ec65c811f95cd37d948d42f5f37a4f2d100c
+SHA1 (patch-meson_options.txt) = e0d69c0709e8deaf31ba20b2f828348bf6b8e98f

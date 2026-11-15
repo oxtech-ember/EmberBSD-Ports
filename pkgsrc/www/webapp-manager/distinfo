@@ -3,5 +3,5 @@ $NetBSD$
 BLAKE2s (webapp-manager/557a5956b7c5d6c9993e6578ec6dd6e60f4659d9.tar.gz) = 700473e622a26eceabbe43978f3362a02ffd6fbbb58ae3bafb14869805f4bd72
 SHA512 (webapp-manager/557a5956b7c5d6c9993e6578ec6dd6e60f4659d9.tar.gz) = 660296989569b784669a9a6af8e0c32092d9d69c96d7e968923b1b4a56935b820b61e6251f7713486c131e8c9bbe9f1e9ff7462c699f9bf8e4556dd06404f7d2
 Size (webapp-manager/557a5956b7c5d6c9993e6578ec6dd6e60f4659d9.tar.gz) = 108644 bytes
-SHA1 (patch-usr_lib_webapp-manager_common.py) = 3230f7278046a5401a13afa3aeba23e934ce6835
-SHA1 (patch-usr_lib_webapp-manager_webapp-manager.py) = 5e1fb3caabc56f64b284ac3610d0f8846784269b
+SHA1 (patch-usr_lib_webapp-manager_common.py) = 63e1e38c5b1f29052cb87f766af63ac92b722e6f
+SHA1 (patch-usr_lib_webapp-manager_webapp-manager.py) = 00e6a2b851133719f44423407ca3f1ef864431c3
