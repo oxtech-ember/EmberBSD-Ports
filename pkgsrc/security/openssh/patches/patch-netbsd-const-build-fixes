@@ -490,4 +490,22 @@ Apply mechanical type fixes and restore selected daemon source behavior.
  	&ssh_gssapi_krb5_userok,
  	NULL,
 
+--- ssh-keygen.c.orig
++++ ssh-keygen.c
+@@ -2980,2 +2980,6 @@
+-static void
++#ifndef WITH_OPENSSL
++__dead static void
++#else
++static void
++#endif
+ do_moduli_gen(const char *out_file, char **opts, size_t nopts)
+@@ -3025,2 +3029,6 @@
+-static void
++#ifndef WITH_OPENSSL
++__dead static void
++#else
++static void
++#endif
+ do_moduli_screen(const char *out_file, char **opts, size_t nopts)
 

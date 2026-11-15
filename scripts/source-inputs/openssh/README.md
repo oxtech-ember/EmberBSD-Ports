@@ -25,8 +25,16 @@ python3 pkgsrc/security/openssh/tests/ldap/compile-profiles.py \
   --sdk-source /absolute/EmberBSD-SDK --host-prefix /absolute/host-pkg-llvm \
   --os-source /absolute/EmberBSD --nbmake /absolute/selected-nbmake \
   --source /absolute/prepared-openssh --sysroot /absolute/ldap-off-dest \
-  --ldap-sysroot /absolute/ldap-enabled-dest --work-dir /absolute/check-work
+  --ldap-sysroot /absolute/ldap-enabled-dest \
+  --config-object /absolute/ldap-config-object \
+  --builtin-config-object /absolute/builtin-config-object \
+  --work-dir /absolute/check-work
 ```
 
 This checks `sshd-session.c` with `MKLDAP=no` and `MKLDAP=yes` without linking
-or running target code. The enabled sysroot must retain the LDAP headers.
+or running target code. It also checks the actual `ssh-keygen.c` source with
+builtin crypto and LDAP disabled, using the public crypto selector and
+`MKPIC=no`. The enabled sysroot must retain the LDAP headers, and each config
+object directory must contain the generated `build/config.h` for that profile.
+To run only the builtin crypto case, omit the LDAP inputs and add
+`--builtin-only`.
