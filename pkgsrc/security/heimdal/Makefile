@@ -25,6 +25,10 @@ MAKE_ENV+=		INSTALL_CATPAGES=no
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
+PKGREVISION=	37 # Refresh base libutil requirements to the stable SONAME.
+.endif
+
 # Select the native Ports MIG producer and compiler for Darwin IPC sources.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "no" && ${OPSYS} == "Darwin"
 CURSES_DEFAULT= ncurses
