@@ -28,7 +28,6 @@ function userDataPath(appData,id,isPrivate = false) {
 }
 function initializeWebApp(app, fs, env, mode) {
   env.CHROME_DESKTOP = `WebApp-${mode.id}.desktop`;
-  app.setName(mode.name);
   const profile = userDataPath(app.getPath('appData'), mode.id, mode.private);
   fs.mkdirSync(profile, { recursive: true, mode: 0o700 });
   app.setPath('userData', profile);
