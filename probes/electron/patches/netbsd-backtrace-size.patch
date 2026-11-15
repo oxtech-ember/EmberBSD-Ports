@@ -1,0 +1,13 @@
+diff --git a/base/debug/stack_trace_posix.cc b/base/debug/stack_trace_posix.cc
+--- a/base/debug/stack_trace_posix.cc
++++ b/base/debug/stack_trace_posix.cc
+@@ -1058,6 +1058,9 @@
+     BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)
+   // If we do not have unwind tables, then try tracing using frame pointers.
+   return base::debug::TraceStackFramePointers(trace, 0);
++#elif defined(HAVE_BACKTRACE) && BUILDFLAG(IS_NETBSD)
++  // NetBSD backtrace takes and returns size_t.
++  return backtrace(const_cast<void**>(trace.data()), trace.size());
+ #elif defined(HAVE_BACKTRACE)
+   // Though the backtrace API man page does not list any possible negative
+   // return values, we take no chance.

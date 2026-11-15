@@ -30,7 +30,8 @@ diff --git a/base/base_paths_posix.cc b/base/base_paths_posix.cc
 +++ b/base/base_paths_posix.cc
 @@ -59,8 +59,12 @@
          NOTREACHED() << "Unable to resolve path.";
-         return false;
+-        return false;
++        // NOTREACHED() is fatal.
        }
 -      *result = FilePath(bin_dir.value());
 -      VLOG(1) << "PathProviderPosix result: " << bin_dir.value();

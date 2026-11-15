@@ -30,6 +30,11 @@
       "root": ""
     },
     {
+      "path": "netbsd-backtrace-size.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "perfetto-openbsd-getexecpath.patch",
       "strip": 1,
       "root": ""

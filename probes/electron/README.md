@@ -242,6 +242,9 @@ sysroot. The target C/C++ compiler remains GCC16.
 The NASM patch restricts the `/usr/include/string.h` probe to Linux host builds. macOS provides this header through its selected SDK. Linux host detection and target GCC16 compilation stay unchanged.
 The FFmpeg patch uses the configured cross prefix and requested target OS for x64 when `EMBER_FFMPEG_CROSS_PREFIX` is set. This prevents the host-arm64 path from passing Linux Clang `--target` flags to the NetBSD GCC toolchain. The default Linux build path stays unchanged.
 The FFmpeg config-copy patch adds NetBSD to the generated configuration export list. It keeps the existing per-architecture and per-branding copy behavior.
+The NetBSD backtrace patch uses the system `size_t` parameter and result.
+The NetBSD path patch preserves a fatal invalid executable path without an
+unreachable return. See [diagnostic validation](tests/netbsd-asan-compile.md).
 The Base64 patch keeps invalid enum values fatal with the common `NOTREACHED()`
 pattern. See [Base64 validation](tests/base64-invalid-policy.md). The ASan patch keeps intentional overflow and
 underflow reads visible to runtime sanitizers while routing them through a
