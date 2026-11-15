@@ -52,16 +52,70 @@ def package_path(value, label):
     return '/'.join(parts)
 
 
+def export_metadata(path):
+    """Identify local filesystem and Python cache entries, never recipe inputs."""
+    return any(part in ('.DS_Store', '__pycache__') or part.startswith('._')
+               for part in PurePosixPath(path).parts)
+
+
+def copy_ignored_metadata(directory, names):
+    return [name for name in names if export_metadata(name)]
+
+
+def export_metadata_paths(root):
+    """List excluded entries for inventory APIs without reading cache content."""
+    root = Path(root)
+    excluded = []
+    for directory, dirs, files in os.walk(root, followlinks=False):
+        for name in dirs + files:
+            if export_metadata(name):
+                excluded.append((Path(directory) / name).relative_to(root).as_posix())
+        dirs[:] = [name for name in dirs if not export_metadata(name)]
+    return excluded
+
+
+def resolve_source(root, path, label, *, relative_links=False):
+    """Resolve every link component without traversing excluded metadata."""
+    root = Path(root).resolve(strict=True)
+    path = Path(path)
+    outside = f'Link leaves the repository: {path}' if relative_links else \
+        f'{label} resolves outside the Ports source: {path}'
+    require(path.is_relative_to(root), outside)
+    pending = list(path.relative_to(root).parts)
+    current = root
+    links = 0
+    try:
+        while pending:
+            part = pending.pop(0)
+            if part == '..':
+                current = current.parent
+                require(current.is_relative_to(root), outside)
+                continue
+            require(not export_metadata(part), f'{label} traverses local metadata: {path}')
+            candidate = current / part
+            info = candidate.lstat()
+            if stat.S_ISLNK(info.st_mode):
+                links += 1
+                require(links <= 40, f'Broken link (too many links): {path}')
+                target = Path(os.readlink(candidate))
+                if target.is_absolute():
+                    require(not relative_links and target.is_relative_to(root), outside)
+                    current = root
+                    target = target.relative_to(root)
+                pending = list(target.parts) + pending
+            else:
+                current = candidate
+    except OSError as error:
+        raise ExportError(f'Broken link or incomplete source: {path}') from error
+    return current
+
+
 def source_path(root, relative, label):
     """Resolve one source selector and keep symlink targets inside Ports."""
-    path = joined(root, relative)
     base = Path(root).resolve(strict=True)
-    try:
-        resolved = path.resolve(strict=True)
-    except (OSError, RuntimeError) as error:
-        raise ExportError(f'{label} does not resolve inside the Ports source: {relative}') from error
-    require(resolved.is_relative_to(base),
-            f'{label} resolves outside the Ports source: {relative}')
+    path = joined(base, relative)
+    require(not export_metadata(relative), f'{label} selects local metadata: {relative}')
+    resolve_source(base, path, label)
     return path
 
 
@@ -111,19 +165,14 @@ def check_tree_links(root, source, label):
     require(resolved_source.is_relative_to(root),
             f'Source tree leaves the repository: {label}')
     for directory, dirs, files in os.walk(source, followlinks=False):
+        dirs[:] = [name for name in dirs if not export_metadata(name)]
         for name in dirs + files:
+            if export_metadata(name):
+                continue
             path = Path(directory) / name
             if not path.is_symlink():
                 continue
-            target = os.readlink(path)
-            require(not os.path.isabs(target), f'Link leaves the repository: {path}')
-            lexical = Path(os.path.abspath(path.parent / target))
-            require(lexical.is_relative_to(root), f'Link leaves the repository: {path}')
-            try:
-                resolved = path.resolve(strict=True)
-            except (OSError, RuntimeError) as error:
-                raise ExportError(f'Broken link: {path}') from error
-            require(resolved.is_relative_to(root), f'Link leaves the repository: {path}')
+            resolved = resolve_source(root, path, label, relative_links=True)
             require(resolved.is_file(), f'Link is not a regular file: {path}')
 
 
@@ -251,7 +300,7 @@ def configuration(root, *, include_manifests=False):
     source_path(root, 'pkgsrc', 'pkgsrc source directory')
     categories = []
     for path in (root / 'pkgsrc').iterdir():
-        if path.name.startswith('.'):
+        if path.name.startswith('.') or export_metadata(path.name):
             continue
         info = path.lstat()
         require(not stat.S_ISLNK(info.st_mode),
@@ -262,7 +311,8 @@ def configuration(root, *, include_manifests=False):
     for category in categories:
         check_tree_links(root, category, 'pkgsrc/' + category.name)
         for package in sorted(path for path in category.iterdir()
-                              if path.is_dir() and not path.name.startswith('.')):
+                              if path.is_dir() and not path.name.startswith('.')
+                              and not export_metadata(path.name)):
             name = category.name + '/' + package.name
             check_recipe(package, 'pkgsrc/' + name, root)
             recipes.append((name, package))
@@ -512,7 +562,8 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
     for category in categories:
         target = destination_parent(destination, category.name)
         if not os.path.lexists(target):
-            shutil.copytree(category, target, copy_function=copy_file)
+            shutil.copytree(category, target, copy_function=copy_file,
+                            ignore=copy_ignored_metadata)
             new_categories.add(category.name)
         else:
             require(stat.S_ISDIR(target.lstat().st_mode),
@@ -521,7 +572,7 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
                 raise ExportError(f'Upstream already has {category.name}; review the overlay.')
             else:
                 for path in category.iterdir():
-                    if path.name.startswith('.'):
+                    if path.name.startswith('.') or export_metadata(path.name):
                         continue
                     require(path.is_dir(), f'Unexpected overlay file: pkgsrc/{category.name}/{path.name}')
     for name, source in recipes:
@@ -535,7 +586,8 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
                     f'Unsupported existing export object: {name}')
             shutil.rmtree(target)
         ensure_destination_directory(destination, name.rpartition('/')[0])
-        shutil.copytree(source, target, copy_function=copy_file)
+        shutil.copytree(source, target, copy_function=copy_file,
+                        ignore=copy_ignored_metadata)
     for category, added in added_by_category.items():
         if category in new_categories:
             continue

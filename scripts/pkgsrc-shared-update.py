@@ -482,7 +482,8 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                             mode = old_mode(name) if entry['kind'] == 'link' else entry['mode']
                             output.chmod(mode & ~0o022)
                 else:
-                    shutil.copytree(ports / overlay, target, copy_function=exp.copy_file)
+                    shutil.copytree(ports / overlay, target, copy_function=exp.copy_file,
+                                    ignore=exp.copy_ignored_metadata)
             elif not upstream:
                 raise ValueError('selected upstream package is missing')
             for row in rows:

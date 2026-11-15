@@ -42,7 +42,21 @@ class IdentityTest(unittest.TestCase):
             (package / 'distinfo').write_text('archive-checksum\n')
             (package / 'patches/patch-a').write_text('patch\n')
             (package / 'DESCR').write_text('description\n')
+            (package / 'files').mkdir()
             before = identity.effective_package_identity(root, 'cat/pkg', '1' * 40)
+            cache = package / 'files/__pycache__'
+            cache.mkdir(parents=True)
+            (cache / 'helper.pyc').write_bytes(b'local bytecode')
+            (package / 'patches/.DS_Store').write_bytes(b'finder')
+            (package / 'patches/._patch-a').write_bytes(b'appledouble')
+            self.assertEqual(before, identity.effective_package_identity(root, 'cat/pkg', '1' * 40))
+            (package / 'files/input.c').write_text('real source\n')
+            (cache / 'route').symlink_to('../input.c')
+            (package / 'files/alias.c').symlink_to('__pycache__/route')
+            with self.assertRaisesRegex(ValueError, 'metadata'):
+                identity.effective_package_identity(root, 'cat/pkg', '1' * 40)
+            (package / 'files/alias.c').unlink()
+            (package / 'files/input.c').unlink()
             other = root / 'cat/other'
             other.mkdir()
             (other / 'Makefile').write_text('unrelated\n')
@@ -213,6 +227,18 @@ class GitPackageIdentityTest(unittest.TestCase):
 
     def conf(self, text):
         (self.root / 'pkgsrc/export.conf').write_text(text)
+
+    def test_overlay_metadata_does_not_change_recipe_identity(self):
+        package = self.root / 'pkgsrc/cat/pkg'
+        self.write(package / 'Makefile', 'DISTNAME=overlay\n')
+        self.write(package / 'files/helper.py', 'source\n')
+        before = self.current()
+        self.write(package / 'files/__pycache__/helper.pyc', 'bytecode\n')
+        self.write(package / 'files/.DS_Store', 'finder\n')
+        self.write(package / 'files/._helper.py', 'appledouble\n')
+        self.assertEqual(before, self.current())
+        self.write(package / 'files/helper.py', 'changed source\n')
+        self.assertChanged(before, 'real source changes must invalidate the recipe')
 
     def assertChanged(self, before, message):
         after = self.current()

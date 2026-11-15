@@ -74,12 +74,78 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(exporter.patch_sha1(path),
                          hashlib.sha1(b'first\r\n\xff\rbare\nlast').hexdigest())
 
+    def test_export_excludes_local_metadata_in_new_and_existing_categories(self):
+        recipe = self.root / 'pkgsrc/cat/example'
+        (recipe / 'files').mkdir(parents=True)
+        (recipe / 'Makefile').write_text('DISTNAME=example-1\n')
+        (recipe / 'files/source.py').write_text('source = 1\n')
+        metadata = ('pkgsrc/.DS_Store', 'pkgsrc/__pycache__/root.pyc',
+                    'pkgsrc/cat/__pycache__/category.pyc',
+                    'pkgsrc/cat/example/.DS_Store',
+                    'pkgsrc/cat/example/files/__pycache__/source.pyc',
+                    'pkgsrc/cat/example/files/._source.py')
+        for name in metadata:
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'local metadata')
+        category = self.upstream / 'cat'
+        category.mkdir()
+        (category / 'Makefile').write_text('.include "../mk/misc/category.mk"\n')
+        for name in ('existing-category', 'new-category'):
+            self.fake_export(name)
+            exported = self.work / name
+            self.assertEqual((exported / 'cat/example/files/source.py').read_text(), 'source = 1\n')
+            self.assertEqual(list(exported.rglob('.DS_Store')), [])
+            self.assertEqual(list(exported.rglob('__pycache__')), [])
+            self.assertEqual(list(exported.rglob('._*')), [])
+            if category.exists():
+                shutil.rmtree(category)
+
+    def test_export_rejects_declared_or_linked_metadata_inputs(self):
+        recipe = self.root / 'pkgsrc/cat/example'
+        cache = recipe / 'files/__pycache__/source.pyc'
+        cache.parent.mkdir(parents=True)
+        cache.write_bytes(b'local cache')
+        (recipe / 'Makefile').write_text('DISTNAME=example-1\n')
+        (recipe / 'files/source.py').symlink_to('__pycache__/source.pyc')
+        with self.assertRaisesRegex(exporter.ExportError, 'metadata'):
+            self.fake_export('linked-cache')
+        (recipe / 'files/source.py').unlink()
+        (self.root / 'pkgsrc/export.conf').write_text(
+            'file\tpkgsrc/cat/example/files/__pycache__/source.pyc\tshare/source.pyc\n')
+        with self.assertRaisesRegex(exporter.ExportError, 'metadata'):
+            self.fake_export('declared-cache')
+
     def test_gnu_recipes_use_canonical_patch_checksums(self):
         owner = HERE.parents[1]
         for name in ('devel/diffutils', 'sysutils/findutils'):
             source = owner / 'pkgsrc' / name
             with self.subTest(recipe=name):
                 exporter.check_recipe(source, name, owner)
+
+    def test_export_rejects_intermediate_metadata_links(self):
+        recipe = self.root / 'pkgsrc/cat/example'
+        files = recipe / 'files'
+        (files / '__pycache__').mkdir(parents=True)
+        (recipe / 'Makefile').write_text('DISTNAME=example-1\n')
+        (files / 'first.c').write_text('first\n')
+        (files / 'second.c').write_text('second\n')
+        route = files / '__pycache__/route'
+        selected = files / 'plain.c'
+        selected.symlink_to('__pycache__/route')
+        for target in ('../first.c', '../second.c'):
+            with self.subTest(target=target):
+                route.symlink_to(target)
+                with self.assertRaisesRegex(exporter.ExportError, 'metadata'):
+                    exporter.check_tree_links(self.root, recipe, 'recipe')
+                with self.assertRaisesRegex(exporter.ExportError, 'metadata'):
+                    exporter.source_path(self.root, 'pkgsrc/cat/example/files/plain.c', 'file')
+                route.unlink()
+        selected.unlink()
+        (files / '__pycache__/dir').symlink_to('..', target_is_directory=True)
+        selected.symlink_to('__pycache__/dir/first.c')
+        with self.assertRaisesRegex(exporter.ExportError, 'metadata'):
+            exporter.check_tree_links(self.root, recipe, 'recipe')
 
     def test_new_cpp_providers_export_without_upstream_recipes(self):
         owner = HERE.parents[1]

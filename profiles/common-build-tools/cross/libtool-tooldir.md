@@ -67,8 +67,12 @@ directory on every run. `--pkgsrc-export DIR` selects a stage made by
 prints `ROOT/FINGERPRINT`. The fingerprint hashes the Git object ids of the
 pinned `upstream/pkgsrc` gitlink and of every input that
 `scripts/prepare-pkgsrc.py` reads, plus the patch tool. A Ports commit outside
-those inputs keeps it, and uncommitted, untracked or ignored files inside an
-input are refused. The producer verifies the stage against the current inputs
+those inputs keeps it. The exporter excludes `.DS_Store`, AppleDouble `._*`
+entries and `__pycache__` directories; untracked or ignored copies of these
+entries do not change the fingerprint. Declared inputs and source links,
+including intermediate link components, cannot select them.
+Other uncommitted, untracked or ignored inputs are refused.
+The producer verifies the stage against the current inputs
 and only reads it: work directories stay under its temporary `WRKOBJDIR`, with
 no `work` links in the shared tree. Run the stage before the builds that read
 it; creating it is a separate step.

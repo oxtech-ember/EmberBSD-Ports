@@ -106,6 +106,32 @@ class ExportStageInputTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'missing from HEAD'):
             stage._object_ids(git, self.root, paths + ['profiles/not-present'])
 
+    def test_fingerprint_ignores_only_metadata_excluded_from_export(self):
+        git = os.environ['EXPORT_TEST_GIT']
+        shutil.copyfile(ROOT / 'scripts/pkgsrc-source-identity.py',
+                        self.root / 'scripts/pkgsrc-source-identity.py')
+        (self.root / '.gitignore').write_text('.DS_Store\n__pycache__/\n._*\n')
+        tool = self.root / 'patch-tool'
+        tool.write_text('#!/bin/sh\n')
+        tool.chmod(0o755)
+        subprocess.run([git, 'init', '-q', str(self.root)], check=True)
+        subprocess.run([git, '-C', str(self.root), 'add', '-Af'], check=True)
+        subprocess.run([git, '-C', str(self.root), 'update-index', '--add',
+                        '--cacheinfo', '160000,' + '1' * 40 + ',upstream/pkgsrc'], check=True)
+        subprocess.run([git, '-C', str(self.root), '-c', 'user.name=Test',
+                        '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'fixture'], check=True)
+        before = stage.fingerprint_inputs(git, str(tool), self.root)
+        for name in ('pkgsrc/.DS_Store', 'pkgsrc/__pycache__/cache.pyc',
+                     'profiles/test-recipe/files/__pycache__/module.pyc',
+                     'profiles/test-recipe/files/._resource'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'local metadata')
+        self.assertEqual(stage.fingerprint_inputs(git, str(tool), self.root), before)
+        (self.root / 'profiles/test-recipe/new-source.c').write_text('int input;\n')
+        with self.assertRaisesRegex(ValueError, 'new-source.c'):
+            stage.fingerprint_inputs(git, str(tool), self.root)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -398,6 +398,27 @@ with patch.object(Path, 'unlink', fail_marker):
         self.assertEqual((self.tree / 'cat/new/files/data').read_text(), 'new data\n')
         self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
 
+    def test_scoped_overlay_excludes_metadata_from_payload_and_identity(self):
+        self.new_overlay()
+        write(self.ports, '.gitignore', '.DS_Store\n__pycache__/\n._*\n')
+        commit(self.ports, 'ignore local metadata')
+        write(self.ports, 'pkgsrc/cat/new/files/__pycache__/cache.pyc', 'bytecode\n')
+        write(self.ports, 'pkgsrc/cat/new/files/.DS_Store', 'finder\n')
+        command = self.command + ['--update', '--package', 'cat/new']
+        result = run(command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(list((self.tree / 'cat/new').rglob('__pycache__')), [])
+        self.assertEqual(list((self.tree / 'cat/new').rglob('.DS_Store')), [])
+        receipt = json.loads(self.receipt.read_text())
+        self.assertNotIn('__pycache__', json.dumps(receipt['inputs']))
+        self.assertNotIn('.DS_Store', json.dumps(receipt['inputs']))
+        installed = self.tree / 'cat/new/files/data'
+        before = (installed.stat().st_ino, installed.stat().st_mtime_ns)
+        write(self.ports, 'pkgsrc/cat/new/files/__pycache__/cache.pyc', 'new bytecode\n')
+        result = run(command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((installed.stat().st_ino, installed.stat().st_mtime_ns), before)
+
     def test_new_overlay_refuses_existing_empty_or_symlink_path(self):
         self.new_overlay()
         for symlink in (False, True):

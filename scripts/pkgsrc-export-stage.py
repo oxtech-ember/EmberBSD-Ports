@@ -11,7 +11,8 @@ patches, files and manifests, and the exporter itself), plus the patch tool.
 The Ports commit is not part of it, so a Ports change outside those inputs
 reuses the stage. Inputs must be committed: an uncommitted change has no Git
 object id, and the stage is refused instead of being keyed wrongly; so is an
-untracked or ignored file inside an input.
+untracked or ignored file inside an input. Local metadata excluded by the
+exporter does not change the fingerprint.
 
   pkgsrc-export-stage.py fingerprint --sdk-source SDK --git GIT --patch PATCH
   pkgsrc-export-stage.py prepare ROOT --sdk-source SDK --git GIT --patch PATCH
@@ -108,12 +109,15 @@ def fingerprint_inputs(git, patch, root=PORTS):
     root = Path(root).resolve(strict=True)
     git, patch = _executable(git, 'git'), _executable(patch, 'patch')
     paths = input_paths(root)
-    # The exporter copies files from the checkout, so ignored files count too.
+    # Ignored recipe inputs count too. Only the exporter's excluded local
+    # metadata may be untracked without changing the resulting payload.
     changed = _git(git, root, 'status', '--porcelain=v1', '-z', '--untracked-files=all',
                    '--ignored=matching', '--', *paths)
-    if changed:
-        names = sorted({entry[3:] for entry in changed.decode('utf-8', 'surrogateescape').split('\0')
-                        if len(entry) > 3})
+    exporter = _exporter(root)
+    entries = [entry for entry in changed.decode('utf-8', 'surrogateescape').split('\0')
+               if entry and not (entry[:2] in ('??', '!!') and exporter.export_metadata(entry[3:]))]
+    if entries:
+        names = sorted({entry[3:] for entry in entries if len(entry) > 3})
         raise ValueError('uncommitted pkgsrc export inputs have no Git fingerprint: ' + ', '.join(names[:5]))
     pin = _git(git, root, 'ls-files', '--stage', '--', 'upstream/pkgsrc').split()
     if len(pin) != 4 or pin[0] != b'160000' or pin[2] != b'0':

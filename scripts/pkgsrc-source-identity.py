@@ -47,7 +47,12 @@ def effective_package_identity(exported, package, upstream):
     inputs = ('Makefile', 'Makefile.common', 'distinfo', 'patches', 'files')
     exclude = [child.name for child in directory.iterdir()
                if child.name not in inputs and not child.name.endswith('.mk')]
+    exporter = _exporter(Path(__file__).resolve().parents[1])
+    exclude.extend(exporter.export_metadata_paths(directory))
     rows = inventory.snapshot_tree(str(directory), exclude=exclude)
+    for relative, row in rows.items():
+        if row['kind'] == 'link':
+            exporter.resolve_source(root, directory / relative, 'effective recipe', relative_links=True)
     payload = {'api': 1, 'package': package, 'tree': rows}
     encoded = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
     return {'api': 1, 'package': package,
@@ -113,15 +118,18 @@ def _directory_rows(git, root, directory):
     Ports overlay, so a link contributes its target's content.
     """
     directory = Path(directory)
+    exporter = _exporter(Path(__file__).resolve().parents[1])
     names, paths = [], []
     for current, dirs, files in os.walk(directory):
-        dirs.sort()
+        dirs[:] = sorted(name for name in dirs if not exporter.export_metadata(name))
         for name in sorted(files):
+            if exporter.export_metadata(name):
+                continue
             path = Path(current) / name
             relative = path.relative_to(directory).as_posix()
             if recipe_input(relative):
                 names.append(relative)
-                paths.append(path.resolve(strict=True))
+                paths.append(exporter.resolve_source(root, path, 'recipe input', relative_links=True))
     oids = _hash_objects(git, root, paths)
     return {name: [_file_mode(path), oid] for name, path, oid in zip(names, paths, oids)}
 
@@ -483,10 +491,12 @@ def export_inputs(ports_root, git, sdk_source, package=None):
     inputs = {str(p.relative_to(root)): inventory.sha256_file(str(p))
               for p in sorted(inputs) if p.exists()}
     def tree(source):
-        rows = inventory.snapshot_installed_tree(str(source))
+        rows = inventory.snapshot_installed_tree(str(source),
+                                                 exclude=exporter.export_metadata_paths(source))
         for relative, row in rows.items():
             if row['kind'] == 'link':
-                target = (source / relative).resolve(strict=True)
+                target = exporter.resolve_source(root, source / relative, 'export input',
+                                                 relative_links=True)
                 if not target.is_relative_to(root) or not target.is_file():
                     raise ValueError(f'unsupported export source link: {source / relative}')
                 row['target_sha256'] = inventory.sha256_file(str(target))
