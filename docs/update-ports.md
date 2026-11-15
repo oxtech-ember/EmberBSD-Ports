@@ -26,6 +26,17 @@ from the canonical recipe before resuming its consumers. Other systems can retai
 recipe's documented portable fallback. The [libedit contract](../pkgsrc/devel/editline/README.md)
 provides the current source, builtin and regression interfaces.
 
+Some consumers use an ABI shared directly with the OS kernel. For example,
+the WPA BSD association-epoch backend must be built against the current
+EmberBSD target sysroot's versioned net80211 headers and installed with the
+matching kernel and modules. The kernel rejects old or unversioned MLME
+requests; a new backend used with an old kernel fails closed when it receives
+no accepted association epoch. Update the kernel, modules and userland as a
+matched set, and do not build this backend from a stale sysroot. Use the
+prepared WPA source so the shared RSN group-key/controlled-port ordering fix
+is present as well. The [net80211 association lifecycle contract](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/net80211/association-lifecycle.md)
+is the canonical ABI definition.
+
 ## Export the selected closure
 
 Prepare pkgsrc with the existing [Ports exporter](../README.md#package-integration).
