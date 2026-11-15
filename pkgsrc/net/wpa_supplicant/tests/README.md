@@ -30,3 +30,18 @@ preparation recipe, including the current Ports patch set.
     --host-sdk "$HOST_SDK" \
     --source "$WPA_SOURCE/src/drivers/driver_bsd.c"
 ```
+
+`t-bsd-association-epoch.py` executes the patched MLME version helper and
+association-event lifecycle helpers, including unaligned input, current and
+stale disconnects, autonomous retirement before ASSOC, same-epoch BSSID
+validation, and interface-lifetime reset. Use the same prepared source tree:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-bsd-association-epoch.py \
+    --cc "$HOST_PREFIX/bin/clang" \
+    --host-sdk "$HOST_SDK" \
+    --source "$WPA_SOURCE/src/drivers/driver_bsd.c"
+```
+
+Run once with the default optimized flags and once with
+`--cflags='-O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all'`.
