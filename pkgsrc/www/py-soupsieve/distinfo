@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (soupsieve-4.1.1.tar.gz) = f0efeb88eb123f301faa581ff449deafd2e8af3830328ebcf924b4e145baca2f
+SHA512 (soupsieve-4.1.1.tar.gz) = 94df14a715bc901a5925f64378ccfa1f505a072fa15f3e86a91cdc1e8aa8bfad608a3a7117020ff04fb669d214dd0210cb2857316e2a1c1b8b0d868032fc8817
+Size (soupsieve-4.1.1.tar.gz) = 169784 bytes

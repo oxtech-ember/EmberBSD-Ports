@@ -2,6 +2,8 @@
 ${PYSITELIB}/${WHEEL_INFODIR}/METADATA
 ${PYSITELIB}/${WHEEL_INFODIR}/RECORD
 ${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
+${PYSITELIB}/${WHEEL_INFODIR}/licenses/LICENSE.txt
+${PYSITELIB}/${WHEEL_INFODIR}/top_level.txt
 ${PYSITELIB}/zipremove/__init__.py
 ${PYSITELIB}/zipremove/__init__.pyc
 ${PYSITELIB}/zipremove/__init__.pyo

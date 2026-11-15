@@ -595,3 +595,4 @@ converters/py-charset-normalizer
 www/py-urllib3
 devel/py-gobject3-common
 graphics/py-cairo-shared
+www/py-soupsieve

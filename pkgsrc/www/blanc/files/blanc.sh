@@ -39,6 +39,16 @@ if [ "${in_process_gpu_set}" = "no" ]; then
 	set -- --in-process-gpu "$@"
 fi
 
+# A WebApp launch has its own userData/sessionData. Its arguments are validated
+# by the Browser; never repair or delete the ordinary Browser profile here.
+webapp_requested=no
+for arg in "$@"; do
+ case "${arg}" in
+ --webapp-*) webapp_requested=yes ;;
+ esac
+done
+
+if [ "${webapp_requested}" = "no" ]; then
 config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
 app_config="${config_home}/Ember Browser"
 local_state="${app_config}/Local State"
@@ -102,6 +112,8 @@ if not backup.exists():
 del data["windowStates"]
 path.write_text(json.dumps(data, separators=(",", ":")))
 '
+fi
+
 fi
 
 exec "@PREFIX@/bin/electron" "@PREFIX@/lib/ember-browser/app.asar" "$@"

@@ -562,6 +562,12 @@ def run_python_tests(stream, source_root, dist_dir, native, work, sdk_root):
                                     '--node', native.tool('node')],
                            cwd=source_root, env=child_environment(native, work), timeout=300)
     sys.stdout.buffer.write(output)
+    output = run_host_tool(stream, [native.tool('python'), '-B', '-I', '-S',
+        str(Path(__file__).parent / 'test-webapp-wrapper.py'),
+        '--host-prefix', native.bundle_root,
+        '--launcher', str(Path(__file__).parent / 'blanc.sh')],
+        cwd=source_root, env=child_environment(native, work), timeout=60)
+    sys.stdout.buffer.write(output)
 
 
 def parse_args():
