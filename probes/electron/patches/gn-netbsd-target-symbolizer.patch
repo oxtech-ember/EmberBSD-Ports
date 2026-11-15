@@ -52,3 +52,20 @@ Origin: EmberBSD contributors (AI-assisted). BSD-2-Clause.
  assert(!(is_win && is_asan && current_cpu == "x86"),
         "ASan is only supported in 64-bit builds on Windows.")
  
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -2710,8 +2710,12 @@
+ 
+   if (using_sanitizer && !is_fuchsia) {
+     data += [ "//tools/valgrind/asan/" ]
+-    data_deps +=
+-        [ "//build/config/clang:llvm-symbolizer_data($host_toolchain)" ]
++    if (is_netbsd) {
++      data_deps += [ "//build/config/sanitizers:copy_target_llvm_symbolizer" ]
++    } else {
++      data_deps +=
++          [ "//build/config/clang:llvm-symbolizer_data($host_toolchain)" ]
++    }
+   }
+ 
+   if (!is_debug) {
