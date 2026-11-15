@@ -7,14 +7,14 @@ Origin: EmberBSD contributors (AI-assisted).
 +++ src/main/main.js
 @@ -1,4 +1,13 @@
  const { app, BrowserWindow, View, WebContentsView, session, ipcMain, Menu, nativeTheme, nativeImage, dialog, shell, net, powerMonitor, webContents, clipboard, utilityProcess, systemPreferences, desktopCapturer, screen, globalShortcut } = require('electron');
-+const { parseWebAppArgs, initializeProfile, sameWebApp, effectivePrivate, webAppMenuModel, fullPageLayout } = require('./webapp-mode');
++const { parseWebAppArgs, initializeWebApp, sameWebApp, effectivePrivate, webAppMenuModel, fullPageLayout } = require('./webapp-mode');
 +let webAppMode;
 +let pendingWebAppLaunch = null;
 +try { webAppMode = parseWebAppArgs(process.argv); }
 +catch (error) { console.error('[webapp] invalid arguments:', error.message); app.exit(2); return; }
 +if (webAppMode) {
-+  initializeProfile(app, require('fs'), webAppMode);
-+  app.commandLine.appendSwitch('class', `WebApp-${webAppMode.id}`);
++  // Chromium reads CHROME_DESKTOP before its native window is created.
++  initializeWebApp(app, require('fs'), process.env, webAppMode);
 +}
  // Playwright's loader forces --password-store=basic before loading this entry.
  // Sync acceptance uses a real, unlocked CI keyring: select it before ready,

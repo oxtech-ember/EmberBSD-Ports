@@ -26,7 +26,9 @@ function userDataPath(appData,id,isPrivate = false) {
   if (!path.isAbsolute(appData) || !ID.test(id)) throw new Error('invalid webapp path');
   return path.join(appData,'Ember Browser',isPrivate ? 'webapps-private' : 'webapps',id);
 }
-function initializeProfile(app, fs, mode) {
+function initializeWebApp(app, fs, env, mode) {
+  env.CHROME_DESKTOP = `WebApp-${mode.id}.desktop`;
+  app.setName(mode.name);
   const profile = userDataPath(app.getPath('appData'), mode.id, mode.private);
   fs.mkdirSync(profile, { recursive: true, mode: 0o700 });
   app.setPath('userData', profile);
@@ -42,4 +44,4 @@ function webAppMenuModel(rows, activeId) {
   }));
 }
 function fullPageLayout(layout,width,height) { return {...layout,pageBounds:{x:0,y:0,width,height}}; }
-module.exports={parseWebAppArgs,userDataPath,initializeProfile,sameWebApp,effectivePrivate,webAppMenuModel,fullPageLayout};
+module.exports={parseWebAppArgs,userDataPath,initializeWebApp,sameWebApp,effectivePrivate,webAppMenuModel,fullPageLayout};

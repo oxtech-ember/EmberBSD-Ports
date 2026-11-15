@@ -1,11 +1,11 @@
 'use strict';
 const assert = require('node:assert/strict');
-const {parseWebAppArgs:parse,userDataPath,initializeProfile,sameWebApp,effectivePrivate,webAppMenuModel,fullPageLayout}=require('./webapp-mode.js');
+const {parseWebAppArgs:parse,userDataPath,initializeWebApp,sameWebApp,effectivePrivate,webAppMenuModel,fullPageLayout}=require('./webapp-mode.js');
 const args=['--webapp-id=mail_1','--webapp-url=https://example.org/login?q=1','--webapp-name=Mail','--webapp-private'];
 const mode=parse(args);
-const fs=require('node:fs'),os=require('node:os'),path=require('node:path'); const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'webapp-profile-')); try { const calls=[]; const app={getPath:n=>{assert.equal(n,'appData');return tmp;},setPath:(n,p)=>{assert(fs.statSync(p).isDirectory());calls.push([n,p]);}}; const profile=initializeProfile(app,fs,mode); assert.deepEqual(calls,[['userData',profile],['sessionData',profile]]); assert.equal(fs.statSync(profile).mode&0o777,0o700); } finally { fs.rmSync(tmp,{recursive:true,force:true}); }assert.deepEqual(mode,{id:'mail_1',url:'https://example.org/login?q=1',name:'Mail',private:true});
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'); const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'webapp-profile-')); try { const calls=[]; const env={CHROME_DESKTOP:'old.desktop',OTHER:'preserved'}; const app={setName:n=>calls.push(['name',n]),getPath:n=>{assert.equal(n,'appData');return tmp;},setPath:(n,p)=>{assert(fs.statSync(p).isDirectory());calls.push([n,p]);}}; const profile=initializeWebApp(app,fs,env,mode); assert.deepEqual(calls,[['name','Mail'],['userData',profile],['sessionData',profile]]); assert.deepEqual(env,{CHROME_DESKTOP:'WebApp-mail_1.desktop',OTHER:'preserved'}); assert.equal(fs.statSync(profile).mode&0o777,0o700); } finally { fs.rmSync(tmp,{recursive:true,force:true}); }assert.deepEqual(mode,{id:'mail_1',url:'https://example.org/login?q=1',name:'Mail',private:true});
 assert.equal(parse(['--ozone-platform=x11']),null);
-assert.equal(userDataPath('/home/maks/.config','mail_1'),'/home/maks/.config/Ember Browser/webapps/mail_1');
+assert.equal(userDataPath('/home/user/.config','mail_1'),'/home/user/.config/Ember Browser/webapps/mail_1');
 for (const id of ['../bad','a/b','', '.','a'.repeat(65)]) assert.throws(()=>userDataPath('/tmp',id));
 for (const bad of [
  ['--webapp-id=../bad','--webapp-url=https://a','--webapp-name=A'],
