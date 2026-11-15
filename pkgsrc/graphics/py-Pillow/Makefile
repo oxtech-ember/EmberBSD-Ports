@@ -20,6 +20,13 @@ TEST_DEPENDS+=	${PYPKGPREFIX}-test-timeout-[0-9]*:../../devel/py-test-timeout
 
 USE_TOOLS+=	pkg-config
 
+# Pillow otherwise probes the build host's /usr/local and /usr/lib paths
+# while cross compiling. Retain pkg-config and declared buildlink inputs.
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+WHEEL_ARGS+=	-Cplatform-guessing=disable
+.endif
+
 CONFLICTS+=	py[0-9]*-imaging-[0-9]*
 
 DISTUTILS_BUILDDIR_IN_TEST_ENV=	yes
