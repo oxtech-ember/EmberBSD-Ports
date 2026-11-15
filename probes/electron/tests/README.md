@@ -808,3 +808,10 @@ reconnect reliability or stress and physical-replug results.
 The [Browser UI flow diagnostic](../../../pkgsrc/www/blanc/tests/README.md)
 is maintained with the Browser recipe; it uses an isolated profile and an
 explicitly selected installed Electron runtime.
+
+`electron-expat-required.py` checks that the owner CLIs no longer expose an
+optional provider switch and both package contexts require common Expat.
+`electron-expat-host-context.py` verifies the actual host buildlink dependency.
+
+`electron-gn-package.py --pkg-info /path/to/pkg_info` checks the selected host
+GN package floor, package owner, and executable ownership before configuration.

@@ -630,7 +630,6 @@ def main():
     parser.add_argument('--shared-codecs', action='store_true')
     parser.add_argument('--shared-openh264', action='store_true')
     parser.add_argument('--shared-pffft', action='store_true')
-    parser.add_argument('--shared-expat', action='store_true')
     parser.add_argument('--shared-cpuinfo', action='store_true')
     parser.add_argument('--shared-vulkan', action='store_true')
     parser.add_argument('--shared-spirv-tools', action='store_true')
@@ -694,8 +693,8 @@ def main():
         invocation['shared_openh264'] = 'yes'
     if args.shared_pffft:
         invocation['shared_pffft'] = 'yes'
-    if args.shared_expat:
-        invocation['shared_expat'] = 'yes'
+    # The verified common provider is mandatory; retain its receipt identity.
+    invocation['shared_expat'] = 'yes'
     if args.shared_cpuinfo:
         invocation['shared_cpuinfo'] = 'yes'
     if args.shared_vulkan:
@@ -743,7 +742,6 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_CODECS=yes'] if args.shared_codecs else []),
                            *(['EMBERBSD_ELECTRON_SHARED_OPENH264=yes'] if args.shared_openh264 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
-                           *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []),
                            *(['EMBERBSD_ELECTRON_SHARED_CPUINFO=yes'] if args.shared_cpuinfo else []),
                            *(['EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS=yes'] if args.shared_spirv_tools else []),
                            *(['EMBERBSD_ELECTRON_SHARED_VULKAN=yes'] if args.shared_vulkan else []),
@@ -883,7 +881,6 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_CODECS=yes'] if args.shared_codecs else []),
                            *(['EMBERBSD_ELECTRON_SHARED_OPENH264=yes'] if args.shared_openh264 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
-                           *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []),
                            *(['EMBERBSD_ELECTRON_SHARED_CPUINFO=yes'] if args.shared_cpuinfo else []),
                            *(['EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS=yes'] if args.shared_spirv_tools else []),
                            *(['EMBERBSD_ELECTRON_SHARED_VULKAN=yes'] if args.shared_vulkan else []),

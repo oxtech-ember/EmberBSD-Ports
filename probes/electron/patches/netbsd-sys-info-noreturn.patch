@@ -1,0 +1,24 @@
+Keep NetBSD sysctl failures fatal without unreachable returns.
+Origin: EmberBSD contributors (AI-assisted). BSD-2-Clause.
+
+diff --git a/base/system/sys_info_netbsd.cc b/base/system/sys_info_netbsd.cc
+--- a/base/system/sys_info_netbsd.cc
++++ b/base/system/sys_info_netbsd.cc
+@@ -39,7 +39,7 @@
+   size_t size = sizeof(ncpu);
+   if (sysctl(mib, std::size(mib), &ncpu, &size, NULL, 0) < 0) {
+     NOTREACHED();
+-    return 1; 
++    // NOTREACHED() is fatal.
+   }
+   return ncpu > 0 ? ncpu : 1;
+ }
+@@ -86,7 +86,7 @@
+   size_t size = sizeof(limit);
+   if (sysctl(mib, std::size(mib), &limit, &size, NULL, 0) < 0) {
+     NOTREACHED();
+-    return 0; 
++    // NOTREACHED() is fatal.
+   }
+   return limit;
+ }

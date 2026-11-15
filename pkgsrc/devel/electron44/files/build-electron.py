@@ -137,6 +137,34 @@ def host_paxctl_arguments(native):
     return {}
 
 
+def require_selected_gn(options, sdk, native, environment):
+    """Require the selected host GN package with implicit compiler outputs."""
+    prefix = Path(options.host_prefix).resolve(strict=True)
+    pkg_info = prefix / 'sbin/pkg_info'
+    sdk['host_prefix'].validate_host_executable(str(prefix), str(pkg_info), native.host,
+                                               search_path=native.path)
+    try:
+        result = sdk['process'].capture(
+            [str(pkg_info), '-K', str(prefix / 'pkgdb'), '-E', 'gn>=2610nb1'],
+            env=environment).stdout.decode('utf-8', 'strict').strip().splitlines()
+    except sdk['process'].CommandError as error:
+        if error.returncode == 1:
+            raise ValueError('selected native GN requires devel/gn >= 2610nb1') from error
+        raise
+    require(len(result) == 1 and re.fullmatch(r'gn-[A-Za-z0-9._+~-]+', result[0]),
+            'selected native GN package is missing or ambiguous')
+    command = [str(pkg_info), '-K', str(prefix / 'pkgdb')]
+    owner = sdk['process'].capture(
+        command + ['-Q', 'PKGPATH', result[0]], env=environment).stdout.decode('utf-8', 'strict').strip()
+    require(owner == 'devel/gn', 'selected native GN package has a different owner')
+    files = sdk['process'].capture(
+        command + ['-qL', result[0]], env=environment).stdout.decode('utf-8', 'strict').splitlines()
+    selected = str(prefix / 'bin/gn')
+    require(files.count(selected) == 1 and
+            Path(native.tool('gn')).resolve(strict=True) == Path(selected).resolve(strict=True),
+            'selected native GN executable is not owned by its package')
+
+
 def _native_inputs(options, sdk):
     roles = native_required_roles(sys.platform)
     native = sdk['host_prefix'].load_host_prefix(options.host_prefix, required_roles=roles,
@@ -144,6 +172,7 @@ def _native_inputs(options, sdk):
     require(Path(sys.executable).resolve() == Path(native.tool('python')).resolve(),
             'run the build controller with the selected host-prefix Python')
     environment = sdk['process'].sanitized_environment()
+    require_selected_gn(options, sdk, native, dict(environment, PATH=native.path))
     # Git is a control input for source metadata, not a build-tool fallback.
     control_git = selected_control_git(options.git)
     environment.update(PATH=native.path, EMBERBSD_CONTROL_GIT=control_git, PYTHONDONTWRITEBYTECODE='1',
@@ -573,7 +602,7 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-spirv-tools'] if getattr(options, 'shared_spirv_tools', False) else []),
                 *(['--shared-woff2'] if getattr(options, 'shared_woff2', False) else []),
                 *(['--shared-snappy'] if getattr(options, 'shared_snappy', False) else []),
-                *(['--shared-expat'] if getattr(options, 'shared_expat', False) else []), '--base-makeconf', str(selected[2]),
+                '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     requested = getattr(options, 'reuse_host_buildlink', None)
@@ -1605,8 +1634,7 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('graphics/lcms2', 'graphics/openjpeg', 'graphics/tiff')
     if getattr(options, 'shared_pffft', False):
         packages += ('audio/pffft',)
-    if getattr(options, 'shared_expat', False):
-        packages += ('textproc/expat',)
+    packages += ('textproc/expat',)
     if getattr(options, 'shared_cpuinfo', False):
         packages += ('sysutils/cpuinfo',)
     if getattr(options, 'shared_vulkan', False):
@@ -2342,12 +2370,11 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
-        if getattr(options, 'shared_expat', False):
-            values.update(local_module('electron_codec_provider', 'codec-provider.py').select_expat(
-                local_module('electron_image_provider', 'image-provider.py'),
-                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
-                                      selected_owned_library=selected_owned_library),
-                options, sdk, native, environment, buildlink))
+        values.update(local_module('electron_codec_provider', 'codec-provider.py').select_expat(
+            local_module('electron_image_provider', 'image-provider.py'),
+            types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                  selected_owned_library=selected_owned_library),
+            options, sdk, native, environment, buildlink))
         if getattr(options, 'shared_cpuinfo', False):
             values.update(local_module('electron_codec_provider', 'codec-provider.py').select_cpuinfo(
                 local_module('electron_image_provider', 'image-provider.py'),
@@ -2684,7 +2711,6 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
         pffft_names = ('pffft',)
         pffft_marker = destination.parent / ('.' + destination.name + '.pffft-components-migration')
         old_expat = bool(getattr(options, 'old_expat_identity', None))
-        new_expat = bool(getattr(options, 'shared_expat', False))
         expat_names = ('expat',)
         expat_marker = destination.parent / ('.' + destination.name + '.expat-components-migration')
         old_cpuinfo = bool(getattr(options, 'old_cpuinfo_identity', None))
@@ -2752,7 +2778,7 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
             # component verifier against the supplied view.
             old_boring, old_media, old_compression = new_boring, new_media, new_compression
             old_pdf, old_font, old_codecs = new_pdf, new_font, new_codecs
-            old_pffft, old_expat, old_cpuinfo = new_pffft, new_expat, new_cpuinfo
+            old_pffft, old_expat, old_cpuinfo = new_pffft, True, new_cpuinfo
             old_vulkan, old_woff2, old_snappy = new_vulkan, new_woff2, new_snappy
             old_openh264, old_image, old_xml = new_openh264, new_image, new_xml
             old_minizip, old_ffmpeg = new_minizip, new_ffmpeg
@@ -2767,7 +2793,7 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
                     for name in pffft_names)):
             compression.verify_view(view, options.workspace / 'src', destination, pffft_names)
             old_pffft = True
-        if (new_expat and not old_expat and
+        if (not old_expat and
                 (options.phase == 'reconfigure' or
                  (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
                                                     getattr(options, 'resume_configure', False)))) and
@@ -3144,8 +3170,8 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
                                  pffft_names, 'pffft-components')
             old_pffft = True
         if os.path.lexists(expat_marker):
-            require(new_expat and (options.phase == 'reconfigure' or
-                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+            require(options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False),
                     'EXPAT transaction recovery requires shared EXPAT reconfigure')
             compression.activate(view, options.workspace / 'src', destination,
                                  lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
@@ -3379,8 +3405,7 @@ def gn_source(options, *, retired=False, legacy_ml_root=None, refresh_selected=F
             old_pffft = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
-        if old_expat != new_expat or os.path.lexists(expat_marker):
-            require(new_expat, 'disabling shared EXPAT requires a new source view')
+        if not old_expat or os.path.lexists(expat_marker):
             require(options.phase == 'reconfigure' or new_view or initial,
                     'EXPAT transition requires reconfigure')
             compression.activate(view, options.workspace / 'src', destination,
@@ -3896,8 +3921,6 @@ def pffft_activation_args(options, old_environment, environment, old_arguments, 
     return names
 
 def expat_activation_args(options, old_environment, environment, old_arguments, values):
-    if not getattr(options, 'shared_expat', False):
-        return set()
     key = 'EMBERBSD_EXPAT_SOURCE_SHA256'
     require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified EXPAT identity is missing')
     names = {'emberbsd_expat_' + role + '_' + kind
@@ -5031,7 +5054,6 @@ def main():
         command.add_argument('--shared-pdf-libraries', action='store_true')
         command.add_argument('--shared-codecs', action='store_true')
         command.add_argument('--shared-openh264', action='store_true')
-        command.add_argument('--shared-expat', action='store_true')
         command.add_argument('--shared-cpuinfo', action='store_true')
         command.add_argument('--shared-vulkan', action='store_true')
         command.add_argument('--shared-spirv-tools', action='store_true')

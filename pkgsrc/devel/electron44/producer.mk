@@ -97,12 +97,6 @@ _EMBER_ELECTRON_ARGS+= --host-buildlink-host-toolchain
 _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g}
 .endfor
 
-.if ${EMBERBSD_ELECTRON_SHARED_EXPAT:Uno} == "yes"
-_EMBER_ELECTRON_ARGS+= --shared-expat
-.elif ${EMBERBSD_ELECTRON_SHARED_EXPAT:Uno} != "no"
-.error EMBERBSD_ELECTRON_SHARED_EXPAT must be yes or no
-.endif
-
 .if ${EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --shared-spirv-tools
 .elif ${EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS:Uno} != "no"

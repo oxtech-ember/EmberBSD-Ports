@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 p=Path(__file__).resolve().parents[3]/'pkgsrc/devel/electron44/files/build-electron.py'
 spec=importlib.util.spec_from_file_location('electron',p); e=importlib.util.module_from_spec(spec); spec.loader.exec_module(e)
-o=SimpleNamespace(shared_expat=True)
+o=SimpleNamespace()
 keys={'emberbsd_'+p+'_'+r+'_'+k for p in ('expat',) for r in ('host','target') for k in ('libraries','inputs')}
 keys.add('emberbsd_common_expat')
 selection_keys = keys

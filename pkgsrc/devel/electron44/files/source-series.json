@@ -35,6 +35,11 @@
       "root": ""
     },
     {
+      "path": "netbsd-sys-info-noreturn.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "perfetto-openbsd-getexecpath.patch",
       "strip": 1,
       "root": ""
@@ -1327,6 +1332,11 @@
     },
     {
       "path": "partitionalloc-netbsd-mprotect.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-compiler-pch-output.patch",
       "root": "",
       "strip": 1
     }

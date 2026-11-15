@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory() as tmp:
         old_header_identities={'eigen3':'a'},media_header_selections={},
         old_media_header_identities={'libyuv':'a','libsrtp':'a'},compression_identity='x',
         old_compression_identity='x',boringssl_identity='b',old_boringssl_identity='b',
-        phase='reconfigure', shared_pffft=True, shared_expat=True, shared_codecs=True, old_codec_identity='existing-five')
+        phase='reconfigure', shared_pffft=True, shared_codecs=True, old_codec_identity='existing-five')
     def activate(*args,**kwargs):
         assert args[4:] in ((('pffft',),'pffft-components'),(('expat',),'expat-components')); calls.append(('activate',args[4][0])); args[3]()
     compression.activate=activate

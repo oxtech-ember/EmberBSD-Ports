@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory() as tmp:
    (pkg/'+CONTENTS').write_text('\n'.join(contents)+'\n')
    for n in ('+BUILD_INFO','+BUILD_VERSION'): (pkg/n).write_text('owned')
  meta=root/'metadata';meta.mkdir();(meta/'selection.json').write_text(json.dumps({'identity':{'inputs':inputs}}))
- o=SimpleNamespace(shared_expat=True,host_prefix=host,sysroot=root/'sysroot',host_buildlink_pkgsrc=root/'pkgsrc',_common_native_packages=dbs['host'],_common_target_packages=dbs['target'],_compression_catalog={'recipes':{x[0]:{} for x in codec.EXPAT_PROVIDER.values()}})
+ o=SimpleNamespace(host_prefix=host,sysroot=root/'sysroot',host_buildlink_pkgsrc=root/'pkgsrc',_common_native_packages=dbs['host'],_common_target_packages=dbs['target'],_compression_catalog={'recipes':{x[0]:{} for x in codec.EXPAT_PROVIDER.values()}})
  native=SimpleNamespace(host={'os':'Darwin'},tool=lambda n:'/selected/'+n)
  sdk={'process':SimpleNamespace(capture=lambda command,env:SimpleNamespace(stdout=('1.0\n'*(len(command)-command.index('--modversion')-1)).encode()))}
  env={'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK':str(meta)}

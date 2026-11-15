@@ -200,6 +200,13 @@ consumed by `prepare-build-sources.py` after Electron's upstream series. Use the
 instead of applying individual patches to a prepared production tree. The
 individual patch descriptions below explain isolated regression coverage;
 they do not define a second preparation sequence.
+The selected host GN package must be `gn>=2610nb1`. Its compiler side outputs
+are implicit Ninja outputs, so Chromium's `{{output}}` selects the object or
+language-specific PCH while Ninja still tracks sidecars.
+
+Electron uses the common Ports Expat for both host and target; its required
+version is at least 2.10.0nb1. The producer validates both roles and the source
+view masks bundled Expat headers. Skia uses its 64-bit position API.
 
 
 Set `dawn_host_go_path` to the absolute path of a supported host Go executable

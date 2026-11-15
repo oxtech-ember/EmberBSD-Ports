@@ -69,8 +69,6 @@ EXPAT_PROVIDER = {
 
 
 def select_expat(image, controller, options, sdk, native, environment, buildlink):
-    if not getattr(options, 'shared_expat', False):
-        return {}
     values = image.select_roles(controller, options, sdk, native, environment, buildlink,
                                 EXPAT_PROVIDER, {'emberbsd_common_expat': True},
                                 'EMBERBSD_EXPAT_SOURCE_SHA256')

@@ -110,11 +110,9 @@ BUILDLINK_ABI_DEPENDS.libwebp+= libwebp>=1.6.0nb4
 .include "../../graphics/libwebp/buildlink3.mk"
 .endif
 
-.if ${EMBERBSD_ELECTRON_SHARED_EXPAT:Uno} == "yes"
 BUILDLINK_API_DEPENDS.expat+= expat>=2.10.0nb1
 BUILDLINK_ABI_DEPENDS.expat+= expat>=2.10.0nb1
 .include "../../textproc/expat/buildlink3.mk"
-.endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS:Uno} == "yes"
 BUILDLINK_DEPMETHOD.spirv-tools= build

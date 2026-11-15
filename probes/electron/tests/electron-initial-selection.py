@@ -44,7 +44,7 @@ def exercise(*, phase='configure', flag=None, pending=False, fail_create=False, 
     (dest/('untouched' if corrupt=='untouched' else 'expat')).write_text('changed')
   compression=SimpleNamespace(NAMES=('brotli','zstd'),verify_view=lambda *a:None,activate=activate)
   modules={'electron_boringssl_source_view':boring,'electron_compression_source_view':compression,'electron_protobuf_source_view':view,'electron_ml_source_view':ml,'electron_header_source_view':hdr,'electron_media_header_view':media}
-  o=SimpleNamespace(workspace=root/'workspace',work=work,protobuf_source=root/'protobuf',host_prefix=root/'host',ml_identities={'litert':'a'},old_ml_identities={'litert':'a'},ml_sources={},ml_sdk={'inventory':object(),'sourceprep':object()},ml_headers={'eigen3':{'identity':'a'}},old_header_identities={'eigen3':'a'},media_header_selections={},old_media_header_identities={'libyuv':'a','libsrtp':'a'},compression_identity='x',old_compression_identity='x',boringssl_identity='b',old_boringssl_identity='b',phase=phase,shared_cpuinfo=True,shared_expat=True)
+  o=SimpleNamespace(workspace=root/'workspace',work=work,protobuf_source=root/'protobuf',host_prefix=root/'host',ml_identities={'litert':'a'},old_ml_identities={'litert':'a'},ml_sources={},ml_sdk={'inventory':object(),'sourceprep':object()},ml_headers={'eigen3':{'identity':'a'}},old_header_identities={'eigen3':'a'},media_header_selections={},old_media_header_identities={'libyuv':'a','libsrtp':'a'},compression_identity='x',old_compression_identity='x',boringssl_identity='b',old_boringssl_identity='b',phase=phase,shared_cpuinfo=True)
   if flag:setattr(o,flag,True)
   if phase!='configure' or flag:
    create();calls.clear()

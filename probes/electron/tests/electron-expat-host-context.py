@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Check real pkgsrc host-context provider metadata with shared EXPAT on and off."""
+"""Check real pkgsrc host-context mandatory common EXPAT provider metadata."""
 import argparse
 import os
 from pathlib import Path
@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix='electron-font-host-context-') as tmp:
         if item.name!='electron-host-context': (root/'devel'/item.name).symlink_to(item.resolve())
     package=root/'devel/electron-host-context'
     shutil.copytree(owner/'files/host-buildlink',package)
-    def query(enabled):
+    def query():
         expression='${_BUILDLINK_TREE}|${BUILDLINK_API_DEPENDS.expat}|${BUILDLINK_ABI_DEPENDS.expat}'
         prefix=a.bmake.resolve().parent.parent
         cmd=[str(a.bmake),'-r','MAKECONF='+str(a.makeconf),'USE_CROSS_COMPILE=no',
@@ -31,12 +31,11 @@ with tempfile.TemporaryDirectory(prefix='electron-font-host-context-') as tmp:
              'PKGSRC_COMPILER=clang','CLANGBASE='+str(prefix),'CC='+str(prefix/'bin/clang'),
              'CXX='+str(prefix/'bin/clang++'),
              'EMBERBSD_ELECTRON_HOST_DEPENDENCIES='+str(owner/'host-dependencies.mk'),
-             'EMBERBSD_ELECTRON_SHARED_EXPAT='+('yes' if enabled else 'no'),'-V',expression]
+             '-V',expression]
         result=subprocess.run(cmd,cwd=package,env={'PATH':os.environ['PATH'],'HOME':os.environ.get('HOME','/')},text=True,capture_output=True)
         assert result.returncode==0,result.stdout+result.stderr
         return result.stdout.strip().splitlines()[-1].split('|')
-    off=query(False);on=query(True)
-    assert 'expat' in on[0].split(),on
-    for value in on[1:]: assert 'expat>=2.10.0nb1' in value.split(),on
-    assert all('expat>=2.10.0nb1' not in value.split() for value in off[1:]),off
-print('PASS: host context selects EXPAT floor only when enabled')
+    selected=query()
+    assert 'expat' in selected[0].split(),selected
+    for value in selected[1:]: assert 'expat>=2.10.0nb1' in value.split(),selected
+print('PASS: host context always selects the common EXPAT floor')

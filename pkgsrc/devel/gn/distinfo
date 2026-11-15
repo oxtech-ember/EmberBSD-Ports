@@ -21,3 +21,4 @@ SHA1 (patch-src_gn_starlark_crates_ffi_src_label.rs) = f70297319ce80b36409137098
 SHA1 (patch-src_gn_starlark_crates_ffi_src_output__file.rs) = a5bf4d43bfa5a3d948cb099a84503947c99f38d7
 SHA1 (patch-src_gn_starlark_crates_ffi_src_value.rs) = 4be58e559b0dcdfac318b8936ca21327f2c06f93
 SHA1 (patch-src_gn_xcode__writer.cc) = 2852633e78b18a089b0e1bf5ea8c702a5c0ab6cd
+SHA1 (patch-compiler_implicit_outputs) = ca3ce9ea99d0fe18d5fa7bb134f69d9e39178a99
