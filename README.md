@@ -8,6 +8,9 @@ against pinned hashes. This repository carries our recipes and patches,
 with their provenance and validation limits. It does not mirror source
 archives or store generated binaries.
 
+Read the [EmberBSD Developer Guide](https://github.com/oxtech-ember/EmberBSD-Docs/blob/main/modules/ports.md)
+for package ownership, shared dependencies and the build model.
+
 ## Purpose
 
 Ports supplies the native dependencies used by EmberBSD applications and
