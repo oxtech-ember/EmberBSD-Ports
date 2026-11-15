@@ -3,6 +3,7 @@ ${PYSITELIB}/${WHEEL_INFODIR}/METADATA
 ${PYSITELIB}/${WHEEL_INFODIR}/RECORD
 ${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
 ${PYSITELIB}/${WHEEL_INFODIR}/licenses/LICENSE
+${PYSITELIB}/${WHEEL_INFODIR}/sboms/filelock.cdx.json
 ${PYSITELIB}/filelock/__init__.py
 ${PYSITELIB}/filelock/__init__.pyc
 ${PYSITELIB}/filelock/__init__.pyo
@@ -45,6 +46,12 @@ ${PYSITELIB}/filelock/_soft_rw/__init__.pyo
 ${PYSITELIB}/filelock/_soft_rw/_async.py
 ${PYSITELIB}/filelock/_soft_rw/_async.pyc
 ${PYSITELIB}/filelock/_soft_rw/_async.pyo
+${PYSITELIB}/filelock/_soft_rw/_protocol.py
+${PYSITELIB}/filelock/_soft_rw/_protocol.pyc
+${PYSITELIB}/filelock/_soft_rw/_protocol.pyo
+${PYSITELIB}/filelock/_soft_rw/_storage.py
+${PYSITELIB}/filelock/_soft_rw/_storage.pyc
+${PYSITELIB}/filelock/_soft_rw/_storage.pyo
 ${PYSITELIB}/filelock/_soft_rw/_sync.py
 ${PYSITELIB}/filelock/_soft_rw/_sync.pyc
 ${PYSITELIB}/filelock/_soft_rw/_sync.pyo
