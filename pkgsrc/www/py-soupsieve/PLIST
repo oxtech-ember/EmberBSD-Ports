@@ -9,6 +9,9 @@ ${PYSITELIB}/soupsieve/__init__.pyo
 ${PYSITELIB}/soupsieve/__meta__.py
 ${PYSITELIB}/soupsieve/__meta__.pyc
 ${PYSITELIB}/soupsieve/__meta__.pyo
+${PYSITELIB}/soupsieve/bidi.py
+${PYSITELIB}/soupsieve/bidi.pyc
+${PYSITELIB}/soupsieve/bidi.pyo
 ${PYSITELIB}/soupsieve/css_match.py
 ${PYSITELIB}/soupsieve/css_match.pyc
 ${PYSITELIB}/soupsieve/css_match.pyo

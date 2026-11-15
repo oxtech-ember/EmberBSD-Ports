@@ -1,6 +1,6 @@
 $NetBSD$
 
-Local: pkgsrc prefix and Ember Browser integration.
+Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration.
 
 --- usr/lib/webapp-manager/common.py
 +++ usr/lib/webapp-manager/common.py
@@ -12,6 +12,15 @@ Local: pkgsrc prefix and Ember Browser integration.
  import sys
  import tempfile
  import urllib.error
+@@ -19,7 +20,7 @@
+ from typing import Optional
+ 
+ #   2. Related third party imports.
+-from gi.repository import GObject
++from gi.repository import GObject, GLib
+ import PIL.Image
+ import requests
+ # Note: BeautifulSoup is an optional import supporting another way of getting a website's favicons.
 @@ -42,7 +43,7 @@
  
  # i18n
@@ -21,7 +30,7 @@ Local: pkgsrc prefix and Ember Browser integration.
  locale.bindtextdomain(APP, LOCALE_DIR)
  gettext.bindtextdomain(APP, LOCALE_DIR)
  gettext.textdomain(APP)
-@@ -63,14 +64,32 @@
+@@ -63,14 +64,44 @@
  FALKON_PROFILES_DIR = os.path.join(ICE_DIR, "falkon")
  ZEN_FLATPAK_PROFILES_DIR = os.path.expanduser("~/.var/app/app.zen_browser.zen/data/ice/zen/")
  ICONS_DIR = os.path.join(ICE_DIR, "icons")
@@ -45,6 +54,18 @@ Local: pkgsrc prefix and Ember Browser integration.
 +    if not valid:
 +        return _("Enter an HTTP or HTTPS address without spaces or credentials.")
 +    return ""
++
++def desktop_string(value):
++    key = GLib.KeyFile()
++    key.set_string("Desktop Entry", "Value", value)
++    return key.get_value("Desktop Entry", "Value")
++
++
++def desktop_unstring(value):
++    key = GLib.KeyFile()
++    key.set_value("Desktop Entry", "Value", value)
++    return key.get_string("Desktop Entry", "Value")
++
  
  class Browser:
  
@@ -56,7 +77,41 @@ Local: pkgsrc prefix and Ember Browser integration.
          self.test_path = test_path
  
  # This is a data structure representing
-@@ -182,69 +201,70 @@
+@@ -96,23 +127,26 @@
+         is_webapp = False
+         with open(path) as desktop_file:
+             for line in desktop_file:
+-                line = line.strip()
++                line = line.lstrip().rstrip("\r\n")
+ 
+                 # Identify if the app is a webapp
+                 if "StartupWMClass=WebApp" in line or "StartupWMClass=Chromium" in line or "StartupWMClass=ICE-SSB" in line:
+                     is_webapp = True
+                     continue
+ 
+-                if "Name=" in line:
+-                    self.name = line.replace("Name=", "")
+-                    continue
+-
+-                if "Comment=" in line:
+-                    self.desc = line.replace("Comment=", "")
++                if line.startswith("Name="):
++                    self.name = desktop_unstring(line[len("Name="):])
++                    continue
++
++                if line.startswith("Comment="):
++                    self.desc = desktop_unstring(line[len("Comment="):])
+                     if self.desc == _("Web App"):
+                         self.desc = ""
+                     continue
+ 
++                # Preserve exact Name/Comment strings while retaining upstream
++                # whitespace normalization for the remaining metadata.
++                line = line.strip()
+                 if "Icon=" in line:
+                     self.icon = line.replace("Icon=", "")
+                     continue
+@@ -182,69 +216,70 @@
      @staticmethod
      def get_supported_browsers():
          # type, name, exec, test
@@ -164,7 +219,7 @@ Local: pkgsrc prefix and Ember Browser integration.
                  Browser(BROWSER_TYPE_FLOORP_FLATPAK, "Floorp (Flatpak)", "/var/lib/flatpak/exports/bin/one.ablaze.floorp", "/var/lib/flatpak/exports/bin/one.ablaze.floorp"),
                  Browser(BROWSER_TYPE_FLOORP_FLATPAK, "Floorp (Flatpak)", ".local/share/flatpak/exports/bin/one.ablaze.floorp", ".local/share/flatpak/exports/bin/one.ablaze.floorp")
                  ]
-@@ -271,9 +291,11 @@
+@@ -271,9 +306,11 @@
          shutil.rmtree(os.path.join(FALKON_PROFILES_DIR, webapp.codename), ignore_errors=True)
  
      def create_webapp(self, name, desc, url, icon, category, browser, custom_parameters, isolate_profile=True, navbar=False, privatewindow=False):
@@ -177,8 +232,14 @@ Local: pkgsrc prefix and Ember Browser integration.
          path = os.path.join(APPS_DIR, "WebApp-%s.desktop" % codename)
  
          if not desc:
-@@ -286,7 +308,7 @@
-             desktop_file.write("Comment=%s\n" % desc)
+@@ -282,11 +319,11 @@
+         with open(path, 'w') as desktop_file:
+             desktop_file.write("[Desktop Entry]\n")
+             desktop_file.write("Version=1.0\n")
+-            desktop_file.write("Name=%s\n" % name)
+-            desktop_file.write("Comment=%s\n" % desc)
++            desktop_file.write("Name=%s\n" % desktop_string(name))
++            desktop_file.write("Comment=%s\n" % desktop_string(desc))
  
              exec_string = self.get_exec_string(browser, codename, custom_parameters, icon, isolate_profile, navbar,
 -                                               privatewindow, url)
@@ -186,7 +247,7 @@ Local: pkgsrc prefix and Ember Browser integration.
  
              desktop_file.write("Exec=%s\n" % exec_string)
              desktop_file.write("Terminal=false\n")
-@@ -324,7 +346,17 @@
+@@ -324,7 +361,18 @@
                  os.symlink(falkon_profile_path, falkon_orig_prof_dir)
  
  
@@ -196,7 +257,8 @@ Local: pkgsrc prefix and Ember Browser integration.
 +            # Desktop Entry Exec quoting is not shell quoting. Percent is a
 +            # field-code introducer and must be escaped even inside quotes.
 +            def desktop_arg(value):
-+                return '"' + value.replace("%", "%%").replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`").replace("$", "\\$") + '"'
++                quoted = value.replace("%", "%%").replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`").replace("$", "\\$")
++                return desktop_string('"' + quoted + '"')
 +            args = [browser.exec_path, "--webapp-id=" + codename,
 +                    "--webapp-url=" + url, "--webapp-name=" + name]
 +            if privatewindow:
@@ -205,7 +267,7 @@ Local: pkgsrc prefix and Ember Browser integration.
          if browser.browser_type in [BROWSER_TYPE_FIREFOX, BROWSER_TYPE_FIREFOX_FLATPAK, BROWSER_TYPE_FIREFOX_SNAP, BROWSER_TYPE_ZEN_FLATPAK]:
              # Firefox based
              if browser.browser_type == BROWSER_TYPE_FIREFOX:
-@@ -347,9 +379,9 @@
+@@ -347,9 +395,9 @@
                  exec_string += " {}".format(custom_parameters)
              exec_string += " \"" + url + "\"" + "'"
              # Create a Firefox profile
@@ -217,7 +279,7 @@ Local: pkgsrc prefix and Ember Browser integration.
                              os.path.join(firefox_profile_path, "chrome", "userChrome.css"))
          elif browser.browser_type == BROWSER_TYPE_LIBREWOLF_FLATPAK:
              # LibreWolf flatpak
-@@ -366,9 +398,9 @@
+@@ -366,9 +414,9 @@
                  exec_string += " {}".format(custom_parameters)
              exec_string += " \"" + url + "\"" + "'"
              # Create a Firefox profile
@@ -229,7 +291,7 @@ Local: pkgsrc prefix and Ember Browser integration.
                              os.path.join(firefox_profile_path, "chrome", "userChrome.css"))
          elif browser.browser_type == BROWSER_TYPE_FLOORP_FLATPAK:
              # Floorp flatpak
-@@ -385,9 +417,9 @@
+@@ -385,9 +433,9 @@
                  exec_string += " {}".format(custom_parameters)
              exec_string += " \"" + url + "\"" + "'"
              # Create a Firefox profile
@@ -241,7 +303,7 @@ Local: pkgsrc prefix and Ember Browser integration.
                              os.path.join(firefox_profile_path, "chrome", "userChrome.css"))
          elif browser.browser_type == BROWSER_TYPE_EPIPHANY:
              # Epiphany based
-@@ -444,6 +476,8 @@
+@@ -444,22 +492,24 @@
          return exec_string
  
      def edit_webapp(self, path, name, desc, browser, url, icon, category, custom_parameters, codename, isolate_profile, navbar, privatewindow):
@@ -250,7 +312,17 @@ Local: pkgsrc prefix and Ember Browser integration.
          if not desc:
              desc = _("Web App")
  
-@@ -459,7 +493,7 @@
+         config = configparser.RawConfigParser()
+         config.optionxform = str
+         config.read(path)
+-        config.set("Desktop Entry", "Name", name)
++        config.set("Desktop Entry", "Name", desktop_string(name))
+         config.set("Desktop Entry", "Icon", icon)
+-        config.set("Desktop Entry", "Comment", desc)
++        config.set("Desktop Entry", "Comment", desktop_string(desc))
+         config.set("Desktop Entry", "Categories", "GTK;%s;" % category)
+ 
+         try:
              # This will raise an exception on legacy apps which
              # have no X-WebApp-URL and X-WebApp-Browser
  

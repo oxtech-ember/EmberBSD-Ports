@@ -42,7 +42,7 @@ INSTALLATION_DIRS= bin lib/webapp-manager share/applications/kde4 \
  share/examples/webapp-manager
 
 do-test:
-	${TOOL_PYTHONBIN} ${FILESDIR}/launcher-test.py ${WRKSRC}
+	${TOOL_PYTHONBIN} ${FILESDIR}/launcher-test.py ${WRKSRC} --host-prefix ${EMBERBSD_HOST_PREFIX:Q}
 
 do-install:
 	${INSTALL_SCRIPT} ${WRKSRC}/usr/lib/webapp-manager/webapp-manager.py ${DESTDIR}${PREFIX}/lib/webapp-manager/
