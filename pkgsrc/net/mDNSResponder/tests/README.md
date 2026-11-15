@@ -26,3 +26,16 @@ work directory:
 
 `t-addr-tailq.c` remains the standalone ABI-layout regression for the shared
 queue adapter.
+
+The same runner compiles the actual `mDNSPlatformInit` and `mDNSPlatformClose`
+functions with route-watcher callbacks. Its fixture adds a DHCP address during
+the initial interface snapshot, confirms the old ordering loses that event and
+the production initializer queues it before the main loop starts, and checks
+init-error cleanup, repeated close, and independent instances. A separate
+fixture covers Linux Netlink socket-bind failure cleanup and errno preservation.
+These deterministic source regressions do not establish the historical cause
+of a device boot failure.
+
+Pass `--sanitize` to run the interface lifecycle fixture with AddressSanitizer
+and UndefinedBehaviorSanitizer. The default command adds no sanitizer runtime
+dependency.

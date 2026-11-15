@@ -41,6 +41,14 @@ socket created by that call and invalidates its saved descriptor. Caller-owned
 launch sockets remain open. This repairs the confirmed descriptor leak in the
 same published module.
 
+POSIX initialization now opens the interface-change watcher before the first
+interface snapshot. DHCP address events during enumeration remain queued for
+the event loop. Each `mDNS_PlatformSupport` owns its watcher; failed setup and
+platform close remove the event source and close its route socket. The
+actual-function regression simulates an address event during the snapshot and
+checks event retention and cleanup. It does not establish the historical cause
+of a device's cold-start failure.
+
 The upstream POSIX Makefile assigns `os` from the build host's `uname` result.
 This overrides a recipe environment value. The recipe passes all seven existing
 platform mappings through `MAKE_FLAGS`, which GNU Make command arguments retain.

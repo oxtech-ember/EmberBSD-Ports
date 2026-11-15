@@ -70,6 +70,8 @@ def main():
     parser.add_argument('--source', required=True, help='prepared mDNSResponder source root')
     parser.add_argument('--work', required=True, help='new test output directory')
     parser.add_argument('--cc', required=True, help='absolute host C compiler')
+    parser.add_argument('--sanitize', action='store_true',
+                        help='run the interface lifecycle fixture with ASan and UBSan')
     args = parser.parse_args()
     source = Path(args.source).resolve()
     work = Path(args.work).resolve()
@@ -347,6 +349,224 @@ static void DeadvertiseInterface(mDNS *m, NetworkInterfaceInfo *set, int flags)
 '''
     compile_run(args.cc, work, 'core-advertise-local-addresses',
                 advertise_fixture + advertise_functions + advertise_main)
+
+    watcher_functions = '\n'.join((
+        function(net, 'mDNSlocal mStatus WatchForInterfaceChange(mDNS *const m)'),
+        function(net, 'mDNSlocal void StopWatchingForInterfaceChange(mDNS *const m)'),
+        function(net, 'mDNSexport mStatus mDNSPlatformInit(mDNS *const m)'),
+        function(net, 'mDNSexport void mDNSPlatformClose(mDNS *const m)'),
+    ))
+    watcher_fixture = r'''#include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+typedef int mStatus;
+typedef int mDNSBool;
+typedef struct { char c[256]; } domainlabel;
+typedef struct IfChangeRec IfChangeRec;
+typedef struct { IfChangeRec *ifChangeRec; int unicastSocket4; } mDNS_PlatformSupport;
+typedef struct mDNS {
+    mDNS_PlatformSupport *p;
+    int CanReceiveUnicastOn5353;
+    domainlabel nicelabel, hostlabel;
+} mDNS;
+typedef int mDNSIPPort;
+typedef void (*mDNSPosixEventCallback)(int, void *);
+enum { mStatus_NoError = 0, mStatus_NoMemoryErr = 12, mDNStrue = 1 };
+#define HAVE_IPV6 0
+#define POSIX_HAS_TLS 0
+#define UNICAST_DISABLED 1
+#define mDNSlocal static
+#define mDNSexport
+struct IfChangeRec { int NotifySD; mDNS *mDNS; };
+static int zeroIPPort, route_listener_count, next_fd = 17;
+static int queued_events, lost_events, setup_result;
+static int add_result, open_result, add_calls, remove_calls, close_calls, udp_close_calls, free_calls;
+static int refreshed_interfaces, init_complete_calls, cleared_interfaces;
+static void *mDNSPlatformMemAllocateClear(size_t size) { return calloc(1, size); }
+static void mDNSPlatformMemFree(void *ptr) { free_calls++; free(ptr); }
+static int mDNSPlatformInit_CanReceiveUnicast(void) { return 1; }
+static void GetUserSpecifiedFriendlyComputerName(domainlabel *label) { label->c[0] = 0; }
+static void GetUserSpecifiedRFC1034ComputerName(domainlabel *label) { label->c[0] = 0; }
+static void MakeDomainLabelFromLiteralString(domainlabel *label, const char *text)
+{ strncpy(label->c, text, sizeof(label->c) - 1); }
+static void mDNS_SetFQDN(mDNS *m) { (void)m; }
+static int SetupSocket(struct sockaddr *addr, mDNSIPPort port, int index, int *fd)
+{ (void)addr; (void)port; (void)index; *fd = 99; return 0; }
+static mStatus SetupInterfaceList(mDNS *m)
+{
+    (void)m;
+    /* Simulate DHCP adding the first IPv4 address during getifaddrs(). */
+    if (route_listener_count != 0) queued_events++;
+    else lost_events++;
+    return setup_result;
+}
+static void mDNSCoreInitComplete(mDNS *m, mStatus status)
+{ (void)m; assert(status == 0); init_complete_calls++; }
+static mStatus PosixErrorToStatus(int error) { return error; }
+static void ClearInterfaceList(mDNS *m) { (void)m; cleared_interfaces++; }
+void mDNSPlatformClose(mDNS *const m);
+static mStatus OpenIfNotifySocket(int *fd)
+{
+    if (open_result != 0) { *fd = -1; return open_result; }
+    *fd = next_fd++; route_listener_count++; return 0;
+}
+static void InterfaceChangeCallback(int fd, void *context) { (void)fd; (void)context; }
+static mStatus mDNSPosixAddFDToEventLoop(int fd, mDNSPosixEventCallback cb, void *context)
+{ (void)fd; (void)cb; (void)context; add_calls++; return add_result; }
+static mStatus mDNSPosixRemoveFDFromEventLoop(int fd)
+{ assert(fd >= 17 && fd < 99); remove_calls++; return 0; }
+static int fixture_close(int fd)
+{
+    if (fd >= 17 && fd < 99) { close_calls++; route_listener_count--; }
+    else if (fd == 99) udp_close_calls++;
+    else assert(0);
+    return 0;
+}
+#define close fixture_close
+static void RunQueuedEventLoop(void)
+{ if (queued_events != 0) { queued_events--; refreshed_interfaces++; } }
+'''
+    watcher_main = r'''int main(void)
+{
+    mDNS_PlatformSupport support = {0}, support2 = {0};
+    mDNS m = {&support, 0, {{0}}, {{0}}};
+    mDNS m2 = {&support2, 0, {{0}}, {{0}}};
+    mStatus result;
+
+    /* The old ordering drops an address event emitted during the first snapshot. */
+    result = SetupInterfaceList(&m);
+    assert(result == 0);
+    assert(lost_events == 1 && queued_events == 0);
+    result = WatchForInterfaceChange(&m);
+    assert(result == 0);
+    StopWatchingForInterfaceChange(&m);
+    assert(add_calls == 1);
+
+    /* The actual initializer now subscribes before SetupInterfaceList. */
+    lost_events = queued_events = 0;
+    result = mDNSPlatformInit(&m);
+    assert(result == 0);
+    assert(lost_events == 0 && queued_events == 1 && init_complete_calls == 1);
+    RunQueuedEventLoop();
+    assert(refreshed_interfaces == 1 && queued_events == 0);
+    mDNSPlatformClose(&m);
+    assert(support.ifChangeRec == NULL && support.unicastSocket4 == -1);
+    assert(route_listener_count == 0 && udp_close_calls == 1);
+    mDNSPlatformClose(&m); /* repeated close is safe */
+    assert(route_listener_count == 0 && udp_close_calls == 1);
+
+    /* A failure after watcher registration tears down route and UDP sockets. */
+    setup_result = 5;
+    result = mDNSPlatformInit(&m);
+    assert(result == 5);
+    assert(support.ifChangeRec == NULL && support.unicastSocket4 == -1);
+    assert(route_listener_count == 0 && udp_close_calls == 2);
+    assert(init_complete_calls == 1);
+    mDNSPlatformClose(&m);
+    assert(route_listener_count == 0 && udp_close_calls == 2);
+
+    /* Contexts are per instance, including independent close. */
+    setup_result = 0;
+    result = WatchForInterfaceChange(&m);
+    assert(result == 0);
+    result = WatchForInterfaceChange(&m2);
+    assert(result == 0);
+    assert(support.ifChangeRec != NULL && support2.ifChangeRec != NULL);
+    assert(route_listener_count == 2);
+    StopWatchingForInterfaceChange(&m);
+    assert(support.ifChangeRec == NULL && support2.ifChangeRec != NULL);
+    assert(route_listener_count == 1);
+    StopWatchingForInterfaceChange(&m2);
+    assert(support2.ifChangeRec == NULL && route_listener_count == 0);
+
+    /* Watcher setup failures release every descriptor they acquired. */
+    add_result = 5;
+    result = WatchForInterfaceChange(&m);
+    assert(result == 5);
+    assert(support.ifChangeRec == NULL && route_listener_count == 0);
+    open_result = 5;
+    result = WatchForInterfaceChange(&m);
+    assert(result == 5);
+    assert(support.ifChangeRec == NULL && route_listener_count == 0);
+    assert(add_calls == 6 && remove_calls == 5);
+    assert(close_calls == 6 && udp_close_calls == 2 && free_calls == 7);
+    assert(cleared_interfaces == 4);
+    return 0;
+}
+'''
+    compile_run(args.cc, work, 'interface-event-before-snapshot',
+                watcher_fixture + watcher_functions + watcher_main,
+                flags=(('-fsanitize=address,undefined', '-fno-omit-frame-pointer')
+                       if args.sanitize else ()))
+
+    netlink_open = function(net, 'mDNSlocal mStatus OpenIfNotifySocket(int *pFD)')
+    netlink_fixture = r'''#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <string.h>
+#include <sys/socket.h>
+typedef int mStatus;
+enum { mStatus_NoError = 0 };
+#define mDNSlocal static
+#define AF_NETLINK 99
+#define NETLINK_ROUTE 0
+#define RTMGRP_LINK 1
+#define RTMGRP_IPV4_IFADDR 2
+#define RTMGRP_IPV6_IFADDR 4
+struct sockaddr_nl { unsigned short nl_family; unsigned int nl_groups; };
+static int bind_failure, socket_failure, close_calls;
+static void mDNSPlatformMemZero(void *ptr, size_t size) { memset(ptr, 0, size); }
+static int fixture_socket(int domain, int type, int protocol)
+{
+    assert(domain == AF_NETLINK && type == SOCK_RAW && protocol == NETLINK_ROUTE);
+    if (socket_failure) { errno = ENFILE; return -1; }
+    return 46;
+}
+static int fixture_fcntl(int fd, int command, int flags)
+{ assert(fd == 46 && command == F_SETFL && flags == O_NONBLOCK); return 0; }
+static int fixture_bind(int fd, const struct sockaddr *addr, socklen_t len)
+{
+    const struct sockaddr_nl *netlink = (const struct sockaddr_nl *)addr;
+    assert(fd == 46 && len == sizeof(*netlink));
+    assert(netlink->nl_family == AF_NETLINK);
+    assert(netlink->nl_groups == (RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR));
+    if (bind_failure) { errno = EACCES; return -1; }
+    return 0;
+}
+static int fixture_close(int fd) { assert(fd == 46); close_calls++; errno = EBADF; return 0; }
+#define socket fixture_socket
+#define fcntl fixture_fcntl
+#define bind fixture_bind
+#define close fixture_close
+'''
+    netlink_main = r'''int main(void)
+{
+    int fd = -1;
+    int result;
+    bind_failure = 1;
+    result = OpenIfNotifySocket(&fd);
+    assert(result == EACCES);
+    assert(fd == -1 && close_calls == 1);
+
+    bind_failure = 0;
+    result = OpenIfNotifySocket(&fd);
+    assert(result == 0);
+    assert(fd == 46 && close_calls == 1);
+
+    socket_failure = 1; fd = -1;
+    result = OpenIfNotifySocket(&fd);
+    assert(result == ENFILE);
+    assert(fd == -1 && close_calls == 1);
+    return 0;
+}
+'''
+    compile_run(args.cc, work, 'netlink-watcher-bind-failure',
+                netlink_fixture + netlink_open + netlink_main)
     print('mDNS NetBSD/core source adaptations: production-function regressions passed')
     return 0
 

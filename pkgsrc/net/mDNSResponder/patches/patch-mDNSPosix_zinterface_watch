@@ -1,0 +1,153 @@
+$NetBSD$
+
+Subscribe to interface changes before the initial address snapshot. This prevents
+DHCP address events between enumeration and watcher setup from being lost. Keep
+routing socket setup failure cleanup valid on both Netlink and PF_ROUTE systems.
+
+--- mDNSPosix/mDNSPosix.c.orig
++++ mDNSPosix/mDNSPosix.c
+@@ -1665,7 +1665,10 @@
+     if (0 == ret)
+         *pFD = sock;
+     else
++    {
+         err = errno;
++        (void) close(sock);
++    }
+ 
+     return err;
+ }
+@@ -1930,15 +1933,36 @@
+         return mStatus_NoMemoryErr;
+ 
+     pChgRec->mDNS = m;
++    pChgRec->NotifySD = -1;
+     err = OpenIfNotifySocket(&pChgRec->NotifySD);
+     if (err == 0)
+         err = mDNSPosixAddFDToEventLoop(pChgRec->NotifySD, InterfaceChangeCallback, pChgRec);
+-    if (err)
++    if (err != mStatus_NoError)
++    {
++        if (pChgRec->NotifySD != -1)
++            (void) close(pChgRec->NotifySD);
+         mDNSPlatformMemFree(pChgRec);
++    }
++    else
++    {
++        m->p->ifChangeRec = pChgRec;
++    }
+ 
+     return err;
+ }
+ 
++mDNSlocal void StopWatchingForInterfaceChange(mDNS *const m)
++{
++    IfChangeRec *pChgRec = (IfChangeRec *)m->p->ifChangeRec;
++    if (pChgRec != NULL)
++    {
++        m->p->ifChangeRec = NULL;
++        (void) mDNSPosixRemoveFDFromEventLoop(pChgRec->NotifySD);
++        (void) close(pChgRec->NotifySD);
++        mDNSPlatformMemFree(pChgRec);
++    }
++}
++
+ // Test to see if we're the first client running on UDP port 5353, by trying to bind to 5353 without using SO_REUSEPORT.
+ // If we fail, someone else got here first. That's not a big problem; we can share the port for multicast responses --
+ // we just need to be aware that we shouldn't expect to successfully receive unicast UDP responses.
+@@ -1994,6 +2018,7 @@
+     int err = 0;
+     struct sockaddr sa;
+     assert(m != NULL);
++    m->p->ifChangeRec = NULL;
+ 
+     if (mDNSPlatformInit_CanReceiveUnicast()) m->CanReceiveUnicastOn5353 = mDNStrue;
+ 
+@@ -2028,20 +2053,11 @@
+     }
+ #endif
+ 
+-    // Tell mDNS core about the network interfaces on this machine.
+-    if (err == mStatus_NoError) err = SetupInterfaceList(m);
+-
+-#ifndef UNICAST_DISABLED
+-    // Tell mDNS core about DNS Servers
+-    mDNS_Lock(m);
+-    if (err == mStatus_NoError) ParseDNSServers(m, uDNS_SERVERS_FILE);
+-    mDNS_Unlock(m);
+-#endif
+-
+     if (err == mStatus_NoError)
+     {
++        /* Subscribe before the interface snapshot so address changes cannot
++         * fall between enumeration and registration of the routing socket. */
+         err = WatchForInterfaceChange(m);
+-        // Failure to observe interface changes is non-fatal.
+         if (err != mStatus_NoError)
+         {
+             fprintf(stderr, "mDNS(%d) WARNING: Unable to detect interface changes (%d).\n", getpid(), err);
+@@ -2049,6 +2065,16 @@
+         }
+     }
+ 
++    // Tell mDNS core about the network interfaces on this machine.
++    if (err == mStatus_NoError) err = SetupInterfaceList(m);
++
++#ifndef UNICAST_DISABLED
++    // Tell mDNS core about DNS Servers
++    mDNS_Lock(m);
++    if (err == mStatus_NoError) ParseDNSServers(m, uDNS_SERVERS_FILE);
++    mDNS_Unlock(m);
++#endif
++
+ #if POSIX_HAS_TLS
+     // Use the SRP TLS shim.
+     mDNSPosixTLSInit();
+@@ -2059,6 +2085,8 @@
+     // we should just call mDNSCoreInitComplete() immediately.
+     if (err == mStatus_NoError)
+         mDNSCoreInitComplete(m, mStatus_NoError);
++    else
++        mDNSPlatformClose(m);
+ 
+     return PosixErrorToStatus(err);
+ }
+@@ -2069,17 +2097,20 @@
+ {
+     int rv;
+     assert(m != NULL);
++    StopWatchingForInterfaceChange(m);
+     ClearInterfaceList(m);
+     if (m->p->unicastSocket4 != -1)
+     {
+         rv = close(m->p->unicastSocket4);
+         assert(rv == 0);
++        m->p->unicastSocket4 = -1;
+     }
+ #if HAVE_IPV6
+     if (m->p->unicastSocket6 != -1)
+     {
+         rv = close(m->p->unicastSocket6);
+         assert(rv == 0);
++        m->p->unicastSocket6 = -1;
+     }
+ #endif
+ }
+--- mDNSPosix/mDNSPosix.h.orig
++++ mDNSPosix/mDNSPosix.h
+@@ -49,12 +49,15 @@
+ // This is a global because debugf_() needs to be able to check its value
+ extern int gMDNSPlatformPosixVerboseLevel;
+ 
++struct IfChangeRec;
++
+ struct mDNS_PlatformSupport_struct
+ {
+     int unicastSocket4;
+ #if HAVE_IPV6
+     int unicastSocket6;
+ #endif
++    struct IfChangeRec *ifChangeRec;
+ };
+ 
+ // We keep a list of client-supplied event sources in PosixEventSource records

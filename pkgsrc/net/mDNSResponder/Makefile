@@ -2,7 +2,7 @@
 # Origin: EmberBSD (AI-assisted), current Apple source and target tool roles.
 
 .include "../../net/mDNSResponder/Makefile.common"
-PKGREVISION=	7
+PKGREVISION=	8
 
 CATEGORIES=	net
 
