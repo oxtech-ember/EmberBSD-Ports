@@ -5,7 +5,7 @@
 
 DISTNAME=	blanc-1.46.0
 PKGNAME=	ember-browser-1.46.0
-PKGREVISION=	10
+PKGREVISION=	11
 CATEGORIES=	www
 BLANC_SOURCE=	v1.46.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
@@ -108,6 +108,7 @@ do-test: blanc-check-build-tools
 do-install:
 	${INSTALL_DATA} ${FILESDIR:Q}/ember-browser.svg ${DESTDIR:Q}${PREFIX:Q}/share/icons/hicolor/scalable/apps/org.emberbsd.browser.svg
 	${INSTALL_DATA} ${WRKDIR:Q}/app.asar ${DESTDIR:Q}${PREFIX:Q}/lib/ember-browser/app.asar
+	${INSTALL_DATA} ${FILESDIR:Q}/webapp-profile.py ${FILESDIR:Q}/webapp-layout.json ${DESTDIR:Q}${PREFIX:Q}/lib/ember-browser/
 	${INSTALL_DATA} ${WRKSRC:Q}/LICENSE ${WRKSRC:Q}/ASSET-LICENSE.md \
 	    ${WRKSRC:Q}/THIRD-PARTY-NOTICES.md ${WRKSRC:Q}/TRADEMARKS.md ${WRKDIR:Q}/SBOM.json \
 	    ${DESTDIR:Q}${PREFIX:Q}/share/doc/ember-browser/

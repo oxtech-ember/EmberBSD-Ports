@@ -568,6 +568,11 @@ def run_python_tests(stream, source_root, dist_dir, native, work, sdk_root):
         '--launcher', str(Path(__file__).parent / 'blanc.sh')],
         cwd=source_root, env=child_environment(native, work), timeout=60)
     sys.stdout.buffer.write(output)
+    output = run_host_tool(stream, [native.tool('python'), '-B', '-I', '-S',
+        str(Path(__file__).parent / 'test-webapp-profile.py'),
+        '--helper', str(Path(__file__).parent / 'webapp-profile.py')],
+        cwd=source_root, env=child_environment(native, work), timeout=60)
+    sys.stdout.buffer.write(output)
 
 
 def parse_args():
@@ -655,6 +660,7 @@ def main():
     copy_regular(Path(__file__).parent / 'ember-browser.png', pages / 'ember-browser.png')
     copy_regular(Path(__file__).parent / 'netbsd-system-updater.js', app_root / 'src/main/netbsd-system-updater.js')
     copy_regular(Path(__file__).parent / 'webapp-mode.js', app_root / 'src/main/webapp-mode.js')
+    copy_regular(Path(__file__).parent / 'webapp-layout.json', app_root / 'src/main/webapp-layout.json')
     copy_module_tree(runtime_root, app_root / 'node_modules')
     copy_allowlist(source_root, source_manifest['buildInputs'] + source_manifest['generatedFiles'], seed_root)
     # Generate only the consumer-facing desktop catalogs from upstream messages.

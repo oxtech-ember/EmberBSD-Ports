@@ -1,5 +1,7 @@
 bin/ember-browser
 lib/ember-browser/app.asar
+lib/ember-browser/webapp-layout.json
+lib/ember-browser/webapp-profile.py
 share/applications/org.emberbsd.browser.desktop
 share/doc/ember-browser/ASSET-LICENSE.md
 share/doc/ember-browser/LICENSE

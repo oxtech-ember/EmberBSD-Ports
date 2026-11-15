@@ -48,7 +48,10 @@ for arg in "$@"; do
  esac
 done
 
-if [ "${webapp_requested}" = "no" ]; then
+if [ "${webapp_requested}" = "yes" ]; then
+	exec "@PREFIX@/bin/python3.15" "@PREFIX@/lib/ember-browser/webapp-profile.py" \
+	    "@PREFIX@/bin/electron" "@PREFIX@/lib/ember-browser/app.asar" "$@"
+fi
 config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
 app_config="${config_home}/Ember Browser"
 local_state="${app_config}/Local State"
@@ -112,8 +115,6 @@ if not backup.exists():
 del data["windowStates"]
 path.write_text(json.dumps(data, separators=(",", ":")))
 '
-fi
-
 fi
 
 exec "@PREFIX@/bin/electron" "@PREFIX@/lib/ember-browser/app.asar" "$@"

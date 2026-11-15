@@ -121,5 +121,21 @@ with tempfile.TemporaryDirectory(prefix='webapp-owner-test-') as tmp:
     bad = Path(module.APPS_DIR) / 'WebApp-malformed.desktop'
     bad.write_text('[Desktop Entry]\nName=bad\\q\nIcon=icon\nStartupWMClass=WebApp-malformed\n')
     assert [x.path for x in manager.get_webapps()] == [app.path], 'invalid item must not hide valid launcher'
-    bad.unlink(); manager.delete_webbapp(app); assert not manager.get_webapps()
+    bad.unlink()
+    # Invoke a real temporary executable for clear; failed clear preserves launcher.
+    module.EMBER_BROWSER_PATH = str(exe)
+    exe.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > ' + shlex.quote(str(capture)) +
+                   '\nexit "${WEBAPP_CLEAR_EXIT:-0}"\n')
+    os.environ['WEBAPP_CLEAR_EXIT'] = '7'
+    try:
+        manager.delete_webbapp(app)
+        raise AssertionError('failed clear unexpectedly deleted launcher')
+    except RuntimeError:
+        pass
+    assert Path(app.path).is_file() and capture.read_text().splitlines() == ['--webapp-clear=' + app.codename]
+    os.environ['WEBAPP_CLEAR_EXIT'] = '0'
+    manager.delete_webbapp(app)
+    assert not manager.get_webapps() and not Path(app.path).exists()
+    assert capture.read_text().splitlines() == ['--webapp-clear=' + app.codename]
+    del os.environ['WEBAPP_CLEAR_EXIT']
 print('PASS GLib/Gio create, edit, malformed item isolation and delete')

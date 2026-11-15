@@ -1,5 +1,6 @@
 'use strict';
 const path = require('path');
+const layout = require('./webapp-layout.json');
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 function parseWebAppArgs(argv) {
   if (!Array.isArray(argv)) throw new TypeError('argv must be an array');
@@ -24,7 +25,7 @@ function parseWebAppArgs(argv) {
 }
 function userDataPath(appData,id,isPrivate = false) {
   if (!path.isAbsolute(appData) || !ID.test(id)) throw new Error('invalid webapp path');
-  return path.join(appData,'Ember Browser',isPrivate ? 'webapps-private' : 'webapps',id);
+  return path.join(appData,layout.application,isPrivate ? layout.private : layout.normal,id);
 }
 function initializeWebApp(app, fs, env, mode) {
   env.CHROME_DESKTOP = `WebApp-${mode.id}.desktop`;

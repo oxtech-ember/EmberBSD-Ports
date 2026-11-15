@@ -1,6 +1,7 @@
 # Web App Manager 1.4.7, upstream commit 557a5956b7c5d6c9993e6578ec6dd6e60f4659d9.
 # Local portability and Ember Browser integration prepared with AI assistance.
 DISTNAME= webapp-manager-1.4.7
+PKGREVISION= 1
 CATEGORIES= www
 MASTER_SITES= https://github.com/linuxmint/webapp-manager/archive/
 DISTFILES= 557a5956b7c5d6c9993e6578ec6dd6e60f4659d9.tar.gz
@@ -20,12 +21,13 @@ DEPENDS+= ${PYPKGPREFIX}-beautifulsoup4-[0-9]*:../../www/py-beautifulsoup4
 DEPENDS+= ${PYPKGPREFIX}-setproctitle-[0-9]*:../../sysutils/py-setproctitle
 DEPENDS+= ${PYPKGPREFIX}-tldextract-[0-9]*:../../net/py-tldextract
 DEPENDS+= gtk3+-[0-9]*:../../x11/gtk3
-DEPENDS+= ember-browser>=1.46.0nb9:../../www/blanc
+DEPENDS+= ember-browser>=1.46.0nb11:../../www/blanc
 DEPENDS+= xapp-[0-9]*:../../x11/xapp
 DEPENDS+= xapp-symbolic-icons-[0-9]*:../../graphics/xapp-symbolic-icons
 USE_LANGUAGES= # none
 USE_TOOLS+= msgfmt pax
 NO_BUILD= yes
+ICON_THEMES= yes
 PYTHON_FOR_BUILD_ONLY= no
 SUBST_CLASSES+= prefix
 SUBST_STAGE.prefix= pre-configure

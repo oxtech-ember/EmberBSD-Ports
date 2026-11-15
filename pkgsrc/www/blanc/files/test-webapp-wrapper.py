@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import tempfile
@@ -22,6 +23,8 @@ with tempfile.TemporaryDirectory(prefix='webapp-wrapper-') as temporary:
     prefix = root / 'prefix'
     (prefix / 'bin').mkdir(parents=True)
     (prefix / 'lib/ember-browser').mkdir(parents=True)
+    for name in ('webapp-profile.py', 'webapp-layout.json'):
+        shutil.copyfile(args.launcher.parent / name, prefix / 'lib/ember-browser' / name)
     (prefix / 'bin/python3.15').symlink_to(python)
     stub = prefix / 'bin/electron'
     stub.write_text('#!' + str(shell) + '\nprintf "%s\\n" "$@" > "$CAPTURE"\n')
@@ -54,7 +57,8 @@ with tempfile.TemporaryDirectory(prefix='webapp-wrapper-') as temporary:
     assert not (config / 'Local State.bak-ozone-x11').exists()
     assert actual[-3:] == valid
     assert '--ozone-platform=x11' in actual and '--in-process-gpu' in actual
-    run(['--webapp-invalid'])
+    invalid = subprocess.run([str(shell), str(launcher), '--webapp-invalid'], env=environment, capture_output=True, text=True, timeout=20)
+    assert invalid.returncode != 0, 'invalid WebApp request must fail'
     assert cache.exists() and json.loads(state.read_text()) == original
     run([])
     assert not cache.exists()

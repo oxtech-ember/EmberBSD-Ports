@@ -52,7 +52,27 @@ Local: pkgsrc prefix and Ember Browser integration.
          builder = Gtk.Builder()
          builder.set_translation_domain(APP)
          builder.add_from_file(gladefile)
-@@ -297,7 +303,9 @@
+@@ -289,7 +295,18 @@
+             dialog.format_secondary_text(_("This Web App will be permanently lost."))
+             dialog.show()
+             if dialog.run() == Gtk.ResponseType.YES:
+-                self.manager.delete_webbapp(self.selected_webapp)
++                try:
++                    self.manager.delete_webbapp(self.selected_webapp)
++                except RuntimeError as error:
++                    dialog.destroy()
++                    failure = Gtk.MessageDialog(transient_for=self.window,
++                                                message_type=Gtk.MessageType.ERROR,
++                                                buttons=Gtk.ButtonsType.CLOSE,
++                                                text=_("Unable to delete Web App"))
++                    failure.format_secondary_text(str(error))
++                    failure.run()
++                    failure.destroy()
++                    return
+                 self.load_webapps()
+             dialog.destroy()
+ 
+@@ -297,7 +314,9 @@
          if webapp is not None:
              print("Running %s" % webapp.path)
              print("Executing %s" % webapp.exec)
@@ -63,7 +83,7 @@ Local: pkgsrc prefix and Ember Browser integration.
  
      def on_run_button(self, widget):
          self.run_webapp(self.selected_webapp)
-@@ -445,10 +453,23 @@
+@@ -445,10 +464,23 @@
  
      def on_browser_changed(self, widget):
          self.show_hide_browser_widgets()
@@ -88,7 +108,7 @@ Local: pkgsrc prefix and Ember Browser integration.
              self.isolated_label.hide()
              self.isolated_switch.hide()
              self.navbar_label.show()
-@@ -475,10 +496,13 @@
+@@ -475,10 +507,13 @@
          self.guess_icon()
  
      def toggle_ok_sensitivity(self):

@@ -4,15 +4,16 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
 
 --- usr/lib/webapp-manager/common.py
 +++ usr/lib/webapp-manager/common.py
-@@ -9,6 +9,7 @@
+@@ -9,6 +9,8 @@
  from random import choice
  import shutil
  import string
++import subprocess
 +import secrets
  import sys
  import tempfile
  import urllib.error
-@@ -19,7 +20,7 @@
+@@ -19,7 +21,7 @@
  from typing import Optional
  
  #   2. Related third party imports.
@@ -21,7 +22,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
  import PIL.Image
  import requests
  # Note: BeautifulSoup is an optional import supporting another way of getting a website's favicons.
-@@ -42,7 +43,7 @@
+@@ -42,7 +44,7 @@
  
  # i18n
  APP = 'webapp-manager'
@@ -30,11 +31,13 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
  locale.bindtextdomain(APP, LOCALE_DIR)
  gettext.bindtextdomain(APP, LOCALE_DIR)
  gettext.textdomain(APP)
-@@ -63,14 +64,44 @@
+@@ -63,14 +65,46 @@
  FALKON_PROFILES_DIR = os.path.join(ICE_DIR, "falkon")
  ZEN_FLATPAK_PROFILES_DIR = os.path.expanduser("~/.var/app/app.zen_browser.zen/data/ice/zen/")
  ICONS_DIR = os.path.join(ICE_DIR, "icons")
 -BROWSER_TYPE_FIREFOX, BROWSER_TYPE_FIREFOX_FLATPAK, BROWSER_TYPE_FIREFOX_SNAP, BROWSER_TYPE_LIBREWOLF_FLATPAK, BROWSER_TYPE_WATERFOX_FLATPAK, BROWSER_TYPE_FLOORP_FLATPAK, BROWSER_TYPE_CHROMIUM, BROWSER_TYPE_EPIPHANY, BROWSER_TYPE_FALKON, BROWSER_TYPE_ZEN_FLATPAK = range(10)
++EMBER_BROWSER_PATH = "@PREFIX@/bin/ember-browser"
++
 +BROWSER_TYPE_FIREFOX, BROWSER_TYPE_FIREFOX_FLATPAK, BROWSER_TYPE_FIREFOX_SNAP, BROWSER_TYPE_LIBREWOLF_FLATPAK, BROWSER_TYPE_WATERFOX_FLATPAK, BROWSER_TYPE_FLOORP_FLATPAK, BROWSER_TYPE_CHROMIUM, BROWSER_TYPE_EPIPHANY, BROWSER_TYPE_FALKON, BROWSER_TYPE_ZEN_FLATPAK, BROWSER_TYPE_EMBER = range(11)
 +
 +def ember_webapp_validation(name, url):
@@ -77,7 +80,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
          self.test_path = test_path
  
  # This is a data structure representing
-@@ -96,23 +127,26 @@
+@@ -96,23 +130,26 @@
          is_webapp = False
          with open(path) as desktop_file:
              for line in desktop_file:
@@ -91,14 +94,12 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
  
 -                if "Name=" in line:
 -                    self.name = line.replace("Name=", "")
--                    continue
--
--                if "Comment=" in line:
--                    self.desc = line.replace("Comment=", "")
 +                if line.startswith("Name="):
 +                    self.name = desktop_unstring(line[len("Name="):])
-+                    continue
-+
+                     continue
+ 
+-                if "Comment=" in line:
+-                    self.desc = line.replace("Comment=", "")
 +                if line.startswith("Comment="):
 +                    self.desc = desktop_unstring(line[len("Comment="):])
                      if self.desc == _("Web App"):
@@ -111,7 +112,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
                  if "Icon=" in line:
                      self.icon = line.replace("Icon=", "")
                      continue
-@@ -182,69 +216,70 @@
+@@ -182,74 +219,82 @@
      @staticmethod
      def get_supported_browsers():
          # type, name, exec, test
@@ -121,7 +122,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
 -                Browser(BROWSER_TYPE_FIREFOX, "Firefox Developer Edition", "firefox-devedition", "/usr/bin/firefox-devedition"),
 -                Browser(BROWSER_TYPE_FIREFOX, "Firefox Nightly", "firefox-nightly", "/usr/bin/firefox-nightly"),
 -                Browser(BROWSER_TYPE_FIREFOX, "Firefox Extended Support Release", "firefox-esr", "/usr/bin/firefox-esr"),
-+        return [Browser(BROWSER_TYPE_EMBER, "Ember Browser", "@PREFIX@/bin/ember-browser", "@PREFIX@/bin/ember-browser"),
++        return [Browser(BROWSER_TYPE_EMBER, "Ember Browser", EMBER_BROWSER_PATH, EMBER_BROWSER_PATH),
 +                Browser(BROWSER_TYPE_FIREFOX, "Firefox", "firefox", "@PREFIX@/bin/firefox"),
 +                Browser(BROWSER_TYPE_FIREFOX, "Firefox Developer Edition", "firefox-developer-edition", "@PREFIX@/bin/firefox-developer-edition"),
 +                Browser(BROWSER_TYPE_FIREFOX, "Firefox Developer Edition", "firefox-developer", "@PREFIX@/bin/firefox-developer"),
@@ -219,7 +220,19 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
                  Browser(BROWSER_TYPE_FLOORP_FLATPAK, "Floorp (Flatpak)", "/var/lib/flatpak/exports/bin/one.ablaze.floorp", "/var/lib/flatpak/exports/bin/one.ablaze.floorp"),
                  Browser(BROWSER_TYPE_FLOORP_FLATPAK, "Floorp (Flatpak)", ".local/share/flatpak/exports/bin/one.ablaze.floorp", ".local/share/flatpak/exports/bin/one.ablaze.floorp")
                  ]
-@@ -271,9 +306,11 @@
+ 
+     def delete_webbapp(self, webapp):
++        if webapp.web_browser == "Ember Browser":
++            try:
++                subprocess.run([EMBER_BROWSER_PATH, "--webapp-clear=" + webapp.codename],
++                               check=True, timeout=60,
++                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
++            except (OSError, subprocess.SubprocessError) as error:
++                raise RuntimeError(_("Could not clear the Web App profile. Close the Web App and try again.")) from error
+         shutil.rmtree(os.path.join(FIREFOX_PROFILES_DIR, webapp.codename), ignore_errors=True)
+         shutil.rmtree(os.path.join(FIREFOX_FLATPAK_PROFILES_DIR, webapp.codename), ignore_errors=True)
+         shutil.rmtree(os.path.join(ZEN_FLATPAK_PROFILES_DIR, webapp.codename), ignore_errors=True)
+@@ -271,9 +316,11 @@
          shutil.rmtree(os.path.join(FALKON_PROFILES_DIR, webapp.codename), ignore_errors=True)
  
      def create_webapp(self, name, desc, url, icon, category, browser, custom_parameters, isolate_profile=True, navbar=False, privatewindow=False):
@@ -232,7 +245,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
          path = os.path.join(APPS_DIR, "WebApp-%s.desktop" % codename)
  
          if not desc:
-@@ -282,11 +319,11 @@
+@@ -282,11 +329,11 @@
          with open(path, 'w') as desktop_file:
              desktop_file.write("[Desktop Entry]\n")
              desktop_file.write("Version=1.0\n")
@@ -247,7 +260,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
  
              desktop_file.write("Exec=%s\n" % exec_string)
              desktop_file.write("Terminal=false\n")
-@@ -324,7 +361,18 @@
+@@ -324,7 +371,18 @@
                  os.symlink(falkon_profile_path, falkon_orig_prof_dir)
  
  
@@ -267,7 +280,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
          if browser.browser_type in [BROWSER_TYPE_FIREFOX, BROWSER_TYPE_FIREFOX_FLATPAK, BROWSER_TYPE_FIREFOX_SNAP, BROWSER_TYPE_ZEN_FLATPAK]:
              # Firefox based
              if browser.browser_type == BROWSER_TYPE_FIREFOX:
-@@ -347,9 +395,9 @@
+@@ -347,9 +405,9 @@
                  exec_string += " {}".format(custom_parameters)
              exec_string += " \"" + url + "\"" + "'"
              # Create a Firefox profile
@@ -279,7 +292,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
                              os.path.join(firefox_profile_path, "chrome", "userChrome.css"))
          elif browser.browser_type == BROWSER_TYPE_LIBREWOLF_FLATPAK:
              # LibreWolf flatpak
-@@ -366,9 +414,9 @@
+@@ -366,9 +424,9 @@
                  exec_string += " {}".format(custom_parameters)
              exec_string += " \"" + url + "\"" + "'"
              # Create a Firefox profile
@@ -291,7 +304,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
                              os.path.join(firefox_profile_path, "chrome", "userChrome.css"))
          elif browser.browser_type == BROWSER_TYPE_FLOORP_FLATPAK:
              # Floorp flatpak
-@@ -385,9 +433,9 @@
+@@ -385,9 +443,9 @@
                  exec_string += " {}".format(custom_parameters)
              exec_string += " \"" + url + "\"" + "'"
              # Create a Firefox profile
@@ -303,7 +316,7 @@ Local: pkgsrc prefix, GLib desktop string handling and Ember Browser integration
                              os.path.join(firefox_profile_path, "chrome", "userChrome.css"))
          elif browser.browser_type == BROWSER_TYPE_EPIPHANY:
              # Epiphany based
-@@ -444,22 +492,24 @@
+@@ -444,22 +502,24 @@
          return exec_string
  
      def edit_webapp(self, path, name, desc, browser, url, icon, category, custom_parameters, codename, isolate_profile, navbar, privatewindow):
