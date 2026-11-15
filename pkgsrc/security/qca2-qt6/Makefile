@@ -21,6 +21,9 @@ CMAKE_CONFIGURE_ARGS+=	-DQCA_MAN_INSTALL_DIR=${PREFIX}/${PKGMANDIR}
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
+PKGREVISION=	2 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
+.endif
 # Native qmake describes the build host, not the target Qt prefix.
 CMAKE_CONFIGURE_ARGS+= -DQCA_INSTALL_IN_QT_PREFIX=OFF
 CMAKE_CONFIGURE_ARGS+= -DQCA_PREFIX_INSTALL_DIR=${PREFIX}

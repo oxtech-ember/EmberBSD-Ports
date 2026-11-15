@@ -32,6 +32,9 @@ PREFER.gettext=	pkgsrc
 PREFER.iconv=	pkgsrc
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
+PKGREVISION=	2 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
+.endif
 .if empty(EMBERBSD_CROSS_BUILD_CXX:U) || empty(EMBERBSD_CROSS_BUILD_CXX:M/*)
 PKG_FAIL_REASON+= "Set EMBERBSD_CROSS_BUILD_CXX to the selected native C++ compiler"
 .endif

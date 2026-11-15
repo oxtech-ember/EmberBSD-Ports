@@ -7,6 +7,9 @@ PKGREVISION=	7
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
+PKGREVISION=	8 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
+.endif
 .endif
 CATEGORIES=	lang python
 

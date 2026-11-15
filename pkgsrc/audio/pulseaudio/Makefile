@@ -53,6 +53,9 @@ TOOL_DEPENDS+=	p5-XML-Parser>=2.31nb1:../../textproc/p5-XML-Parser
 # git-version-gen runs on the build host; installed helpers use target Bash.
 REPLACE_BASH+= git-version-gen
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
+PKGREVISION=	11 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
+.endif
 USE_TOOLS+= bash:build
 # One map.ver serves libpulse, libpulse-simple and libpulse-mainloop-glib;
 # ld.lld rejects its entries for symbols in the other libraries.
