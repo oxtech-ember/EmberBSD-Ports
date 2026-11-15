@@ -3,6 +3,9 @@ ${PYSITELIB}/${WHEEL_INFODIR}/METADATA
 ${PYSITELIB}/${WHEEL_INFODIR}/RECORD
 ${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
 ${PYSITELIB}/${WHEEL_INFODIR}/entry_points.txt
+${PYSITELIB}/${WHEEL_INFODIR}/licenses/LICENSE
+${PYSITELIB}/${WHEEL_INFODIR}/licenses/src/python_sbom/_validate/schemas/LICENSE
+${PYSITELIB}/${WHEEL_INFODIR}/sboms/python-sbom.cdx.json
 ${PYSITELIB}/python_sbom/__init__.py
 ${PYSITELIB}/python_sbom/__init__.pyc
 ${PYSITELIB}/python_sbom/__init__.pyo
