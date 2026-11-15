@@ -1339,6 +1339,11 @@
       "path": "gn-compiler-pch-output.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-netbsd-target-symbolizer.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

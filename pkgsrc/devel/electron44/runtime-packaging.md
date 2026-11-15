@@ -241,7 +241,11 @@ host SDK.
 
 The GN configuration selects ASan and UBSan, disables the malloc shim and
 PartitionAlloc-as-malloc, and instruments the focused test closure. Target
-system libraries remain uninstrumented. For NetBSD ASan, apply `paxctl +a`
+system libraries remain uninstrumented. The diagnostic selects the target
+`llvm-symbolizer` owned by the matching sysroot LLVM package, checks its
+integrity and NetBSD ABI, and copies it to the output. Set
+`ASAN_SYMBOLIZER_PATH` to that staged executable on the target. Its dynamic
+libraries must be available on the target. For NetBSD ASan, apply `paxctl +a`
 only to a copied diagnostic executable before execution; do not alter global
 ASLR or production artifacts. Confirm actual compile/link commands, allocator
 flags and positive controls before interpreting test results.

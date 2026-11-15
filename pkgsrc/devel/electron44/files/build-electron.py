@@ -369,6 +369,7 @@ def target_inputs(options, sdk, native, environment, work):
                         'SDK diagnostic module origin differs: ' + name)
                 diagnostic_sdk[name] = module
             resource, provenance = sanitizer.verify(*selection[:3], diagnostic_sdk, version=compiler['version'], target=options.target)
+            options._sanitizer_llvm_version = compiler['version']
             selector_spec = importlib.util.spec_from_file_location('sanitizer_pkgsrc_identity', options.ports_source / 'scripts/pkgsrc-source-identity.py')
             selector = importlib.util.module_from_spec(selector_spec)
             selector_spec.loader.exec_module(selector)
@@ -2300,6 +2301,72 @@ def apply_sanitizer_gn_args(values, enabled):
                       is_ubsan_no_recover=True)
 
 
+def diagnostic_target_symbolizer(options, sdk, native, environment):
+    """Select the target LLVM symbolizer using installed package ownership."""
+    prefix = (Path(options.sysroot) / 'usr/pkg').resolve(strict=True)
+    packages = options._common_target_packages.get('lang/llvm-devel', [])
+    require(len(packages) == 1, 'selected target LLVM symbolizer package is missing or ambiguous')
+    package = packages[0]
+    require(not package.is_symlink() and package.resolve(strict=True).parent == prefix / 'pkgdb',
+            'target LLVM symbolizer package is outside the selected sysroot')
+    info_path = package / '+BUILD_INFO'
+    info_handle, info_before = sdk['paths'].open_regular(info_path)
+    with info_handle:
+        info = info_handle.read().decode('utf-8', 'strict').splitlines()
+    require('PKGPATH=lang/llvm-devel' in info,
+            'target LLVM symbolizer package has a different owner')
+    version = options._sanitizer_llvm_version
+    require(re.fullmatch(r'llvm-devel-' + re.escape(version) + r'(?:nb[0-9]+)?', package.name),
+            'target symbolizer LLVM version differs from the sanitizer compiler')
+    manifest_path = package / '+CONTENTS'
+    manifest_handle, manifest_before = sdk['paths'].open_regular(manifest_path)
+    with manifest_handle:
+        manifest = manifest_handle.read().decode('utf-8', 'strict').splitlines()
+    require(manifest.count('bin/llvm-symbolizer') == 1 and '@name ' + package.name in manifest,
+            'target LLVM symbolizer is not uniquely owned by its package')
+    index = manifest.index('bin/llvm-symbolizer')
+    checksum = re.fullmatch(r'@comment MD5:([0-9a-f]{32})', manifest[index + 1]) if index + 1 < len(manifest) else None
+    require(checksum is not None, 'target LLVM symbolizer package checksum is missing')
+    tool = prefix / 'bin/llvm-symbolizer'
+    require(not tool.is_symlink() and tool.resolve(strict=True).is_relative_to(prefix),
+            'target LLVM symbolizer escapes the selected sysroot')
+    handle, before = sdk['paths'].open_regular(tool)
+    with handle:
+        require(before.st_mode & 0o111, 'target LLVM symbolizer is not executable')
+        data = handle.read()
+    require(hashlib.md5(data, usedforsecurity=False).hexdigest() == checksum.group(1),
+            'target LLVM symbolizer differs from installed package')
+    elf = importlib.import_module('emberbsd_sdk.elf')
+    require(Path(elf.__file__).resolve() == Path(options.sdk_source).resolve(strict=True) / 'src/emberbsd_sdk/elf.py',
+            'SDK target ELF module origin differs')
+    header = elf.read_elf_header(tool, machine=sdk['targets'].target_definition(options.target)['elf'])
+    require(header and header['class'] == 64 and header['type'] in (2, 3),
+            'target LLVM symbolizer is not a supported executable')
+    notes = sdk['process'].capture([native.tool('readelf'), '-n', str(tool)], env=environment).stdout.decode('utf-8', 'strict')
+    require(re.search(r'\bNetBSD\s+0x0*4\s+NT_VERSION\b', notes) is not None,
+            'target LLVM symbolizer lacks the NetBSD ABI note')
+    sdk['paths'].verify_stable(tool, before)
+    sdk['paths'].verify_stable(info_path, info_before)
+    sdk['paths'].verify_stable(manifest_path, manifest_before)
+    return str(tool), hashlib.sha256(data).hexdigest()
+
+
+def symbolizer_reconfigure_args(old_environment, environment, old_arguments, values):
+    """Allow only the initial verified symbolizer selection into a saved work."""
+    key = 'EMBERBSD_TARGET_SYMBOLIZER_SHA256'
+    name = 'emberbsd_target_llvm_symbolizer'
+    if key not in environment:
+        return set(), set()
+    require(re.fullmatch(r'[0-9a-f]{64}', environment[key]), 'invalid target symbolizer identity')
+    if key in old_environment:
+        require(old_environment[key] == environment[key] and old_arguments.get(name) == values.get(name),
+                'configured target symbolizer changed')
+        return set(), set()
+    require(name not in old_arguments and isinstance(values.get(name), str) and values[name],
+            'target symbolizer selection is not additive')
+    return {key}, {name}
+
+
 def producer_inputs(options, sdk):
     native, environment, providers = _native_inputs(options, sdk)
     environment['EMBERBSD_DEVTOOLS_PROVIDER_SHA256'] = devtools_provider_identity(options, sdk, native, environment)
@@ -2338,6 +2405,10 @@ def producer_inputs(options, sdk):
     values.update(common_icu(options, sdk, native, environment, buildlink))
     values.update(common_re2(options, sdk, native, environment, buildlink))
     values.update(common_media_libraries(options, native, environment, buildlink))
+    if getattr(options, 'sanitizer_package', None):
+        symbolizer, digest = diagnostic_target_symbolizer(options, sdk, native, environment)
+        values['emberbsd_target_llvm_symbolizer'] = symbolizer
+        environment['EMBERBSD_TARGET_SYMBOLIZER_SHA256'] = digest
     if not getattr(options, 'activate_common_providers', False):
         values.update(common_compression(options, sdk, native, environment, buildlink))
         values.update(common_ffmpeg(options, sdk, native, environment, buildlink))
@@ -4481,6 +4552,9 @@ def reconfigure(options):
                          'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        symbolizer_env, symbolizer_args = symbolizer_reconfigure_args(
+            old_env, environment, saved['arguments'], values)
+        permitted_env.update(symbolizer_env)
         require(re.fullmatch(r'[0-9a-f]{64}', environment.get('EMBERBSD_PROTOC_SELECTION_SHA256', '')),
                 'selected protoc fingerprint is missing')
         permitted_env.add('EMBERBSD_PROTOC_SELECTION_SHA256')
@@ -4764,7 +4838,7 @@ def reconfigure(options):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
-            if name in permitted_runtime_args:
+            if name in permitted_runtime_args or name in symbolizer_args:
                 continue
             if name in node_provider_path_changed:
                 continue

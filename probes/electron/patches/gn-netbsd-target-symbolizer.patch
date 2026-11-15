@@ -1,0 +1,54 @@
+Use the verified target llvm-symbolizer in NetBSD sanitizer runtime data.
+Origin: EmberBSD contributors (AI-assisted). BSD-2-Clause.
+
+--- a/build/config/sanitizers/BUILD.gn
++++ b/build/config/sanitizers/BUILD.gn
+@@ -18,6 +18,7 @@
+   # Allow building official with ASAN enabled to help with
+   # debugging https://crbug.com/371135823.
+   ios_allow_asan_for_official_to_debug_371135823 = false
++  emberbsd_target_llvm_symbolizer = ""
+ }
+ 
+ # libfuzzer can't cope with shared objects being unloaded, which sometimes
+@@ -44,15 +45,19 @@
+       ":default_sanitizer_ldflags",
+     ]
+     if (!is_fuchsia) {
+-      if (is_win) {
+-        exe = ".exe"
++      data += [ "//tools/valgrind/asan/" ]
++      if (is_netbsd) {
++        assert(emberbsd_target_llvm_symbolizer != "",
++               "NetBSD sanitizers require a selected target llvm-symbolizer")
++        data_deps = [ ":copy_target_llvm_symbolizer" ]
+       } else {
+-        exe = ""
++        if (is_win) {
++          exe = ".exe"
++        } else {
++          exe = ""
++        }
++        data += [ "$clang_base_path/bin/llvm-symbolizer${exe}" ]
+       }
+-      data += [
+-        "//tools/valgrind/asan/",
+-        "$clang_base_path/bin/llvm-symbolizer${exe}",
+-      ]
+     }
+     if (is_asan || is_lsan || is_msan || is_tsan || is_ubsan_any) {
+       public_configs += [ ":sanitizer_options_link_helper" ]
+@@ -87,6 +92,13 @@
+   }
+ }
+ 
++if (is_netbsd && using_sanitizer) {
++  copy("copy_target_llvm_symbolizer") {
++    sources = [ emberbsd_target_llvm_symbolizer ]
++    outputs = [ "$root_out_dir/llvm-symbolizer" ]
++  }
++}
++
+ assert(!(is_win && is_asan && current_cpu == "x86"),
+        "ASan is only supported in 64-bit builds on Windows.")
+ 

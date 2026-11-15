@@ -815,3 +815,8 @@ optional provider switch and both package contexts require common Expat.
 
 `electron-gn-package.py --pkg-info /path/to/pkg_info` checks the selected host
 GN package floor, package owner, and executable ownership before configuration.
+
+`electron-sanitizer-symbolizer.py` checks target package ownership, executable
+integrity, ELF/NetBSD ABI and saved diagnostic identity.
+`electron-sanitizer-symbolizer-gn.py` tests real GN/Ninja runtime-dependency
+selection and target-tool copying using an explicitly supplied prepared source.
