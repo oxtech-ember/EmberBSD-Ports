@@ -1,0 +1,142 @@
+$NetBSD$
+
+* Each reported button press gets exactly one release.  libinput counts the
+  presses of a button per seat (seat_button_count); KWin drops a press whose
+  count is not 1 and a release whose count is not 0.  The backend passed on
+  every WSCONS_EVENT_MOUSE_DOWN, so one press whose release did not arrive
+  (the kernel event queue lost it) left the count one too high for good:
+  the compositor held that button down, did not move the pointer focus and
+  dropped all later presses and releases of that button until it was
+  restarted.  Disabling the device did not help, because the next press and
+  release had already cleared the "pressed" bit of the backend.
+  Now a press of a button that is already down first reports the lost
+  release, and a release of a button that is not down is dropped as before.
+  The rule is a small function between the "wscons-button-state" markers,
+  tested on the host (tests/button-pairing.sh).
+* A removed device releases its held buttons and ends its gesture before
+  LIBINPUT_EVENT_DEVICE_REMOVED: it cannot send the releases any more, and
+  the seat count would keep the buttons down for the other devices.
+
+--- src/wscons.c.orig
++++ src/wscons.c
+@@ -43,6 +43,8 @@
+ static struct libinput_seat* wscons_seat_get(struct libinput *, const char *,
+     const char *);
+ static void wscons_device_dispatch(void *);
++static void wscons_release_buttons(struct libinput_device *);
++static void wscons_swipe_cancel(struct libinput_device *);
+ 
+ static void
+ wscons_device_init_pointer_acceleration(struct wscons_device *device,
+@@ -86,6 +88,9 @@
+ 		seat = wscons_seat_get(&input->base, default_seat, default_seat_name);
+ 		list_for_each(device, &seat->devices_list, link) {
+ 			if (device->devname && strcmp(device->devname, devnode) == 0) {
++				/* The device cannot send its releases any more. */
++				wscons_swipe_cancel(device);
++				wscons_release_buttons(device);
+ 				clock_gettime(CLOCK_REALTIME, &ts);
+ 				time = usec_from_timespec(&ts);
+ 				event = calloc(1, sizeof(*event));
+@@ -205,9 +210,46 @@
+ 	}
+ }
+ 
++/* wscons-button-state begin: no libinput dependencies, tested on the host. */
+ /*
+- * Release the buttons that are still held down. A disabled device
+- * must not leave a pressed button in the compositor.
++ * Pairing of the button events of one device.  libinput counts the presses
++ * of a button per seat, and a compositor may drop a press whose count is
++ * not 1 and a release whose count is not 0.  One press without a release
++ * (the kernel event queue lost it) would then disable that button until the
++ * compositor restarts, and the compositor would hold it down for all that
++ * time.  So each press that is reported gets exactly one release:
++ * a press of a button that is already down first reports the lost release,
++ * a release of a button that is not down is dropped.
++ * pressed: wscons button numbers that are down (bits 0..31); other buttons
++ * are passed on as they come.
++ */
++#define WSCONS_BUTTON_REPORT	0x1	/* report this event */
++#define WSCONS_BUTTON_REPAIR	0x2	/* report the lost release first */
++
++static unsigned int
++wscons_button_step(uint32_t *pressed, unsigned int value, bool down)
++{
++	uint32_t mask;
++
++	if (value >= 32)
++		return WSCONS_BUTTON_REPORT;
++	mask = (uint32_t)1 << value;
++	if (down) {
++		if (*pressed & mask)
++			return WSCONS_BUTTON_REPORT | WSCONS_BUTTON_REPAIR;
++		*pressed |= mask;
++		return WSCONS_BUTTON_REPORT;
++	}
++	if (!(*pressed & mask))
++		return 0;
++	*pressed &= ~mask;
++	return WSCONS_BUTTON_REPORT;
++}
++/* wscons-button-state end */
++
++/*
++ * Release the buttons that are still held down. A disabled or removed
++ * device must not leave a pressed button in the compositor.
+  */
+ static void
+ wscons_release_buttons(struct libinput_device *device)
+@@ -471,23 +513,25 @@
+ 		break;
+ 
+ 	case WSCONS_EVENT_MOUSE_UP:
+-	case WSCONS_EVENT_MOUSE_DOWN:
+-		button = wscons_button_code(wsevent->value);
+-		if (wsevent->type == WSCONS_EVENT_MOUSE_UP) {
+-			bstate = LIBINPUT_BUTTON_STATE_RELEASED;
+-			if ((unsigned int)wsevent->value < 32) {
+-				/* The press was not reported; drop the release. */
+-				if (!(dev->sendevents.pressed & bit(wsevent->value)))
+-					break;
+-				dev->sendevents.pressed &= ~bit(wsevent->value);
+-			}
+-		} else {
+-			bstate = LIBINPUT_BUTTON_STATE_PRESSED;
+-			if ((unsigned int)wsevent->value < 32)
+-				dev->sendevents.pressed |= bit(wsevent->value);
+-		}
+-		pointer_notify_button(device, time, button_code_from_uint32_t(button), bstate);
++	case WSCONS_EVENT_MOUSE_DOWN: {
++		unsigned int step;
++
++		button = wscons_button_code(wsevent->value);
++		bstate = wsevent->type == WSCONS_EVENT_MOUSE_UP ?
++		    LIBINPUT_BUTTON_STATE_RELEASED :
++		    LIBINPUT_BUTTON_STATE_PRESSED;
++		step = wscons_button_step(&dev->sendevents.pressed,
++		    (unsigned int)wsevent->value,
++		    bstate == LIBINPUT_BUTTON_STATE_PRESSED);
++		if (step & WSCONS_BUTTON_REPAIR)
++			pointer_notify_button(device, time,
++			    button_code_from_uint32_t(button),
++			    LIBINPUT_BUTTON_STATE_RELEASED);
++		if (step & WSCONS_BUTTON_REPORT)
++			pointer_notify_button(device, time,
++			    button_code_from_uint32_t(button), bstate);
+ 		break;
++	}
+ 
+ 	case WSCONS_EVENT_MOUSE_DELTA_X:
+ 	case WSCONS_EVENT_MOUSE_DELTA_Y:
+@@ -1078,6 +1122,10 @@
+ {
+ 	struct libinput *libinput = device->seat->libinput;
+ 
++	/* No-op after the udev remove handler; needed for a direct caller. */
++	wscons_swipe_cancel(device);
++	wscons_release_buttons(device);
++
+ 	list_remove(&device->link);
+ 	libinput_remove_source(libinput, device->source);
+ 	device->source = NULL;
