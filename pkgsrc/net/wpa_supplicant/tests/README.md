@@ -1,5 +1,28 @@
 # wpa_supplicant adapter tests
 
+`t-rrm-association-state.py` executes the prepared non-SME association
+handoff, the EVENT_ASSOC request-IE update prefix, and the actual Neighbor
+Report command gate. It checks that request IEs override the association
+parameter when present (including when response IEs are absent), malformed
+request IEs fail closed, and absent request IEs preserve the association
+parameter. It also covers failed association construction, the not-completed
+command gate, and the `CONFIG_NO_RRM` build guard. It executes the unchanged SME
+association helper as a control and checks the command's not-completed state
+gate.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-rrm-association-state.py \
+    --cc "$HOST_PREFIX/bin/clang" \
+    --host-sdk "$HOST_SDK" \
+    --wpa-source "$WPA_SOURCE/wpa_supplicant/wpa_supplicant.c" \
+    --events-source "$WPA_SOURCE/wpa_supplicant/events.c" \
+    --rrm-source "$WPA_SOURCE/wpa_supplicant/rrm.c" \
+    --sme-source "$WPA_SOURCE/wpa_supplicant/sme.c"
+```
+
+Repeat with `--no-rrm` to compile the extracted paths with
+`CONFIG_NO_RRM` enabled.
+
 `t-rsn-port-authorize.py` checks the prepared 2.12 RSN M3 path and executes
 the production EAPOL authorized-state callback. RSN port authorization must
 remain closed until GTK/IGTK setup succeeds. The no-GTK completion branch is

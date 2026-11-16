@@ -1234,6 +1234,27 @@ by EmberBSD contributors (AI-assisted); not submitted upstream.
  
 --- wpa_supplicant/events.c
 +++ wpa_supplicant/events.c
+@@ -3560,3 +3560,14 @@
+-	if (!req_ies || !resp_ies ||
+-	    ieee802_11_parse_elems(req_ies, req_ies_len, &req_elems, 0) ==
+-	    ParseFailed ||
++	if (!req_ies)
++		return;
++	if (ieee802_11_parse_elems(req_ies, req_ies_len, &req_elems, 0) ==
++	    ParseFailed) {
++#ifndef CONFIG_NO_RRM
++		wpa_s->rrm.rrm_used = 0;
++#endif /* CONFIG_NO_RRM */
++		return;
++	}
++#ifndef CONFIG_NO_RRM
++	/* Supplied association request IEs are authoritative for RRM use. */
++	wpa_s->rrm.rrm_used = req_elems.rrm_enabled != NULL;
++#endif /* CONFIG_NO_RRM */
++	if (!resp_ies ||
+@@ -3580,2 +3590,0 @@
+-	if (req_elems.rrm_enabled)
+-		wpa_s->rrm.rrm_used = 1;
 @@ -6895,8 +6895,8 @@
  			os_get_reltime(&wpa_s->scan_start_time);
  			os_reltime_sub(&wpa_s->scan_start_time,
@@ -1458,6 +1479,17 @@ by EmberBSD contributors (AI-assisted); not submitted upstream.
  #ifndef CONFIG_NO_ROBUST_AV
  	wpa_s->mscs_setup_done = false;
  #endif /* CONFIG_NO_ROBUST_AV */
+@@ -4783,6 +4783,10 @@
+ 		wpas_connect_work_done(wpa_s);
+ 		return;
+ 	}
++#ifndef CONFIG_NO_RRM
++	if (!(wpa_s->drv_flags & WPA_DRIVER_FLAGS_SME))
++		wpa_s->rrm.rrm_used = params.rrm_used;
++#endif /* CONFIG_NO_RRM */
+ 
+ 	if (bss &&
+ 	    (!wpas_driver_bss_selection(wpa_s) || wpas_wps_searching(wpa_s))) {
 @@ -7538,8 +7566,8 @@
  	os_get_reltime(&now);
  	os_reltime_sub(&now, &work->time, &diff);
