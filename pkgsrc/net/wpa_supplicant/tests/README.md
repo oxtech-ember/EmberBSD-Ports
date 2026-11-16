@@ -1,5 +1,24 @@
 # wpa_supplicant adapter tests
 
+`t-radius-message-authenticator.py` compiles the prepared `src/radius/radius.c`
+with its real buffer, OS, and MD5 helpers. It checks exact 18-byte values in
+both RADIUS verifiers; short, oversized, and parser-truncated attributes are
+rejected. The DAS request uses a valid Request Authenticator so the test
+reaches the production Message-Authenticator check.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-radius-message-authenticator.py \
+    --cc "$HOST_PREFIX/bin/clang" \
+    --host-sdk "$HOST_SDK" \
+    --source "$WPA_SOURCE/src/radius/radius.c"
+```
+
+Run again with
+`--cflags='-O1 -g -Wall -Wextra -fsanitize=address,undefined -fno-sanitize-recover=all'`
+to check malformed lengths against memory bounds. Add
+`--emit-c "$WORK/radius-message-authenticator.c"` to retain the harness for
+Cppcheck or Clang Static Analyzer.
+
 `t-rrm-association-state.py` executes the prepared non-SME association
 handoff, the EVENT_ASSOC request-IE update prefix, and the actual Neighbor
 Report command gate. It checks that request IEs override the association
