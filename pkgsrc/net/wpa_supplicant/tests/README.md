@@ -42,6 +42,23 @@ gate.
 Repeat with `--no-rrm` to compile the extracted paths with
 `CONFIG_NO_RRM` enabled.
 
+`t-wnm-candidate-list.py` executes the prepared BSS Transition Management
+Query, candidate-list builder, Neighbor Report serializer, and the real common
+frequency-to-operating-class helpers. It checks 2.4 GHz HT20 and HT40 above/below,
+a 5 GHz HT20 control, malformed/truncated HT IE and off-grid frequency rejection,
+the no-operation-IE rejection, and the 126-entry frame-size limit. The small fixture supplies scan matching, the
+bounded HT IE parser, width extraction, time, and action transmission; WPA protocol
+enums and the common channel mapper come from the prepared source headers/code.
+The compiler flags suppress enum-conversion diagnostics so the pre-fix source
+reaches the behavioral assertion and demonstrates the missing Neighbor Report.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-wnm-candidate-list.py \
+    --cc "$HOST_PREFIX/bin/clang" \
+    --host-sdk "$HOST_SDK" \
+    --source "$WPA_SOURCE"
+```
+
 `t-rsn-port-authorize.py` checks the prepared 2.12 RSN M3 path and executes
 the production EAPOL authorized-state callback. RSN port authorization must
 remain closed until GTK/IGTK setup succeeds. The no-GTK completion branch is
