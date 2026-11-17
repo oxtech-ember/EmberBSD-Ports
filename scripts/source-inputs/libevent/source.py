@@ -97,19 +97,29 @@ def recipe(exported):
 
 
 def verify(source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
-    # Check a caller's shared export before any early return: an unchanged
-    # Git-identified receipt needs no export, but a broken one must not pass.
-    shared = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, export_patch or patch)
-              if pkgsrc_export else None)
-    identity = source_identity(git)
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
     record = sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=old)
     prepared_receipt.require_current_identity(old, PACKAGE)
-    if identity_module().current_git_package(old, identity['owner_sha256'], lambda: git_effective_identity(git)):
-        # The receipt names the Git objects of the current effective recipe.
-        require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
+    selector = identity_module()
+    # An explicitly named export producer remains validated on the fast path.
+    shared = (selector.shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, export_patch)
+              if pkgsrc_export and export_patch is not None else None)
+    owner_sha = digest(read(Path(__file__).resolve()))
+    effective = git_effective_identity(git)
+    if selector.current_git_package(old, owner_sha, lambda: effective):
+        # Validate the existing payload and scoped recipe above. Recheck these
+        # inputs to retain the source-owner race guard without hashing the full export.
+        require(owner_sha == digest(read(Path(__file__).resolve())),
+                'source owner changed during verification')
+        require(effective == git_effective_identity(git),
+                'pkgsrc package inputs changed during verification')
         return record
+
+    # A changed package still needs a verified export and explicit payload comparison.
+    if shared is None and pkgsrc_export:
+        shared = selector.shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+    identity = source_identity(git)
     require(patch and os.path.isabs(patch), 'effective libevent verification requires an explicit patch')
     with tempfile.TemporaryDirectory(prefix='.libevent-verify-') as tmp:
         selector = identity_module()

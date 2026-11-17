@@ -44,6 +44,92 @@ class NetworkSourcesTest(unittest.TestCase):
                 self.assertEqual(owner.verify(temp, '/git', patch='/patch',
                                               pkgsrc_export='/stale-unrelated-export'), record)
 
+    def test_scoped_network_receipts_skip_unrelated_export_delta(self):
+        for name in ('openssh', 'libevent', 'tcp_wrappers'):
+            with self.subTest(owner=name), tempfile.TemporaryDirectory(dir=WORK) as temp:
+                spec = importlib.util.spec_from_file_location(
+                    name + '_scoped_export', ROOT / 'scripts/source-inputs' / name / 'source.py')
+                owner = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(owner)
+                owner.load_sdk(['--sdk-source', str(SDK)])
+                from emberbsd_sdk import sourceprep
+                effective = {'api': 3, 'package': owner.PACKAGE,
+                             'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
+                owner_sha = hashlib.sha256(Path(owner.__file__).read_bytes()).hexdigest()
+                old = {'effective': effective, 'owner_sha256': owner_sha}
+                record = sourceprep.write_prepared_tree_receipt(
+                    temp, package=owner.PACKAGE, identity=old)
+                selector = owner.identity_module()
+                with patch.object(owner, 'identity_module', return_value=selector), \
+                        patch.object(owner, 'git_effective_identity', return_value=effective), \
+                        patch.object(owner, 'source_identity',
+                                     side_effect=AssertionError('global export identity was read')), \
+                        patch.object(selector, 'shared_export',
+                                     side_effect=AssertionError('unrelated export was validated')):
+                    self.assertEqual(owner.verify(temp, '/git', patch='/patch'), record)
+                    self.assertEqual(owner.verify(temp, '/git', patch='/patch',
+                                                  pkgsrc_export='/stale-unrelated-export'), record)
+                export = Path(temp) / 'explicit-export'
+                with patch.object(owner, 'identity_module', return_value=selector), \
+                        patch.object(owner, 'git_effective_identity', return_value=effective), \
+                        patch.object(owner, 'source_identity',
+                                     side_effect=AssertionError('global export identity was read')), \
+                        patch.object(selector, 'shared_export', return_value=export) as shared:
+                    self.assertEqual(owner.verify(temp, '/git', patch='/patch',
+                                                  pkgsrc_export='/export',
+                                                  export_patch='/export-patch'), record)
+                shared.assert_called_once_with('/export', owner.PORTS, '/git',
+                                               owner.SDK_SOURCE, '/export-patch')
+
+    def test_changed_network_package_or_owner_requires_authoritative_compare(self):
+        for name in ('openssh', 'libevent', 'tcp_wrappers'):
+            for changed in ('package', 'owner'):
+                with self.subTest(owner=name, changed=changed), \
+                        tempfile.TemporaryDirectory(dir=WORK) as temp:
+                    spec = importlib.util.spec_from_file_location(
+                        name + '_changed_' + changed,
+                        ROOT / 'scripts/source-inputs' / name / 'source.py')
+                    owner = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(owner)
+                    owner.load_sdk(['--sdk-source', str(SDK)])
+                    from emberbsd_sdk import sourceprep
+                    effective = {'api': 3, 'package': owner.PACKAGE,
+                                 'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
+                    current = (dict(effective, effective_package_sha256='c' * 64)
+                               if changed == 'package' else effective)
+                    owner_sha = hashlib.sha256(Path(owner.__file__).read_bytes()).hexdigest()
+                    old = {'effective': effective,
+                           'owner_sha256': owner_sha if changed == 'package' else '0' * 64}
+                    sourceprep.write_prepared_tree_receipt(
+                        temp, package=owner.PACKAGE, identity=old)
+                    selector = owner.identity_module()
+                    identity = {'export': {'current': True}, 'owner_sha256': owner_sha}
+                    with patch.object(owner, 'identity_module', return_value=selector), \
+                            patch.object(owner, 'git_effective_identity', return_value=current), \
+                            patch.object(owner, 'source_identity', return_value=identity), \
+                            patch.object(selector, 'shared_export', return_value=Path(temp) / 'export') as shared:
+                        with self.assertRaisesRegex(SDKError, 'require an explicit archive'):
+                            owner.verify(temp, '/git', patch='/patch',
+                                         pkgsrc_export='/current-export')
+                    shared.assert_called_once()
+
+    def test_scoped_network_owner_rejects_corrupt_prepared_payload(self):
+        spec = importlib.util.spec_from_file_location(
+            'openssh_corrupt_payload', ROOT / 'scripts/source-inputs/openssh/source.py')
+        owner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(owner)
+        owner.load_sdk(['--sdk-source', str(SDK)])
+        from emberbsd_sdk import sourceprep
+        effective = {'api': 3, 'package': owner.PACKAGE,
+                     'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
+        owner_sha = hashlib.sha256(Path(owner.__file__).read_bytes()).hexdigest()
+        old = {'effective': effective, 'owner_sha256': owner_sha}
+        with tempfile.TemporaryDirectory(dir=WORK) as temp:
+            sourceprep.write_prepared_tree_receipt(temp, package=owner.PACKAGE, identity=old)
+            (Path(temp) / 'corrupt.c').write_text('changed payload\n')
+            with self.assertRaises(SDKError):
+                owner.verify(temp, '/git', patch='/patch')
+
     def test_changed_mDNS_recipe_still_checks_export_and_requires_comparison(self):
         spec = importlib.util.spec_from_file_location(
             'mdns_owner_changed_recipe', ROOT / 'scripts/source-inputs/mdns/source.py')
