@@ -13,7 +13,21 @@ Use a private native tic with the actual target database layout.
  CATEGORIES=	devel
  MASTER_SITES=	${MASTER_SITE_GNU:=ncurses/}
  
-@@ -64,11 +65,88 @@
+@@ -25,13 +26,10 @@
+ CONFIGURE_ARGS+=	--disable-lib-suffixes
+ CONFIGURE_ARGS+=	--with-cxx-binding
+ CONFIGURE_ARGS+=	--enable-pc-files
+-CONFIGURE_ARGS+=	--with-pkg-config-libdir=${PREFIX}/lib/pkgconfig
+ CONFIGURE_ARGS+=	--without-ada
+ CONFIGURE_ARGS+=	--without-gpm
+ CONFIGURE_ARGS+=	--with-manpage-format=normal
+ CONFIGURE_ARGS+=	--without-manpage-renames
+-CONFIGURE_ARGS+=	--with-default-terminfo-dir=${PREFIX}/${TERMINFODIR}
+-CONFIGURE_ARGS+=	--with-terminfo-dirs=${PREFIX}/${TERMINFODIR}
+ 
+ # These libraries are renamed as there were apparently issues back in 2016 when
+ # they matched the same names as builtin NetBSD libraries.  It would be good to
+@@ -64,12 +62,94 @@
  
  .include "../../mk/bsd.prefs.mk"
  
@@ -40,6 +54,7 @@ Use a private native tic with the actual target database layout.
 +.endif
 +
  .if ${USE_CROSS_COMPILE:U:tl} == yes
++PKGREVISION=		6
  TOOL_DEPENDS+=		ncurses-[0-9]*:../../devel/ncurses
  CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
  CONFIGURE_ENV+=		ac_cv_path_TIC_PATH=${TOOLBASE:Q}/bin/tic
@@ -52,6 +67,7 @@ Use a private native tic with the actual target database layout.
 +# Keep build-only link paths out of installed consumer metadata.
 +CONFIGURE_ARGS+=	--disable-pkg-ldflags
  ALL_ENV+=		TIC_PATH=${TOOLBASE:Q}/bin/tic
+-.endif
 +
 +# The installed helper uses the target POSIX shell, not CONFIG_SHELL.
 +SUBST_CLASSES+= target-config-shell
@@ -99,10 +115,15 @@ Use a private native tic with the actual target database layout.
 +	${RUN}${CP} ${_EMBER_NCURSES_HOST_SRC:Q}/include/${_ember_header:C/:.*//} \
 +		${_EMBER_NCURSES_HOST_SRC:Q}/include/ncurses-build-${_ember_header:C/.*://}.h
 +.endfor
- .endif
++.endif
++
++CONFIGURE_ARGS+=	--with-pkg-config-libdir=${PREFIX}/lib/pkgconfig
++CONFIGURE_ARGS+=	--with-default-terminfo-dir=${PREFIX}/${TERMINFODIR}
++CONFIGURE_ARGS+=	--with-terminfo-dirs=${PREFIX}/${TERMINFODIR}
  
  # If there's no native tbl(1) then the tools infrastructure would pull in
-@@ -104,6 +182,38 @@
+ # groff, causing various circular dependencies.
+@@ -104,6 +184,38 @@
  CHECK_WRKREF_SKIP+=	man/man?/*
  
  post-configure:
