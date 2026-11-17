@@ -3,6 +3,6 @@ $NetBSD: distinfo,v 1.25 2026/08/18 18:26:05 adam Exp $
 BLAKE2s (qtserialport-everywhere-src-6.12.0.tar.xz) = 3dd5fd6c15b36950deead9048e40a60a1fa9e9cfe3949555add304825403699f
 SHA512 (qtserialport-everywhere-src-6.12.0.tar.xz) = 9554206fd0bc6d08247bceb702de8a748c0a6950ac16a6e814997c7d2d618c326a69c5534c4274147294ecbff0b5858b23ae70301fea97428101ec9d783d3779
 Size (qtserialport-everywhere-src-6.12.0.tar.xz) = 265576 bytes
-SHA1 (patch-src_serialport_CMakeLists.txt) = 4768eab122028b86a0259fc6c6646e9360727bd2
-SHA1 (patch-src_serialport_qserialportinfo__netbsd.cpp) = a0f87ee41fc918c8774bc3e0b85a53aebe17fc86
-SHA1 (patch-src_serialport_qserialportinfo__netbsd__p.h) = 613c05ae12409a30268b496effd761ff1330e50b
+SHA1 (patch-src_serialport_CMakeLists.txt) = ec03506826b2a67dc2819ed34878b7846899770e
+SHA1 (patch-src_serialport_qserialportinfo__netbsd.cpp) = bb72c99e5f662a88a3a6ecb130728be6dfbdd1aa
+SHA1 (patch-src_serialport_qserialportinfo__netbsd__p.h) = 3a30fadedbafa57fe8be16dbc16577878c628290
