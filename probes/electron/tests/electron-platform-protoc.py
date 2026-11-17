@@ -33,40 +33,57 @@ except ValueError:
     pass
 print('PASS: platform direct protoc; custom runtime retains scoped launcher')
 
-# Only dylibs owned by selected buildlink packages may become direct inputs.
+# A native tool is identified by its owner and the run-time dependency closure.
 import tempfile
+class CommandError(Exception):
+    pass
 with tempfile.TemporaryDirectory() as temporary:
-    prefix = Path(temporary).resolve(); (prefix / 'bin').mkdir(); (prefix / 'lib').mkdir()
-    protoc = prefix / 'bin/protoc'; protoc.write_text('binary')
-    library = prefix / 'lib/libprotobuf.dylib'; library.write_text('library')
-    package = prefix / 'pkgdb/protobuf'; package.mkdir(parents=True)
-    contents = package / '+CONTENTS'; contents.write_text('lib/libprotobuf.dylib\n')
-    for name in ('+BUILD_INFO', '+BUILD_VERSION'):
-        (package / name).write_text('metadata')
-    loads = [{'name': str(library)}, {'name': '/usr/lib/libc++.1.dylib'}]
-    inspector = SimpleNamespace(read_macho_runtime=lambda *args: {'loads': loads, 'implicit_loads': []})
-    inputs = build.platform_protoc_inputs(SimpleNamespace(host_prefix=prefix),
-        {'darwin_runtime':inspector}, SimpleNamespace(host={'os':'Darwin'}), protoc, {str(contents):'hash'})
-    assert str(library) in inputs and str(contents) in inputs
-    for name in ('/foreign/lib.dylib', '@rpath/lib.dylib'):
-        loads[0] = {'name': name}
+    prefix = Path(temporary).resolve(); (prefix / 'bin').mkdir()
+    real = prefix / 'bin/protoc-36'; real.write_text('binary')
+    protoc = prefix / 'bin/protoc'; protoc.symlink_to('protoc-36')
+    database = prefix / 'pkgdb'
+    def package(name, contents):
+        path = database / name; path.mkdir(parents=True)
+        (path / '+CONTENTS').write_text(contents)
+        for item in ('+BUILD_INFO', '+BUILD_VERSION'):
+            (path / item).write_text('metadata')
+        return path
+    owner = package('protobuf-36.2', 'bin/protoc\nbin/protoc-36\n@pkgdep {abseil,abseil-cpp}>=2025\n')
+    abseil = package('abseil-20250814', 'lib/libabsl.dylib\n@pkgdep protobuf>=36\n')
+    package('zstd-1.5', 'lib/libzstd.dylib\n')
+    answers = {('-E', '{abseil,abseil-cpp}>=2025'): 'abseil-20250814', ('-E', 'protobuf>=36'): 'protobuf-36.2',
+               ('-Fe', str(protoc)): 'protobuf-36.2', ('-Fe', str(real)): 'protobuf-36.2'}
+    def capture(command, env):
+        assert command[:3] == [str(prefix / 'sbin/pkg_info'), '-K', str(database)]
+        if tuple(command[3:]) not in answers:
+            raise CommandError(command)
+        return SimpleNamespace(stdout=(answers[tuple(command[3:])] + '\n').encode())
+    sdk = {'process': SimpleNamespace(capture=capture, CommandError=CommandError)}
+    options = SimpleNamespace(host_prefix=prefix)
+    expected = sorted([str(protoc)] + [str(path / item) for path in (owner, abseil)
+                                       for item in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION')])
+    assert build.native_tool_inputs(options, sdk, {}, protoc) == expected
+    def refused(message):
         try:
-            build.platform_protoc_inputs(SimpleNamespace(host_prefix=prefix),
-                {'darwin_runtime':inspector}, SimpleNamespace(host={'os':'Darwin'}), protoc, {str(contents):'hash'})
-            raise AssertionError('foreign runtime accepted')
-        except (ValueError, FileNotFoundError):
-            pass
-print('PASS: protoc runtime inputs are selected pkgdb-owned dylibs only')
-
-with tempfile.TemporaryDirectory() as temporary:
-    prefix=Path(temporary).resolve(); (prefix/'bin').mkdir(); protoc=prefix/'bin/protoc'; protoc.touch()
-    package=prefix/'pkgdb/protobuf'; package.mkdir(parents=True); contents=package/'+CONTENTS'; contents.touch()
-    (package/'+BUILD_INFO').touch(); (package/'+BUILD_VERSION').touch()
-    called=[]
-    def trace(*args, **kwargs):
-        called.append((args, kwargs)); return [str(protoc), str(contents)]
-    runtime=SimpleNamespace(NATIVE_GENERATOR_RUNTIME_API=1, runtime_inputs=trace)
-    options=SimpleNamespace(host_prefix=prefix); native=SimpleNamespace(host={'os':'NetBSD'},path='/selected/bin')
-    result=build.platform_protoc_inputs(options, {'native_generator_runtime':runtime}, native, protoc, {str(contents):'hash'})
-    assert result == [str(protoc),str(contents)] and called[0][0][3] == [str(package)]
-print('PASS: ELF protoc delegates exact selected package set to SDK')
+            build.native_tool_inputs(options, sdk, {}, protoc)
+        except ValueError as error:
+            assert message in str(error), error
+        else:
+            raise AssertionError(message + ' accepted')
+    answers[('-Fe', str(real))] = 'zstd-1.5'
+    refused('no unique package owner')
+    answers[('-Fe', str(real))] = 'protobuf-36.2'
+    del answers[('-E', '{abseil,abseil-cpp}>=2025')]
+    refused('no unique answer: -E {abseil,abseil-cpp}>=2025')
+    answers[('-E', '{abseil,abseil-cpp}>=2025')] = ''
+    refused('no unique answer')
+    answers[('-E', '{abseil,abseil-cpp}>=2025')] = 'abseil-20250814'
+    (abseil / '+BUILD_VERSION').unlink()
+    refused('incomplete package metadata')
+    outside = Path(temporary).parent / 'protoc'
+    try:
+        build.native_tool_inputs(options, sdk, {}, outside)
+        raise AssertionError('tool outside the prefix accepted')
+    except (ValueError, FileNotFoundError):
+        pass
+print('PASS: native tool inputs are its owner and run-time dependency metadata')

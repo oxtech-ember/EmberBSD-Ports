@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory() as tmp:
  sdk={'paths':paths,'process':SimpleNamespace(capture=lambda cmd,env:SimpleNamespace(stdout=b'1\n1\n1\n')),'host_prefix':SimpleNamespace(validate_host_executable=lambda *a,**k:None)}
  native=SimpleNamespace(tool=lambda x:'/selected/'+x,path='/selected',host={'os':'Darwin'})
  env={'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK':str(selection)}; catalog={'recipes':{'archivers/brotli':{},'archivers/zstd':{}}}
- with patch.object(m,'compression_recipe_catalog',return_value=catalog),patch.object(m,'validate_package_source'),patch.object(m,'platform_protoc_inputs',return_value=[]):
+ with patch.object(m,'compression_recipe_catalog',return_value=catalog),patch.object(m,'validate_package_source'),patch.object(m,'native_tool_inputs',return_value=[]):
   f.age(tool);m.common_compression(options,sdk,native,env,buildlink)
   f.race(paths,tool,lambda:m.common_compression(options,sdk,native,env,buildlink))
   tool.write_bytes(b'tampered')

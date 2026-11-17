@@ -39,8 +39,8 @@ def load_sdk(root):
     sys.path.insert(0, str(package.parent))
     result = {}
     for name in ('', 'host_prefix', 'application_toolchain', 'target_toolchain', 'targets', 'llvm_runtime',
-                 'process', 'paths', 'jsonio', 'darwin_sdk', 'darwin_runtime', 'compiler_bindings', 'cpu_capacity',
-                 'inventory', 'sourceprep', 'native_generator_runtime', 'publication'):
+                 'process', 'paths', 'jsonio', 'darwin_sdk', 'compiler_bindings', 'cpu_capacity',
+                 'inventory', 'sourceprep', 'publication'):
         module = importlib.import_module('emberbsd_sdk' + ('.' + name if name else ''))
         require(Path(module.__file__).resolve() == package / ((name or '__init__') + '.py'),
                 'SDK module origin differs: ' + module.__name__)
@@ -902,61 +902,56 @@ def selected_protoc_command(options, native, protoc, runtime_view):
 
 
 
-def native_installed_package_dirs(options, prefix):
-    """Index pkgdb metadata directories once; the SDK selects actual load owners."""
-    if getattr(options, '_native_generator_packages', None) is not None:
-        return options._native_generator_packages
-    database = Path(prefix).resolve(strict=True) / 'pkgdb'
-    require(database.is_dir() and not database.is_symlink(), 'native pkgdb is unavailable')
-    result = []
-    for item in sorted(database.iterdir()):
-        require(not item.is_symlink(), 'native pkgdb contains a linked entry')
-        if not item.is_dir():
-            continue
-        require(all((item / name).is_file() and not (item / name).is_symlink()
-                    for name in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION')),
-                'native pkgdb contains incomplete package metadata: ' + item.name)
-        result.append(str(item))
-    require(result, 'native pkgdb contains no package metadata')
-    options._native_generator_packages = result
-    return result
+def native_tool_inputs(options, sdk, environment, tool):
+    """Return a native tool and the package metadata that identifies it.
 
-def platform_protoc_inputs(options, sdk, native, protoc, selection):
-    """Track direct native dylibs through the selected host buildlink pkgdb."""
+    The native profile builds packages with CHECK_SHLIBS. Thus each library
+    that a package needs comes from the system or from a registered run-time
+    dependency. The owner of the tool and the closure of its @pkgdep entries
+    identify the tool and its libraries on each host. Their metadata changes
+    when a package changes.
+    """
     prefix = Path(options.host_prefix).resolve(strict=True)
-    if native.host['os'] != 'Darwin':
-        runtime = sdk['native_generator_runtime']
-        require(getattr(runtime, 'NATIVE_GENERATOR_RUNTIME_API', None) == 1,
-                'unsupported native generator runtime API')
-        packages = native_installed_package_dirs(options, prefix)
-        return runtime.runtime_inputs(str(prefix), str(protoc), native.host, packages,
-                                      search_path=native.path)
-    image = sdk['darwin_runtime'].read_macho_runtime(str(protoc), native.host)
-    owners = {}
-    for item in selection:
-        path = Path(item)
-        if path.name != '+CONTENTS':
+    database = prefix / 'pkgdb'
+    require(database.is_dir() and not database.is_symlink(), 'native pkgdb is unavailable')
+
+    def package(*arguments):
+        command = [str(prefix / 'sbin/pkg_info'), '-K', str(database), *arguments]
+        try:
+            found = sdk['process'].capture(command, env=environment).stdout.decode().split()
+        except sdk['process'].CommandError:
+            found = []
+        require(len(found) == 1 and found[0] not in ('.', '..') and '/' not in found[0],
+                'native package query has no unique answer: ' + ' '.join(arguments))
+        result = database / found[0]
+        require(result.is_dir() and not result.is_symlink(), 'native pkgdb entry is not a directory: ' + found[0])
+        return result
+
+    path = Path(tool).absolute()
+    spellings = [item for item in dict.fromkeys((path, path.resolve(strict=True)))
+                 if item.is_relative_to(prefix)]
+    require(spellings, 'native tool is outside the selected prefix: ' + str(tool))
+    owners = set()
+    for item in spellings:
+        try:
+            owners.add(package('-Fe', str(item)))
+        except ValueError:
+            pass
+    require(len(owners) == 1, 'native tool has no unique package owner: ' + str(tool))
+    inputs, pending, seen = {str(path)}, list(owners), set()
+    while pending:
+        entry = pending.pop()
+        if entry.name in seen:
             continue
-        package = path.resolve(strict=True).parent
-        for line in path.read_text().splitlines():
-            if line.startswith('lib/'):
-                owners.setdefault(line, []).append(package)
-    inputs = {str(protoc)}
-    for row in image['loads'] + image['implicit_loads']:
-        name = row['name']
-        if name.startswith('/usr/lib/') or name.startswith('/System/Library/'):
-            continue
-        path = Path(name)
-        require(path.is_absolute(), 'platform protoc has an unselected runtime load')
-        resolved = path.resolve(strict=True)
-        require(resolved.is_relative_to(prefix) and resolved.is_file(),
-                'platform protoc runtime load escapes selected native prefix')
-        relative = str(path.relative_to(prefix)) if path.is_relative_to(prefix) else ''
-        packages = owners.get(relative, [])
-        require(len(packages) == 1, 'platform protoc runtime load has no unique selected package owner')
-        inputs.add(str(resolved))
-        for metadata in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION'):
-            inputs.add(str((packages[0] / metadata).resolve(strict=True)))
+        seen.add(entry.name)
+        for name in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION'):
+            metadata = entry / name
+            require(metadata.is_file() and not metadata.is_symlink(),
+                    'native pkgdb contains incomplete package metadata: ' + entry.name)
+            inputs.add(str(metadata))
+        for line in (entry / '+CONTENTS').read_text().splitlines():
+            if line.startswith('@pkgdep '):
+                pending.append(package('-E', line.split(' ', 1)[1]))
     return sorted(inputs)
 
 
@@ -1044,8 +1039,8 @@ def common_protobuf(options, sdk, native, environment, buildlink, runtime_view):
                       emberbsd_protobuf_target_prefix=str(options.sysroot / 'usr/pkg'),
                       emberbsd_protoc=str(protoc))
         if not runtime_view:
-            result['emberbsd_protoc_runtime_inputs'] = platform_protoc_inputs(
-                options, sdk, native, protoc, selected)
+            result['emberbsd_protoc_runtime_inputs'] = native_tool_inputs(
+                options, sdk, environment, protoc)
         return result
     return {}
 
@@ -1339,20 +1334,7 @@ def common_flatc(options, sdk, native, environment):
         require(len(found) == 1, 'invalid native FlatBuffers version header')
         parts.append(found[0])
     require(match.group(1) == '.'.join(parts), 'selected flatc version differs from its package headers')
-    if native.host['os'] == 'Darwin':
-        image = sdk['darwin_runtime'].read_macho_runtime(str(tool), native.host)
-        loads = image['loads'] + image['implicit_loads']
-        require(all(row['name'].startswith(('/usr/lib/', '/System/Library/')) for row in loads),
-                'native flatc has non-platform runtime dependencies requiring explicit selection')
-        inputs = sorted([str(tool)] + [str((package/name).resolve(strict=True))
-                                      for name in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION')])
-    else:
-        runtime = sdk['native_generator_runtime']
-        require(getattr(runtime, 'NATIVE_GENERATOR_RUNTIME_API', None) == 1,
-                'unsupported native generator runtime API')
-        packages = native_installed_package_dirs(options, prefix)
-        inputs = runtime.runtime_inputs(str(prefix), str(tool), native.host, sorted(packages),
-                                        search_path=native.path)
+    inputs = native_tool_inputs(options, sdk, environment, tool)
     return {'emberbsd_flatc': str(tool), 'emberbsd_flatc_inputs': sorted(set(inputs + [str(version_header.resolve(strict=True))]))}
 
 def common_ml_sources(options, sdk, native, environment):
@@ -1738,7 +1720,7 @@ def common_compression(options, sdk, native, environment, buildlink):
             'native Brotli executable differs from installed package')
     sdk['host_prefix'].validate_host_executable(str(options.host_prefix), str(tool), native.host,
                                                 search_path=native.path)
-    inputs = platform_protoc_inputs(options, sdk, native, tool, selection)
+    inputs = native_tool_inputs(options, sdk, environment, tool)
     options.compression_identity = hashlib.sha256(json.dumps(record, sort_keys=True,
         separators=(',', ':')).encode()).hexdigest()
     environment['EMBERBSD_COMPRESSION_SOURCE_SHA256'] = options.compression_identity
@@ -2254,7 +2236,9 @@ def protoc_selection(options, sdk, environment, values):
     files = {}
     for name in [tool, *values.get('emberbsd_protoc_runtime_inputs', [])]:
         path = Path(name).resolve(strict=True)
-        if path.name in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION'):
+        # +BUILD_INFO records the build time and host. +CONTENTS keeps the MD5
+        # of each package file, so it identifies the libraries of protoc.
+        if path.name == '+BUILD_INFO':
             continue
         require(path.is_file(), 'selected protoc input is not a file: ' + str(path))
         key = next((label + '/' + str(path.relative_to(root)) for root, label in roots
