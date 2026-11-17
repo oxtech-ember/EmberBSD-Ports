@@ -24,7 +24,8 @@ Use namespaced minizip headers without shadowing libzip zip.h.
  
  #ifndef ASSIMP_BUILD_NO_COMPRESSED_IFC
 -#ifdef ASSIMP_USE_HUNTER
- #include <minizip-ng/unzip.h>
+-#include <minizip/unzip.h>
++#include <minizip-ng/unzip.h>
 -#else
 -#include <unzip.h>
 -#endif
