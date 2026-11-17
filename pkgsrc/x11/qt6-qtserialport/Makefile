@@ -10,5 +10,11 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6SerialPort.pc
 
 .include "../../x11/qt6-qtbase/Makefile.common"
 
+PLIST_VARS+=	netbsd
+.if ${OPSYS} == "NetBSD"
+PKGREVISION=	1
+PLIST.netbsd=	yes
+.endif
+
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

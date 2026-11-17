@@ -2,6 +2,7 @@
 lib/pkgconfig/Qt6SerialPort.pc
 qt6/include/QtSerialPort/${PKGVERSION}/QtSerialPort/private/qserialport_p.h
 qt6/include/QtSerialPort/${PKGVERSION}/QtSerialPort/private/qserialportinfo_p.h
+${PLIST.netbsd}qt6/include/QtSerialPort/${PKGVERSION}/QtSerialPort/private/qserialportinfo_netbsd_p.h
 qt6/include/QtSerialPort/${PKGVERSION}/QtSerialPort/private/qtserialport-config_p.h
 qt6/include/QtSerialPort/QSerialPort
 qt6/include/QtSerialPort/QSerialPortInfo

@@ -1,0 +1,24 @@
+$NetBSD$
+
+Origin: EmberBSD, OpenAI Codex (GPT-6), AI-assisted; not submitted upstream.
+Enumerate NetBSD serial identities through read-only drvctl properties.
+Keep dial-out aliases and symlinks without probing serial devices.
+
+--- src/serialport/CMakeLists.txt.orig
++++ src/serialport/CMakeLists.txt
+@@ -63,7 +63,14 @@
+         qserialportinfo_freebsd.cpp
+ )
+ 
+-qt_internal_extend_target(SerialPort CONDITION UNIX AND NOT FREEBSD AND NOT MACOS
++qt_internal_extend_target(SerialPort CONDITION NETBSD
++    SOURCES
++        qserialportinfo_netbsd.cpp qserialportinfo_netbsd_p.h
++    LIBRARIES
++        prop
++)
++
++qt_internal_extend_target(SerialPort CONDITION UNIX AND NOT FREEBSD AND NOT MACOS AND NOT NETBSD
+     SOURCES
+         qserialportinfo_unix.cpp
+ )
