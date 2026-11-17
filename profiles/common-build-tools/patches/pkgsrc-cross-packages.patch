@@ -498,7 +498,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +EMBER_CROSS_RUN_OK=	yes
 +.      endif
 +.    endif
-+.    for _b_ in install-info awk echo expr ln ls openssl rm mkdir
++.    for _b_ in install-info awk echo expr grep ln ls openssl rm mkdir
 +.      if ${_t_} == "${_b_}:run" && ${OPSYS} == "NetBSD" && \
 +          (exists(${CROSS_DESTDIR}/usr/bin/${_b_}) || \
 +           exists(${CROSS_DESTDIR}/bin/${_b_}))
