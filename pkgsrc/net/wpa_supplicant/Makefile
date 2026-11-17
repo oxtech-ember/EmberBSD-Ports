@@ -2,7 +2,7 @@
 #
 
 .include "../../net/wpa_supplicant/Makefile.common"
-PKGREVISION=	7
+PKGREVISION=	8
 CATEGORIES=	net
 
 MAINTAINER=	reed@reedmedia.net

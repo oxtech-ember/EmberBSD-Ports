@@ -68,6 +68,12 @@ def main():
     events = Path(a.events_source).read_text()
     rrm = Path(a.rrm_source).read_text()
     sme = Path(a.sme_source).read_text()
+    # Execute the real FullMAC association IE block without extracting the
+    # rest of the larger association builder and its unrelated dependencies.
+    fullmac_start = wpa.index(
+        "\t/* A full-MAC driver may expose host-managed neighbor reports. */")
+    fullmac_end = wpa.index("#endif /* CONFIG_NO_RRM */", fullmac_start)
+    fullmac_rrm = wpa[fullmac_start:fullmac_end]
     associate = function_body(wpa, "static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)")
     parser = function_body(events, "static void wpas_parse_connection_info(")
     command = function_body(rrm, "int wpas_rrm_send_neighbor_rep_request(")
@@ -108,6 +114,7 @@ enum { IEEE80211_CAP_RRM = 1, WPA_DRIVER_FLAGS_SUPPORT_RRM = 1,
        WPA_DRIVER_FLAGS_TX_POWER_INSERTION = 4,
        WPA_DRIVER_FLAGS_DS_PARAM_SET_IE_IN_PROBES = 8,
        WPA_DRIVER_FLAGS_QUIET = 16,
+       WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT = 32,
        WLAN_EID_RRM_ENABLED_CAPABILITIES = 70,
        WLAN_RRM_CAPS_LINK_MEASUREMENT = 1,
        WLAN_RRM_CAPS_NEIGHBOR_REPORT = 2,
@@ -146,6 +153,10 @@ static const unsigned char *wpa_bss_get_ie(struct wpa_bss *bss, int eid) {
 static void wpa_printf(int level, const char *fmt, ...) { (void)level; (void)fmt; }
 #define os_memset memset
 #endif
+#ifndef CONFIG_NO_RRM
+static unsigned char fullmac_ie[16];
+static size_t fullmac_ie_len;
+#endif
 static int parse_elems(const unsigned char *buf, size_t len,
                        struct ieee802_11_elems *elems, int flags) {
     (void) flags;
@@ -177,6 +188,15 @@ static int nr_command(struct wpa_supplicant *wpa_s) {
 ''' + gate + r'''
     return 0;
 }
+#ifndef CONFIG_NO_RRM
+static void fullmac_assoc_rrm(struct wpa_supplicant *wpa_s,
+        struct wpa_bss *bss, struct wpa_driver_associate_params *params) {
+    unsigned char *wpa_ie = fullmac_ie;
+    size_t wpa_ie_len = 0, max_wpa_ie_len = sizeof(fullmac_ie);
+''' + fullmac_rrm + r'''
+    fullmac_ie_len = wpa_ie_len;
+}
+#endif
 static void associate_once(struct wpa_supplicant *wpa_s) {
     void *bss = 0, *ssid = 0;
     struct wpa_driver_associate_params params = { 0 };
@@ -229,15 +249,54 @@ int main(void) {
     /* The SME path keeps its existing persistent-state and IE behavior. */
     {
         struct wpa_bss bss = { IEEE80211_CAP_RRM };
+        struct wpa_driver_associate_params params = { 0 };
         w.drv_rrm_flags = WPA_DRIVER_FLAGS_SUPPORT_RRM |
             WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY;
         test_rrm_ie_present = 1;
+        test_rrm_ie[0] = WLAN_EID_RRM_ENABLED_CAPABILITIES;
+        test_rrm_ie[1] = 5;
         sme_auth_handle_rrm(&w, &bss);
         assert(w.rrm.rrm_used == 1);
         assert(w.sme.assoc_req_ie[0] == WLAN_EID_RRM_ENABLED_CAPABILITIES);
+        assert(w.sme.assoc_req_ie[2] == WLAN_RRM_CAPS_NEIGHBOR_REPORT);
+        assert((w.sme.assoc_req_ie[3] | w.sme.assoc_req_ie[4] |
+            w.sme.assoc_req_ie[5] | w.sme.assoc_req_ie[6]) == 0);
         test_rrm_ie_present = 0;
         sme_auth_handle_rrm(&w, &bss);
         assert(w.rrm.rrm_used == 0);
+
+        /* AIC's RX/TX measurement-action transport has no declared
+         * measurement-type capability, so its association IE is NR only. */
+        test_rrm_ie_present = 1;
+        w.sme.assoc_req_ie_len = 0;
+        w.drv_rrm_flags = WPA_DRIVER_FLAGS_SUPPORT_RRM |
+            WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT;
+        sme_auth_handle_rrm(&w, &bss);
+        assert(w.rrm.rrm_used == 1 &&
+            w.sme.assoc_req_ie[2] == WLAN_RRM_CAPS_NEIGHBOR_REPORT);
+        assert((w.sme.assoc_req_ie[3] | w.sme.assoc_req_ie[4] |
+            w.sme.assoc_req_ie[5] | w.sme.assoc_req_ie[6]) == 0);
+
+        w.drv_rrm_flags = WPA_DRIVER_FLAGS_SUPPORT_RRM |
+            WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY;
+        fullmac_assoc_rrm(&w, &bss, &params);
+        assert(fullmac_ie_len == 7 && params.rrm_used == 1 &&
+            fullmac_ie[0] == WLAN_EID_RRM_ENABLED_CAPABILITIES &&
+            fullmac_ie[2] == WLAN_RRM_CAPS_NEIGHBOR_REPORT &&
+            (fullmac_ie[3] | fullmac_ie[4] | fullmac_ie[5] |
+             fullmac_ie[6]) == 0);
+        params.rrm_used = 0;
+        w.drv_rrm_flags = WPA_DRIVER_FLAGS_SUPPORT_RRM |
+            WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT;
+        fullmac_assoc_rrm(&w, &bss, &params);
+        assert(fullmac_ie_len == 7 && params.rrm_used == 1 &&
+            fullmac_ie[2] == WLAN_RRM_CAPS_NEIGHBOR_REPORT &&
+            (fullmac_ie[3] | fullmac_ie[4] | fullmac_ie[5] |
+             fullmac_ie[6]) == 0);
+        params.rrm_used = 0;
+        w.drv_rrm_flags = 0;
+        fullmac_assoc_rrm(&w, &bss, &params);
+        assert(fullmac_ie_len == 0 && params.rrm_used == 0);
     }
 #else
     assert(w.rrm.rrm_used == 0 && nr_command(&w) == -EOPNOTSUPP);

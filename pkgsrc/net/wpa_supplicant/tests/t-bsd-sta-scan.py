@@ -67,19 +67,22 @@ code = r'''
 #include <stdlib.h>
 #include <string.h>
 #define ETH_ALEN 6
-#define IEEE80211_STA_VERSION 1
+#define IEEE80211_STA_VERSION 3
 #define IEEE80211_STA_ASSOCIATED 0x0002
 #define IEEE80211_STA_CAP_BTM 0x0001
 #define IEEE80211_STA_CAP_SCAN 0x0040
-#define IEEE80211_STA_CAP_RRM 0x0008
+#define IEEE80211_STA_CAP_NR 0x0080
+#define IEEE80211_STA_CAP_RM_REQUEST_RX 0x0100
+#define IEEE80211_STA_CAP_RM_REPORT_TX 0x0200
 #define IEEE80211_STA_SCAN 5
 #define IEEE80211_STA_CANCEL_SCAN 6
 #define IEEE80211_STA_SCAN_ABORTED 0x0020
 #define IEEE80211_STA_MAX_CHANNELS 32
 #define IEEE80211_STA_MAX_BODY 1024
-#define IEEE80211_STA_TX 4
-#define IEEE80211_STA_GET 1
-#define IEEE80211_STA_TX_ACK 0x0001
+#define IEEE80211_STA_TX 3
+#define IEEE80211_STA_GET 0
+#define IEEE80211_STA_TX_ACK 0x0004
+#define IEEE80211_STA_TX_ACK_KNOWN 0x0008
 #define RTM_IEEE80211_STA_RX 112
 #define RTM_IEEE80211_STA_TX 113
 #define RTM_IEEE80211_STA_SCAN 114
@@ -111,10 +114,12 @@ struct bsd_driver_data {
 '''
 code += r'''
 struct ieee80211req_sta_mgmt {
- uint32_t version, reserved, op, flags, cookie, generation;
- uint16_t freq;
- size_t len;
+ uint16_t version, op;
+ uint32_t cookie, generation, flags;
+ int32_t tx_error;
+ uint16_t freq, len;
  u8 bssid[ETH_ALEN];
+ uint16_t reserved;
  u8 data[IEEE80211_STA_MAX_BODY];
 };
 struct wpa_driver_scan_params { int *freqs; };
@@ -129,8 +134,9 @@ static unsigned set_calls, scan_events, disconnect_events, timers;
 static int last_aborted;
 static void bsd_sta_scan_timeout(void *a, void *b)
 { (void)a; (void)b; }
-static void bsd_sta_tx_status(struct bsd_driver_data *d, int ack, int notify)
-{ (void)d; (void)ack; (void)notify; }
+static void bsd_sta_tx_status(struct bsd_driver_data *d, int ack, int ack_known,
+    int tx_error, int notify)
+{ (void)d; (void)ack; (void)ack_known; (void)tx_error; (void)notify; }
 static int bsd_sta_info(struct bsd_driver_data *d,
     struct ieee80211req_sta_mgmt *info)
 { (void)d; *info = current; return info_error; }
@@ -241,7 +247,7 @@ int main(void)
  /* BTM/RRM alone must not enable connected scans or accept scan events. */
  setup(&d); d.sta_scan = 0; d.sta_btm = d.sta_rrm = 1;
  current.flags = IEEE80211_STA_ASSOCIATED | IEEE80211_STA_CAP_BTM |
-     IEEE80211_STA_CAP_RRM;
+     IEEE80211_STA_CAP_NR;
  assert(scan_dispatch(&d, &params) == -2 && set_calls == 0);
  d.sta_scan_pending = 1; event = current;
  event.op = IEEE80211_STA_SCAN; event.cookie = d.sta_scan_cookie;

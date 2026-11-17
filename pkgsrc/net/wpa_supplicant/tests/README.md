@@ -26,8 +26,10 @@ parameter when present (including when response IEs are absent), malformed
 request IEs fail closed, and absent request IEs preserve the association
 parameter. It also covers failed association construction, the not-completed
 command gate, and the `CONFIG_NO_RRM` build guard. It executes the unchanged SME
-association helper as a control and checks the command's not-completed state
-gate.
+association helper as a control and checks NR-only ESP and bidirectional
+measurement-action AIC capabilities produce a Neighbor Report-only association
+IE in both SME and FullMAC builders. Unsupported driver capabilities produce
+no FullMAC RRM IE; no measurement-type bits are fabricated.
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-rrm-association-state.py \
@@ -54,6 +56,18 @@ reaches the behavioral assertion and demonstrates the missing Neighbor Report.
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-wnm-candidate-list.py \
+    --cc "$HOST_PREFIX/bin/clang" \
+    --host-sdk "$HOST_SDK" \
+    --source "$WPA_SOURCE"
+```
+
+`t-wnm-tx-status.py` executes the production BTM-response TX-status handler.
+Local submission errors and confirmed no-ACK reset the pending transition
+without connecting; confirmed ACK and unknown ACK status retain the existing
+connect behavior. Malformed responses remain ignored.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-wnm-tx-status.py \
     --cc "$HOST_PREFIX/bin/clang" \
     --host-sdk "$HOST_SDK" \
     --source "$WPA_SOURCE"

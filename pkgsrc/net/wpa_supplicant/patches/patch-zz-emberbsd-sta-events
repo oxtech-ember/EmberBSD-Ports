@@ -1,0 +1,315 @@
+$NetBSD$
+
+Use directed station capabilities, report local submission errors separately
+from peer ACK status, and prevent WNM roaming after local TX failure.
+
+--- src/drivers/driver.h.orig
++++ src/drivers/driver.h
+@@ -2680,6 +2680,8 @@
+ #define WPA_DRIVER_FLAGS_SUPPORT_BEACON_REPORT		0x00000040
+ /** Driver supports neighbor reports but not host radio measurements. */
+ #define WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY		0x00000080
++/** Driver supports advertising host-managed Neighbor Report capability. */
++#define WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT		0x00020000
+ 
+ 	u32 rrm_flags;
+ 
+@@ -7187,6 +7189,8 @@
+ 		const u8 *data;
+ 		size_t data_len;
+ 		int ack;
++		int ack_known;
++		int tx_error;
+ 		int link_id;
+ 	} tx_status;
+ 
+--- src/drivers/driver_bsd.c.orig
++++ src/drivers/driver_bsd.c
+@@ -89,6 +89,9 @@
+ #endif
+ #if !defined(HOSTAPD) && defined(__NetBSD__) && defined(IEEE80211_IOC_STA_MGMT)
+ 	int sta_btm;
++	int sta_nr;
++	int sta_rm_request_rx;
++	int sta_rm_report_tx;
+ 	int sta_rrm;
+ 	int sta_scan;
+ 	int sta_enabled;
+@@ -112,7 +115,7 @@
+ 
+ #if !defined(HOSTAPD) && defined(__NetBSD__) && defined(IEEE80211_IOC_STA_MGMT)
+ static void bsd_sta_scan_clear(struct bsd_driver_data *);
+-static void bsd_sta_tx_status(struct bsd_driver_data *, int, int);
++static void bsd_sta_tx_status(struct bsd_driver_data *, int, int, int, int);
+ #endif
+ 
+ #if defined(__NetBSD__) && defined(IEEE80211_MLME_VERSION) && \
+@@ -995,7 +998,8 @@
+ static void bsd_sta_tx_timeout(void *eloop_ctx, void *timeout_ctx);
+ 
+ static void
+-bsd_sta_tx_status(struct bsd_driver_data *drv, int ack, int notify)
++bsd_sta_tx_status(struct bsd_driver_data *drv, int ack, int ack_known,
++		  int tx_error, int notify)
+ {
+ 	union wpa_event_data event;
+ 	u8 *frame = drv->sta_tx_frame;
+@@ -1008,18 +1012,20 @@
+ 	drv->sta_tx_len = 0;
+ 	if (notify) {
+ 		wpa_printf(MSG_DEBUG,
+-			   "BSD: STA TX status cookie=%u generation=%u freq=%u category=%d action=%d token=%d ack=%d",
++			   "BSD: STA TX status cookie=%u generation=%u freq=%u category=%d action=%d token=%d ack_known=%d ack=%d tx_error=%d",
+ 			   drv->sta_cookie, drv->sta_tx_generation, drv->sta_tx_freq,
+ 			   len >= 27 ? frame[24] : -1,
+ 			   len >= 27 ? frame[25] : -1,
+-			   len >= 27 ? frame[26] : -1, ack);
++			   len >= 27 ? frame[26] : -1, ack_known, ack, tx_error);
+ 		os_memset(&event, 0, sizeof(event));
+ 		event.tx_status.type = WLAN_FC_TYPE_MGMT;
+ 		event.tx_status.stype = WLAN_FC_STYPE_ACTION;
+ 		event.tx_status.dst = frame + 4;
+ 		event.tx_status.data = frame;
+ 		event.tx_status.data_len = len;
+-		event.tx_status.ack = ack;
++		event.tx_status.ack = ack_known && ack;
++		event.tx_status.ack_known = ack_known;
++		event.tx_status.tx_error = tx_error;
+ 		event.tx_status.link_id = -1;
+ 		wpa_supplicant_event(drv->ctx, EVENT_TX_STATUS, &event);
+ 	}
+@@ -1032,7 +1038,7 @@
+ 	union wpa_event_data event;
+ 	int aborted = drv->sta_scan_pending;
+ 
+-	bsd_sta_tx_status(drv, 0, 0);
++	bsd_sta_tx_status(drv, 0, 0, 0, 0);
+ 	bsd_sta_scan_clear(drv);
+ 	wpa_supplicant_event(drv->ctx, EVENT_DISASSOC, NULL);
+ 	if (aborted) {
+@@ -1057,7 +1063,7 @@
+ 	os_memcpy(req.bssid, drv->sta_tx_frame + 4, ETH_ALEN);
+ 	bsd_sta_set(drv, &req, IEEE80211_STA_CANCEL_TX);
+ 	wpa_printf(MSG_DEBUG, "BSD: station action TX completion timed out");
+-	bsd_sta_tx_status(drv, 0, 1);
++	bsd_sta_tx_status(drv, 0, 0, ETIMEDOUT, 1);
+ }
+ 
+ static int
+@@ -1070,9 +1076,10 @@
+ 		    (data[1] == WNM_BSS_TRANS_MGMT_QUERY ||
+ 		     (data[1] == WNM_BSS_TRANS_MGMT_RESP && len >= 5));
+ 	if (data[0] == WLAN_ACTION_RADIO_MEASUREMENT)
+-		return drv->sta_rrm &&
+-		    (data[1] == WLAN_RRM_NEIGHBOR_REPORT_REQUEST ||
+-		     data[1] == WLAN_RRM_RADIO_MEASUREMENT_REPORT);
++		return (data[1] == WLAN_RRM_NEIGHBOR_REPORT_REQUEST &&
++			drv->sta_nr) ||
++		    (data[1] == WLAN_RRM_RADIO_MEASUREMENT_REPORT &&
++			drv->sta_rm_report_tx);
+ 	return 0;
+ }
+ 
+@@ -1142,9 +1149,10 @@
+ 		return drv->sta_btm && len >= 7 &&
+ 		    data[1] == WNM_BSS_TRANS_MGMT_REQ;
+ 	if (data[0] == WLAN_ACTION_RADIO_MEASUREMENT)
+-		return drv->sta_rrm &&
+-		    (data[1] == WLAN_RRM_NEIGHBOR_REPORT_RESPONSE ||
+-		     (data[1] == WLAN_RRM_RADIO_MEASUREMENT_REQUEST && len >= 5));
++		return (data[1] == WLAN_RRM_NEIGHBOR_REPORT_RESPONSE &&
++			drv->sta_nr) ||
++		    (data[1] == WLAN_RRM_RADIO_MEASUREMENT_REQUEST && len >= 5 &&
++			drv->sta_rm_request_rx);
+ 	return 0;
+ }
+ 
+@@ -1167,7 +1175,7 @@
+ 		return;
+ 	if (what == RTM_IEEE80211_STA_SCAN) {
+ 		if (!drv->sta_scan || !drv->sta_scan_pending ||
+-		    req->op != IEEE80211_STA_SCAN || req->len ||
++		    req->op != IEEE80211_STA_SCAN || req->len || req->tx_error ||
+ 		    (req->flags & ~IEEE80211_STA_SCAN_ABORTED) ||
+ 		    req->cookie != drv->sta_scan_cookie ||
+ 		    req->generation != drv->sta_scan_epoch ||
+@@ -1176,7 +1184,7 @@
+ 			return;
+ 		if (!(req->flags & IEEE80211_STA_SCAN_ABORTED) &&
+ 		    (bsd_sta_info(drv, &info) < 0 ||
+-		    !(info.flags & IEEE80211_STA_ASSOCIATED) ||
++		    !(info.flags & IEEE80211_STA_ASSOCIATED) || req->tx_error ||
+ 		    info.generation != req->generation || info.freq != req->freq ||
+ 		    os_memcmp(info.bssid, req->bssid, ETH_ALEN)))
+ 			return;
+@@ -1194,15 +1202,24 @@
+ 		return;
+ 	if (what == RTM_IEEE80211_STA_TX) {
+ 		if (req->op == IEEE80211_STA_TX && !req->len &&
+-		    !(req->flags & ~IEEE80211_STA_TX_ACK) && drv->sta_tx_frame &&
++		    !(req->flags & ~(IEEE80211_STA_TX_ACK |
++				     IEEE80211_STA_TX_ACK_KNOWN)) &&
++		    (!(req->flags & IEEE80211_STA_TX_ACK) ||
++		     (req->flags & IEEE80211_STA_TX_ACK_KNOWN)) &&
++		    req->tx_error >= 0 &&
++		    (!req->tx_error || !req->flags) && drv->sta_tx_frame &&
+ 		    req->cookie == drv->sta_cookie &&
+ 		    req->generation == drv->sta_tx_generation &&
+ 		    req->freq == drv->sta_tx_freq &&
+ 		    !os_memcmp(req->bssid, drv->sta_tx_frame + 4, ETH_ALEN))
+-			bsd_sta_tx_status(drv, !!(req->flags & IEEE80211_STA_TX_ACK), 1);
++			bsd_sta_tx_status(drv,
++				!!(req->flags & IEEE80211_STA_TX_ACK),
++				!!(req->flags & IEEE80211_STA_TX_ACK_KNOWN),
++				req->tx_error, 1);
+ 		return;
+ 	}
+ 	if (what != RTM_IEEE80211_STA_RX || req->op != IEEE80211_STA_GET ||
++	    req->tx_error ||
+ 	    req->cookie || req->flags ||
+ 	    !bsd_sta_rx_body(drv, req->data, req->len))
+ 		return;
+@@ -1244,10 +1261,21 @@
+ 		drv->sta_extcap_mask[2] = 0x02;
+ 		wpa_printf(MSG_DEBUG, "BSD: host-managed BSS transitions available");
+ 	}
+-	if (info.flags & IEEE80211_STA_CAP_RRM) {
+-		drv->sta_rrm = 1;
++	drv->sta_nr = !!(info.flags & IEEE80211_STA_CAP_NR);
++	drv->sta_rm_request_rx =
++		!!(info.flags & IEEE80211_STA_CAP_RM_REQUEST_RX);
++	drv->sta_rm_report_tx =
++		!!(info.flags & IEEE80211_STA_CAP_RM_REPORT_TX);
++	drv->sta_rrm = drv->sta_nr || drv->sta_rm_request_rx ||
++		drv->sta_rm_report_tx;
++	if (drv->sta_nr)
+ 		drv->capa.rrm_flags |= WPA_DRIVER_FLAGS_SUPPORT_RRM |
+-		    WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY;
++			WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT;
++	if (drv->sta_rm_request_rx && drv->sta_rm_report_tx) {
++		drv->capa.rrm_flags |= WPA_DRIVER_FLAGS_SUPPORT_RRM;
++		wpa_printf(MSG_DEBUG, "BSD: host-managed radio measurement transport available");
++	} else if (drv->sta_nr) {
++		drv->capa.rrm_flags |= WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY;
+ 		wpa_printf(MSG_DEBUG, "BSD: host-managed neighbor reports available");
+ 	}
+ }
+@@ -1293,7 +1321,7 @@
+ 	    (params->key_mgmt_suite == WPA_KEY_MGMT_PSK ||
+ 	     (params->key_mgmt_suite == WPA_KEY_MGMT_SAE &&
+ 	      params->mgmt_frame_protection == MGMT_FRAME_PROTECTION_REQUIRED));
+-	bsd_sta_tx_status(drv, 0, 0);
++	bsd_sta_tx_status(drv, 0, 0, 0, 0);
+ 	bsd_sta_scan_clear(drv);
+ 	drv->sta_enabled = 0;
+ 	os_memset(&req, 0, sizeof(req));
+@@ -2573,7 +2601,7 @@
+ 
+ #if !defined(HOSTAPD) && defined(__NetBSD__) && defined(IEEE80211_IOC_STA_MGMT)
+ 	bsd_sta_scan_clear(drv);
+-	bsd_sta_tx_status(drv, 0, 0);
++	bsd_sta_tx_status(drv, 0, 0, 0, 0);
+ 	if ((drv->sta_scan || drv->sta_btm || drv->sta_rrm) &&
+ 	    drv->ifindex != 0 && !drv->if_removed) {
+ 		struct ieee80211req_sta_mgmt req;
+--- src/drivers/driver_nl80211_event.c.orig
++++ src/drivers/driver_nl80211_event.c
+@@ -1576,6 +1576,7 @@
+ 	event.tx_status.data = frame;
+ 	event.tx_status.data_len = len;
+ 	event.tx_status.ack = ack != NULL;
++	event.tx_status.ack_known = 1;
+ 	event.tx_status.link_id = cookie_val == drv->send_frame_cookie ?
+ 		drv->send_frame_link_id : NL80211_DRV_LINK_ID_NA;
+ 	wpa_supplicant_event(bss->ctx, EVENT_TX_STATUS, &event);
+--- wpa_supplicant/events.c.orig
++++ wpa_supplicant/events.c
+@@ -7015,7 +7015,10 @@
+ 		if (data->tx_status.type == WLAN_FC_TYPE_MGMT &&
+ 		    data->tx_status.stype == WLAN_FC_STYPE_ACTION &&
+ 		    wnm_btm_resp_tx_status(wpa_s, data->tx_status.data,
+-					   data->tx_status.data_len) == 0)
++					   data->tx_status.data_len,
++					   data->tx_status.tx_error,
++					   data->tx_status.ack_known,
++					   data->tx_status.ack) == 0)
+ 			break;
+ #endif /* CONFIG_WNM */
+ #ifdef CONFIG_PASN
+--- wpa_supplicant/wnm_sta.c.orig
++++ wpa_supplicant/wnm_sta.c
+@@ -1061,6 +1061,7 @@
+ 				  wpa_s->own_addr, wpa_s->bssid,
+ 				  wpabuf_head_u8(buf), wpabuf_len(buf), 0);
+ 	if (res < 0) {
++		/* Preserve the existing synchronous backend fallback below. */
+ 		wpa_printf(MSG_DEBUG,
+ 			   "WNM: Failed to send BSS Transition Management Response");
+ 	}
+@@ -1755,7 +1756,7 @@
+ 
+ 
+ int wnm_btm_resp_tx_status(struct wpa_supplicant *wpa_s, const u8 *data,
+-			   size_t data_len)
++			   size_t data_len, int tx_error, int ack_known, int ack)
+ {
+ 	const struct ieee80211_mgmt *frame =
+ 		(const struct ieee80211_mgmt *) data;
+@@ -1767,6 +1768,19 @@
+ 	    frame->u.action.u.bss_tm_resp.status_code != WNM_BSS_TM_ACCEPT)
+ 		return -1;
+ 
++	/* Async local submission failure is distinct from a peer no-ACK. */
++	if (tx_error || (ack_known && !ack)) {
++		if (tx_error)
++			wpa_printf(MSG_DEBUG,
++				   "WNM: BTM response submission failed (errno=%d)",
++				   tx_error);
++		else
++			wpa_printf(MSG_DEBUG,
++				   "WNM: BTM response was not acknowledged");
++		wnm_btm_reset(wpa_s);
++		return 0;
++	}
++
+ 	/*
+ 	 * If disassoc imminent bit was set in the request, the response may
+ 	 * indicate accept even if no candidate was found, so bail out here.
+--- wpa_supplicant/wnm_sta.h.orig
++++ wpa_supplicant/wnm_sta.h
+@@ -72,7 +72,7 @@
+ 			      struct wpabuf *elems);
+ 
+ int wnm_btm_resp_tx_status(struct wpa_supplicant *wpa_s, const u8 *data,
+-			   size_t data_len);
++			   size_t data_len, int tx_error, int ack_known, int ack);
+ 
+ #ifdef CONFIG_WNM
+ 
+--- wpa_supplicant/wpa_supplicant.c.orig
++++ wpa_supplicant/wpa_supplicant.c
+@@ -4513,9 +4513,10 @@
+ 	}
+ 
+ #ifndef CONFIG_NO_RRM
+-	/* A full-MAC driver may expose only host-managed neighbor reports. */
++	/* A full-MAC driver may expose host-managed neighbor reports. */
+ 	if ((wpa_s->drv_rrm_flags & WPA_DRIVER_FLAGS_SUPPORT_RRM) &&
+-	    (wpa_s->drv_rrm_flags & WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY) &&
++	    (wpa_s->drv_rrm_flags & (WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY |
++				      WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT)) &&
+ 	    bss && (bss->caps & IEEE80211_CAP_RRM)) {
+ 		const u8 *rrm = wpa_bss_get_ie(bss, WLAN_EID_RRM_ENABLED_CAPABILITIES);
+ 
+--- wpa_supplicant/sme.c.orig
++++ wpa_supplicant/sme.c
+@@ -748,7 +748,8 @@
+ 	    !(wpa_s->drv_rrm_flags & WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY))
+ 		*pos |= WLAN_RRM_CAPS_LINK_MEASUREMENT;
+ 
+-	if (wpa_s->drv_rrm_flags & WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY)
++	if (wpa_s->drv_rrm_flags & (WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT_ONLY |
++				    WPA_DRIVER_FLAGS_RRM_NEIGHBOR_REPORT))
+ 		*pos |= WLAN_RRM_CAPS_NEIGHBOR_REPORT;
+ 	else
+ 		*pos |= WLAN_RRM_CAPS_BEACON_REPORT_PASSIVE |
