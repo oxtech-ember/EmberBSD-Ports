@@ -56,7 +56,7 @@ struct bsd_driver_data {
     uint64_t sta_assoc_epoch, sta_assoc_retired_epoch;
     u8 sta_assoc_bssid[ETH_ALEN];
     int sta_assoc_versioned;
-    int sae_active;
+    int sae_active, sae_configured, sae_blocked;
 };
 static int bsd_set80211(struct bsd_driver_data *d, int op, int val,
                         const void *arg, int len) {
@@ -94,6 +94,7 @@ int main(void) {
            mlme.im_macaddr[1] == 9);
     d.sta_assoc_epoch = 41; d.sta_assoc_versioned = 1;
     memcpy(d.sta_assoc_bssid, bssid, ETH_ALEN); d.sae_active = 1;
+    d.sae_configured = 1;
     e = event(40, bssid);
     assert(!bsd_sta_disassoc_event(&d, &e, sizeof(e)) && d.sta_assoc_epoch == 41);
     e = event(41, bssid);
@@ -110,7 +111,7 @@ int main(void) {
     assert(d.sta_assoc_epoch == 41 && d.sae_active);
     assert(bsd_sta_disassoc_event(&d, unaligned + 1, sizeof(e)));
     assert(!d.sta_assoc_epoch && d.sta_assoc_retired_epoch == 41 &&
-           !d.sae_active);
+           !d.sae_active && d.sae_blocked);
     assert(!bsd_sta_disassoc_event(&d, &e, sizeof(e)));
     assert(!bsd_sta_assoc_event(&d, &e, sizeof(e)));
     e = event(40, bssid);

@@ -107,7 +107,8 @@ preparation recipe, including the current Ports patch set.
 `t-bsd-association-epoch.py` executes the patched MLME version helper and
 association-event lifecycle helpers, including unaligned input, current and
 stale disconnects, autonomous retirement before ASSOC, same-epoch BSSID
-validation, and interface-lifetime reset. Use the same prepared source tree:
+validation, interface-lifetime reset, and configured SAE blocking before
+disconnect notification. Use the same prepared source tree:
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-bsd-association-epoch.py \
@@ -118,3 +119,16 @@ validation, and interface-lifetime reset. Use the same prepared source tree:
 
 Run once with the default optimized flags and once with
 `--cflags='-O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all'`.
+
+`t-bsd-sta-port.py` executes the production controlled-port callback in both
+profiles. The legacy path rejects non-boolean authorization before ioctl, treats
+EOPNOTSUPP/ENOTTY/EINVAL as absent optional capability, and propagates transport
+and setter errors. The SAE key-epoch path uses mandatory `IEEE80211_SAE_SET_PORT`,
+propagates its failure, and never falls back to `IEEE80211_IOC_STA_PORT`; a
+blocked SAE association cannot open the port.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B pkgsrc/net/wpa_supplicant/tests/t-bsd-sta-port.py \
+    --cc "$HOST_PREFIX/bin/clang" \
+    --source "$WPA_SOURCE/src/drivers/driver_bsd.c"
+```
