@@ -703,18 +703,18 @@ Origin: EmberBSD BSD net80211 adapter; retains the OS SAE/key-epoch and platform
 +bsd_set_supp_port(void *priv, int authorized)
 +{
 +	struct bsd_driver_data *drv = priv;
-+	u8 value;
 +
 +	if (authorized != 0 && authorized != 1)
 +		return -1;
-+	value = (u8) authorized;
 +#if defined(IEEE80211_IOC_SAE) && defined(CONFIG_SAE)
 +	if (!drv->sae_active && drv->sae_blocked)
 +		return -1;
 +#ifdef IEEE80211_SAE_CAP_KEY_EPOCH
-+	if (drv->sae_active && drv->sae_key_epoch)
++	if (drv->sae_active && drv->sae_key_epoch) {
++		u8 value = (u8) authorized;
 +		return bsd_sae_request(drv, IEEE80211_SAE_SET_PORT,
 +				       &value, sizeof(value));
++	}
 +#endif
 +#endif
 +#ifdef IEEE80211_IOC_STA_PORT
@@ -731,7 +731,7 @@ Origin: EmberBSD BSD net80211 adapter; retains the OS SAE/key-epoch and platform
 +		}
 +		if (req.i_val != 1)
 +			return -1;
-+		return set80211param(drv, IEEE80211_IOC_STA_PORT, value);
++		return set80211param(drv, IEEE80211_IOC_STA_PORT, authorized);
 +	}
 +#else
 +	(void) drv;

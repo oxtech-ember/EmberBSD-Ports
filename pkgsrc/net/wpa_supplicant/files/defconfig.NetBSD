@@ -1,2 +1,7 @@
-# for NetBSD
+# for NetBSD and EmberBSD's BSD net80211 supplicant target
 CONFIG_DRIVER_BSD=y
+# WPA3 station authentication and the host SME glue used by this target.
+CONFIG_SAE=y
+NEED_SME=y
+# Client WNM enables BSS Transition management; RRM remains enabled by default.
+CONFIG_WNM=y
