@@ -31,6 +31,13 @@ interfaces use the resulting CLI-built XSPICE model modules. Their native
 ELF payloads match the shared-build modules after excluding debug data and
 build IDs. The installed shared-API check exercises this common module set.
 
+HICUM contributes C++ objects to both the shared library and CLI. Their final
+Libtool links use the selected C++ driver, so each binary records the matching
+target C++ runtime in `DT_NEEDED`; do not infer that runtime from whether a
+`libstdc++` library happens to be present. Check the shared library with
+`tests/cxx-runtime-needed.sh READELF LIBNGSPICE EXPECTED_RUNTIME`, for example
+`tests/cxx-runtime-needed.sh /path/to/llvm-readelf /path/to/libngspice.so libc++.so.1`.
+
 A target build must use the common GCC16 compiler, the verified EmberBSD
 sysroot, the matching GCC16 runtime and a native XSPICE generator. Never
 execute the cross-built generator. Use the common target Libtool profile

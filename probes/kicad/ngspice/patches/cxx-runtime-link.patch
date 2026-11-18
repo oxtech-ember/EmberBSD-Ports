@@ -1,0 +1,79 @@
+--- a/configure.ac
++++ b/configure.ac
+@@ -858,11 +858,7 @@
+ AM_CONDITIONAL([NO_X], [test "x$has_no_x" = xtrue])
+ AM_CONDITIONAL([NO_HELP], [test "x$has_no_help" = xtrue])
+ 
+-# Additional libs of hicum group
+-AC_CHECK_LIB(stdc++, main, XTRALIBS="$XTRALIBS -lstdc++",,)
+-AC_SUBST(XTRALIBS, $XTRALIBS)
+-
+-LIBS="$LIBS $XTRALIBS"
++# HICUM C++ objects are linked by the selected C++ driver.
+ 
+ # enabling making of the old and outdated applications
+ # ngsconvert ngproc2mod ngmultidec ngmakeidx nghelp
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -125,6 +125,11 @@
+ ngspice_LDFLAGS = 
+ endif
+ 
++# HICUM contributes C++ objects; let the selected C++ driver add its runtime.
++ngspice_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
++	$(LIBTOOLFLAGS) --mode=link $(CXX) $(AM_CXXFLAGS) $(CXXFLAGS) \
++	$(AM_CFLAGS) $(CFLAGS) $(ngspice_LDFLAGS) $(LDFLAGS) -o $@
++
+ ngspice_LDADD = \
+ 	frontend/libfte.la
+ 
+@@ -591,7 +596,11 @@
+ libngspice_la_CFLAGS = -shared
+ 
+ libngspice_la_LDFLAGS =  -shared
+-libngspice_la_LDFLAGS +=  -lstdc++
++
++# HICUM contributes C++ objects; use the selected C++ driver/runtime.
++libngspice_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
++	$(LIBTOOLFLAGS) --mode=link $(CXX) $(libngspice_la_CFLAGS) \
++	$(CXXFLAGS) $(CFLAGS) $(libngspice_la_LDFLAGS) $(LDFLAGS) -o $@
+ 
+ if SHWIN
+ libngspice_la_LDFLAGS += -Wl,--output-def=ngspice.def  -Wl,--out-implib=ngspice.dll.a
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -302,9 +302,9 @@
+ am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
+ am__v_lt_0 = --silent
+ am__v_lt_1 = 
+-libngspice_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libngspice_la_CFLAGS) \
+-	$(CFLAGS) $(libngspice_la_LDFLAGS) $(LDFLAGS) -o $@
++libngspice_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
++	$(LIBTOOLFLAGS) --mode=link $(CXX) $(libngspice_la_CFLAGS) \
++	$(CXXFLAGS) $(CFLAGS) $(libngspice_la_LDFLAGS) $(LDFLAGS) -o $@
+ @SHARED_MODULE_TRUE@am_libngspice_la_rpath = -rpath $(libdir)
+ @TCL_MODULE_TRUE@libspice_la_DEPENDENCIES = frontend/libfte.la \
+ @TCL_MODULE_TRUE@	$(am__append_25) \
+@@ -408,9 +408,9 @@
+ 	maths/fft/libmathfft.la maths/poly/libpoly.la \
+ 	maths/ni/libni.la $(am__append_14) maths/sparse/libsparse.la \
+ 	misc/libmisc.la $(am__append_15) $(am__append_16)
+-ngspice_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+-	$(ngspice_LDFLAGS) $(LDFLAGS) -o $@
++ngspice_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
++	$(LIBTOOLFLAGS) --mode=link $(CXX) $(AM_CXXFLAGS) $(CXXFLAGS) \
++	$(AM_CFLAGS) $(CFLAGS) $(ngspice_LDFLAGS) $(LDFLAGS) -o $@
+ AM_V_P = $(am__v_P_@AM_V@)
+ am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
+ am__v_P_0 = false
+@@ -902,7 +902,7 @@
+ @SHARED_MODULE_TRUE@	maths/sparse/libsparse.la misc/libmisc.la \
+ @SHARED_MODULE_TRUE@	$(LIBS) $(OPENMP_CFLAGS) $(am__append_43)
+ @SHARED_MODULE_TRUE@libngspice_la_CFLAGS = -shared
+-@SHARED_MODULE_TRUE@libngspice_la_LDFLAGS = -shared -lstdc++ \
++@SHARED_MODULE_TRUE@libngspice_la_LDFLAGS = -shared \
+ @SHARED_MODULE_TRUE@	$(am__append_44) $(am__append_46) \
+ @SHARED_MODULE_TRUE@	-version-info \
+ @SHARED_MODULE_TRUE@	$(LT_NGSPICE_CURRENT):$(LT_NGSPICE_REVISION):$(LT_NGSPICE_AGE)
