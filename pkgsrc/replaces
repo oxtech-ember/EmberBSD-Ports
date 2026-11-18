@@ -545,6 +545,9 @@ security/libfido2
 
 security/zxcvbn-c
 
+# Current shared PEGTL parser templates.
+textproc/PEGTL
+
 graphics/glad
 sysutils/cpuinfo
 
