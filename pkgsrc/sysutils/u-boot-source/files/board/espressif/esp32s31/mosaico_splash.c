@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Opt-in U-Boot command for the ESP32-S31 Mosaico LCD diagnostic.
+ * MMIO and timing for the Mosaico panel and its optional diagnostic command.
  */
 
 #include <command.h>
@@ -41,15 +41,17 @@ mosaico_delay_us(void *cookie, uint32_t usec)
 	udelay(usec);
 }
 
+const struct mosaico_splash_io mosaico_panel_io = {
+	.read32 = mosaico_read32,
+	.write32 = mosaico_write32,
+	.time_ms = mosaico_time_ms,
+	.delay_us = mosaico_delay_us,
+};
+
+#if IS_ENABLED(CONFIG_ESP32S31_MOSAICO_SPLASH)
 static int do_mosaico_splash(struct cmd_tbl *cmdtp, int flag, int argc,
     char *const argv[])
 {
-	static const struct mosaico_splash_io io = {
-		.read32 = mosaico_read32,
-		.write32 = mosaico_write32,
-		.time_ms = mosaico_time_ms,
-		.delay_us = mosaico_delay_us,
-	};
 	int error;
 
 	(void)cmdtp;
@@ -57,7 +59,7 @@ static int do_mosaico_splash(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (argc != 2 || strcmp(argv[1], "red") != 0)
 		return CMD_RET_USAGE;
 
-	error = mosaico_splash_run(&io, 0xf800);
+	error = mosaico_splash_run(&mosaico_panel_io, 0xf800);
 	if (error != 0) {
 		printf("Mosaico splash diagnostic failed (%d)\n", error);
 		return CMD_RET_FAILURE;
@@ -71,3 +73,4 @@ U_BOOT_CMD(
 	"send a solid-color field to the Mosaico LCD (diagnostic only)",
 	"red"
 );
+#endif

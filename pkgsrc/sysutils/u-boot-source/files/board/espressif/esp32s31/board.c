@@ -14,6 +14,9 @@
 #include <asm/global_data.h>
 
 #include "psram-layout.h"
+#if IS_ENABLED(CONFIG_ESP32S31_MOSAICO_BOOT_DISPLAY)
+#include "mosaico_splash_core.h"
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -93,6 +96,9 @@ static bool s31_fit_payload_ready(const void *fdt, const char *path,
 int board_late_init(void)
 {
 	puts("ESP32-S31 U-Boot active\n");
+#if IS_ENABLED(CONFIG_ESP32S31_MOSAICO_BOOT_DISPLAY)
+	mosaico_boot_display_init();
+#endif
 
 #if IS_ENABLED(CONFIG_ESP32S31_NOR_BOOT)
 	const char *root_mode, *bootargs;

@@ -167,6 +167,33 @@ hash checks validate that image. The host checks cover separate code contracts:
   producer, FIT format or boot chain changes, or for explicit image
   qualification; it is not needed for each payload-only update.
 
+### Boot messages on the Mosaico V1.2 display
+
+For a Mosaico booting from NOR, apply the display fragment to the NOR profile.
+Run the upstream merge script with the native Ports GNU tools on the search
+path, including `readlink`, `sed` and `cp` under their GNU names.
+
+```sh
+"$HOST_PREFIX/bin/gmake" -C "$SOURCE" O="$OBJDIR" espressif_esp32s31_nor_defconfig
+"$SOURCE/scripts/kconfig/merge_config.sh" -m -O "$OBJDIR" \
+    "$OBJDIR/.config" \
+    "$SOURCE/configs/espressif_esp32s31_mosaico_boot_display.fragment"
+"$HOST_PREFIX/bin/gmake" -C "$SOURCE" O="$OBJDIR" olddefconfig
+```
+
+U-Boot proper powers the CO5300 panel and draws the EmberBSD logo.
+Its bootstage callbacks update the status when kernel image processing starts,
+when the kernel has loaded and when U-Boot hands over control. A bootstage
+error displays a message directing the operator to the UART console.
+The renderer uses pairs of scanlines and the U-Boot 8×16 font.
+The profile selects U-Boot's compact SHA-256 implementation to keep the
+loader and its BSS below the firmware device tree at `0x50430000`.
+The palette and bitmap come from the [EmberBSD boot artwork](https://github.com/oxtech-ember/EmberBSD/blob/782e89a1839e6f22d3312c31e4b1dec0c9f233c2/ember/boot/emberbsd-boot-logo.png).
+
+SPL and OpenSBI precede the first display update. UART carries the detailed
+boot output throughout. Display initialization or transfer failure leaves
+the boot sequence running. The kernel reinitializes the panel on attach.
+
 ### Opt-in Mosaico LCD command
 
 The S31 proper board has an off-by-default `ESP32S31_MOSAICO_SPLASH` option.
@@ -246,7 +273,7 @@ for check in test-sha256.py test-spl-strings.py test-fit-flow.py \
     test-mips-endian.py test-prof-align.py test-env-awk.py \
     test-spl-nor-bounds.py test-s31-nor-map.py test-s31-nor-capacity.py \
     test-s31-nor-order.py \
-    test-s31-mosaico-splash.py \
+    test-s31-mosaico-splash.py test-s31-boot-display.py \
     test-s31-nor-bootcmd.py test-s31-nor-attach.py; do
     "$HOST_PREFIX/bin/python3.15" "tests/$check" \
         --source "$SOURCE" --host-prefix "$HOST_PREFIX" || exit 1

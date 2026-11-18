@@ -13,6 +13,6 @@ obj-y	+= spl_psram.o
 else
 obj-y	+= board.o
 obj-y	+= cache.o
-obj-$(CONFIG_ESP32S31_MOSAICO_SPLASH) += mosaico_splash.o
-obj-$(CONFIG_ESP32S31_MOSAICO_SPLASH) += mosaico_splash_core.o
+obj-$(CONFIG_ESP32S31_MOSAICO_PANEL) += mosaico_splash.o mosaico_splash_core.o
+obj-$(CONFIG_ESP32S31_MOSAICO_BOOT_DISPLAY) += mosaico_boot_display.o
 endif

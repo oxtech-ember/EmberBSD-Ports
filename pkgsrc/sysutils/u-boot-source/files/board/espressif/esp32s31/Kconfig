@@ -37,12 +37,25 @@ config ESP32S31_NOR_BOOT
 	bool "Boot the mapped NOR FIT before UART recovery"
 	depends on ESP32S31_NOR_MAP && SPL_NOR_SUPPORT
 
+config ESP32S31_MOSAICO_PANEL
+	bool
+
 config ESP32S31_MOSAICO_SPLASH
 	bool "Enable the opt-in Mosaico LCD splash diagnostic command"
 	depends on CMDLINE
+	select ESP32S31_MOSAICO_PANEL
 	default n
 	help
 	  Add the mosaicosplash command to U-Boot proper for an explicit
 	  pre-kernel LCD diagnostic. It is never run automatically.
+
+config ESP32S31_MOSAICO_BOOT_DISPLAY
+	bool "Show the EmberBSD logo and boot stages on the Mosaico display"
+	depends on BOARD_LATE_INIT
+	select ESP32S31_MOSAICO_PANEL
+	select SHOW_BOOT_PROGRESS
+	help
+	  Enable on Mosaico boards with the 480x480 CO5300. The display starts
+	  in U-Boot proper and follows bootm events. UART remains available.
 
 endif

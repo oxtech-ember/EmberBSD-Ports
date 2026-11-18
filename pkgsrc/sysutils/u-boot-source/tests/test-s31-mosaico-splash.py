@@ -42,7 +42,7 @@ struct mock {{
     struct reg regs[MAX_REGS]; unsigned int nregs;
     struct tx initial[MAX_TX], last, last_quad; unsigned int ntx, quad_count;
     uint8_t fifo[64]; uint32_t command; unsigned int now, delays[4], ndelays;
-    int stall; unsigned int updates;
+    size_t pair_left; int stall, pair_mode; unsigned int updates;
 }};
 
 static uint32_t getreg(struct mock *m, uintptr_t a) {{
@@ -82,9 +82,17 @@ static void wr(void *cookie, uintptr_t a, uint32_t v) {{
             assert(t.bytes > 0 && t.bytes <= sizeof(m->fifo));
             memcpy(t.first, m->fifo, sizeof(t.first));
             if (t.lines == 4) {{
-                assert(t.bytes == 64U);
                 assert((getreg(m, REG_CTRL) & ((1U << 15) | (0xfU << 18))) == ((1U << 15) | (0xfU << 18)));
-                assert(t.keep == (m->quad_count < 7199U));
+                if (m->pair_mode) {{
+                    unsigned int expected = m->pair_left < 64U ?
+                        m->pair_left : 64U;
+                    assert(t.bytes == expected && expected != 0);
+                    assert(t.keep == (m->pair_left > t.bytes));
+                    m->pair_left -= t.bytes;
+                }} else {{
+                    assert(t.bytes == 64U);
+                    assert(t.keep == (m->quad_count < 7199U));
+                }}
                 for (i = 0; i < t.bytes; i += 2) assert(m->fifo[i] == 0xf8 && m->fifo[i + 1] == 0x00);
                 m->quad_count++;
                 m->last_quad = t;
@@ -154,6 +162,62 @@ int main(void) {{
     assert(getreg(&m, GPIO_BASE + 0x44U) & (1U << 28));
     assert(getreg(&m, GPIO_BASE + 0x38U) & (1U << 9));
     assert(getreg(&m, CLK_BASE + 0x6cU) & (1U << 23));
+
+    memset(&m, 0, sizeof(m)); m.pair_mode = 1; m.pair_left = 64;
+    {{
+        uint8_t pair[16U * 4U];
+        memset(pair, 0xf8, sizeof(pair));
+        for (i = 1; i < sizeof(pair); i += 2) pair[i] = 0;
+        assert(mosaico_splash_write_pair(&io, 4, 6, 16, pair) == 0);
+    }}
+    assert(m.ntx == 4 && m.updates == 4);
+    assert(m.initial[0].lines == 1 && m.initial[0].bytes == 8 &&
+        !m.initial[0].keep);
+    assert(memcmp(m.initial[0].first,
+        (const uint8_t[]){{0x02,0x00,0x2a,0x00,0x00,0x04,0x00,0x13}}, 8) == 0);
+    assert(m.initial[1].lines == 1 && m.initial[1].bytes == 8 &&
+        !m.initial[1].keep);
+    assert(memcmp(m.initial[1].first,
+        (const uint8_t[]){{0x02,0x00,0x2b,0x00,0x00,0x06,0x00,0x07}}, 8) == 0);
+    assert(m.initial[2].lines == 1 && m.initial[2].bytes == 4 &&
+        m.initial[2].keep);
+    assert(memcmp(m.initial[2].first,
+        (const uint8_t[]){{0x32,0x00,0x2c,0x00}}, 4) == 0);
+    assert(m.initial[3].lines == 4 && m.initial[3].bytes == 64 &&
+        !m.initial[3].keep && m.last_quad.bytes == 64 && m.pair_left == 0);
+
+    memset(&m, 0, sizeof(m)); m.pair_mode = 1; m.pair_left = 80;
+    {{
+        uint8_t pair[20U * 4U];
+        memset(pair, 0xf8, sizeof(pair));
+        for (i = 1; i < sizeof(pair); i += 2) pair[i] = 0;
+        assert(mosaico_splash_write_pair(&io, 256, 258, 20, pair) == 0);
+    }}
+    assert(m.ntx == 5 && m.updates == 5 && m.pair_left == 0);
+    assert(memcmp(m.initial[0].first,
+        (const uint8_t[]){{0x02,0x00,0x2a,0x00,0x01,0x00,0x01,0x13}}, 8) == 0);
+    assert(memcmp(m.initial[1].first,
+        (const uint8_t[]){{0x02,0x00,0x2b,0x00,0x01,0x02,0x01,0x03}}, 8) == 0);
+    assert(m.initial[2].bytes == 4 && m.initial[2].keep &&
+        memcmp(m.initial[2].first,
+        (const uint8_t[]){{0x32,0x00,0x2c,0x00}}, 4) == 0);
+    assert(m.initial[3].lines == 4 && m.initial[3].bytes == 64 &&
+        m.initial[3].keep);
+    assert(m.initial[4].lines == 4 && m.initial[4].bytes == 16 &&
+        !m.initial[4].keep);
+    assert(m.last_quad.bytes == 16 && !m.last_quad.keep);
+
+    memset(&m, 0, sizeof(m));
+    {{
+        uint8_t pair[8U * 4U] = {{0}};
+        assert(mosaico_splash_write_pair(&io, 476, 0, 8, pair) != 0);
+        assert(m.ntx == 0);
+        assert(mosaico_splash_write_pair(&io, 0, 479, 8, pair) != 0);
+        assert(m.ntx == 0);
+        assert(mosaico_splash_write_pair(&io, 1, 0, 4, pair) != 0);
+        assert(mosaico_splash_write_pair(&io, 0, 1, 8, pair) != 0);
+        assert(m.ntx == 0);
+    }}
 
     memset(&m, 0, sizeof(m)); m.stall = 1;
     assert(mosaico_splash_run(&io, 0xf800) != 0);

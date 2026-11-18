@@ -208,10 +208,12 @@ lcd_command(const struct mosaico_splash_io *io, uint8_t command,
 }
 
 static int
-lcd_set_window(const struct mosaico_splash_io *io)
+lcd_set_window(const struct mosaico_splash_io *io, unsigned int x,
+    unsigned int y, unsigned int width, unsigned int height)
 {
-	static const uint8_t columns[] = { 0x00, 0x00, 0x01, 0xdf };
-	static const uint8_t rows[] = { 0x00, 0x00, 0x01, 0xdf };
+	unsigned int xe = x + width - 1, ye = y + height - 1;
+	const uint8_t columns[] = { x >> 8, x, xe >> 8, xe };
+	const uint8_t rows[] = { y >> 8, y, ye >> 8, ye };
 	int error;
 
 	error = lcd_command(io, 0x2a, columns, sizeof(columns));
@@ -221,14 +223,42 @@ lcd_set_window(const struct mosaico_splash_io *io)
 }
 
 static int
+lcd_begin_pixels(const struct mosaico_splash_io *io)
+{
+	static const uint8_t prefix[] = { 0x32, 0x00, 0x2c, 0x00 };
+
+	return spi_tx(io, prefix, sizeof(prefix), 1, true);
+}
+
+/* The CO5300 accepts four-column aligned windows of whole row pairs. */
+int
+mosaico_splash_write_pair(const struct mosaico_splash_io *io, unsigned int x,
+    unsigned int y, unsigned int width, const uint8_t *pixels)
+{
+	size_t left, n;
+
+	if (pixels == NULL || width == 0 || width > LCD_WIDTH ||
+	    x > LCD_WIDTH - width || y > LCD_HEIGHT - 2 ||
+	    ((x | width) & 3) || (y & 1))
+		return -1;
+	if (lcd_set_window(io, x, y, width, 2) || lcd_begin_pixels(io))
+		return -1;
+	for (left = width * 4; left != 0; left -= n, pixels += n) {
+		n = left < SPI_FIFO_BYTES ? left : SPI_FIFO_BYTES;
+		if (spi_tx(io, pixels, n, 4, n < left))
+			return -1;
+	}
+	return 0;
+}
+
+static int
 lcd_write_solid(const struct mosaico_splash_io *io, uint16_t rgb565)
 {
-	uint8_t prefix[] = { 0x32, 0x00, 0x2c, 0x00 };
 	uint8_t pixels[SPI_FIFO_BYTES];
 	unsigned int chunk, chunks = LCD_WIDTH * LCD_HEIGHT * 2U /
 	    SPI_FIFO_BYTES;
 
-	if (spi_tx(io, prefix, sizeof(prefix), 1, true) != 0)
+	if (lcd_begin_pixels(io) != 0)
 		return -1;
 	for (chunk = 0; chunk < sizeof(pixels); chunk += 2U) {
 		pixels[chunk] = (uint8_t)(rgb565 >> 8);
@@ -300,7 +330,8 @@ mosaico_splash_run(const struct mosaico_splash_io *io, uint16_t rgb565)
 		if (error != 0)
 			return error;
 	}
-	if (lcd_set_window(io) != 0 || lcd_write_solid(io, rgb565) != 0)
+	if (lcd_set_window(io, 0, 0, LCD_WIDTH, LCD_HEIGHT) != 0 ||
+	    lcd_write_solid(io, rgb565) != 0)
 		return -1;
 	return lcd_command(io, 0x29, NULL, 0);
 }

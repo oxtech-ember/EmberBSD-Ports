@@ -27,5 +27,10 @@ struct mosaico_splash_io {
 };
 
 int mosaico_splash_run(const struct mosaico_splash_io *io, uint16_t rgb565);
+int mosaico_splash_write_pair(const struct mosaico_splash_io *, unsigned int x,
+    unsigned int y, unsigned int width, const uint8_t *pixels);
+
+extern const struct mosaico_splash_io mosaico_panel_io;
+void mosaico_boot_display_init(void);
 
 #endif
