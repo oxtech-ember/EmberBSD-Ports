@@ -62,14 +62,24 @@ Run `python3.15 check-resources.py` for default, boundary and invalid-input chec
 
 The default `query` profile selects a small runtime from a verified extraction.
 Use `--base-profile full --base-sha256 SHA256` with the matching base set archive
-for complete base userland. The archive must come from the same fork revision
-as `EMBERBSD_BASE_REVISION` and the accepted kernel. The builder verifies the
-archive SHA256. It does not establish the archive's build provenance for you.
-Do not supply a compiler set or a package tree as the base input.
+for complete base userland. Also pass the release `manifest.json` from the same
+release with `--release-manifest` and that release's `etc.tar.xz` with
+`--etc-archive`, plus the SHA256 of `manifest.json` from the authenticated
+release asset metadata with `--release-manifest-sha256`. The builder verifies
+that digest before parsing the manifest, binds the source revision, base, etc
+and kernel digests, and derives the permitted base runtime overlay from the
+embedded SDK runtime receipt. It stages configuration from the matching release etc set,
+then rebuilds password databases after adding the test user. Do not supply a
+compiler set or a package tree as the base input. The only `usr/pkg` payload
+accepted is the runtime inventory assigned to the base by the pinned SDK
+receipt; other package payloads are rejected.
 
 ```sh
 python3.15 build.py --sdk-source /absolute/SDK \
-  --base-profile full --base-sha256 BASE_ARCHIVE_SHA256 --stage-only \
+  --base-profile full --base-sha256 BASE_ARCHIVE_SHA256 \
+  --release-manifest /absolute/release/manifest.json \
+  --release-manifest-sha256 RELEASE_MANIFEST_SHA256 \
+  --etc-archive /absolute/release/etc.tar.xz --stage-only \
   /absolute/base.tar.xz /absolute/kernel.gz /absolute/os-source \
   /absolute/host-tools /absolute/new-private-staging
 ```

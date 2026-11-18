@@ -17,6 +17,11 @@ def main():
     cli = parser(__doc__, ['base', 'kernel_gz', 'os_repository', 'netbsd_tools', 'new_work'])
     cli.add_argument('--base-profile', choices=['query', 'full'], default='query')
     cli.add_argument('--base-sha256', help='Required full-base archive SHA256')
+    cli.add_argument('--release-manifest', type=Path,
+                     help='Pinned release manifest containing the base artifact and SDK runtime receipt')
+    cli.add_argument('--release-manifest-sha256', help='Required digest from the authenticated release asset metadata')
+    cli.add_argument('--etc-archive', type=Path,
+                     help='Matching release etc.tar.xz set for the full base profile')
     cli.add_argument('--stage-only', action='store_true', help='Prepare staging and metadata without an image')
     args = cli.parse_args()
     full = args.base_profile == 'full'
@@ -25,10 +30,14 @@ def main():
     inventory, jsonio, paths, process, identity = sdk(args.sdk_source)
     from emberbsd_sdk.errors import CommandError, SDKError
     base, kernel, source, tools = map(canonical, [args.base, args.kernel_gz, args.os_repository, args.netbsd_tools])
+    release_manifest = canonical(args.release_manifest) if args.release_manifest else None
+    etc_archive = canonical(args.etc_archive) if args.etc_archive else None
     work = Path(paths.canonical_new(args.new_work))
     if not args.new_work.is_absolute() or work != args.new_work or work.is_symlink() or work.exists():
         raise ValueError('Use a new absolute canonical work directory.')
-    for path in (base, kernel, source, tools, args.sdk_source):
+    for path in (base, kernel, source, tools, args.sdk_source, release_manifest, etc_archive):
+        if path is None:
+            continue
         paths.reject_overlap(str(work), str(path))
     revision = os.environ['EMBERBSD_BASE_REVISION']
     kernel_hash = os.environ['EMBERBSD_KERNEL_SHA256']
@@ -36,9 +45,49 @@ def main():
         raise ValueError('invalid source revision')
     if not re.fullmatch('[0-9a-f]{64}', kernel_hash) or inventory.sha256_file(kernel) != kernel_hash:
         raise ValueError('kernel hash mismatch')
-    entries = full_base.records(base, args.base_sha256) if full else None
-    if not full and args.base_sha256:
-        raise ValueError('--base-sha256 requires --base-profile full.')
+    runtime_inventory = None
+    release_manifest_hash = None
+    etc_entries = None
+    if full:
+        if release_manifest is None or not args.release_manifest_sha256 or etc_archive is None:
+            raise ValueError('--release-manifest, --release-manifest-sha256 and --etc-archive are required for a full base profile.')
+        release_manifest_hash = full_base.verify_release_manifest(release_manifest,
+                                                                  args.release_manifest_sha256)
+        release = jsonio.read_json(str(release_manifest))
+        if (release.get('source_commit') != revision or release.get('architecture') != 'aarch64' or
+                release.get('machine') != 'evbarm'):
+            raise ValueError('Release manifest identity differs from the selected AArch64 OS revision.')
+        artifacts = {row.get('name'): row.get('sha256') for row in release.get('files', [])}
+        if (artifacts.get(base.name) != args.base_sha256 or artifacts.get(kernel.name) != kernel_hash or
+                not artifacts.get(etc_archive.name)):
+            raise ValueError('Base, kernel or etc set differs from the pinned release manifest.')
+        profile = release.get('build_profile', {})
+        if profile.get('source_commit') != revision or profile.get('architecture') != 'aarch64':
+            raise ValueError('Release build profile differs from the selected OS revision.')
+        try:
+            runtime = profile['sdk_receipt']['signature']['runtime']
+            from emberbsd_sdk.llvm_runtime_sets import runtime_set_plan
+            runtime_sets = runtime_set_plan(runtime)
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError('Release manifest has no valid SDK runtime inventory.') from error
+        prefix = runtime['manifest']['prefix']
+        runtime_inventory = {}
+        for name, destination in runtime_sets.items():
+            if destination != 'base' or not name.startswith(prefix + '/'):
+                continue
+            relative = name[len(prefix) + 1:]
+            row = runtime['inventory'].get(relative)
+            if row is None:
+                raise ValueError('SDK runtime set references a missing inventory row: ' + name)
+            runtime_inventory[name] = row
+        runtime_inventory[prefix] = {'kind': 'directory', 'mode': runtime['root_mode']}
+        runtime_inventory['usr/pkg'] = {'kind': 'directory'}
+        entries = full_base.records(base, args.base_sha256, runtime_inventory)
+        etc_entries = full_base.etc_records(etc_archive, artifacts[etc_archive.name])
+    else:
+        entries = None
+        if args.base_sha256 or release_manifest or args.release_manifest_sha256 or etc_archive:
+            raise ValueError('--base-sha256, --release-manifest, --release-manifest-sha256 and --etc-archive require --base-profile full.')
     port = integer(os.environ.get('EMBERBSD_QUERY_PORT', '22614'), 1024, 65535, 'SSH port')
     disk_mib = integer(os.environ.get('EMBERBSD_QUERY_DISK_MIB', '384'), 384, 16384, 'disk MiB')
     free_inodes = integer(os.environ.get('EMBERBSD_QUERY_FREE_INODES', '16000'), 16000, 1000000, 'inode reserve')
@@ -73,6 +122,7 @@ def main():
     if full:
         base_details['source_archive_sha256'] = full_base.source_tree(source, revision, work, run)
         base_details['source_paths'] = full_base.SOURCE_PATHS
+        base_details['etc_archive_sha256'] = artifacts[etc_archive.name]
     source_files = ['etc/group', 'etc/master.passwd', 'etc/services', 'etc/protocols', 'etc/mtree/NetBSD.dist.base',
         'etc/MAKEDEV.awk', 'etc/MAKEDEV.tmpl', 'etc/etc.aarch64/MAKEDEV.conf', 'sys/conf/majors',
         'sys/arch/aarch64/conf/majors.aarch64', 'sys/arch/aarch64/include/disklabel.h',
@@ -111,7 +161,13 @@ def main():
     if full:
         origins[str(base)] = args.base_sha256
         base_details['payload_sha256'] = full_base.stage(base, entries, root)
-        base_details['etc_environment'] = full_base.install_etc(work, tools, source, revision, run)
+        base_details['etc_environment'] = full_base.install_directories(work, tools, source, revision, run)
+        base_details['etc_payload_sha256'] = full_base.stage_etc(etc_archive, etc_entries, root)
+        origins[str(etc_archive)] = artifacts[etc_archive.name]
+        with (work / 'artifacts/etc.mtree').open('a') as stream:
+            stream.write(full_base.metadata({name: entry for name, entry in etc_entries.items() if not entry.isdir()}))
+        base_details['release_manifest_sha256'] = release_manifest_hash
+        base_details['runtime_inventory'] = runtime_inventory
     else:
         for directory in ['lib', 'libexec', 'usr/lib/i18n', 'usr/share/i18n', 'usr/share/locale']:
             directory = base / directory

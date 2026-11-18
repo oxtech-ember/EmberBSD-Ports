@@ -18,7 +18,6 @@ SOURCE_PATHS = [
     'sys/sys/param.h', 'sys/arch/aarch64/include', 'sys/arch/arm/include',
     'sys/arch/evbarm/conf/mk.generic64', 'sys/arch/aarch64/conf/majors.aarch64',
     'external/bsd/dhcpcd/Makefile.inc', 'external/bsd/dhcpcd/sbin/dhcpcd/Makefile',
-    'external/bsd/dhcpcd/dist/src/dhcpcd.conf',
     'external/bsd/zstd/Makefile.zstd', 'external/bsd/zstd/lib/Makefile',
     'usr.bin/Makefile.inc', 'usr.bin/mail/Makefile', 'usr.bin/mail/misc/mail.rc',
     'usr.sbin/Makefile.inc', 'usr.sbin/certctl', 'usr.sbin/pf/Makefile',
@@ -51,7 +50,18 @@ def escape(value):
                    for byte in value.encode('utf-8'))
 
 
-def records(archive, expected):
+def verify_release_manifest(archive, expected):
+    """Require the externally authenticated release-manifest digest before parsing it."""
+    if not re.fullmatch('[0-9a-f]{64}', expected or ''):
+        raise ValueError('Full base requires an explicit release-manifest SHA256.')
+    with Path(archive).open('rb') as stream:
+        actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+    if actual != expected:
+        raise ValueError('Release manifest SHA256 mismatch.')
+    return actual
+
+
+def records(archive, expected, runtime_inventory=None):
     if not re.fullmatch('[0-9a-f]{64}', expected or ''):
         raise ValueError('Full base requires an explicit archive SHA256.')
     with archive.open('rb') as stream:
@@ -68,8 +78,28 @@ def records(archive, expected):
             entries[name] = entry
     if '.' not in entries or not entries['.'].isdir() or entries['.'].uid != 0 or entries['.'].gid != 0 or entries['.'].mode & 0o7777 != 0o755:
         raise ValueError('Full base requires canonical root:wheel/0755 metadata.')
-    if COMPILERS.intersection(entries) or any(n.startswith('usr/pkg/') for n in entries):
+    runtime_paths = {name: entry for name, entry in entries.items()
+                     if name.startswith('usr/pkg/') or name == 'usr/pkg'}
+    if COMPILERS.intersection(entries) or (runtime_paths and not runtime_inventory):
         raise ValueError('Use a base set without compiler commands or preinstalled packages.')
+    if runtime_paths:
+        if set(runtime_paths) != set(runtime_inventory):
+            raise ValueError('Base usr/pkg payload differs from the pinned LLVM runtime inventory.')
+        with tarfile.open(archive) as payload_stream:
+            for name, entry in runtime_paths.items():
+                row = runtime_inventory[name]
+                kind = 'directory' if entry.isdir() else 'link' if entry.issym() else 'file' if entry.isreg() else 'other'
+                if kind != row.get('kind') or (row.get('mode') is not None and entry.mode & 0o7777 != row['mode']):
+                    raise ValueError('Base runtime entry type or mode differs from its SDK inventory: ' + name)
+                if entry.issym():
+                    if entry.linkname != row.get('target'):
+                        raise ValueError('Base runtime link differs from its SDK inventory: ' + name)
+                elif entry.isreg():
+                    if entry.size != row.get('size'):
+                        raise ValueError('Base runtime file size differs from its SDK inventory: ' + name)
+                    with payload_stream.extractfile(entry) as payload:
+                        if hashlib.file_digest(payload, 'sha256').hexdigest() != row.get('sha256'):
+                            raise ValueError('Base runtime file hash differs from its SDK inventory: ' + name)
     for name, entry in entries.items():
         for parent in PurePosixPath(name).parents:
             if str(parent) not in entries or not entries[str(parent)].isdir():
@@ -88,6 +118,54 @@ def records(archive, expected):
             if target == '..' or target.startswith('../'):
                 raise ValueError('Base symlink escapes the image: ' + name)
     return entries
+
+
+def etc_records(archive, expected):
+    """Read a pinned release etc set without trusting its path or link entries."""
+    if not re.fullmatch('[0-9a-f]{64}', expected or ''):
+        raise ValueError('Full base requires an explicit etc-set SHA256.')
+    with archive.open('rb') as stream:
+        if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:
+            raise ValueError('Etc set SHA256 mismatch.')
+    with tarfile.open(archive) as stream:
+        entries = {}
+        for entry in stream.getmembers():
+            name = relative_name(entry.name)
+            if name in entries or not (entry.isdir() or entry.isreg() or entry.issym() or entry.islnk()):
+                raise ValueError('Duplicate or unsupported etc-set entry: ' + name)
+            if not 0 <= entry.uid < 2**32 or not 0 <= entry.gid < 2**32:
+                raise ValueError('Invalid etc-set ownership: ' + name)
+            entries[name] = entry
+    for name, entry in entries.items():
+        if entry.islnk():
+            target = relative_name(entry.linkname)
+            if target not in entries or not entries[target].isreg():
+                raise ValueError('Etc-set hardlink must name a regular archive file: ' + name)
+            peer = entries[target]
+            if (entry.uid, entry.gid, entry.mode & 0o7777) != (peer.uid, peer.gid, peer.mode & 0o7777):
+                raise ValueError('Conflicting etc-set hardlink metadata: ' + name)
+        if entry.issym():
+            if '\x00' in entry.linkname or not entry.linkname:
+                raise ValueError('Invalid etc-set symlink: ' + name)
+            target = posixpath.normpath(posixpath.join(posixpath.dirname(name), entry.linkname))
+            if target == '..' or target.startswith('../'):
+                raise ValueError('Etc-set symlink escapes the image: ' + name)
+    return entries
+
+
+def _require_etc_parent(root, path, kind, name):
+    """Require every existing path component from the image root to be a real directory."""
+    try:
+        relative = path.parent.relative_to(root)
+    except ValueError as error:
+        raise ValueError('Etc-set path escapes the image: ' + name) from error
+    current = root
+    if current.is_symlink() or not current.is_dir():
+        raise ValueError(f'Etc-set {kind} has no real image root: ' + name)
+    for part in relative.parts:
+        current /= part
+        if current.is_symlink() or not current.is_dir():
+            raise ValueError(f'Etc-set {kind} has a missing or linked parent: ' + name)
 
 
 def stage(archive, entries, root):
@@ -110,6 +188,47 @@ def stage(archive, entries, root):
             os.link(root / relative_name(entry.linkname), root / name)
         elif entry.issym():
             (root / name).symlink_to(entry.linkname)
+    return hashes
+
+
+def stage_etc(archive, entries, root):
+    """Overlay the official etc set without changing existing base files."""
+    for name, entry in sorted(entries.items(), key=lambda item: (item[0].count('/'), item[0])):
+        if not entry.isdir():
+            continue
+        path = root / name
+        _require_etc_parent(root, path, 'directory', name)
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise ValueError('Etc-set directory conflicts with base payload: ' + name)
+        if not path.exists():
+            path.mkdir(mode=0o700)
+    hashes = {}
+    with tarfile.open(archive) as stream:
+        for name, entry in entries.items():
+            if not entry.isreg():
+                continue
+            path = root / name
+            _require_etc_parent(root, path, 'file', name)
+            if path.exists() or path.is_symlink():
+                raise ValueError('Etc-set file conflicts with base payload: ' + name)
+            with stream.extractfile(entry) as src, path.open('xb') as dst:
+                shutil.copyfileobj(src, dst)
+            with path.open('rb') as src:
+                hashes[name] = hashlib.file_digest(src, 'sha256').hexdigest()
+            path.chmod((entry.mode & 0o777) | 0o600)
+    for name, entry in entries.items():
+        path = root / name
+        if entry.islnk():
+            _require_etc_parent(root, path, 'hardlink', name)
+            target = root / relative_name(entry.linkname)
+            if path.exists() or path.is_symlink() or not target.is_file():
+                raise ValueError('Invalid etc-set hardlink destination: ' + name)
+            os.link(target, path)
+        elif entry.issym():
+            _require_etc_parent(root, path, 'symlink', name)
+            if path.exists() or path.is_symlink():
+                raise ValueError('Etc-set symlink conflicts with base payload: ' + name)
+            path.symlink_to(entry.linkname)
     return hashes
 
 
@@ -141,7 +260,7 @@ def source_tree(repository, revision, work, run):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def install_etc(work, tools, repository, revision, run):
+def install_directories(work, tools, repository, revision, run):
     source, root, obj = work / 'source', work / 'root', work / 'etc-obj'
     temporary = work / 'tmp'
     temporary.mkdir(mode=0o700, exist_ok=True)
@@ -159,7 +278,6 @@ def install_etc(work, tools, repository, revision, run):
         run('etc-directories', tools / 'nbmake', '-m', source / 'share/mk', '-C', source / 'etc', 'distrib-dirs', env=environment)
     finally:
         root.chmod(0o700)
-    run('etc-install', tools / 'nbmake', '-m', source / 'share/mk', '-C', source / 'etc', 'install-etc-files', env=environment)
     return environment
 
 
@@ -206,7 +324,8 @@ def runtime_inputs(manifest, work):
     staging = json.loads(receipt.read_text())
     if any(staging[key] != manifest[key] for key in ('base', 'base_revision', 'base_profile')):
         raise ValueError('Full-base staging identity differs from the image.')
-    entries = records(Path(staging['base']), staging['archive_sha256'])
+    entries = records(Path(staging['base']), staging['archive_sha256'],
+                      staging['full_base'].get('runtime_inventory'))
     root = work / 'root'
     payload = staging['full_base']['payload_sha256']
     sources = {}
