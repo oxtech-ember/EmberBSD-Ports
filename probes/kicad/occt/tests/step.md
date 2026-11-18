@@ -12,11 +12,11 @@ The source volume must be 6 within `1e-12`. The readback volume must equal the
 independently supplied expected value within `1e-8`. The volume computation
 uses closed geometry and does not use triangulation.
 
-Configure with an installed OCCT 8.0.1 prefix and the common GCC16 toolchain:
+Configure with an installed OCCT 8.0.1 prefix and the SDK toolchain for the target.
 
 ```sh
 cmake -S probes/kicad/occt/tests -B /absolute/new-step-consumer \
-    -DCMAKE_TOOLCHAIN_FILE=/absolute/aarch64-gcc16.cmake \
+    -DCMAKE_TOOLCHAIN_FILE=/absolute/aarch64-toolchain.cmake \
     -DCMAKE_PREFIX_PATH=/absolute/installed-prefix \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DEMBERBSD_OCCT_STEP=ON -DEMBERBSD_OCCT_STEP_UBSAN=ON
@@ -24,10 +24,9 @@ cmake --build /absolute/new-step-consumer --target occt-step
 ```
 
 The option defaults to off, so Foundation-only historical core checks retain
-their original requirements. When enabled, the test requires GCC16 and the real
-imported OCCT8 targets `TKPrim`, `TKTopAlgo` and `TKDESTEP`. It does not select
-legacy `TKSTEP` or source-tree headers. The optional UBSan trap mode instruments
-only this consumer. It does not instrument the installed shared dependencies.
+their original requirements. The STEP test uses the C++17 compiler selected by
+the toolchain and the imported OCCT8 targets `TKPrim`, `TKTopAlgo` and `TKDESTEP`.
+The optional UBSan trap mode instruments the consumer.
 
 Execute only in an authorized target acceptance environment. Use a private,
 writable working directory and an external bounded execution controller.
@@ -57,6 +56,17 @@ and `CSF_STEPDefaults` to their stage directories. Map `CSF_StandardDefaults`,
 the upstream `adm/templates/env.sh` resource layout. Do not source that script
 into the target's global environment. See the
 [execute-data contract](../../../../profiles/common-graphics/cross/introspection.md#compiled-configure-probes).
+
+### Clang 23 on EmberBSD aarch64
+
+SDK Clang 23.1.4 built the consumer from the OCCT 8.0.1 package headers and
+imported CMake targets with UBSan traps enabled. In an EmberBSD guest the
+consumer wrote and read back a single solid of volume 6. Supplying 5 as the
+expected volume produced exit status 1 after readback. The reader rejected
+malformed and missing inputs with statuses 3 and 2. All four cases ran as an
+ordinary user and removed their fixtures.
+
+### Earlier GCC 16 qualification
 
 The consumer cross-build passes against the ordinary installed OCCT 8.0.1
 package with the common GCC16.2 compiler and the real CMake imported targets.

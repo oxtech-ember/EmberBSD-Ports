@@ -13,12 +13,8 @@ foreach(probe occt-core occt-stacktrace)
 endforeach()
 
 option(EMBERBSD_OCCT_STEP "Build the installed OCCT8 STEP geometry contract" OFF)
-option(EMBERBSD_OCCT_STEP_UBSAN "Instrument only the STEP consumer with GCC UBSan traps" OFF)
+option(EMBERBSD_OCCT_STEP_UBSAN "Instrument the STEP consumer with UBSan traps" OFF)
 if(EMBERBSD_OCCT_STEP)
-  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
-      NOT CMAKE_CXX_COMPILER_VERSION MATCHES "^16\\.")
-    message(FATAL_ERROR "The STEP consumer requires the common GCC16 compiler")
-  endif()
   foreach(toolkit TKPrim TKTopAlgo TKDESTEP)
     if(NOT TARGET ${toolkit})
       message(FATAL_ERROR "The installed OCCT8 package lacks ${toolkit}")
