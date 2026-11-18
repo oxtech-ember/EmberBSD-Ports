@@ -21,6 +21,7 @@ sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
 sys.path.append(str(PORTS / 'scripts'))
 import prepared_receipt
+import source_distdir
 from recipe import generation_recipe
 import tearoff
 
@@ -33,6 +34,13 @@ def main():
     from emberbsd_sdk.publication import publish_directory_noreplace
     if 'verify-source' in argv:
         return verify_source(argv, sdk, jsonio, paths, process, sourceprep, SDKError)
+    if 'prepare' in argv:
+        # The common interface of scripts/source-inputs. The generation of
+        # libopts reads the shared export, so --pkgsrc-export is necessary.
+        if not any(word == '--pkgsrc-export' or word.startswith('--pkgsrc-export=') for word in argv):
+            raise SDKError('select --pkgsrc-export')
+        argv = [re.sub(r'^--pkgsrc-export(?==|$)', '--export', word) for word in argv if word != 'prepare']
+        return prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_directory_noreplace)
     if '--archive' in argv:
         return prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_directory_noreplace)
     parser = argparse.ArgumentParser(description=__doc__)
@@ -150,8 +158,12 @@ def prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_dir
     no configuration contributes to the payload.
     """
     parser = argparse.ArgumentParser(description=prepare_distfile.__doc__)
-    for name in ('export', 'git', 'patch', 'archive'):
+    for name in ('export', 'git', 'patch'):
         parser.add_argument('--' + name, required=True)
+    archives = parser.add_mutually_exclusive_group(required=True)
+    archives.add_argument('--archive')
+    archives.add_argument('--distdir', type=source_distdir.Distdir,
+                          help='directory with the distfile of the recipe')
     parser.add_argument('--export-patch', help='patch used to create the shared export')
     selection = parser.add_mutually_exclusive_group(required=True)
     selection.add_argument('--output')
@@ -169,7 +181,7 @@ def prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_dir
         paths.verify_stable(str(path), before)
         return data
 
-    for value in (args.export, args.git, args.patch, args.archive, args.output or args.source):
+    for value in (args.export, args.git, args.patch, args.archive or args.distdir, args.output or args.source):
         need(os.path.isabs(value), 'select absolute input and output paths')
     spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', PORTS / 'scripts/pkgsrc-source-identity.py')
     selector = importlib.util.module_from_spec(spec)
@@ -203,7 +215,7 @@ def prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_dir
         need(hashlib.sha1(filtered).hexdigest() == declared[path.name], 'AutoGen patch checksum differs: ' + path.name)
         expected['devel/autogen/patches/' + path.name] = hashlib.sha256(delta).hexdigest()
         deltas.append((path, delta))
-    archive = Path(paths.canonical_existing(args.archive))
+    archive = Path(paths.canonical_existing(source_distdir.select(args.archive or args.distdir, archive_name)))
     need(archive.name == archive_name, 'AutoGen distfile name differs from recipe')
     data = read(archive)
     hashes = sourceprep.archive_hashes(data)

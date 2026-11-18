@@ -72,6 +72,34 @@ class PreparedSourceCurrentTest(unittest.TestCase):
         result = self.check(('libevent', self.receipt('bridge', 'devel/libevent', record)))
         self.assertEqual(result.returncode, 1)
 
+    def test_describe_names_the_receipt_identity_and_the_distfiles(self):
+        patch_tool = shutil.which('gpatch') or shutil.which('patch')
+        command = [sys.executable, '-B', str(SCRIPT), '--sdk-source', self.sdk, '--git', GIT,
+                   '--patch', patch_tool, '--describe', 'libevent', '--describe', 'libarchive',
+                   '--describe', 'devel/editline', '--describe', 'devel/gettext',
+                   '--describe', 'devel/gtexinfo']
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        described = json.loads(result.stdout)
+        # A receipt with this identity is current.
+        self.assertEqual(described['libevent']['effective'], self.libevent_identity()['effective'])
+        self.assertEqual(described['libevent']['package'], 'devel/libevent')
+        self.assertTrue(described['libevent']['distfiles'])
+        self.assertTrue(all(name.startswith('libevent-') for name in described['libevent']['distfiles']))
+        # The libarchive payload is the exported files directory: no distfile.
+        self.assertEqual(described['libarchive']['distfiles'], [])
+        self.assertEqual(described['devel/editline']['package'], 'devel/editline')
+        self.assertTrue(described['devel/editline']['distfiles'][0].startswith('libedit-'))
+        # The archive that the texinfo recipe extracts is in its distinfo.
+        self.assertIn('texinfo-7.3.tar.xz', described['devel/gtexinfo']['distfiles'])
+        # A package path selects the owner of the package: gettext binds two recipes.
+        owner = current.owner_module('gettext', ROOT / current.OWNERS['gettext'][0])
+        self.assertEqual(described['devel/gettext']['effective'], owner.git_effective_identity(GIT))
+        unknown = subprocess.run(command[:-10] + ['--describe', 'unknown'], stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True)
+        self.assertNotEqual(unknown.returncode, 0)
+        self.assertIn('known source name', unknown.stderr)
+
     def test_openldap_identity_binds_common_version(self):
         owner = current.owner_module('openldap', ROOT / current.OWNERS['openldap'][0])
         selector = current.selector()

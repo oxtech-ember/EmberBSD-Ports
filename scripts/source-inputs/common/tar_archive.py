@@ -9,6 +9,10 @@ import re
 import sys
 import tempfile
 
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+import source_distdir
+
+
 def verify(ctx, source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
     record = ctx.jsonio.read_json(str(Path(source) / ctx.sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
@@ -74,7 +78,7 @@ def prepare(ctx, archive, output, patch, git, exported=None):
                              str(exported), '--git', git, '--patch', patch],
                             env=ctx.process.sanitized_environment())
         metadata, patches = ctx.recipe(exported)
-        archive = Path(ctx.paths.canonical_existing(archive))
+        archive = Path(ctx.paths.canonical_existing(source_distdir.select(archive, metadata['archive'])))
         ctx.require(archive.name == metadata['archive'], f'{ctx.LABEL} archive filename differs from recipe')
         data = ctx.read(archive)
         hashes = ctx.sourceprep.archive_hashes(data)

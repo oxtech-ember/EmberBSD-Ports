@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(os.environ['EMBERBSD_SDK_SOURCE']) / 'src'))
 from emberbsd_sdk import sourceprep
 from emberbsd_sdk.errors import SDKError
 
-spec = importlib.util.spec_from_file_location('libarchive_source', ROOT / 'scripts/libarchive-source.py')
+spec = importlib.util.spec_from_file_location('libarchive_source', ROOT / 'scripts/source-inputs/libarchive/source.py')
 owner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(owner)
 
@@ -37,9 +37,9 @@ class CurrentIdentityTest(unittest.TestCase):
 
     def test_standalone_cli_loads_selected_sdk_without_pythonpath(self):
         result = subprocess.run(
-            [sys.executable, '-I', '-S', '-B', str(ROOT / 'scripts/libarchive-source.py'),
-             'verify', str(self.source), '--sdk-source', os.environ['EMBERBSD_SDK_SOURCE'],
-             '--git', str(self.root / 'missing-git')],
+            [sys.executable, '-I', '-S', '-B', str(ROOT / 'scripts/source-inputs/libarchive/source.py'),
+             '--sdk-source', os.environ['EMBERBSD_SDK_SOURCE'], '--git', str(self.root / 'missing-git'),
+             'verify-source', '--source', str(self.source)],
             capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('git must be an absolute executable', result.stderr)

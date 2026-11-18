@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import tempfile
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 sys.path.append(str(ROOT / 'scripts'))
 import prepared_receipt
 PACKAGE = 'archivers/libarchive'
@@ -97,21 +97,29 @@ def prepare(destination, sdk_source, git, patch, pkgsrc_export=None, export_patc
 
 
 def main():
+    # The common interface of scripts/source-inputs. The recipe has no distfile:
+    # its payload is the files directory of the exported package.
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('prepare', 'verify'))
-    parser.add_argument('source')
     parser.add_argument('--sdk-source', required=True)
     parser.add_argument('--git', required=True)
-    parser.add_argument('--patch')
-    parser.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
-    parser.add_argument('--export-patch', help='patch used to create the shared export')
+    sub = parser.add_subparsers(dest='action', required=True)
+    produce = sub.add_parser('prepare')
+    produce.add_argument('--output', required=True)
+    produce.add_argument('--patch', required=True)
+    produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    produce.add_argument('--export-patch', help='patch used to create the shared export')
+    check = sub.add_parser('verify-source')
+    check.add_argument('--source', required=True)
+    check.add_argument('--patch')
+    check.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    check.add_argument('--export-patch', help='patch used to create the shared export')
     args = parser.parse_args()
     loader = module(ROOT / 'pkgsrc/lang/llvm/files/sdk_source.py', 'libarchive_sdk_source')
     loader.load_sdk(['--sdk-source', args.sdk_source])
-    if args.operation == 'prepare':
-        if not args.patch or not os.path.isabs(args.patch):
+    if args.action == 'prepare':
+        if not os.path.isabs(args.patch):
             parser.error('prepare requires an absolute --patch')
-        result = prepare(args.source, args.sdk_source, args.git, args.patch,
+        result = prepare(args.output, args.sdk_source, args.git, args.patch,
                          args.pkgsrc_export, args.export_patch)
     else:
         result = verify(args.source, args.sdk_source, args.git, args.patch, args.pkgsrc_export, args.export_patch)

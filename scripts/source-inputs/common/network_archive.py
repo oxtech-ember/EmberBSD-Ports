@@ -16,6 +16,7 @@ sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
 sys.path.append(str(PORTS / 'scripts'))
 import prepared_receipt
+import source_distdir
 import tar_archive
 
 
@@ -146,7 +147,10 @@ class NetworkOwner:
         parser.add_argument('--git', required=True, help='absolute Git inspector')
         sub = parser.add_subparsers(dest='action', required=True)
         produce = sub.add_parser('prepare')
-        produce.add_argument('--archive', required=True)
+        archives = produce.add_mutually_exclusive_group(required=True)
+        archives.add_argument('--archive')
+        archives.add_argument('--distdir', type=source_distdir.Distdir,
+                              help='directory with the distfile of the recipe')
         produce.add_argument('--output', required=True)
         produce.add_argument('--patch', required=True)
         produce.add_argument('--pkgsrc-export')
@@ -166,7 +170,7 @@ class NetworkOwner:
         selected = parser.parse_args(args)
         try:
             if selected.action == 'prepare':
-                record = self.prepare(selected.archive, selected.output, selected.patch, selected.git,
+                record = self.prepare(selected.archive or selected.distdir, selected.output, selected.patch, selected.git,
                                       exported=self.shared_tree(selected))
             elif selected.action == 'refresh-source':
                 record = self.refresh(selected.source, selected.git, selected.archive, selected.patch,

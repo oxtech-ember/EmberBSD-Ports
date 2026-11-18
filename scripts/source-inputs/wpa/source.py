@@ -19,6 +19,7 @@ sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
 sys.path.append(str(PORTS / 'scripts'))
 import prepared_receipt
+import source_distdir
 
 
 def load_sdk(argv):
@@ -179,6 +180,7 @@ def prepare(archive, hostapd_archive, output, patch, git, exported=None):
         archives = []
         for selected, name in ((archive, metadata['archive']), (hostapd_archive, metadata['hostapd'])):
             require(selected and os.path.isabs(str(selected)), 'both WPA archives must be absolute')
+            selected = source_distdir.select(selected, name)
             path = Path(paths.canonical_existing(selected))
             require(path.name == name, 'WPA archive filename differs from recipe')
             data = read(path)
@@ -225,8 +227,10 @@ def main():
     parser.add_argument('--git', required=True, help='absolute Git inspector')
     sub = parser.add_subparsers(dest='action', required=True)
     produce = sub.add_parser('prepare')
-    produce.add_argument('--archive', required=True)
-    produce.add_argument('--hostapd-archive', required=True)
+    produce.add_argument('--archive')
+    produce.add_argument('--hostapd-archive')
+    produce.add_argument('--distdir', type=source_distdir.Distdir,
+                         help='directory with both distfiles of the recipe')
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
@@ -241,6 +245,10 @@ def main():
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
+            if selected.distdir:
+                require(not selected.archive and not selected.hostapd_archive,
+                        'select --distdir or both archives, not both')
+                selected.archive = selected.hostapd_archive = selected.distdir
             record = prepare(selected.archive, selected.hostapd_archive, selected.output, selected.patch, selected.git,
                              exported=shared_tree(selected))
         else:

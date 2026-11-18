@@ -19,6 +19,7 @@ sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
 sys.path.append(str(PORTS / 'scripts'))
 import prepared_receipt
+import source_distdir
 
 
 def load_sdk(argv):
@@ -147,7 +148,7 @@ def prepare(archive, output, patch, git, exported=None):
                              str(exported), '--git', git, '--patch', patch],
                             env=process.sanitized_environment())
         metadata, patches = recipe(exported)
-        archive = Path(paths.canonical_existing(archive))
+        archive = Path(paths.canonical_existing(source_distdir.select(archive, metadata['archive'])))
         require(archive.name == metadata['archive'], 'tcpdump archive filename differs from recipe')
         data = read(archive)
         hashes = sourceprep.archive_hashes(data)
@@ -190,7 +191,10 @@ def main():
     parser.add_argument('--git', required=True, help='absolute Git inspector')
     sub = parser.add_subparsers(dest='action', required=True)
     produce = sub.add_parser('prepare')
-    produce.add_argument('--archive', required=True)
+    archives = produce.add_mutually_exclusive_group(required=True)
+    archives.add_argument('--archive')
+    archives.add_argument('--distdir', type=source_distdir.Distdir,
+                          help='directory with the distfile of the recipe')
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
@@ -204,7 +208,7 @@ def main():
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output, selected.patch, selected.git,
+            record = prepare(selected.archive or selected.distdir, selected.output, selected.patch, selected.git,
                              exported=shared_tree(selected))
         else:
             record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))

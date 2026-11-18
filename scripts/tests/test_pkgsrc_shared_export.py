@@ -417,7 +417,7 @@ class OwnerTest(unittest.TestCase):
                                   side_effect=ValueError('invalid shared pkgsrc export receipt')):
                     with self.assertRaisesRegex(ValueError, 'invalid shared pkgsrc export receipt'):
                         owner.verify('/source', sys.executable, patch='/patch', pkgsrc_export='/export')
-        libarchive = load(ROOT / 'scripts/libarchive-source.py', 'libarchive_owner')
+        libarchive = load(ROOT / 'scripts/source-inputs/libarchive/source.py', 'libarchive_owner')
         selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
         with patch.object(libarchive, 'module', return_value=selector), \
              patch.object(selector, 'shared_export', side_effect=ValueError('invalid shared pkgsrc export receipt')), \
@@ -538,7 +538,7 @@ class OwnerTest(unittest.TestCase):
                     self.assertEqual(seen, [tree])
 
     def test_libarchive_uses_the_shared_export_without_exporting(self):
-        owner = load(ROOT / 'scripts/libarchive-source.py', 'libarchive_owner')
+        owner = load(ROOT / 'scripts/source-inputs/libarchive/source.py', 'libarchive_owner')
         selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
         effective = {'api': 3, 'package': owner.PACKAGE, 'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
         old = {'effective': effective, 'owner_sha256': '3' * 64}

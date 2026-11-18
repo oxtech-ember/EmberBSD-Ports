@@ -33,7 +33,7 @@ RECEIPT = 'emberbsd-prepared-source.json'
 # SDK source name -> (owner script, package).
 OWNERS = {
     'zlib': ('scripts/source-inputs/zlib/source.py', 'devel/zlib'),
-    'libarchive': ('scripts/libarchive-source.py', 'archivers/libarchive'),
+    'libarchive': ('scripts/source-inputs/libarchive/source.py', 'archivers/libarchive'),
     'libevent': ('scripts/source-inputs/libevent/source.py', 'devel/libevent'),
     'openssl': ('scripts/source-inputs/openssl/source.py', 'security/openssl'),
     'libfido2': ('scripts/source-inputs/libfido2/source.py', 'security/libfido2'),
@@ -75,9 +75,16 @@ class Stale(Exception):
 
 
 def load(path, name):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # An owner script imports the helper modules next to it. Remove the
+    # directory again, so the next owner does not find these helpers.
+    directory = str(Path(path).parent)
+    sys.path.append(directory)
+    try:
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(directory)
     return module
 
 
@@ -228,13 +235,110 @@ def current(name, identity, git, sdk, patch=None):
     raise Stale('its receipt does not name its recipe; prepare it again')
 
 
+def describe(item, git):
+    """Return the current recipe of one source for a build plan.
+
+    ITEM is a source name of OWNERS or a package path; a package path selects
+    the owner script of that package, if there is one. The result has the
+    package, the effective identity of the Git recipe (for most owners, the
+    identity that a prepared receipt records) and the distfiles of the
+    effective distinfo. Nothing is exported or prepared."""
+    if '/' in item:
+        package = item
+        names = [name for name, (_, owned) in OWNERS.items() if owned == package]
+        name = names[0] if names else None
+    else:
+        name, package = item, OWNERS[item][1]
+    owner = owner_module(name, PORTS / OWNERS[name][0]) if name else None
+    selector_module = selector()
+    if owner is not None and hasattr(owner, 'git_effective_identity'):
+        effective = owner.git_effective_identity(git)
+    else:
+        effective = selector_module.git_package_identity(PORTS, package, git)
+    return dict(package=package, effective=effective, distfiles=distfiles(selector_module, package, git))
+
+
+_DISTFILE = re.compile(rb'^SHA512 \(([^)]+)\) = ')
+
+
+def _names(lines, label):
+    """The distfile names of distinfo LINES; a name with a directory is refused."""
+    names = set()
+    for line in lines:
+        match = _DISTFILE.match(line)
+        if match:
+            name = match.group(1).decode('utf-8', 'surrogateescape')
+            if '/' in name:
+                raise ValueError(f'{label}: distfile {name} is in a DIST_SUBDIR; describe does not support it')
+            names.add(name)
+    return names
+
+
+def distfiles(selector, package, git):
+    """The distfiles that the effective distinfo of PACKAGE names.
+
+    Only the distinfo is rebuilt: the overlay or upstream file, or the file
+    that the export copies when the recipe has no distinfo, then the distinfo
+    sections of the infrastructure patches. A patch can change other recipes
+    too; only its section for this distinfo is read. The list can name a
+    distfile that the recipe does not fetch; the producer selects its own."""
+    inputs = selector.git_package_inputs(PORTS, package, git)
+    exporter = selector._exporter(PORTS)
+    recipes, _, files, _ = exporter.configuration(PORTS)
+    overlay = dict(recipes).get(package)
+    target = package + '/distinfo'
+    copied = [source for source, destination in files if destination == target]
+    if copied:
+        data = Path(copied[-1]).read_bytes()
+    elif overlay is not None:
+        path = Path(overlay, 'distinfo')
+        data = path.read_bytes() if path.is_file() else b''
+    else:
+        # Read the upstream file. The identity row of the distinfo also
+        # includes the lines of the recipe patches.
+        upstream = PORTS / 'upstream/pkgsrc'
+        row = selector._tree_rows(git, upstream, inputs['upstream'], package).get('distinfo')
+        data = subprocess.run([str(git), '-C', str(upstream), 'cat-file', 'blob', row[1]],
+                              stdout=subprocess.PIPE, check=True,
+                              env=selector._git_environment()).stdout if row else b''
+    names = _names(data.split(b'\n'), target)
+    for _, relative, _ in inputs['infrastructure_patches']:
+        patch = Path(PORTS, relative).read_bytes()
+        if target.encode() not in patch:
+            continue
+        # This parser also reads Git patches with plain same-path sections.
+        sections = selector._update_patch_sections(patch)
+        if sections is None:
+            raise ValueError(f'{relative}: cannot read its change of {target}')
+        for targets, text in sections:
+            if target not in targets:
+                continue
+            # The two header lines precede the hunks.
+            lines = text.split(b'\n')[2:]
+            names -= _names([line[1:] for line in lines if line.startswith(b'-')], relative)
+            names |= _names([line[1:] for line in lines if line.startswith(b'+')], relative)
+    return sorted(names)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sdk-source', required=True)
     parser.add_argument('--git', required=True, help='absolute Git inspector')
     parser.add_argument('--patch', help='absolute patch tool, for recipes with infrastructure patches')
     parser.add_argument('--source', action='append', default=[], metavar='NAME=PATH')
+    parser.add_argument('--describe', action='append', default=[], metavar='NAME',
+                        help='print the current recipe and distfiles of a source for a build plan')
     args = parser.parse_args()
+    if args.describe:
+        if args.source:
+            parser.error('select --describe or --source')
+        if any('/' not in item and item not in OWNERS for item in args.describe):
+            parser.error('use --describe with a known source name or a package path')
+        if not os.path.isabs(args.git):
+            parser.error('select an absolute Git')
+        sys.stdout.write(json.dumps({item: describe(item, args.git) for item in args.describe},
+                                    sort_keys=True) + '\n')
+        return 0
     if not os.path.isabs(args.git) or not os.path.isabs(args.sdk_source):
         parser.error('select an absolute Git and SDK source')
     stale, notes = [], []
