@@ -2,7 +2,10 @@ $NetBSD$
 
 Use the OpenSSL 4 provider key management interface for the NetBSD native
 OpenSSL backend; keep legacy ENGINE/hcrypto and LibreSSL paths unchanged.
+With that backend before OpenSSL 4, read the method names through the
+OpenSSL 1.1 accessors: RSA_METHOD and DH_METHOD are opaque there.
 Origin: OpenSSL apps/list.c (EVP_KEYMGMT_do_all_provided API pattern);
+NetBSD src crypto/external/bsd/heimdal (method name accessors);
 EmberBSD adaptation (AI-assisted).
 
 --- lib/hx509/cert.c.orig
@@ -32,10 +35,12 @@ EmberBSD adaptation (AI-assisted).
  #include <hxtool-commands.h>
  #include <sl.h>
  #include <rtbl.h>
-@@ -1418,10 +1423,38 @@
-     return 0;
- }
+@@ -1416,23 +1421,61 @@
+     }
  
+     return 0;
++}
++
 +#if defined(__NetBSD__) && defined(EMBERBSD_BASE_HEIMDAL) && defined(HAVE_HCRYPTO_W_OPENSSL) && \
 +    !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x40000000L
 +/* OpenSSL lists provider key managers using EVP_KEYMGMT_do_all_provided. */
@@ -58,9 +63,9 @@ EmberBSD adaptation (AI-assisted).
 +    provider = EVP_KEYMGMT_get0_provider(keymgmt);
 +    name = provider == NULL ? NULL : OSSL_PROVIDER_get0_name(provider);
 +    printf("%s provider: %s\n", kind, name == NULL ? "unknown provider" : name);
-+}
+ }
 +#endif
-+
+ 
  int
  info(void *opt, int argc, char **argv)
  {
@@ -72,7 +77,28 @@ EmberBSD adaptation (AI-assisted).
      ENGINE_add_conf_module();
  
      {
-@@ -1443,6 +1476,7 @@
+ 	const RSA_METHOD *m = RSA_get_default_method();
+ 	if (m != NULL)
++#if defined(__NetBSD__) && defined(EMBERBSD_BASE_HEIMDAL) && defined(HAVE_HCRYPTO_W_OPENSSL) && \
++    !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
++	    printf("rsa: %s\n", RSA_meth_get0_name(m));
++#else
+ 	    printf("rsa: %s\n", m->name);
++#endif
+     }
+     {
+ 	const DH_METHOD *m = DH_get_default_method();
+ 	if (m != NULL)
++#if defined(__NetBSD__) && defined(EMBERBSD_BASE_HEIMDAL) && defined(HAVE_HCRYPTO_W_OPENSSL) && \
++    !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
++	    printf("dh: %s\n", DH_meth_get0_name(m));
++#else
+ 	    printf("dh: %s\n", m->name);
++#endif
+     }
+ #ifdef HAVE_HCRYPTO_W_OPENSSL
+     {
+@@ -1443,6 +1486,7 @@
  	printf("ecdsa: hcrypto null\n");
      }
  #endif
