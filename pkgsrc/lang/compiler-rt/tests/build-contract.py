@@ -58,6 +58,8 @@ def main():
             assert options['CMAKE_C_COMPILER'] == '/target/bin/clang'
             assert options['CMAKE_CXX_COMPILER_TARGET'] == definition['triplet']
             assert options['CMAKE_MAKE_PROGRAM'] == '/native/bin/ninja'
+            # The work path does not reach the installed run path.
+            assert options['CMAKE_BUILD_WITH_INSTALL_RPATH'] == 'ON'
             assert options['Python3_EXECUTABLE'] == '/native/bin/python'
             assert options['CMAKE_SYSROOT'] == '/base'
             assert options['CMAKE_FIND_ROOT_PATH_MODE_LIBRARY'] == 'ONLY'

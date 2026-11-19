@@ -83,7 +83,11 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
         CMAKE_SYSTEM_PROCESSOR=definition['arch'], CMAKE_SYSROOT=str(base),
         CMAKE_INSTALL_PREFIX='/usr/pkg/llvm', CMAKE_INSTALL_LIBDIR='lib',
         CMAKE_EXPORT_COMPILE_COMMANDS='ON',
-        CMAKE_INSTALL_RPATH='/usr/pkg/llvm/lib', CMAKE_POSITION_INDEPENDENT_CODE='ON',
+        # Link the build tree with the installed run path. Then CMake has no
+        # work-tree run path to replace at install, and the libraries keep no
+        # padding that has the length of the work path.
+        CMAKE_INSTALL_RPATH='/usr/pkg/llvm/lib', CMAKE_BUILD_WITH_INSTALL_RPATH='ON',
+        CMAKE_POSITION_INDEPENDENT_CODE='ON',
         CMAKE_C_COMPILER=compiler['binaries']['cc']['selected_path'],
         CMAKE_CXX_COMPILER=compiler['binaries']['cxx']['selected_path'],
         CMAKE_ASM_COMPILER=compiler['binaries']['cc']['selected_path'],
