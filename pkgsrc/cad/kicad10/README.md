@@ -63,6 +63,11 @@ package or running CAD workflows on EmberBSD.
 The full aarch64 package builds and links with the common GTK4 wxWidgets/WebKit
 stack. Host Python runs the build generators. The installed application uses
 the Python interpreter supplied by its target package dependency.
+On EmberBSD aarch64, the ECC83 demo's XML netlist matches upstream KiCad
+10.0.8 for all 15 components and all 33 pins across 13 nets. The schematic
+and the board's front copper layer also export to SVG. Eeschema opens and draws the
+packaged schematic under Xvfb with software rendering after the first-run
+wizard initializes the default libraries. Physical GPU testing remains open.
 
 The runtime includes the common DejaVu TrueType fonts so that a minimal target
 can render text, including Cyrillic. Type 1 fonts alone do not satisfy current
@@ -143,3 +148,17 @@ kicad-cli sch export netlist --format kicadxml -o "$work/ecc83.xml" "$demo"
 python3.15 tests/ecc83-connectivity.py "$work/ecc83.xml"
 kicad-cli sch export svg -o "$work" "$demo"
 ```
+
+For ERC on a headless system, initialize the profile with the default library
+tables shipped in the package. These commands use the fresh profile above.
+
+```sh
+mkdir -p "$KICAD_CONFIG_HOME/10.0"
+tables=/usr/pkg/share/kicad/template
+cp "$tables/fp-lib-table" "$tables/sym-lib-table" "$KICAD_CONFIG_HOME/10.0/"
+kicad-cli sch erc --format json --severity-all -o "$work/ecc83-erc.json" "$demo"
+```
+
+With these tables, ERC reports zero violations for ECC83. An empty profile
+produces six warnings about the unconfigured capacitor and resistor footprint
+libraries.
