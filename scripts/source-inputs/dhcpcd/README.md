@@ -13,8 +13,8 @@ archive and a new output directory explicitly. For example:
 ```
 
 An optional `--pkgsrc-export` reuses a compatible shared export. The generated
-source receipt is selected by the SDK's `--dhcpcd-source` and passed to the OS
-as `EMBER_DHCPCD_SOURCE`. This prepares source; it does not build the daemon.
+source receipt is selected by the SDK build plan and passed to the OS as
+`EMBER_DHCPCD_SOURCE`. This prepares source; it does not build the daemon.
 
 For unchanged prepared payloads, `refresh-source --source "$OUTPUT" --archive
 "$ARCHIVE" --patch "$PATCH"` verifies the payload and current source identity,
