@@ -1,0 +1,407 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use CMake libspnav discovery to select the same navigation backend in
+module sources, frame declarations and link targets.
+
+--- 3d-viewer/3d_viewer/eda_3d_viewer_frame.cpp.orig
++++ 3d-viewer/3d_viewer/eda_3d_viewer_frame.cpp
+@@ -62,7 +62,9 @@
+ #include <project_pcb.h>
+ #include <toolbars_3d.h>
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ #include <spacenav/libspnav_driver.h>
+ #include <3d_spacenav/spnav_viewer_plugin.h>
+ #else
+@@ -198,7 +200,7 @@
+ 
+     try
+     {
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+         m_spaceMouse = std::make_unique<SPNAV_VIEWER_PLUGIN>( m_canvas );
+ #else
+         m_spaceMouse = std::make_unique<NL_3D_VIEWER_PLUGIN>( m_canvas );
+--- 3d-viewer/3d_viewer/eda_3d_viewer_frame.h.orig
++++ 3d-viewer/3d_viewer/eda_3d_viewer_frame.h
+@@ -44,7 +44,9 @@
+ #define KICAD_DEFAULT_3D_DRAWFRAME_STYLE    (wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
+ 
+ // Forward declarations
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ class SPNAV_VIEWER_PLUGIN;
+ #else
+ class NL_3D_VIEWER_PLUGIN;
+@@ -282,7 +284,7 @@
+ 
+     bool                           m_disable_ray_tracing;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+     std::unique_ptr<SPNAV_VIEWER_PLUGIN> m_spaceMouse;
+ #else
+     std::unique_ptr<NL_3D_VIEWER_PLUGIN> m_spaceMouse;
+--- 3d-viewer/CMakeLists.txt.orig
++++ 3d-viewer/CMakeLists.txt
+@@ -138,7 +138,7 @@
+ add_subdirectory( 3d_cache )
+ 
+ 
+-if( UNIX AND NOT APPLE )
++if( SPNAV_FOUND )
+     message( STATUS "Including libspnav support in 3d-viewer" )
+     add_subdirectory( 3d_spacenav )
+     target_link_libraries( 3d-viewer PRIVATE 3d-viewer_spacenav )
+--- 3d-viewer/dialogs/panel_preview_3d_model.cpp.orig
++++ 3d-viewer/dialogs/panel_preview_3d_model.cpp
+@@ -52,7 +52,9 @@
+ #include <eda_3d_viewer_settings.h>
+ #include <board_design_settings.h>
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ #include <3d_spacenav/spnav_viewer_plugin.h>
+ #else
+ #include <3d_navlib/nl_footprint_properties_plugin.h>
+@@ -209,7 +211,7 @@
+ 
+     try
+     {
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+         m_spaceMouse = std::make_unique<SPNAV_VIEWER_PLUGIN>( m_previewPane );
+ #else
+         m_spaceMouse = std::make_unique<NL_FOOTPRINT_PROPERTIES_PLUGIN>( m_previewPane );
+--- 3d-viewer/dialogs/panel_preview_3d_model.h.orig
++++ 3d-viewer/dialogs/panel_preview_3d_model.h
+@@ -63,7 +63,9 @@
+ class BOARD;
+ class BOARD_ADAPTER;
+ class FOOTPRINT;
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ class SPNAV_VIEWER_PLUGIN;
+ #else
+ class NL_FOOTPRINT_PROPERTIES_PLUGIN;
+@@ -238,7 +240,7 @@
+     /// The 3d viewer Render initial settings (must be saved and restored)
+     EDA_3D_VIEWER_SETTINGS::RENDER_SETTINGS          m_initialRender;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+     std::unique_ptr<SPNAV_VIEWER_PLUGIN> m_spaceMouse;
+ #else
+     std::unique_ptr<NL_FOOTPRINT_PROPERTIES_PLUGIN>  m_spaceMouse;
+--- cmake/config.h.cmake.orig
++++ cmake/config.h.cmake
+@@ -2,6 +2,8 @@
+ 
+ #ifndef CONFIG_H_
+ #define CONFIG_H_
++
++#cmakedefine01 SPNAV_FOUND
+ 
+ #cmakedefine HAVE_STRCASECMP
+ 
+--- common/CMakeLists.txt.orig
++++ common/CMakeLists.txt
+@@ -331,7 +331,7 @@
+     startwizard/startwizard_provider_settings.cpp
+     )
+ 
+-if( UNIX AND NOT APPLE )
++if( SPNAV_FOUND )
+     list( APPEND KICOMMON_SRCS
+         spacenav/libspnav_driver.cpp
+     )
+@@ -865,7 +865,7 @@
+     )
+ 
+ # This needs to be in the common library until draw_panel_gal is moved to kicommon
+-if( UNIX AND NOT APPLE )
++if( SPNAV_FOUND )
+     list( APPEND COMMON_SRCS
+         spacenav/spnav_2d_plugin.cpp
+     )
+@@ -1110,7 +1110,7 @@
+     zint::zint
+ )
+ 
+-if( APPLE OR NOT UNIX )
++if( NOT SPNAV_FOUND )
+     # On Windows/MacOS, the SpaceMouse support is provided by the navlib subdirectory
+     message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pcbcommon" )
+     add_subdirectory( ../pcbnew/navlib ./navlib)
+--- common/eda_base_frame.cpp.orig
++++ common/eda_base_frame.cpp
+@@ -37,6 +37,7 @@
+ #include <dialogs/git/panel_git_repos.h>
+ #include <dialogs/panel_common_settings.h>
+ #include <dialogs/panel_mouse_settings.h>
++#include <config.h>
+ #include <dialogs/panel_spacemouse.h>
+ #include <dialogs/panel_data_collection.h>
+ #include <dialogs/panel_plugin_settings.h>
+@@ -1601,7 +1602,7 @@
+                     return new PANEL_MOUSE_SETTINGS( aParent );
+                 }, _( "Mouse and Touchpad" ) );
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+         book->AddLazyPage(
+                 [] ( wxWindow* aParent ) -> wxWindow*
+                 {
+--- eeschema/CMakeLists.txt.orig
++++ eeschema/CMakeLists.txt
+@@ -630,12 +630,14 @@
+ # declare the dependency
+ add_dependencies( eeschema_kiface_objects common )
+ 
+-message( STATUS "Including 3Dconnexion SpaceMouse navigation support in eeschema" )
+-add_subdirectory( navlib )
+-
+-target_link_libraries( eeschema_kiface_objects PUBLIC eeschema_navlib)
+-
+-add_dependencies( eeschema_kiface_objects eeschema_navlib )
++if( NOT SPNAV_FOUND )
++    message( STATUS "Including 3Dconnexion SpaceMouse navigation support in eeschema" )
++    add_subdirectory( navlib )
++
++    target_link_libraries( eeschema_kiface_objects PUBLIC eeschema_navlib)
++
++    add_dependencies( eeschema_kiface_objects eeschema_navlib )
++endif()
+ 
+ add_library( eeschema_kiface MODULE
+     eeschema.cpp
+--- eeschema/sch_base_frame.cpp.orig
++++ eeschema/sch_base_frame.cpp
+@@ -75,7 +75,9 @@
+ #include <wx/msgdlg.h>
+ #include <trace_helpers.h>
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ #include <spacenav/spnav_2d_plugin.h>
+ #else
+ #include <navlib/nl_schematic_plugin.h>
+@@ -350,7 +352,7 @@
+     {
+         if( !m_spaceMouse )
+         {
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+             m_spaceMouse = std::make_unique<SPNAV_2D_PLUGIN>( GetCanvas() );
+             m_spaceMouse->SetScale( schIUScale.IU_PER_MILS / pcbIUScale.IU_PER_MILS );
+ #else
+--- eeschema/sch_base_frame.h.orig
++++ eeschema/sch_base_frame.h
+@@ -59,7 +59,9 @@
+ class SYMBOL_EDITOR_SETTINGS;
+ struct SCH_SELECTION_FILTER_OPTIONS;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ class SPNAV_2D_PLUGIN;
+ #else
+ class NL_SCHEMATIC_PLUGIN;
+@@ -330,7 +332,7 @@
+     wxTimer                                 m_watcherDebounceTimer;
+     bool                                    m_inSymChangeTimerEvent;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+     std::unique_ptr<SPNAV_2D_PLUGIN>        m_spaceMouse;
+ #else
+     std::unique_ptr<NL_SCHEMATIC_PLUGIN>    m_spaceMouse;
+--- gerbview/CMakeLists.txt.orig
++++ gerbview/CMakeLists.txt
+@@ -136,12 +136,14 @@
+         core
+     )
+ 
+-message( STATUS "Including 3Dconnexion SpaceMouse navigation support in gerbview" )
+-add_subdirectory( navlib )
+-
+-target_link_libraries( gerbview_kiface_objects PUBLIC gerbview_navlib)
+-
+-add_dependencies( gerbview_kiface_objects gerbview_navlib )
++if( NOT SPNAV_FOUND )
++    message( STATUS "Including 3Dconnexion SpaceMouse navigation support in gerbview" )
++    add_subdirectory( navlib )
++
++    target_link_libraries( gerbview_kiface_objects PUBLIC gerbview_navlib)
++
++    add_dependencies( gerbview_kiface_objects gerbview_navlib )
++endif()
+ 
+ # the main gerbview program, in DSO form.
+ add_library( gerbview_kiface MODULE )
+--- gerbview/gerbview_frame.cpp.orig
++++ gerbview/gerbview_frame.cpp
+@@ -60,7 +60,9 @@
+ #include "widgets/dcode_selection_box.h"
+ #include <dialog_draw_layers_settings.h>
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ #include <spacenav/spnav_2d_plugin.h>
+ #else
+ #include <navlib/nl_gerbview_plugin.h>
+@@ -1065,7 +1067,7 @@
+     {
+         if( !m_spaceMouse )
+         {
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+             m_spaceMouse = std::make_unique<SPNAV_2D_PLUGIN>( galCanvas );
+             m_spaceMouse->SetScale( gerbIUScale.IU_PER_MILS / pcbIUScale.IU_PER_MILS );
+ #else
+--- gerbview/gerbview_frame.h.orig
++++ gerbview/gerbview_frame.h
+@@ -46,7 +46,9 @@
+ class SELECTION;
+ class wxStaticText;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ class SPNAV_2D_PLUGIN;
+ #else
+ class NL_GERBVIEW_PLUGIN;
+@@ -528,7 +530,7 @@
+     wxStaticText*       m_dcodeText;        // a message on the auxiliary toolbar,
+                                             // relative to the m_DCodeSelector
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+     std::unique_ptr<SPNAV_2D_PLUGIN> m_spaceMouse;
+ #else
+     std::unique_ptr<NL_GERBVIEW_PLUGIN> m_spaceMouse;
+--- include/pcb_base_frame.h.orig
++++ include/pcb_base_frame.h
+@@ -63,7 +63,9 @@
+ class PROGRESS_REPORTER;
+ class PCB_LAYER_BOX_SELECTOR;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ class SPNAV_2D_PLUGIN;
+ #else
+ class NL_PCBNEW_PLUGIN;
+@@ -445,7 +447,7 @@
+     PCB_ORIGIN_TRANSFORMS   m_originTransforms;
+ 
+ private:
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+     std::unique_ptr<SPNAV_2D_PLUGIN>    m_spaceMouse;
+ #else
+     std::unique_ptr<NL_PCBNEW_PLUGIN>    m_spaceMouse;
+--- pagelayout_editor/CMakeLists.txt.orig
++++ pagelayout_editor/CMakeLists.txt
+@@ -123,12 +123,14 @@
+ # if building pl_editor, then also build pl_editor_kiface if out of date.
+ add_dependencies( pl_editor pl_editor_kiface )
+ 
+-message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pagelayout editor" )
+-add_subdirectory( navlib )
++if( NOT SPNAV_FOUND )
++    message( STATUS "Including 3Dconnexion SpaceMouse navigation support in pagelayout editor" )
++    add_subdirectory( navlib )
+ 
+-target_link_libraries( pl_editor_kiface pl_editor_navlib)
++    target_link_libraries( pl_editor_kiface pl_editor_navlib)
+ 
+-add_dependencies( pl_editor_kiface pl_editor_navlib)
++    add_dependencies( pl_editor_kiface pl_editor_navlib)
++endif()
+ 
+ # these 2 binaries are a matched set, keep them together:
+ if( APPLE )
+--- pagelayout_editor/pl_editor_frame.cpp.orig
++++ pagelayout_editor/pl_editor_frame.cpp
+@@ -67,7 +67,9 @@
+ #include <wx/log.h>
+ #include <kiplatform/ui.h>
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ #include <spacenav/spnav_2d_plugin.h>
+ #else
+ #include <navlib/nl_pl_editor_plugin.h>
+@@ -243,7 +245,7 @@
+     {
+         if( !m_spaceMouse )
+         {
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+             m_spaceMouse = std::make_unique<SPNAV_2D_PLUGIN>( GetCanvas() );
+             m_spaceMouse->SetScale( drawSheetIUScale.IU_PER_MILS / pcbIUScale.IU_PER_MILS );
+ #else
+--- pagelayout_editor/pl_editor_frame.h.orig
++++ pagelayout_editor/pl_editor_frame.h
+@@ -39,7 +39,9 @@
+ class DS_DATA_ITEM;
+ class wxChoice;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ class SPNAV_2D_PLUGIN;
+ #else
+ class NL_PL_EDITOR_PLUGIN;
+@@ -283,7 +285,7 @@
+                                               // only on page 1, not on page 1
+     VECTOR2I          m_grid_origin;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+     std::unique_ptr<SPNAV_2D_PLUGIN> m_spaceMouse;
+ #else
+     std::unique_ptr<NL_PL_EDITOR_PLUGIN> m_spaceMouse;
+--- pcbnew/pcb_base_frame.cpp.orig
++++ pcbnew/pcb_base_frame.cpp
+@@ -73,7 +73,9 @@
+ #include <tool/grid_menu.h>
+ #include <ratsnest/ratsnest_view_item.h>
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
++#include <config.h>
++
++#if SPNAV_FOUND
+ #include <spacenav/spnav_2d_plugin.h>
+ #else
+ #include <navlib/nl_pcbnew_plugin.h>
+@@ -1045,7 +1047,7 @@
+     {
+         if( !m_spaceMouse )
+         {
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if SPNAV_FOUND
+             m_spaceMouse = std::make_unique<SPNAV_2D_PLUGIN>( GetCanvas() );
+             m_spaceMouse->SetScale( 0.01 );
+ #else

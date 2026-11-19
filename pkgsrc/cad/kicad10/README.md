@@ -60,9 +60,9 @@ The focused consumers in [tests](tests/shared-libraries/README.md) exercise shar
 interfaces and parser behavior. They do not replace building the complete
 package or running CAD workflows on EmberBSD.
 
-Full application configuration passes against the common GTK4 wxWidgets/WebKit
-stack. Compilation, linking and CAD runtime acceptance remain in progress;
-focused consumer checks are not evidence of a completed KiCad binary package.
+The full aarch64 package builds and links with the common GTK4 wxWidgets/WebKit
+stack. Host Python runs the build generators. The installed application uses
+the Python interpreter supplied by its target package dependency.
 
 The runtime includes the common DejaVu TrueType fonts so that a minimal target
 can render text, including Cyrillic. Type 1 fonts alone do not satisfy current
@@ -129,3 +129,17 @@ values, plus set insertion for `(3, 4)` and `(4, 3)`.
 Compile the fixture and `libs/kimath/src/math/vector2.cpp` with the target C++
 compiler, the kimath include directory and the directory containing the generated
 `config.h`. Run the resulting executable on the target.
+
+The bundled ECC83 schematic exercises this distinction in the actual editor.
+Export it from a fresh profile and check which pins belong to ground and to
+the heater connector. Run these commands as an ordinary user on EmberBSD from
+the directory containing this recipe, or copy the test alongside the export.
+
+```sh
+work=$(mktemp -d)
+export KICAD_CONFIG_HOME="$work/config"
+demo=/usr/pkg/share/kicad/demos/ecc83/ecc83-pp.kicad_sch
+kicad-cli sch export netlist --format kicadxml -o "$work/ecc83.xml" "$demo"
+python3.15 tests/ecc83-connectivity.py "$work/ecc83.xml"
+kicad-cli sch export svg -o "$work" "$demo"
+```
