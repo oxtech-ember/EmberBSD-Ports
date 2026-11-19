@@ -2,7 +2,7 @@
 
 V=		10.0.8
 DISTNAME=	kicad-${V}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	cad
 MASTER_SITES=	${MASTER_SITE_GITLAB:=kicad/code/}
 GITLAB_PROJECT=	kicad
@@ -49,6 +49,14 @@ CMAKE_CONFIGURE_ARGS+=		-DKICAD_USE_EGL=OFF
 
 PY_PATCHPLIST=		yes
 PYTHON_FOR_BUILD_ONLY=	no
+DEPENDS+=		${PYDEPENDENCY}
+
+# CMake runs generators on the host. The installed application launches
+# this target interpreter for the API and BOM plugins.
+SUBST_CLASSES+=		runtime-python
+SUBST_STAGE.runtime-python=	pre-configure
+SUBST_FILES.runtime-python=	cmake/config.h.cmake
+SUBST_SED.runtime-python=	-e 's,@PYTHON_EXECUTABLE@,${PYTHONBIN},'
 
 PYTHON_VERSIONS_INCOMPATIBLE=	314 # Fails to find Python libs
 
