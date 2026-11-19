@@ -30,6 +30,9 @@ USE_PKGLOCALEDIR=	yes
 USE_LANGUAGES=		c c++
 USE_TOOLS+=		pkg-config msgfmt msgmerge xgettext tar
 
+# Retained CMake objects are outside the source shell portability check.
+CHECK_PORTABILITY_SKIP+=	${CMAKE_BUILD_DIR}/*
+
 CMAKE_CONFIGURE_ARGS+=		-DCMAKE_BUILD_TYPE=Release
 # Keep the default-on IPC API explicit; its providers are direct dependencies.
 CMAKE_CONFIGURE_ARGS+=		-DKICAD_IPC_API=ON

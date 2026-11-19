@@ -116,3 +116,16 @@ lock/unlock, an alternate canvas and a hidden parent. Run it on a target display
 with a bounded timeout and fatal GTK criticals. This focused lifecycle check
 reuses the wx GL backend acceptance; it does not establish full CAD rendering
 or physical GPU support.
+
+## Ordered vector coordinates
+
+KiCad's `VECTOR2I::operator<` compares vector lengths for geometric operations.
+Different points at the same distance from the origin compare equivalent under
+that ordering. Maps and sets that identify points by position use the explicit
+`VECTOR2I_MAP` and `VECTOR2I_SET` aliases, which compare x then y. The
+`tests/vector-order.cpp` target fixture checks map insertion, lookup and mapped
+values, plus set insertion for `(3, 4)` and `(4, 3)`.
+
+Compile the fixture and `libs/kimath/src/math/vector2.cpp` with the target C++
+compiler, the kimath include directory and the directory containing the generated
+`config.h`. Run the resulting executable on the target.

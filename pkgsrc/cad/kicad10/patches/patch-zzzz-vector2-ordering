@@ -1,0 +1,688 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use strict lexicographical ordering for every ordered VECTOR2I container.
+Keep VECTOR2::operator< magnitude-based for geometric ordering.
+
+--- eeschema/connection_graph.cpp.orig
++++ eeschema/connection_graph.cpp
+@@ -20,6 +20,7 @@
+  * with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <algorithm>
+ #include <iterator>
+ #include <list>
+@@ -1222,7 +1223,7 @@
+ 
+ 
+ void CONNECTION_GRAPH::updateSymbolConnectivity( const SCH_SHEET_PATH& aSheet, SCH_SYMBOL* aSymbol,
+-                                                 std::map<VECTOR2I, std::vector<SCH_ITEM*>>& aConnectionMap )
++                                                 VECTOR2I_MAP<std::vector<SCH_ITEM*>>& aConnectionMap )
+ {
+     auto updatePin =
+             [&]( SCH_PIN* aPin, SCH_CONNECTION* aConn )
+@@ -1319,7 +1320,7 @@
+ 
+ 
+ void CONNECTION_GRAPH::updateGenericItemConnectivity( const SCH_SHEET_PATH& aSheet, SCH_ITEM* aItem,
+-                                                      std::map<VECTOR2I, std::vector<SCH_ITEM*>>& aConnectionMap )
++                                                      VECTOR2I_MAP<std::vector<SCH_ITEM*>>& aConnectionMap )
+ {
+     std::vector<VECTOR2I> points = aItem->GetConnectionPoints();
+     aItem->ClearConnectedItems( aSheet );
+@@ -1364,7 +1365,7 @@
+ {
+     wxLogTrace( wxT( "Updating connectivity for sheet %s with %zu items" ),
+                 aSheet.Last()->GetFileName(), aItemList.size() );
+-    std::map<VECTOR2I, std::vector<SCH_ITEM*>> connection_map;
++    VECTOR2I_MAP<std::vector<SCH_ITEM*>> connection_map;
+ 
+     for( SCH_ITEM* item : aItemList )
+     {
+--- eeschema/connection_graph.h.orig
++++ eeschema/connection_graph.h
+@@ -22,6 +22,7 @@
+ #ifndef _CONNECTION_GRAPH_H
+ #define _CONNECTION_GRAPH_H
+ 
++#include <math/vector2d_ordered.h>
+ #include <memory>
+ #include <mutex>
+ #include <utility>
+@@ -522,7 +523,7 @@
+      */
+     void updateSymbolConnectivity( const SCH_SHEET_PATH& aSheet,
+                                    SCH_SYMBOL* aSymbol,
+-                                   std::map<VECTOR2I, std::vector<SCH_ITEM*>>& aConnectionMap );
++                                   VECTOR2I_MAP<std::vector<SCH_ITEM*>>& aConnectionMap );
+ 
+     /**
+      * Update the connectivity of a pin and its connections.
+@@ -540,7 +541,7 @@
+      */
+     void updateGenericItemConnectivity( const SCH_SHEET_PATH& aSheet,
+                                         SCH_ITEM* aItem,
+-                                        std::map<VECTOR2I, std::vector<SCH_ITEM*>>& aConnectionMap );
++                                        VECTOR2I_MAP<std::vector<SCH_ITEM*>>& aConnectionMap );
+ 
+     /**
+      * Update the graphical connectivity between items (i.e. where they touch)
+--- eeschema/erc/erc.cpp.orig
++++ eeschema/erc/erc.cpp
+@@ -23,6 +23,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <algorithm>
+ #include <iterator>
+ #include <numeric>
+@@ -796,7 +797,7 @@
+ 
+     for( const SCH_SHEET_PATH& sheet : m_sheetList )
+     {
+-        std::map<VECTOR2I, std::vector<SCH_ITEM*>> connMap;
++        VECTOR2I_MAP<std::vector<SCH_ITEM*>> connMap;
+ 
+         for( SCH_ITEM* item : sheet.LastScreen()->Items().OfType( SCH_LABEL_T ) )
+         {
+@@ -868,7 +869,7 @@
+ 
+     for( const SCH_SHEET_PATH& sheet : m_sheetList )
+     {
+-        std::map<VECTOR2I, std::vector<SCH_ITEM*>> connMap;
++        VECTOR2I_MAP<std::vector<SCH_ITEM*>> connMap;
+         SCH_SCREEN* screen = sheet.LastScreen();
+ 
+         for( SCH_ITEM* item : screen->Items().OfType( SCH_SYMBOL_T ) )
+@@ -930,7 +931,7 @@
+ 
+     for( const SCH_SHEET_PATH& sheet : m_sheetList )
+     {
+-        std::map<VECTOR2I, std::vector<SCH_ITEM*>> pinMap;
++        VECTOR2I_MAP<std::vector<SCH_ITEM*>> pinMap;
+ 
+         auto addOther =
+                 [&]( const VECTOR2I& pt, SCH_ITEM* aOther )
+--- eeschema/sch_io/altium/sch_io_altium.cpp.orig
++++ eeschema/sch_io/altium/sch_io_altium.cpp
+@@ -22,6 +22,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <algorithm>
+ #include <map>
+ #include <memory>
+@@ -815,7 +816,7 @@
+     wxCHECK( screen, /* void */ );
+ 
+     std::vector<SCH_LINE*> busLines;
+-    std::map<VECTOR2I, std::vector<SCH_LINE*>> busLineMap;
++    VECTOR2I_MAP<std::vector<SCH_LINE*>> busLineMap;
+ 
+     for( SCH_ITEM* elem : screen->Items().OfType( SCH_LINE_T) )
+     {
+--- eeschema/sch_io/eagle/sch_io_eagle.h.orig
++++ eeschema/sch_io/eagle/sch_io_eagle.h
+@@ -25,6 +25,7 @@
+ #ifndef SCH_IO_EAGLE_H_
+ #define SCH_IO_EAGLE_H_
+ 
++#include <math/vector2d_ordered.h>
+ #include <sch_line.h>
+ #include <sch_io/sch_io.h>
+ #include <sch_io/sch_io_mgr.h>
+@@ -299,7 +300,7 @@
+     std::map<wxString, ENET> m_nets;
+ 
+     ///< Positions of pins and wire endings mapped to its parent
+-    std::map<VECTOR2I, std::set<const EDA_ITEM*>> m_connPoints;
++    VECTOR2I_MAP<std::set<const EDA_ITEM*>> m_connPoints;
+ 
+     ///< The fully parsed Eagle schematic file.
+     std::unique_ptr<EAGLE_DOC> m_eagleDoc;
+--- eeschema/sch_item_alignment.cpp.orig
++++ eeschema/sch_item_alignment.cpp
+@@ -21,6 +21,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include "sch_item_alignment.h"
+ 
+ #include <sch_item.h>
+@@ -83,7 +84,7 @@
+         SCH_LINE* wire;
+         int       endpointFlag;  // STARTPOINT or ENDPOINT
+     };
+-    std::map<VECTOR2I, std::vector<WireEndpoint>> pinPosToWires;
++    VECTOR2I_MAP<std::vector<WireEndpoint>> pinPosToWires;
+ 
+     // Wires may move while processing earlier sheets, so we save their original positions.
+     struct OriginalWireEndpoints
+@@ -99,7 +100,7 @@
+         originalWireEndpoints[line] = { line->GetStartPoint(), line->GetEndPoint() };
+     }
+ 
+-    std::set<VECTOR2I> selectedSheetPinPositions;
++    VECTOR2I_SET selectedSheetPinPositions;
+ 
+     for( EDA_ITEM* item : aItems )
+     {
+@@ -288,7 +289,7 @@
+                     aCallbacks.m_getConnectedDragItems( schItem, point, drag_items );
+             }
+ 
+-            std::map<VECTOR2I, int> shifts;
++            VECTOR2I_MAP<int> shifts;
+             VECTOR2I                most_common( 0, 0 );
+             int                     max_count = 0;
+ 
+--- eeschema/schematic.cpp.orig
++++ eeschema/schematic.cpp
+@@ -17,6 +17,7 @@
+  * with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <advanced_config.h>
+ #include <algorithm>
+ #include <common.h>
+@@ -1789,7 +1790,7 @@
+ 
+         // Final change sets
+         std::set<SCH_ITEM*>                            changed_items;
+-        std::set<VECTOR2I>                             pts;
++        VECTOR2I_SET                             pts;
+         std::set<std::pair<SCH_SHEET_PATH, SCH_ITEM*>> item_paths;
+ 
+         // Working change sets
+--- eeschema/tools/sch_line_wire_bus_tool.cpp.orig
++++ eeschema/tools/sch_line_wire_bus_tool.cpp
+@@ -22,6 +22,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <sch_line_wire_bus_tool.h>
+ 
+ #include <wx/debug.h>
+@@ -1460,7 +1461,7 @@
+ {
+     bool brokenSegments = false;
+ 
+-    std::set<VECTOR2I> point_set;
++    VECTOR2I_SET point_set;
+ 
+     for( SCH_ITEM* item : aScreen->Items().OfType( SCH_JUNCTION_T ) )
+         point_set.insert( item->GetPosition() );
+--- eeschema/tools/sch_selection_tool.cpp.orig
++++ eeschema/tools/sch_selection_tool.cpp
+@@ -22,6 +22,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <advanced_config.h>
+ #include <core/typeinfo.h>
+ #include <core/kicad_algo.h>
+@@ -2993,7 +2994,7 @@
+ 
+     // Cache every pin position on the sheet so endpoint tests are O(log n) lookups instead of
+     // an R-tree query plus a full pin iteration per call.
+-    std::set<VECTOR2I> pinPositions;
++    VECTOR2I_SET pinPositions;
+ 
+     for( SCH_ITEM* it : screen->Items().OfType( SCH_SYMBOL_T ) )
+     {
+--- include/preview_items/anchor_debug.h.orig
++++ include/preview_items/anchor_debug.h
+@@ -23,6 +23,7 @@
+ 
+ #pragma once
+ 
++#include <math/vector2d_ordered.h>
+ #include <cstddef>
+ #include <map>
+ #include <span>
+@@ -77,7 +78,7 @@
+ 
+ private:
+     // Store the anchors by location and count
+-    std::map<VECTOR2I, size_t> m_anchors;
++    VECTOR2I_MAP<size_t> m_anchors;
+     OPT_VECTOR2I               m_nearest;
+ };
+ 
+--- libs/kimath/include/math/vector2d.h.orig
++++ libs/kimath/include/math/vector2d.h
+@@ -709,23 +709,14 @@
+ /* STL specializations */
+ namespace std
+ {
+-    // Required to enable correct use in std::map/unordered_map
+-    // DO NOT USE hash tables with VECTOR2 elements.  It is inefficient
+-    // and degenerates to a linear search.  Use the std::map/std::set
+-    // trees instead that utilize the less operator below
+-    // This function is purposely deleted after substantial testing
++    // Hash tables are intentionally unsupported for VECTOR2I.  Use the
++    // lexicographical VECTOR2I_MAP and VECTOR2I_SET aliases for ordered keys.
+     template <>
+     struct hash<VECTOR2I>
+     {
+         size_t operator()( const VECTOR2I& k ) const = delete;
+     };
+ 
+-    // Required to enable use of std::hash with maps.
+-    template <>
+-    struct less<VECTOR2I>
+-    {
+-        bool operator()( const VECTOR2I& aA, const VECTOR2I& aB ) const;
+-    };
+ }
+ 
+ #endif    // VECTOR2D_H_
+--- /dev/null
++++ libs/kimath/include/math/vector2d_ordered.h
+@@ -0,0 +1,36 @@
++/*
++ * This program source code file is part of KiCad, a free EDA CAD application.
++ *
++ * Copyright The KiCad Developers, see AUTHORS.txt for contributors.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef VECTOR2D_ORDERED_H_
++#define VECTOR2D_ORDERED_H_
++
++#include <map>
++#include <set>
++
++#include <math/vector2d.h>
++
++/** Strict lexicographical ordering for VECTOR2I ordered containers. */
++struct VECTOR2I_LEXICOGRAPHICAL_LESS
++{
++    bool operator()( const VECTOR2I& aA, const VECTOR2I& aB ) const;
++};
++
++template <typename T>
++using VECTOR2I_MAP = std::map<VECTOR2I, T, VECTOR2I_LEXICOGRAPHICAL_LESS>;
++
++using VECTOR2I_SET = std::set<VECTOR2I, VECTOR2I_LEXICOGRAPHICAL_LESS>;
++
++#endif    // VECTOR2D_ORDERED_H_
+--- libs/kimath/src/geometry/shape_poly_set.cpp.orig
++++ libs/kimath/src/geometry/shape_poly_set.cpp
+@@ -28,6 +28,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <algorithm>
+ #include <assert.h>                          // for assert
+ #include <cmath>                             // for sqrt, cos, hypot, isinf
+@@ -772,7 +773,7 @@
+ 
+     std::vector<CLIPPER_Z_VALUE> zValues;
+     std::vector<SHAPE_ARC> arcBuffer;
+-    std::map<VECTOR2I, CLIPPER_Z_VALUE> newIntersectPoints;
++    VECTOR2I_MAP<CLIPPER_Z_VALUE> newIntersectPoints;
+ 
+     Clipper2Lib::Paths64 paths;
+     Clipper2Lib::Paths64 clips;
+--- libs/kimath/src/math/vector2.cpp.orig
++++ libs/kimath/src/math/vector2.cpp
+@@ -17,12 +17,9 @@
+  * with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <math/vector2d.h>
++#include <math/vector2d_ordered.h>
+ 
+-bool std::less<VECTOR2I>::operator()( const VECTOR2I& aA, const VECTOR2I& aB ) const
++bool VECTOR2I_LEXICOGRAPHICAL_LESS::operator()( const VECTOR2I& aA, const VECTOR2I& aB ) const
+ {
+-    if( aA.x == aB.x )
+-        return aA.y < aB.y;
+-
+-    return aA.x < aB.x;
++    return LexicographicalCompare( aA, aB ) < 0;
+ }
+--- pcbnew/autorouter/spread_footprints.cpp.orig
++++ pcbnew/autorouter/spread_footprints.cpp
+@@ -32,6 +32,7 @@
+  * Often, spread them on a free area near the board being edited make more easy their selection.
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include "spread_footprints.h"
+ 
+ #include <optional>
+@@ -128,7 +129,7 @@
+                        int aComponentGap, int aGroupGap )
+ {
+     using FpBBoxToFootprintsPair = std::pair<BOX2I, std::vector<FOOTPRINT*>>;
+-    using SheetBBoxToFootprintsMapPair = std::pair<BOX2I, std::map<VECTOR2I, FpBBoxToFootprintsPair>>;
++    using SheetBBoxToFootprintsMapPair = std::pair<BOX2I, VECTOR2I_MAP<FpBBoxToFootprintsPair>>;
+ 
+     std::map<wxString, SheetBBoxToFootprintsMapPair> sheetsMap;
+ 
+--- pcbnew/connectivity/connectivity_items.cpp.orig
++++ pcbnew/connectivity/connectivity_items.cpp
+@@ -25,6 +25,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <core/kicad_algo.h>
+ #include <macros.h>
+ #include <connectivity/connectivity_items.h>
+@@ -153,7 +154,7 @@
+ 
+     auto item = new CN_ITEM( pad, false, 1 );
+ 
+-    std::set<VECTOR2I> uniqueAnchors;
++    VECTOR2I_SET uniqueAnchors;
+     pad->Padstack().ForEachUniqueLayer(
+         [&]( PCB_LAYER_ID aLayer )
+         {
+--- pcbnew/drc/drc_test_provider_copper_clearance.cpp.orig
++++ pcbnew/drc/drc_test_provider_copper_clearance.cpp
+@@ -21,6 +21,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <common.h>
+ #include <atomic>
+ #include <board_design_settings.h>
+@@ -1304,7 +1305,7 @@
+ 
+                     if( constraint.GetSeverity() != RPT_SEVERITY_IGNORE && clearance > 0 )
+                     {
+-                        std::map<VECTOR2I, int> conflictPoints;
++                        VECTOR2I_MAP<int> conflictPoints;
+ 
+                         std::vector<SEG>& refSegments = poly_segments[zoneA_idx][layer];
+                         std::vector<SEG>& testSegments = poly_segments[zoneB_idx][layer];
+--- pcbnew/graphics_cleaner.cpp.orig
++++ pcbnew/graphics_cleaner.cpp
+@@ -23,6 +23,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <reporter.h>
+ #include <macros.h>
+ #include <board_commit.h>
+@@ -253,7 +254,7 @@
+     };
+ 
+     std::vector<SIDE_CANDIDATE*> sides;
+-    std::map<VECTOR2I, std::vector<SIDE_CANDIDATE*>> ptMap;
++    VECTOR2I_MAP<std::vector<SIDE_CANDIDATE*>> ptMap;
+ 
+     // First load all the candidates into the side vector and layer maps
+     for( BOARD_ITEM* item : m_drawings )
+--- pcbnew/length_delay_calculation/length_delay_calculation.cpp.orig
++++ pcbnew/length_delay_calculation/length_delay_calculation.cpp
+@@ -21,6 +21,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include "length_delay_calculation/length_delay_calculation.h"
+ 
+ #include <wx/log.h>
+@@ -196,10 +197,10 @@
+         std::vector<LENGTH_DELAY_CALCULATION_ITEM*> vias;
+ 
+         // Map of line endpoints to line objects
+-        std::map<VECTOR2I, std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>> linesPositionMap;
++        VECTOR2I_MAP<std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>> linesPositionMap;
+ 
+         // Map of pad positions to pad objects
+-        std::map<VECTOR2I, std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>> padsPositionMap;
++        VECTOR2I_MAP<std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>> padsPositionMap;
+ 
+         for( LENGTH_DELAY_CALCULATION_ITEM& item : aItems )
+         {
+@@ -489,7 +490,7 @@
+ 
+ void LENGTH_DELAY_CALCULATION::mergeLines(
+         std::vector<LENGTH_DELAY_CALCULATION_ITEM*>&                            aLines,
+-        std::map<VECTOR2I, std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>& aLinesPositionMap )
++        VECTOR2I_MAP<std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>& aLinesPositionMap )
+ {
+     // Vector of pads, and an associated flag to indicate whether they have been visited by the clustering algorithm
+     std::vector<LENGTH_DELAY_CALCULATION_ITEM*> pads;
+@@ -617,8 +618,8 @@
+ 
+ void LENGTH_DELAY_CALCULATION::optimiseVias(
+         const std::vector<LENGTH_DELAY_CALCULATION_ITEM*>& aVias, std::vector<LENGTH_DELAY_CALCULATION_ITEM*>& aLines,
+-        std::map<VECTOR2I, std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>&       aLinesPositionMap,
+-        const std::map<VECTOR2I, std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>& aPadsPositionMap ) const
++        VECTOR2I_MAP<std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>&       aLinesPositionMap,
++        const VECTOR2I_MAP<std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>& aPadsPositionMap ) const
+ {
+     for( LENGTH_DELAY_CALCULATION_ITEM* via : aVias )
+     {
+--- pcbnew/length_delay_calculation/length_delay_calculation.h.orig
++++ pcbnew/length_delay_calculation/length_delay_calculation.h
+@@ -24,6 +24,7 @@
+ #ifndef PCBNEW_LENGTH_DELAY_CALCULATION_H
+ #define PCBNEW_LENGTH_DELAY_CALCULATION_H
+ 
++#include <math/vector2d_ordered.h>
+ #include "tuning_profile_parameters_iface.h"
+ #include "tuning_profile_parameters_user_defined.h"
+ 
+@@ -257,14 +258,14 @@
+     void optimiseVias(
+             const std::vector<LENGTH_DELAY_CALCULATION_ITEM*>&                            aVias,
+             std::vector<LENGTH_DELAY_CALCULATION_ITEM*>&                                  aLines,
+-            std::map<VECTOR2I, std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>&       aLinesPositionMap,
+-            const std::map<VECTOR2I, std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>& aPadsPositionMap ) const;
++            VECTOR2I_MAP<std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>&       aLinesPositionMap,
++            const VECTOR2I_MAP<std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>& aPadsPositionMap ) const;
+ 
+     /**
+      * Merges any lines (traces) that are contiguous, on one layer, and with no junctions
+      */
+     static void mergeLines( std::vector<LENGTH_DELAY_CALCULATION_ITEM*>&                            aLines,
+-                            std::map<VECTOR2I, std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>& aLinesPositionMap );
++                            VECTOR2I_MAP<std::unordered_set<LENGTH_DELAY_CALCULATION_ITEM*>>& aLinesPositionMap );
+ 
+     /**
+      * Merges two SHAPE_LINE_CHAINs where there is a shared endpoing.
+--- pcbnew/tools/convert_tool.cpp.orig
++++ pcbnew/tools/convert_tool.cpp
+@@ -21,6 +21,7 @@
+  * or you may write to the Free Software Foundation, Inc.,
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
++#include <math/vector2d_ordered.h>
+ #include "convert_tool.h"
+ 
+ #include <ranges>
+@@ -603,7 +604,7 @@
+     SHAPE_POLY_SET poly;
+ 
+     // Stores pairs of (anchor, item) where anchor == 0 -> SEG.A, anchor == 1 -> SEG.B
+-    std::map<VECTOR2I, std::vector<std::pair<int, EDA_ITEM*>>> connections;
++    VECTOR2I_MAP<std::vector<std::pair<int, EDA_ITEM*>>> connections;
+ 
+     // Canonical key each (item, anchor) endpoint was filed under.  Re-running findInsertionPoint()
+     // during the walk is order-dependent and could resolve to a different bucket once the map is
+--- pcbnew/tools/pcb_control.cpp.orig
++++ pcbnew/tools/pcb_control.cpp
+@@ -23,6 +23,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include "pcb_control.h"
+ #include "convert_basic_shapes_to_polygon.h"
+ 
+@@ -2643,7 +2644,7 @@
+                 {
+                     std::set<wxString> layers;
+                     std::set<PAD_SHAPE> shapes;
+-                    std::set<VECTOR2I>  sizes;
++                    VECTOR2I_SET  sizes;
+ 
+                     for( EDA_ITEM* item : selection )
+                     {
+--- pcbnew/tools/pcb_selection_tool.cpp.orig
++++ pcbnew/tools/pcb_selection_tool.cpp
+@@ -24,6 +24,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <cmath>
+ #include <functional>
+ #include <stack>
+@@ -1751,7 +1752,7 @@
+         if( item->GetNetCode() > 0 )
+             selectedNets.insert( item->GetNetCode() );
+ 
+-    std::set<VECTOR2I> endpointSet;
++    VECTOR2I_SET endpointSet;
+ 
+     for( BOARD_CONNECTED_ITEM* item : toUnroute )
+     {
+@@ -1782,7 +1783,7 @@
+                 continue;
+ 
+             // Find this generator's external endpoints (meander entry/exit)
+-            std::map<VECTOR2I, int> epCount;
++            VECTOR2I_MAP<int> epCount;
+ 
+             for( BOARD_ITEM* child : gen->GetBoardItems() )
+             {
+@@ -2144,10 +2145,10 @@
+ 
+     for( BOARD_CONNECTED_ITEM* startItem : aStartItems )
+     {
+-        std::map<VECTOR2I, std::vector<PCB_TRACK*>> trackMap;
+-        std::map<VECTOR2I, PCB_VIA*>                viaMap;
+-        std::map<VECTOR2I, PAD*>                    padMap;
+-        std::map<VECTOR2I, std::vector<PCB_SHAPE*>> shapeMap;
++        VECTOR2I_MAP<std::vector<PCB_TRACK*>> trackMap;
++        VECTOR2I_MAP<PCB_VIA*>                viaMap;
++        VECTOR2I_MAP<PAD*>                    padMap;
++        VECTOR2I_MAP<std::vector<PCB_SHAPE*>> shapeMap;
+         std::vector<std::pair<VECTOR2I, LSET>>      activePts;
+ 
+         if( startItem->HasFlag( SKIP_STRUCT ) ) // Skip already visited items
+--- qa/tests/eeschema/test_issue22864_align_sheet_pins.cpp.orig
++++ qa/tests/eeschema/test_issue22864_align_sheet_pins.cpp
+@@ -33,6 +33,7 @@
+  * - Verify all wire endpoints connect to pins after alignment
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <qa_utils/wx_utils/unit_test_utils.h>
+ #include <schematic_utils/schematic_file_util.h>
+ 
+@@ -84,9 +85,9 @@
+     /**
+      * Build a map of positions to connected wires for the callback.
+      */
+-    std::map<VECTOR2I, std::vector<SCH_LINE*>> BuildPositionToWiresMap( SCH_SCREEN* aScreen )
+-    {
+-        std::map<VECTOR2I, std::vector<SCH_LINE*>> positionToWires;
++    VECTOR2I_MAP<std::vector<SCH_LINE*>> BuildPositionToWiresMap( SCH_SCREEN* aScreen )
++    {
++        VECTOR2I_MAP<std::vector<SCH_LINE*>> positionToWires;
+ 
+         for( SCH_ITEM* item : aScreen->Items().OfType( SCH_LINE_T ) )
+         {
+@@ -181,7 +182,7 @@
+         AlignSchematicItemsToGrid( aScreen, aSelection, grid, GRID_CONNECTABLE, callbacks );
+ 
+         // Collect all pin positions
+-        std::set<VECTOR2I> pinPositions;
++        VECTOR2I_SET pinPositions;
+ 
+         for( SCH_ITEM* item : aScreen->Items().OfType( SCH_SHEET_T ) )
+         {
+@@ -267,7 +268,7 @@
+         }
+ 
+         TEST_GRID_HELPER                             grid( aGridSize );
+-        std::map<VECTOR2I, std::vector<SCH_LINE*>> positionToWires =
++        VECTOR2I_MAP<std::vector<SCH_LINE*>> positionToWires =
+                 BuildPositionToWiresMap( aScreen );
+ 
+         for( SCH_ITEM* it : aScreen->Items() )
+@@ -365,7 +366,7 @@
+         }
+ 
+         // Also check connectivity - collect all pin positions
+-        std::set<VECTOR2I> pinPositions;
++        VECTOR2I_SET pinPositions;
+ 
+         for( SCH_ITEM* item : aScreen->Items().OfType( SCH_SHEET_T ) )
+         {
+--- qa/tests/eeschema/test_update_items_connectivity.cpp.orig
++++ qa/tests/eeschema/test_update_items_connectivity.cpp
+@@ -17,6 +17,7 @@
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <qa_utils/wx_utils/unit_test_utils.h>
+ 
+ #include <connection_graph.h>
+@@ -102,7 +103,7 @@
+     }
+ 
+     CONNECTION_GRAPH                           graph;
+-    std::map<VECTOR2I, std::vector<SCH_ITEM*>> connection_map;
++    VECTOR2I_MAP<std::vector<SCH_ITEM*>> connection_map;
+     graph.updateSymbolConnectivity( sheetPath, &symbol, connection_map );
+ 
+     // Global power pin captured
+@@ -143,7 +144,7 @@
+ 
+ void boost_test_update_generic_connectivity()
+ {
+-    std::map<VECTOR2I, std::vector<SCH_ITEM*>> cmap;
++    VECTOR2I_MAP<std::vector<SCH_ITEM*>> cmap;
+ 
+     // Create schematic
+     SCHEMATIC schematic( nullptr );
+--- qa/tests/pcbnew/pcb_io/pads/test_pads_import.cpp.orig
++++ qa/tests/pcbnew/pcb_io/pads/test_pads_import.cpp
+@@ -21,6 +21,7 @@
+  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
++#include <math/vector2d_ordered.h>
+ #include <pcbnew_utils/board_test_utils.h>
+ #include <pcbnew_utils/board_file_utils.h>
+ #include <qa_utils/wx_utils/unit_test_utils.h>
+@@ -2145,7 +2146,7 @@
+     BOOST_REQUIRE_EQUAL( quartz->Pads().size(), 4u );
+     BOOST_CHECK_GE( quartz->GraphicalItems().size(), 2u );
+ 
+-    std::set<VECTOR2I> padOffsets;
++    VECTOR2I_SET padOffsets;
+ 
+     for( PAD* pad : quartz->Pads() )
+         padOffsets.insert( pad->GetPosition() - quartz->GetPosition() );

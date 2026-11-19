@@ -35,3 +35,4 @@ SHA1 (patch-zz-dxf-memory) = c9ebbcc9557869c574b6d4647cddadd60d4ca940
 SHA1 (patch-zz-curl-includes) = 8d98fa0a3a0362d39be7dee971d87ebf87c7c9ca
 SHA1 (patch-zz-potrace-bitmap) = 0f0512d31e84ddeb1e071b750743582aef3461b1
 SHA1 (patch-zz-argparse-enum-choices) = cbba52a9c1af6116aed5073b686236314e2c0cce
+SHA1 (patch-zzzz-vector2-ordering) = 0c06a8896b69aa62a45012e0443a01b5bc11b577
