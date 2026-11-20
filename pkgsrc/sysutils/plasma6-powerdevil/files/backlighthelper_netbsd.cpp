@@ -38,17 +38,53 @@ bool readSysctl(const char *name, int *value)
     return sysctlbyname(name, value, &length, nullptr, 0) == 0 && length == sizeof(*value);
 }
 
+/*
+ * acpivga(4) adds a sysctl node hw.acpi.acpioutN only for outputs it
+ * can control, with the autoconf unit number N. On QBOOK15 these are
+ * acpiout15 and acpiout16, so the numbers have gaps. List the children
+ * of hw.acpi with CTL_QUERY and take the lowest acpioutN with brightness.
+ */
 QByteArray firstAcpiOutput()
 {
-    for (int index = 0; index < 8; ++index) {
-        const QByteArray name = QByteArrayLiteral("hw.acpi.acpiout") + QByteArray::number(index) + QByteArrayLiteral(".brightness");
-        int value = 0;
-        if (!readSysctl(name.constData(), &value)) {
-            break;
-        }
-        return name;
+    int mib[CTL_MAXNAME];
+    size_t miblen = CTL_MAXNAME - 1;
+    if (sysctlnametomib("hw.acpi", mib, &miblen) != 0) {
+        return {};
     }
-    return {};
+    mib[miblen] = CTL_QUERY;
+    struct sysctlnode query = {};
+    query.sysctl_flags = SYSCTL_VERSION;
+    size_t length = 0;
+    if (sysctl(mib, miblen + 1, nullptr, &length, &query, sizeof(query)) != 0 || length == 0) {
+        return {};
+    }
+    QByteArray nodes(int(length), '\0');
+    if (sysctl(mib, miblen + 1, nodes.data(), &length, &query, sizeof(query)) != 0) {
+        return {};
+    }
+    const auto *node = reinterpret_cast<const struct sysctlnode *>(nodes.constData());
+    const size_t count = length / sizeof(struct sysctlnode);
+    const QByteArray prefix = QByteArrayLiteral("acpiout");
+    int best = -1;
+    QByteArray bestName;
+    for (size_t i = 0; i < count; ++i) {
+        const QByteArray child(node[i].sysctl_name);
+        if (!child.startsWith(prefix)) {
+            continue;
+        }
+        bool ok = false;
+        const int unit = child.mid(prefix.size()).toInt(&ok);
+        if (!ok || (best >= 0 && unit >= best)) {
+            continue;
+        }
+        const QByteArray name = QByteArrayLiteral("hw.acpi.") + child + QByteArrayLiteral(".brightness");
+        int value = 0;
+        if (readSysctl(name.constData(), &value)) {
+            best = unit;
+            bestName = name;
+        }
+    }
+    return bestName;
 }
 
 bool wsdisplayParam(unsigned long request, wsdisplay_param *param)
