@@ -63,6 +63,26 @@ FrameInfo sampleRgb()
     return info;
 }
 
+FrameInfo sampleRgb565()
+{
+    FrameInfo info{};
+    info.fbsize = 3200;
+    info.offset = 2;
+    info.width = 40;
+    info.height = 40;
+    info.stride = 80;
+    info.bpp = 16;
+    info.pixelType = 0;
+    info.flags = 1;
+    info.redOffset = 11;
+    info.redSize = 5;
+    info.greenOffset = 5;
+    info.greenSize = 6;
+    info.blueOffset = 0;
+    info.blueSize = 5;
+    return info;
+}
+
 void testLayout()
 {
     Layout layout{};
@@ -86,6 +106,16 @@ void testLayout()
     bgr.blueOffset = 16;
     check(QBsdFb::makeLayout(bgr, layout), "accept reversed red and blue channels");
     check(layout.format == PixelFormat::Xbgr8888, "red-low layout selects Xbgr8888");
+
+    const FrameInfo rgb565 = sampleRgb565();
+    check(QBsdFb::makeLayout(rgb565, layout), "accept RGB565 channel masks");
+    check(layout.format == PixelFormat::Rgb565 && layout.stride == 80
+              && layout.dataOffset == 2,
+          "preserve RGB565 format, stride, and aligned offset");
+    FrameInfo padded565 = rgb565;
+    padded565.stride = 84;
+    padded565.fbsize = static_cast<std::uint64_t>(padded565.stride) * padded565.height;
+    check(QBsdFb::makeLayout(padded565, layout), "accept padded RGB565 rows");
 
     FrameInfo unusedAlphaOffset = info;
     unusedAlphaOffset.alphaOffset = 31;
@@ -133,6 +163,19 @@ void testLayout()
     invalid = info;
     invalid.bpp = 24;
     rejectsWithoutChangingOutput(invalid, "reject non-32-bit pixels");
+    invalid = sampleRgb565();
+    invalid.redOffset = 10;
+    rejectsWithoutChangingOutput(invalid, "reject non-RGB565 channel masks");
+    invalid = sampleRgb565();
+    invalid.greenSize = 5;
+    rejectsWithoutChangingOutput(invalid, "reject non-RGB565 green width");
+    invalid = sampleRgb565();
+    invalid.stride = 79;
+    invalid.fbsize = static_cast<std::uint64_t>(invalid.stride) * invalid.height;
+    rejectsWithoutChangingOutput(invalid, "reject RGB565 stride not aligned to pixels");
+    invalid = sampleRgb565();
+    invalid.offset = 1;
+    rejectsWithoutChangingOutput(invalid, "reject RGB565 data offset not aligned to pixels");
     invalid = info;
     invalid.pixelType = 1;
     rejectsWithoutChangingOutput(invalid, "reject non-RGB pixel type");

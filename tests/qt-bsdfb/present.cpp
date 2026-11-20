@@ -9,7 +9,8 @@ int main()
 {
     int failures = 0;
     const auto check = [&](bool ok) { if (!ok) ++failures; };
-    for (const auto format : {QImage::Format_RGB32, QImage::Format_RGBX8888}) {
+    for (const auto format : {QImage::Format_RGB16, QImage::Format_RGB32,
+                              QImage::Format_RGBX8888}) {
         std::array<unsigned char, 80> targetBytes;
         targetBytes.fill(0xa5);
         QImage target(targetBytes.data() + 8, 3, 3, 20, format);
@@ -19,7 +20,8 @@ int main()
         for (int y = 0; y < 3; ++y) {
             for (int x = 0; x < 3; ++x)
                 check(target.pixel(x, y) == source.pixel(x, y));
-            for (std::size_t i = 12; i < 20; ++i)
+            const std::size_t visibleBytes = format == QImage::Format_RGB16 ? 6 : 12;
+            for (std::size_t i = visibleBytes; i < 20; ++i)
                 check(targetBytes[8 + static_cast<std::size_t>(y) * 20 + i] == 0xa5);
         }
         for (std::size_t i = 0; i < 8; ++i)

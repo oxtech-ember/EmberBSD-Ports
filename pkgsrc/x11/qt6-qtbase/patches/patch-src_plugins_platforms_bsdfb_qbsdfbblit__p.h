@@ -1,10 +1,10 @@
 $NetBSD$
 
-Add checked RGB32 framebuffer blitting for bsdfb.
+Add checked RGB32 and RGB565 framebuffer blitting for bsdfb.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qbsdfbblit_p.h
-@@ -0,0 +1,226 @@
+@@ -0,0 +1,233 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -35,8 +35,10 @@ Add checked RGB32 framebuffer blitting for bsdfb.
 +
 +inline bool validLayoutStorage(const Layout &layout) noexcept
 +{
++    const std::size_t pixelBytes = layout.format == PixelFormat::Rgb565 ? 2 : 4;
 +    if (layout.nativeWidth <= 0 || layout.nativeHeight <= 0 || layout.stride <= 0
-+        || layout.stride % 4 != 0 || layout.dataOffset % 4 != 0
++        || layout.stride % static_cast<int>(pixelBytes) != 0
++        || layout.dataOffset % pixelBytes != 0
 +        || layout.dataOffset > layout.mapLength
 +        || layout.mapLength > static_cast<std::size_t>(
 +               std::numeric_limits<std::ptrdiff_t>::max()))
@@ -45,8 +47,8 @@ Add checked RGB32 framebuffer blitting for bsdfb.
 +    const auto width = static_cast<std::size_t>(layout.nativeWidth);
 +    const auto height = static_cast<std::size_t>(layout.nativeHeight);
 +    const auto stride = static_cast<std::size_t>(layout.stride);
-+    if (width > std::numeric_limits<std::size_t>::max() / 4
-+        || stride < width * 4
++    if (width > std::numeric_limits<std::size_t>::max() / pixelBytes
++        || stride < width * pixelBytes
 +        || height > std::numeric_limits<std::size_t>::max() / stride)
 +        return false;
 +
@@ -55,17 +57,18 @@ Add checked RGB32 framebuffer blitting for bsdfb.
 +}
 +
 +inline bool validImageStorage(const QT_PREPEND_NAMESPACE(QImage) &image,
-+                              int width, int height) noexcept
++                              int width, int height, std::size_t pixelBytes) noexcept
 +{
 +    if (width <= 0 || height <= 0 || image.bytesPerLine() <= 0
 +        || image.bytesPerLine() > std::numeric_limits<int>::max()
-+        || image.bytesPerLine() % 4 != 0 || image.sizeInBytes() <= 0)
++        || image.bytesPerLine() % static_cast<int>(pixelBytes) != 0
++        || image.sizeInBytes() <= 0)
 +        return false;
 +
 +    const auto rowBytes = static_cast<std::size_t>(width);
 +    const auto stride = static_cast<std::size_t>(image.bytesPerLine());
-+    if (rowBytes > std::numeric_limits<std::size_t>::max() / 4
-+        || stride < rowBytes * 4
++    if (rowBytes > std::numeric_limits<std::size_t>::max() / pixelBytes
++        || stride < rowBytes * pixelBytes
 +        || static_cast<std::size_t>(height)
 +               > std::numeric_limits<std::size_t>::max() / stride)
 +        return false;
@@ -103,7 +106,9 @@ Add checked RGB32 framebuffer blitting for bsdfb.
 +    using Rectangle = QT_PREPEND_NAMESPACE(QRect);
 +    using Painter = QT_PREPEND_NAMESPACE(QPainter);
 +    const bool destinationMatchesLayout =
-+        (layout.format == PixelFormat::Xrgb8888
++        (layout.format == PixelFormat::Rgb565
++         && destination.format() == Image::Format_RGB16)
++        || (layout.format == PixelFormat::Xrgb8888
 +         && destination.format() == Image::Format_RGB32)
 +        || (layout.format == PixelFormat::Xbgr8888
 +            && destination.format() == Image::Format_RGBX8888);
@@ -117,10 +122,12 @@ Add checked RGB32 framebuffer blitting for bsdfb.
 +        || source.width() != logicalSize(layout, rotation).width
 +        || source.height() != logicalSize(layout, rotation).height
 +        || source.format() != Image::Format_RGB32
-+        || (destination.format() != Image::Format_RGB32
++        || (destination.format() != Image::Format_RGB16
++            && destination.format() != Image::Format_RGB32
 +            && destination.format() != Image::Format_RGBX8888)
-+        || !validImageStorage(source, source.width(), source.height())
-+        || !validImageStorage(destination, layout.nativeWidth, layout.nativeHeight))
++        || !validImageStorage(source, source.width(), source.height(), 4)
++        || !validImageStorage(destination, layout.nativeWidth, layout.nativeHeight,
++                              layout.format == PixelFormat::Rgb565 ? 2 : 4))
 +        return false;
 +
 +    const auto sourceSize = logicalSize(layout, rotation);

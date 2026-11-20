@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -81,7 +82,7 @@ void initializeDestination(QImage &image, const QColor &color)
 
 bool guardsAndPaddingAreFor(const std::vector<unsigned char> &storage,
                             std::size_t offset, int width, int height, int stride,
-                            unsigned char value)
+                            unsigned char value, int bytesPerPixel = pixelBytes)
 {
     for (int i = 0; i < guardSize; ++i) {
         if (storage[static_cast<std::size_t>(i)] != value
@@ -89,11 +90,11 @@ bool guardsAndPaddingAreFor(const std::vector<unsigned char> &storage,
                        + static_cast<std::size_t>(i)] != value)
             return false;
     }
-    const int rowPadding = stride - width * pixelBytes;
+    const int rowPadding = stride - width * bytesPerPixel;
     for (int y = 0; y < height; ++y) {
         const std::size_t row = offset + static_cast<std::size_t>(y * stride);
         for (int i = 0; i < rowPadding; ++i) {
-            if (storage[row + static_cast<std::size_t>(width * pixelBytes)
+            if (storage[row + static_cast<std::size_t>(width * bytesPerPixel)
                         + static_cast<std::size_t>(i)] != value)
                 return false;
         }
@@ -158,6 +159,64 @@ void testRotationAndDamage(QImage::Format format, PixelFormat pixelFormat)
         verifyPixels(fixture, destination, QColor::fromRgb(background), true);
         check(guardsAndPaddingAre(storage, 0xA7),
               "partial blit preserves prefix, suffix, and padded row bytes");
+    }
+}
+
+QColor quantized565(const QColor &color)
+{
+    QImage reference(1, 1, QImage::Format_RGB16);
+    reference.setPixelColor(0, 0, color);
+    return reference.pixelColor(0, 0);
+}
+
+void testRgb565RotationAndDamage()
+{
+    constexpr int stride = 8;
+    constexpr std::size_t frameBytes = static_cast<std::size_t>(stride) * nativeHeight;
+    constexpr std::size_t storageSize565 = guardSize + frameBytes + guardSize;
+    for (const Fixture &fixture : fixtures) {
+        std::vector<unsigned char> storage(storageSize565, 0xA7);
+        QImage destination(storage.data() + guardSize, nativeWidth, nativeHeight,
+                           stride, QImage::Format_RGB16);
+        check(!destination.isNull(), "external padded RGB565 destination is valid");
+        initializeDestination(destination, QColor::fromRgb(background));
+        const QImage source = makeSource(fixture.logicalSize);
+        const Layout layout{storage.size(), guardSize, nativeWidth, nativeHeight,
+                            stride, PixelFormat::Rgb565};
+        check(QBsdFb::blit(destination, source, layout, fixture.rotation,
+                           QRegion(QRect(0, 0, fixture.logicalSize.width(),
+                                         fixture.logicalSize.height()))),
+              "full RGB565 damage is blitted for each rotation");
+        for (int y = 0; y < nativeHeight; ++y) {
+            for (int x = 0; x < nativeWidth; ++x) {
+                const auto nativeIndex = static_cast<std::size_t>(y * nativeWidth + x);
+                check(destination.pixelColor(x, y)
+                          == quantized565(sourceColor(fixture.sourceIndexForNative[nativeIndex])),
+                      "RGB565 full blit maps and quantizes each rotated pixel");
+            }
+        }
+        check(guardsAndPaddingAreFor(storage, guardSize, nativeWidth, nativeHeight,
+                                     stride, 0xA7, 2),
+              "RGB565 full blit preserves guards and row padding");
+
+        std::fill(storage.begin(), storage.end(), 0xA7);
+        initializeDestination(destination, QColor::fromRgb(background));
+        check(QBsdFb::blit(destination, source, layout, fixture.rotation,
+                           QRegion(QRect(-1, 1, 3, 2))),
+              "clipped RGB565 damage is blitted for each rotation");
+        for (int y = 0; y < nativeHeight; ++y) {
+            for (int x = 0; x < nativeWidth; ++x) {
+                const auto nativeIndex = static_cast<std::size_t>(y * nativeWidth + x);
+                const QColor expected = fixture.partialDamageForNative[nativeIndex]
+                    ? quantized565(sourceColor(fixture.sourceIndexForNative[nativeIndex]))
+                    : quantized565(QColor::fromRgb(background));
+                check(destination.pixelColor(x, y) == expected,
+                      "clipped RGB565 blit preserves untouched pixels");
+            }
+        }
+        check(guardsAndPaddingAreFor(storage, guardSize, nativeWidth, nativeHeight,
+                                     stride, 0xA7, 2),
+              "partial RGB565 blit preserves guards and row padding");
     }
 }
 
@@ -442,10 +501,17 @@ void testOverlappingImagesMatchIndependentPixelOracle()
 
 } // namespace
 
-int main()
+int main(int argc, char **argv)
 {
+    if (argc == 2 && std::string_view(argv[1]) == "rgb565") {
+        testRgb565RotationAndDamage();
+        return failures == 0 ? 0 : 1;
+    }
+    if (argc != 1)
+        return 2;
     testRotationAndDamage(QImage::Format_RGB32, PixelFormat::Xrgb8888);
     testRotationAndDamage(QImage::Format_RGBX8888, PixelFormat::Xbgr8888);
+    testRgb565RotationAndDamage();
     testLargeDisjointDamage(QImage::Format_RGB32, PixelFormat::Xrgb8888);
     testLargeDisjointDamage(QImage::Format_RGBX8888, PixelFormat::Xbgr8888);
     testMixedLargeAndTinyDamage();

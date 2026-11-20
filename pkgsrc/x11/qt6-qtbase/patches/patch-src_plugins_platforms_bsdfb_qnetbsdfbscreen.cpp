@@ -4,7 +4,7 @@ Add checked wsdisplay framebuffer and software presentation support.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qnetbsdfbscreen.cpp
-@@ -0,0 +1,330 @@
+@@ -0,0 +1,332 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -169,10 +169,12 @@ Add checked wsdisplay framebuffer and software presentation support.
 +    info.alphaOffset = rgb.alpha_offset;
 +    info.alphaSize = rgb.alpha_size;
 +    if (!QBsdFb::makeLayout(info, m_layout))
-+        return fail("Unsupported or invalid linear RGB32 framebuffer layout");
++        return fail("Unsupported or invalid linear RGB framebuffer layout");
 +
 +    QImage::Format nativeFormat = QImage::Format_RGB32;
-+    if (m_layout.format == QBsdFb::PixelFormat::Xbgr8888) {
++    if (m_layout.format == QBsdFb::PixelFormat::Rgb565) {
++        nativeFormat = QImage::Format_RGB16;
++    } else if (m_layout.format == QBsdFb::PixelFormat::Xbgr8888) {
 +#if Q_BYTE_ORDER == Q_LITTLE_ENDIAN
 +        nativeFormat = QImage::Format_RGBX8888;
 +#else
@@ -203,7 +205,7 @@ Add checked wsdisplay framebuffer and software presentation support.
 +    const auto size = QBsdFb::logicalSize(m_layout, m_rotation);
 +    mGeometry = QRect(0, 0, size.width, size.height);
 +    mPhysicalSize = QSizeF(size.width * 25.4 / 100, size.height * 25.4 / 100);
-+    mDepth = 32;
++    mDepth = m_layout.format == QBsdFb::PixelFormat::Rgb565 ? 16 : 32;
 +    mFormat = QImage::Format_RGB32;
 +    initializeCompositor();
 +    if (mScreenImage.isNull())

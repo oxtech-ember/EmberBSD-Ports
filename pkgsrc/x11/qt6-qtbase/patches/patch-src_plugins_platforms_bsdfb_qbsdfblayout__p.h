@@ -4,7 +4,7 @@ Add checked framebuffer layout and rotation helpers for the bsdfb backend.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qbsdfblayout_p.h
-@@ -0,0 +1,139 @@
+@@ -0,0 +1,149 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -19,7 +19,7 @@ Add checked framebuffer layout and rotation helpers for the bsdfb backend.
 +namespace QBsdFb {
 +
 +enum class Rotation { R0, R90, R180, R270 };
-+enum class PixelFormat { Xrgb8888, Xbgr8888 };
++enum class PixelFormat { Rgb565, Xrgb8888, Xbgr8888 };
 +struct Point { int x, y; };
 +struct Size { int width, height; };
 +struct Rect { int x, y, width, height; };
@@ -44,22 +44,32 @@ Add checked framebuffer layout and rotation helpers for the bsdfb backend.
 +        std::numeric_limits<std::ptrdiff_t>::max());
 +    // wsdisplay RGB pixels, with an optional RAM flag. Split mappings are unsupported.
 +    if (info.pixelType != 0 || (info.flags & ~std::uint32_t{1}) != 0
-+        || info.bpp != 32 || info.redSize != 8 || info.greenSize != 8
-+        || info.blueSize != 8 || info.alphaSize != 0 || info.greenOffset != 8)
++        || info.alphaSize != 0)
 +        return false;
 +
 +    PixelFormat format;
-+    if (info.redOffset == 16 && info.blueOffset == 0)
++    if (info.bpp == 16 && info.redOffset == 11 && info.redSize == 5
++        && info.greenOffset == 5 && info.greenSize == 6
++        && info.blueOffset == 0 && info.blueSize == 5) {
++        format = PixelFormat::Rgb565;
++    } else if (info.bpp == 32 && info.redSize == 8 && info.greenSize == 8
++        && info.blueSize == 8 && info.greenOffset == 8
++        && info.redOffset == 16 && info.blueOffset == 0) {
 +        format = PixelFormat::Xrgb8888;
-+    else if (info.redOffset == 0 && info.blueOffset == 16)
++    } else if (info.bpp == 32 && info.redSize == 8 && info.greenSize == 8
++        && info.blueSize == 8 && info.greenOffset == 8
++        && info.redOffset == 0 && info.blueOffset == 16) {
 +        format = PixelFormat::Xbgr8888;
-+    else
++    } else {
 +        return false;
++    }
++
++    const std::uint32_t pixelBytes = format == PixelFormat::Rgb565 ? 2 : 4;
 +
 +    if (info.width == 0 || info.height == 0 || info.width > maxInt
 +        || info.height > maxInt || info.stride > maxInt
-+        || info.stride % 4 != 0 || info.offset % 4 != 0
-+        || info.stride < std::uint64_t{info.width} * 4
++        || info.stride % pixelBytes != 0 || info.offset % pixelBytes != 0
++        || info.stride < std::uint64_t{info.width} * pixelBytes
 +        || info.fbsize < std::uint64_t{info.stride} * info.height
 +        || info.offset > maxMap || info.fbsize > maxMap - info.offset)
 +        return false;

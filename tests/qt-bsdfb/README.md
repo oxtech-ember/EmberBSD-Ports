@@ -20,8 +20,8 @@ This single runtime check does not establish physical touch, cold-boot behavior,
 startup performance, GPU acceleration, or compatibility with other devices.
 
 The backend scope is deliberately narrow: NetBSD wsdisplay in dumb framebuffer
-mode, a linear 32-bit RGB framebuffer (`Xrgb8888`, or the supported
-little-endian `Xbgr8888` ordering), CPU framebuffer presentation, and absolute
+mode, a linear RGB565 or RGB888-in-32-bit framebuffer (`Xrgb8888`, or the
+supported little-endian `Xbgr8888` ordering), CPU framebuffer presentation, and absolute
 wscons pointer events. It supports 0, 90,
 180, and 270 degree rotation. By default, `input-coordinates=native` maps
 the calibrated axes to framebuffer pixels, then rotates the pointer to match
@@ -53,7 +53,7 @@ The caller keeps the image storage unchanged until the call returns.
 
 Direct presentation requires `rotation=0`, the exact framebuffer dimensions,
 and the native image format returned by `nativeFormat()`. The supported formats
-are `Format_RGB32` and `Format_RGBX8888`. Unsupported rotation returns
+are `Format_RGB16`, `Format_RGB32` and `Format_RGBX8888`. Unsupported rotation returns
 `Format_Invalid`. An unsupported image returns false without changing the display.
 A compatible image takes one row copy, with no conversion or compositor copy.
 
