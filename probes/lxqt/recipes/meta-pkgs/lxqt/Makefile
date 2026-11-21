@@ -26,7 +26,7 @@ DEPENDS+=	lxqt-menu-data>=2.4.0:../../sysutils/lxqt-menu-data
 DEPENDS+=	libfm-qt>=2.4.0:../../x11/libfm-qt
 DEPENDS+=	lxqt-themes>=2.4.0:../../graphics/lxqt-themes
 DEPENDS+=	pavucontrol-qt>=2.4.0:../../audio/pavucontrol-qt
-DEPENDS+=	qtermwidget>=2.4.0:../../x11/qtermwidget
+DEPENDS+=	qtermwidget>=2.5.0:../../x11/qtermwidget
 DEPENDS+=	lximage-qt>=2.4.0:../../graphics/lximage-qt
 DEPENDS+=	lxqt-about>=2.4.0:../../x11/lxqt-about
 DEPENDS+=	lxqt-policykit>=2.4.0:../../security/lxqt-policykit

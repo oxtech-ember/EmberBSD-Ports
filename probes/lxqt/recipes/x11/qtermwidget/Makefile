@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.49 2026/09/02 19:05:31 wiz Exp $
+# $NetBSD: Makefile,v 1.54 2026/11/15 02:08:05 gutteridge Exp $
 
-PKGREVISION= 3
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	qtermwidget-2.4.0
+DISTNAME=	qtermwidget-2.5.0
 CATEGORIES=	x11
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -24,9 +23,8 @@ SUBST_SED.prefix=	-e 's,/usr/share,${PREFIX}/share,g'
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
-CMAKE_CONFIGURE_ARGS+=	-DQt6LinguistTools_DIR=${EMBERBSD_QT_HOST_PATH}/lib/cmake/Qt6LinguistTools
 .else
-TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
