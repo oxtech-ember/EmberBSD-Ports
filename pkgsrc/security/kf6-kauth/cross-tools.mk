@@ -4,10 +4,11 @@
 EMBERBSD_KF6_KAUTH_CROSS_MK=	yes
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.include "../../meta-pkgs/kde/kf6-version.mk"
 # KF6::kauth-policy-gen runs on the build host. It comes from
 # security/kf6-kauth-policy-gen, a native package of the same release, and
 # KF6AuthConfig.cmake imports it from KF6_HOST_TOOLING.
-TOOL_DEPENDS+=	kf6-kauth-policy-gen-6.31.0{,nb[0-9]*}:../../security/kf6-kauth-policy-gen
+TOOL_DEPENDS+=	kf6-kauth-policy-gen-${KF6VER}{,nb[0-9]*}:../../security/kf6-kauth-policy-gen
 .include "../../meta-pkgs/kde/host-tooling.mk"
 .endif
 .endif

@@ -168,6 +168,12 @@ MASTER_SITES=	${MASTER_SITE_KDE:=frameworks/${KF6VER:R}/}
 EXTRACT_SUFX=	.tar.xz
 PKGNAME?=	kf6-${DISTNAME}
 
+# Upstream KF_DEP_VERSION follows the Frameworks release. An installed sibling
+# must satisfy find_package(KF6 ...) before it can serve a Frameworks build.
+.for _kf6_library in ${_EMBERBSD_KF6VER_RECIPES:M*/kf6-*:T}
+BUILDLINK_API_DEPENDS.${_kf6_library}+= ${_kf6_library}>=${KF6VER}
+.endfor
+
 BUILDLINK_API_DEPENDS.extra-cmake-modules+=	extra-cmake-modules>=${KF6VER}
 .include "../../devel/extra-cmake-modules/buildlink3.mk"
 TOOLS_DEPENDS.cmake= cmake>=3.0:../../devel/cmake
