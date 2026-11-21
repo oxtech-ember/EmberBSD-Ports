@@ -279,6 +279,7 @@ textproc/kf6-syntax-highlighting
 textproc/nlohmann-json
 time/kf6-kcalendarcore
 time/kf6-kholidays
+time/libical4
 time/plasma6-knighttime
 wayland/xwayland
 www/gumbo-parser

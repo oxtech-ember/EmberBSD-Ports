@@ -1,0 +1,6 @@
+$NetBSD: distinfo,v 1.3 2026/08/23 08:56:16 wiz Exp $
+
+BLAKE2s (libical-4.0.8.tar.gz) = 3def41d48230ffd4a77981a50c038b4e857b218253173314ff706185fd49dd3c
+SHA512 (libical-4.0.8.tar.gz) = ae28ffb118b08aea0f732ecdcc0d3dd8ba1a7391214ba56163d2495ed49ce0890d3238639e25cf0fb563af496402f4322c1126be0587e5030c834b36f2285565
+Size (libical-4.0.8.tar.gz) = 1957738 bytes
+SHA1 (patch-src_libical_icaltimezone.c) = 68b9fd9bf3256f9040956f91a1f0f52ad8cf1a7d
