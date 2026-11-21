@@ -1,0 +1,27 @@
+--- a/devel/cmake/build.mk
++++ b/devel/cmake/build.mk
+@@ -77,8 +77,9 @@
+ CONFIGURE_ENV+=		BUILDLINK_DIR=${BUILDLINK_DIR}
+ 
+ CMAKE_BUILD_DIR?=	cmake-pkgsrc-build
+-CMAKE_BUILD_ARGS?=	-j ${_MAKE_JOBS_N:U1}
+-CMAKE_INSTALL_ARGS?=	-j ${_MAKE_JOBS_N:U1}
++_CMAKE_JOBS=		-j ${_MAKE_JOBS_N:U1}
++CMAKE_BUILD_ARGS?=	${_CMAKE_JOBS}
++CMAKE_INSTALL_ARGS?=	${_CMAKE_JOBS}
+ 
+ CMAKE_GENERATORS_INCOMPATIBLE?=	# empty
+ 
+@@ -91,7 +92,11 @@
+ .if ${_CMAKE_GENERATOR} == "ninja"
+ TOOL_DEPENDS+=		ninja-build-[0-9]*:../../devel/ninja-build
+ _CMAKE_BUILD_SYSTEM?=	Ninja
+-_CMAKE_BUILD_TOOL?=	ninja
++.  if !defined(_CMAKE_BUILD_TOOL)
++.include "../../mk/configure/ember-ninja-worker.mk"
++_CMAKE_BUILD_TOOL=	${_EMBER_NINJA}
++_CMAKE_JOBS=		${_EMBER_NINJA_JOBS}
++.  endif
+ .elif ${_CMAKE_GENERATOR} == "make"
+ _CMAKE_BUILD_SYSTEM?=	Unix Makefiles
+ _CMAKE_BUILD_TOOL?=	${MAKE_PROGRAM}

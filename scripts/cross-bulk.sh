@@ -181,7 +181,7 @@ environment_identity()
 # line and skip the per-parse verifier.
 # Parallel order queries run as child runs of this script (mode deps) and
 # get the verified selection in CROSS_BULK_NATIVE.
-unset EMBERBSD_NATIVE_TOOLSET_VERIFIED
+unset EMBERBSD_NATIVE_TOOLSET_VERIFIED EMBERBSD_BULK_NINJA_BUDGET EMBERBSD_BULK_NINJA_RUNNER EMBERBSD_BULK_NINJA_ACTIVE
 case "$mode" in
     order|fetch|selected-order|selected-build)
         unset CROSS_BULK_ENV_IDENTITY
@@ -882,7 +882,8 @@ stage_supervise()
 # Package-level parallelism. CROSS_BULK_JOBS packages build at once (default:
 # half the selected SDK CPU capacity). Their MAKE_JOBS shares one total budget,
 # with remainder CPUs assigned to earlier ready workers; the scheduler keeps
-# each allocation until that worker reports its result. MAKE_JOBS_SAFE=no
+# each allocation until completion, granting the final Ninja worker free slots
+# when no other package is ready. MAKE_JOBS_SAFE=no
 # recipes stay serial. CROSS_BULK_MAKE_JOBS sets an explicit per-package value
 # and is checked against the total budget.
 # CROSS_BULK_CPUS overrides the SDK's detected CPU count.
@@ -2546,6 +2547,11 @@ build()
         # own allocation before it calls build_one.
         make_jobs=1
     fi
+    ninja_worker=
+    if [ -z "${CROSS_BULK_MAKE_JOBS:-}" ] && [ "$workers" -gt 1 ] &&
+       [ -f "$sdk_source/src/emberbsd_sdk/jobserver.py" ] && [ -f "$sdk_source/src/emberbsd_sdk/profile_build.py" ]; then
+        ninja_worker=$(cd "$(dirname "$0")" && pwd -P)/cross-bulk-ninja.py
+    fi
     run=$state/run
     # Locks and results of an interrupted run; its packages are rebuilt.
     rm -rf "$run" "$state/locks" "$state/install.lock"
@@ -2608,6 +2614,7 @@ build()
     [ -z "$link_args" ] || echo "Heavy links through $CROSS_BULK_LINK_LAUNCHER"
     dispatch_order > "$run/dispatch-order" || return 1
     stop=0
+    stop_status=143
     trap 'stop=1' TERM INT HUP
     running=0
     jobs_in_use=0
@@ -2668,7 +2675,7 @@ build()
                 stop_deleter
                 wait || :
                 state_lock_release_safe=yes
-                return 143
+                return "$stop_status"
             }
         elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ] && [ "$replacing" = 0 ] && [ "$waiting" = 0 ]; then
             changed=0
@@ -2720,6 +2727,11 @@ build()
                     state_lock_release_safe=no
                     (
                         set +e
+                        if [ -n "$ninja_worker" ]; then
+                            EMBERBSD_BULK_NINJA_BUDGET=$(cd "$run" && pwd -P)/$budget_key.jobs
+                            EMBERBSD_BULK_NINJA_RUNNER=$ninja_worker
+                            export EMBERBSD_BULK_NINJA_BUDGET EMBERBSD_BULK_NINJA_RUNNER
+                        fi
                         make_jobs=$worker_make_jobs
                         node=$path
                         reported=
@@ -2729,6 +2741,18 @@ build()
                     poll_delay=0.05
                 fi
             done < "$run/ready"
+            # No peer can become ready before the last running worker finishes.
+            # An active Ninja can now use the released slots; other builders keep their fixed -j.
+            if [ -n "$ninja_worker" ] && [ "$running" = 1 ] && [ "$jobs_in_use" -lt "$cpus" ] &&
+               ! grep -q '^R ' "$run/ready"; then
+                for budget in "$run"/*.jobs; do
+                    if ! "$host_python" -B -E -S "$ninja_worker" grant "$budget" "$cpus"; then
+                        echo "Cannot grow the Ninja allocation for $budget; draining the running worker" >&2
+                        stop=1 stop_status=1
+                    fi
+                done
+                jobs_in_use=$cpus
+            fi
             [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break
         fi
         [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break

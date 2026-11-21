@@ -12,7 +12,10 @@
 # a package gets one build run (package-install) after show-vars and clean.
 # Usage: cross-bulk-parallel.sh NEW_OUTPUT
 set -eu
-[ "$#" = 1 ] || { echo 'Usage: cross-bulk-parallel.sh NEW_OUTPUT' >&2; exit 2; }
+[ "$#" = 1 ] || { [ "$#" = 2 ] && [ "$2" = --ninja-tail ]; } || {
+    echo 'Usage: cross-bulk-parallel.sh NEW_OUTPUT [--ninja-tail]' >&2
+    exit 2
+}
 out=$1
 case "$out" in /*) ;; *) echo 'NEW_OUTPUT must be absolute' >&2; exit 2 ;; esac
 case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
@@ -146,6 +149,8 @@ work()
             n=\$((n + 1))
         done
         [ -f \$out/cap-seen ] || { echo 'cap wait timed out' >> \$out/errors; exit 1; }
+    elif [ -n "\${CROSS_BULK_TEST_NINJA_PROBE:-}" ]; then
+        "\$CROSS_BULK_TEST_HOST_PYTHON" -B "\$CROSS_BULK_TEST_NINJA_PROBE" worker "\$pkg" "\$jobs" || exit 1
     else
         sleep \${FAKE_SLEEP:-2}
     fi
@@ -357,6 +362,26 @@ reject_budget_case()
 }
 # Count actual package-work invocations independently of read-only input queries.
 calls() { awk -v dir="$out/tree/t/$1" 'index($0,"-C " dir " ") && $NF ~ /^(clean|package-install|package|replace)$/ {n++} END {print n+0}' "$out/calls"; }
+
+if [ "${2:-}" = --ninja-tail ]; then
+    : "${CROSS_BULK_TEST_HOST_PYTHON:?}" "${CROSS_BULK_TEST_SDK_SOURCE:?}" "${CROSS_BULK_TEST_NINJA_PROBE:?}"
+    : > "$out/edges"
+    for pkg in long short1 short2 short3 short4; do
+        mkdir -p "$out/tree/t/$pkg"
+        echo "t/$pkg t/$pkg" >> "$out/edges"
+    done
+    newstate
+    # The normal scheduler, package-install barrier and selected CPU resolver.
+    # Only pkgsrc metadata and package installation are fixtures.
+    BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=10 CROSS_BULK_JOBS=5 \
+        run_bulk build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1 || {
+            cat "$out/bulk.log" >&2
+            tail -n 12 "$out"/state/logs/*.worker.log >&2
+            exit 1
+        }
+    exit 0
+fi
 
 newstate
 : > "$out/calls"

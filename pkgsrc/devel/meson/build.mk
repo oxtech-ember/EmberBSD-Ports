@@ -155,6 +155,8 @@ meson-configure:
 		--buildtype=plain ${MESON_ARGS} . output; }
 .endfor
 
+.include "../../mk/configure/ember-ninja-worker.mk"
+
 do-build: meson-build
 meson-build:
 .for d in ${BUILD_DIRS}
@@ -162,7 +164,7 @@ meson-build:
 	@${STEP_MSG} Building with ninja in ${d}
 .  endif
 	${RUN}cd ${WRKSRC} && cd ${d} && ${SETENV} ${MAKE_ENV} \
-	    ninja -j ${_MAKE_JOBS_N:U1} -C output ${MESON_BUILD_TARGET}
+	    ${_EMBER_NINJA} ${_EMBER_NINJA_JOBS} -C output ${MESON_BUILD_TARGET}
 .endfor
 
 .if empty(MESON_INSTALL:Mno)
@@ -176,7 +178,7 @@ meson-install:
 	@${STEP_MSG} Installing with ninja in ${d}
 .    endif
 	${RUN}cd ${WRKSRC} && cd ${d} && ${SETENV} ${INSTALL_ENV} ${MAKE_ENV} \
-	    ninja -j ${_MAKE_JOBS_N:U1} -C output install
+	    ${_EMBER_NINJA} ${_EMBER_NINJA_JOBS} -C output install
 .  endfor
 .endif
 
@@ -187,7 +189,7 @@ meson-test:
 	@${STEP_MSG} Testing with ninja in ${d}
 .  endif
 	${RUN}cd ${WRKSRC} && cd ${d} && ${SETENV} ${TEST_ENV} \
-	    ninja -j ${_MAKE_JOBS_N:U1} -C output test
+	    ${_EMBER_NINJA} ${_EMBER_NINJA_JOBS} -C output test
 .endfor
 
 _VARGROUPS+=		meson
