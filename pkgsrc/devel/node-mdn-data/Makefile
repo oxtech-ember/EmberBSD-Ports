@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream mdn-data module.
-DISTNAME= mdn-data-2.37.2
-PKGNAME= node-mdn-data-2.37.2
+DISTNAME= mdn-data-2.38.1
+PKGNAME= node-mdn-data-2.38.1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/mdn-data/-/
 DIST_SUBDIR= node-mdn-data

@@ -1,5 +1,5 @@
 # Origin: EmberBSD (AI-assisted); common upstream JavaScript module.
-DISTNAME= nonrecursive-glob-match-1.0.2
+DISTNAME= nonrecursive-glob-match-1.1.0
 PKGNAME= node-${DISTNAME}
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@isaacs/nonrecursive-glob-match/-/
