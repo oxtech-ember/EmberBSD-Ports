@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.16 2026/09/06 10:05:19 markd Exp $
 
 DISTNAME=	kcalendarcore-${KF6VER}
+PKGREVISION=	1
 CATEGORIES=	time
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -16,7 +17,7 @@ CMAKE_CONFIGURE_ARGS+=		-DBUILD_PYTHON_BINDINGS=OFF
 PKGCONFIG_OVERRIDE+=		_KDE_build/KF6CalendarCore.pc
 PKGCONFIG_OVERRIDE_STAGE=	post-build
 
-.include "../../time/libical/buildlink3.mk"
+.include "../../time/libical4/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
