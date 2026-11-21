@@ -1,10 +1,15 @@
-# fmt 12.2.0
+# fmt 12.2.1
 
-The common graphics profile provides the current stable [fmt 12.2.0 release](https://github.com/fmtlib/fmt/releases/tag/12.2.0)
+The common graphics profile provides the current stable [fmt 12.2.1 release](https://github.com/fmtlib/fmt/releases/tag/12.2.1)
 as `textproc/fmtlib`. The source manifest pins the original archive SHA256
-`8b852bb5aa6e7d8564f9e81394055395dd1d1936d38dfd3a17792a02bebd7af0`.
+`449374d74f31b67796dece454d59b93e6f1538efcce0e9ac78000c98142c139e`.
 The recipe retains upstream source without a portability patch and installs the
 shared library, C API archive, CMake package, pkg-config file and public headers.
+
+The 12.2.1 recipe produced an AArch64 NetBSD package with SONAME 12.
+The native formatting consumer passed with address and undefined-behavior sanitizers.
+
+## Earlier checks on 12.2.0
 
 The [GCC16 probe](../../../probes/fmtlib/cross-build.sh) builds the pinned source
 for AArch64 NetBSD, stages it outside the common sysroot, and links a CMake

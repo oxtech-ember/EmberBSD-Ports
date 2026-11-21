@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.1 2026/10/19 00:00:00 emberbsd Exp $
 
-DISTNAME=	fmt-12.2.0
+DISTNAME=	fmt-12.2.1
 PKGNAME=	${DISTNAME:S/fmt/fmtlib/}
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=fmtlib/}
@@ -27,9 +27,6 @@ PKGCONFIG_OVERRIDE+=	support/cmake/fmt.pc.in
 
 .include "../../mk/bsd.prefs.mk"
 .include "../../mk/emberbsd-native-cxx-runtime.mk"
-.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 1
-.endif
 
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"

@@ -105,7 +105,7 @@ cmake -S "$ports/probes/fmtlib/tests" -B "$out/consumer" -G Ninja \
 cmake --build "$out/consumer" --parallel 2 > "$out/logs/consumer-build.log" 2>&1
 readelf=$prefix/bin/aarch64--netbsd-readelf
 "$readelf" -h "$out/consumer/fmtlib-contract" > "$out/logs/consumer-elf-header.txt"
-"$readelf" -d "$out/stage/usr/pkg/lib/libfmt.so.12.2.0" > "$out/logs/library-dynamic.txt"
+"$readelf" -d "$out/stage/usr/pkg/lib/libfmt.so.12" > "$out/logs/library-dynamic.txt"
 "$readelf" -d "$out/consumer/fmtlib-contract" > "$out/logs/consumer-dynamic.txt"
 file "$out/consumer/fmtlib-contract" > "$out/logs/consumer-file.txt"
 grep -q 'for NetBSD' "$out/logs/consumer-file.txt"
@@ -118,7 +118,7 @@ fi
 (cd "$out/stage/usr/pkg" && find . \( -type f -o -type l \) -print | sed 's|^./||' | LC_ALL=C sort) > "$out/logs/files.txt"
 sed '/^@comment/d' "$recipe/PLIST" | LC_ALL=C sort > "$out/logs/plist.txt"
 cmp "$out/logs/files.txt" "$out/logs/plist.txt"
-shasum -a 256 "$out/stage/usr/pkg/lib/libfmt.so.12.2.0" \
+shasum -a 256 "$out/stage/usr/pkg/lib/libfmt.so.12" \
     "$out/consumer/fmtlib-contract" > "$out/outputs.sha256"
 df -Pk "$out" > "$out/logs/space-after.txt"
-echo "PASS: fmt 12.2.0 GCC16 AArch64 stage and CMake consumer: $out/stage/usr/pkg"
+echo "PASS: fmt GCC16 AArch64 stage and CMake consumer: $out/stage/usr/pkg"
