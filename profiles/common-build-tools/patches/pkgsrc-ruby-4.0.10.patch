@@ -1,0 +1,193 @@
+Origin: EmberBSD, AI-assisted.
+Update Ruby to 4.0.10 from ruby-lang.org and track its bundled JSON 2.18.3
+and RubyGems 4.0.20. Preserve the Ruby 4.0.0 shared library ABI.
+
+--- a/lang/ruby/rubyversion.mk
++++ b/lang/ruby/rubyversion.mk
+@@ -212,7 +212,7 @@
+ .endif
+ 
+ # current supported Ruby's version
+-RUBY40_VERSION=		4.0.9
++RUBY40_VERSION=		4.0.10
+ 
+ # current API compatible version; used for version of shared library
+ RUBY40_API_VERSION=	4.0.0
+@@ -267,7 +267,7 @@
+ RUBY_ABI_VERSION=	${RUBY_VERSION}
+ RUBY_SUFFIX=		${_RUBY_VER_MAJOR}${_RUBY_VER_MINOR}
+ 
+-RUBY_RUBYGEMS_VER=		4.0.16
++RUBY_RUBYGEMS_VER=		4.0.20
+ 
+ # default gems
+ RUBY_BUNDLER_VER=		4.0.20
+@@ -314,7 +314,7 @@
+ RUBY_IO_CONSOLE_VER=		0.8.2
+ RUBY_IO_NONBLOCK_VER=		0.3.2
+ RUBY_IO_WAIT_VER=		0.4.0
+-RUBY_JSON_VER=			2.18.0
++RUBY_JSON_VER=			2.18.3
+ RUBY_OPENSSL_VER=		4.0.2
+ RUBY_PATHNAME_VER=		0.4.0
+ RUBY_PSYCH_VER=			5.3.1
+--- a/lang/ruby40/distinfo
++++ b/lang/ruby40/distinfo
+@@ -1,11 +1,11 @@
+ $NetBSD: distinfo,v 1.11.2.1 2026/11/09 08:16:34 maya Exp $
+ 
+-BLAKE2s (ruby-4.0.9.tar.xz) = ed25e1d18f7d97fd166bab90704a4069bbaaa15f93482b1cf053905c3feea1ce
+-SHA512 (ruby-4.0.9.tar.xz) = 7160b1c6fb61b0e369cddccb29eadae85390d86777c875efc18a56de390b1fe1ff47d6e37ccaf39d2ed477c9811f1224cbb3d2f54a0cbd5d5daf418b1cf2557e
+-Size (ruby-4.0.9.tar.xz) = 17996144 bytes
++BLAKE2s (ruby-4.0.10.tar.xz) = 02748cff068c3690898f92f4dc762ed285bbaea9bb0b3db7ca6f4179c45d38ee
++SHA512 (ruby-4.0.10.tar.xz) = d3fdb00e08165526065ce84a4606cdcfb9fb04ad8cfb0b516a403382cfc25e1aeed9ee4a13abdff98ebfd7241eaf32303fd7c385ef63e58c17689da88b80d847
++Size (ruby-4.0.10.tar.xz) = 18133108 bytes
+ SHA1 (patch-.bundle_gems_rdoc-7.0.4_lib_rdoc_encoding.rb) = 896fc0825d59174b508bcfc5d17727f0d0b1050f
+ SHA1 (patch-common.mk) = c23eed58427b2fd4ba8fdb3692f609701a666c6d
+-SHA1 (patch-configure) = ff1b1e659ddc7cb1d62a71e1447df55f1f7b07c2
++SHA1 (patch-configure) = 31d95ded7593bd7a59ee40e9d5470044f99b3c20
+ SHA1 (patch-include_ruby_internal_static__assert.h) = 7d5c3ae7ff674b9b34639924fcf08237164de9f8
+ SHA1 (patch-lib_mkmf.rb) = ea66bc4e42d2b15edfcd8ceefa9b94d07a3cdd0f
+ SHA1 (patch-lib_rubygems.rb) = bea18f991525d7ed72d8a5a64539e6fd247e1d30
+--- a/lang/ruby40/Makefile
++++ b/lang/ruby40/Makefile
+@@ -2,7 +2,6 @@
+ 
+ DISTNAME=	${RUBY_DISTNAME}
+ PKGNAME=	${RUBY_PKGPREFIX}-${RUBY_VERSION}
+-PKGREVISION=	1
+ CATEGORIES=	lang ruby
+ MASTER_SITES=	${MASTER_SITE_RUBY}
+ 
+@@ -36,6 +35,12 @@
+ .endif
+ 
+ .include "../../lang/ruby/platform.mk"
++
++# Cross builds run the versioned native Ruby to generate target sources.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++TOOL_DEPENDS+=	${RUBY_PKGPREFIX}-[0-9]*:../../lang/ruby40
++CONFIGURE_ARGS+=	--with-baseruby=${TOOLBASE}/bin/${RUBY_NAME}
++.endif
+ 
+ .if !empty(RUBY_SUFFIX)
+ CONFIGURE_ARGS+=	--program-suffix=${RUBY_SUFFIX}
+--- a/lang/ruby40/patches/patch-configure
++++ b/lang/ruby40/patches/patch-configure
+@@ -5,9 +5,9 @@
+ * Explictly stop display with color.
+ * Remove bogus MJIT disabling on SunOS.
+ 
+---- configure.orig	2024-12-12 01:10:15.000000000 +0000
++--- configure.orig
+ +++ configure
+-@@ -8722,7 +8722,7 @@ else $as_nop
++@@ -8903,7 +8903,7 @@
+  then :
+  
+  	case "$target_os" in #(
+@@ -16,7 +16,7 @@
+  
+  	    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for real target cpu" >&5
+  printf %s "checking for real target cpu... " >&6; }
+-@@ -10843,6 +10843,7 @@ fi
++@@ -11111,6 +11111,7 @@
+  	stack_protector=no
+       ;; #(
+    *) :
+@@ -24,10 +24,12 @@
+       ;;
+  esac
+      if test -z "${stack_protector+set}"
+-@@ -12802,18 +12803,6 @@ then :
++@@ -13148,18 +13149,6 @@
++      CPPFLAGS="${rb_opt}" ;; #(
++   *) :
+       CPPFLAGS="$CPPFLAGS ${rb_opt}" ;;
+- esac
+- 	done
++-esac
++-	done
+ -		    # _XOPEN_SOURCE should not be defined for C++ on Solaris.
+ -		    # RUBY_APPEND_OPTIONS(CXXFLAGS)
+ -	for rb_opt in -U_XOPEN_SOURCE; do
+@@ -38,12 +40,10 @@
+ -     CXXFLAGS="${rb_opt}" ;; #(
+ -  *) :
+ -     CXXFLAGS="$CXXFLAGS ${rb_opt}" ;;
+--esac
+--	done
++ esac
++ 	done
+  
+- fi
+- 
+-@@ -25598,7 +25591,9 @@ else
++@@ -26264,7 +26253,9 @@
+  #include <stdlib.h>
+  #include <stddef.h>
+  #ifndef alloca
+@@ -54,7 +54,7 @@
+  #  define alloca __builtin_alloca
+  # elif defined _MSC_VER
+  #  include <malloc.h>
+-@@ -32235,8 +32232,10 @@ fi
++@@ -33158,8 +33149,10 @@
+  	 ;; #(
+    freebsd*|dragonfly*) :
+  
+@@ -66,7 +66,7 @@
+  	if test "$rb_cv_binary_elf" != "yes"
+  then :
+  
+-@@ -32329,9 +32328,10 @@ esac
++@@ -33254,9 +33247,10 @@
+  	 ;; #(
+    darwin*) :
+  
+@@ -79,7 +79,7 @@
+  	if test "$load_relative" = yes
+  then :
+  
+-@@ -32545,7 +32550,7 @@ then :
++@@ -33478,7 +33472,7 @@
+  esac
+      rpathflag=`IFS="$PATH_SEPARATOR"
+          echo x "$rpathflag" |
+@@ -88,16 +88,16 @@
+      `
+      LIBRUBY_RPATHFLAGS="${LIBRUBY_RPATHFLAGS:+$LIBRUBY_RPATHFLAGS }${rpathflag}"
+      LIBRUBYARG_SHARED="${LIBRUBY_RPATHFLAGS:+$LIBRUBY_RPATHFLAGS }$LIBRUBYARG_SHARED"
+-@@ -34717,7 +34722,7 @@ guard=INCLUDE_RUBY_CONFIG_H
++@@ -35770,7 +35764,7 @@
+  (
+    if test "x$CONFIGURE_TTY" = xyes
+  then :
+ -  color=--color
+ +  color=--color=never
+- else $as_nop
+-   color=
+- fi
+-@@ -35956,21 +35961,7 @@ which seems to be undefined.  Please mak
++ else case e in #(
++   e) color= ;;
++ esac
++@@ -37033,22 +37027,7 @@
+      "Makefile":F)
+      tmpmk=confmk$$.tmp
+      {
+@@ -111,10 +111,11 @@
+ -
+ -	    VCS='$(GIT)'
+ -
+--else $as_nop
+--
++-else case e in #(
++-  e)
+  	    VCS='echo cannot'
+--
++-	 ;;
++-esac
+ -fi
+  	case "$VCS" in #(
+    '$(GIT)'|git) :

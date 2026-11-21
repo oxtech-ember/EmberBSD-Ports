@@ -1,24 +1,14 @@
 Origin: EmberBSD (AI-assisted). Use the selected Darwin linker for YJIT,
 preserve Ruby and YJIT public exports, and flatten the Rust archive into
-static libruby. Revision advances lang/ruby40 for the changed outputs.
+static libruby.
 Not submitted upstream.
 
---- a/lang/ruby40/Makefile
-+++ b/lang/ruby40/Makefile
-@@ -2,6 +2,7 @@
- 
- DISTNAME=	${RUBY_DISTNAME}
- PKGNAME=	${RUBY_PKGPREFIX}-${RUBY_VERSION}
-+PKGREVISION=	1
- CATEGORIES=	lang ruby
- MASTER_SITES=	${MASTER_SITE_RUBY}
- 
 --- a/lang/ruby40/distinfo
 +++ b/lang/ruby40/distinfo
 @@ -6,6 +6,7 @@
  SHA1 (patch-.bundle_gems_rdoc-7.0.4_lib_rdoc_encoding.rb) = 896fc0825d59174b508bcfc5d17727f0d0b1050f
  SHA1 (patch-common.mk) = c23eed58427b2fd4ba8fdb3692f609701a666c6d
- SHA1 (patch-configure) = ff1b1e659ddc7cb1d62a71e1447df55f1f7b07c2
+ SHA1 (patch-configure) = 31d95ded7593bd7a59ee40e9d5470044f99b3c20
 +SHA1 (patch-defs_jit.mk) = 44a09f7f87308265e42b8b7ce4c71cc2bf573acc
  SHA1 (patch-include_ruby_internal_static__assert.h) = 7d5c3ae7ff674b9b34639924fcf08237164de9f8
  SHA1 (patch-lib_mkmf.rb) = ea66bc4e42d2b15edfcd8ceefa9b94d07a3cdd0f

@@ -1,6 +1,6 @@
 --- a/lang/ruby40/Makefile
 +++ b/lang/ruby40/Makefile
-@@ -19,6 +19,14 @@
+@@ -19,6 +19,13 @@
  TEST_TARGET=		test
  CONFIGURE_ARGS+=	--enable-shared --enable-install-static-library
  CONFIGURE_ARGS+=	--without-git
@@ -8,7 +8,6 @@
 +# Resolve native Darwin Ruby libraries relative to the installed libruby.
 +.include "../../mk/bsd.prefs.mk"
 +.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-+PKGREVISION=	2
 +CONFIGURE_ARGS+=	--enable-load-relative
 +CONFIGURE_ARGS+=	--with-destdir=${PREFIX}
 +.endif
