@@ -1,1 +1,2 @@
-The snowball compiler and the stemming algorithms
+The Snowball library provides stemming algorithms for multiple languages.
+Its C API selects an algorithm and encoding and returns the stem of a word.

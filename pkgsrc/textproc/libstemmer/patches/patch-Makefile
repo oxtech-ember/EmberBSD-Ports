@@ -1,0 +1,26 @@
+$NetBSD$
+
+Build the shared and static C libraries from the upstream source list.
+
+--- Makefile.orig
++++ Makefile
+@@ -2,8 +2,7 @@
+ ifeq ($(OS),Windows_NT)
+ EXEEXT=.exe
+ endif
+-CFLAGS=-O2
+-CPPFLAGS=-Iinclude
++CPPFLAGS+=-Iinclude
+ ARFLAGS=-cr
+ all: libstemmer.a stemwords$(EXEEXT)
+ libstemmer.a: $(snowball_sources:.c=.o)
+@@ -12,3 +11,9 @@
+ 	$(CC) $(CFLAGS) -o $@ $^
+ clean:
+ 	rm -f stemwords$(EXEEXT) libstemmer.a *.o src_c/*.o examples/*.o runtime/*.o libstemmer/*.o
++
++%.lo: %.c
++	$(LIBTOOL) --quiet --tag=CC --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
++
++libstemmer.la: $(snowball_sources:.c=.lo)
++	$(LIBTOOL) --quiet --tag=CC --mode=link $(CC) $(LDFLAGS) -version-info 0:0:0 -rpath $(PREFIX)/lib -o $@ $^

@@ -1,6 +1,6 @@
-$NetBSD: distinfo,v 1.7 2023/07/13 06:21:47 nia Exp $
+$NetBSD$
 
-BLAKE2s (snowball-2.2.0.tar.gz) = a342a1f35f5acd0c8bc7c2013cd9d4adac8db5e378a0874c3136e2adc2229f10
-SHA512 (snowball-2.2.0.tar.gz) = 02c43313de9de2518ea51cfb11f1c29145fc046c7838329bfdefd70b604009ad44b6db8175c25b0db31f03db30a6aec5857aa35775a9c204ec976df9cae62957
-Size (snowball-2.2.0.tar.gz) = 223846 bytes
-SHA1 (patch-GNUmakefile) = 5972aec4956fa26a47491493d6a5bd9960c9c68d
+BLAKE2s (libstemmer_c-3.2.0.tar.gz) = 7a3b26b47b251cfb7d2f46a7430f8df9029c80599b8a555e9bad8a62ec5257f2
+SHA512 (libstemmer_c-3.2.0.tar.gz) = 409027937877b18deab544b0d37689014b443ab1acc9fc841a15f30a469710c6cc04fade6fcac575282a87bf63c044bcf50b863e1624c6488a59183f9a2aa1d0
+Size (libstemmer_c-3.2.0.tar.gz) = 259052 bytes
+SHA1 (patch-Makefile) = fe3e087833874e38a3b83967bb10162957c8ad8d
