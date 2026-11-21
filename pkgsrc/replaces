@@ -608,3 +608,4 @@ security/dropbear
 devel/lxqt-build-tools
 sysutils/lxqt-menu-data
 net/wireguard-go
+graphics/lxqt-themes
