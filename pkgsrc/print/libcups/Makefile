@@ -41,6 +41,9 @@ CONFIGURE_ENV+=		DSOFLAGS=${LDFLAGS:M*:Q}
 PREFER.gettext=	pkgsrc
 PREFER.iconv=	pkgsrc
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD"
+PKGREVISION=	3	# Updated GnuTLS shared-library requirement.
+.endif
 .include "options.mk"
 
 BUILD_DEFS+=		VARBASE

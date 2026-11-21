@@ -36,6 +36,9 @@ CPPFLAGS.SunOS+=	-D_XOPEN_SOURCE=600	# socklen_t
 LDFLAGS.Darwin+=	-lintl
 
 .include "options.mk"
+.if ${OPSYS} == "NetBSD" && !empty(PKG_OPTIONS:Mgnutls)
+PKGREVISION=	1	# Updated GnuTLS shared-library requirement.
+.endif
 
 BUILDLINK_API_DEPENDS.sqlite3+=		sqlite3>=3.27.0
 .include "../../databases/sqlite3/buildlink3.mk"

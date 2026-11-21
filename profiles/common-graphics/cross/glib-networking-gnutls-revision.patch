@@ -1,0 +1,13 @@
+Origin: EmberBSD, AI-assisted.
+Record the updated NetBSD GnuTLS requirement for the GIO GnuTLS backend.
+
+--- a/net/glib-networking/Makefile
++++ b/net/glib-networking/Makefile
+@@ -21,3 +21,6 @@
+ .include "options.mk"
+-
++.if ${OPSYS} == "NetBSD" && !empty(PKG_OPTIONS:Mgnutls)
++PKGREVISION=	5	# Updated GnuTLS shared-library requirement.
++.endif
++
+ BUILDLINK_API_DEPENDS.glib2+=		glib2>=2.60.0
