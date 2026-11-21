@@ -1,6 +1,7 @@
 $NetBSD$
 
 Locate optional builtin timezone data relative to the installed Darwin library.
+Handle an unavailable zone directory before constructing file names.
 
 --- src/libical/icaltimezone.c.orig
 +++ src/libical/icaltimezone.c
@@ -16,7 +17,48 @@ Locate optional builtin timezone data relative to the installed Darwin library.
  #endif
  
  /** This is the toplevel directory where the timezone data is installed in. */
-@@ -2187,9 +2192,42 @@
+@@ -1827,7 +1832,6 @@
+         filename_len = strlen(zonedir);
+     }
+ 
+-    icalerror_assert(filename_len > 0, "Unable to locate a zoneinfo dir");
+     if (filename_len == 0) {
+         // Set an empty builtin_timezones array if there's an error
+         builtin_timezones = timezones;
+@@ -1850,7 +1854,6 @@
+     snprintf(filename, filename_len, "%s/%s", zonedir, zonetab);
+ 
+     fp = fopen(filename, "r");
+-    icalerror_assert(fp, "Cannot open the zonetab file for reading");
+     if (!fp) {
+         // Set an empty builtin_timezones array if there's an error
+         builtin_timezones = timezones;
+@@ -1991,7 +1994,14 @@
+         FILE *fp;
+         icalparser *parser;
+ 
+-        filename_len = strlen(get_zone_directory_builtin()) + strlen(zone->location) + 6;
++        const char *zonedir = get_zone_directory_builtin();
++        if (!zonedir || !*zonedir) {
++            icalerror_set_errno(ICAL_FILE_ERROR);
++            icaltimezone_builtin_unlock();
++            return false;
++        }
++
++        filename_len = strlen(zonedir) + strlen(zone->location) + 6;
+ 
+         filename = (char *)icalmemory_new_buffer(filename_len);
+         if (!filename) {
+@@ -1999,7 +2009,7 @@
+             goto out;
+         }
+ 
+-        snprintf(filename, filename_len, "%s/%s.ics", get_zone_directory_builtin(), zone->location);
++        snprintf(filename, filename_len, "%s/%s.ics", zonedir, zone->location);
+ 
+         fp = fopen(filename, "r");
+         icalmemory_free_buffer(filename);
+@@ -2187,9 +2197,42 @@
  #pragma GCC diagnostic pop
  #endif
  
