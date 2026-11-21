@@ -22,6 +22,18 @@ REPLACE_PYTHON+=	src/pip/_vendor/requests/certs.py
 
 PY_RENAME_BINARIES+=	pip
 
+.include "../../mk/bsd.fast.prefs.mk"
+PLIST_VARS+=	windows-launchers
+.if ${OPSYS} == "Cygwin" || ${OPSYS} == "Windows"
+PLIST.windows-launchers= yes
+.else
+PKGREVISION=	1
+# distlib loads the PE launcher stubs only for Windows script generation.
+# Remove them before flit writes the wheel payload and RECORD.
+pre-build:
+	${RM} -f ${WRKSRC}/src/pip/_vendor/distlib/*.exe
+.endif
+
 post-install:
 	cd ${DESTDIR}${PREFIX}/${PYSITELIB}/pip/_internal && \
 	${RM} build_env/virtual.py.orig commands/install.py.orig
