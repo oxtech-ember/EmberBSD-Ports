@@ -5,6 +5,7 @@ Keep ordinary diagnostics and all feature tests. The configure.ac AS_UNAME
 transform and the generated block carry the same selected source hook.
 Declare strcmp in both long-long printf probes so strict C compilers test
 format support rather than rejecting an implicit function declaration.
+Use the defined C99 printf behavior of the NetBSD target during cross builds.
 Canonical Autoconf regeneration remains a separate SDK generator check.
 
 --- a/pkgtools/libnbcompat/Makefile
@@ -17,6 +18,16 @@ Canonical Autoconf regeneration remains a separate SDK generator check.
  CATEGORIES=		pkgtools devel
  
  MAINTAINER=		pkgsrc-users@NetBSD.org
+@@ -23,3 +24,9 @@
++# NetBSD libc implements the C99 long long format and snprintf return count.
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++CONFIGURE_ENV+=	nb_cv_printf_lld=yes nb_cv_std_vsnprintf=yes
++.endif
++
+ # Avoid any dependency cycles
+ CHECK_PERMS_SKIP=	*
+ CHECK_PORTABILITY_SKIP=	*
 --- a/pkgtools/libnbcompat/files/configure
 +++ b/pkgtools/libnbcompat/files/configure
 @@ -2221,6 +2221,12 @@
