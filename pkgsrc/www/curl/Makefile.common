@@ -29,7 +29,8 @@ GNU_CONFIGURE_ICONV=	no
 .if !empty(SSLCERTBUNDLE)
 CONFIGURE_ARGS+=	--with-ca-bundle=${SSLCERTBUNDLE}
 .else
-CONFIGURE_ARGS+=	--with-ca-path=${SSLCERTS}
+# TLS buildlink files can set SSLCERTS after this file was included.
+CONFIGURE_ARGS+=	${empty(SSLCERTS):?--without-ca-path:--with-ca-path=${SSLCERTS}}
 .endif
 CONFIGURE_ARGS+=	--with-zlib=${BUILDLINK_PREFIX.zlib}
 CONFIGURE_ARGS+=	--without-libpsl

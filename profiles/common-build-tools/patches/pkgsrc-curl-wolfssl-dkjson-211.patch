@@ -72,12 +72,25 @@
  PKG_SUGGESTED_OPTIONS=		http2 inet6 idn
  .if ${OPSYS} != "QNX"
  PKG_SUGGESTED_OPTIONS+=		openssl
-@@ -20,6 +22,10 @@
+@@ -20,6 +22,23 @@
  .if !empty(PKG_OPTIONS:Mopenssl)
  BUILDLINK_API_DEPENDS.openssl+=	openssl>=3.0
  .include "../../security/openssl/buildlink3.mk"
 +CONFIGURE_ARGS+=	--with-ssl=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.openssl}
 +.elif !empty(PKG_OPTIONS:Mwolfssl)
++# The previous RV32 package used the single-threaded wolfSSL RNG layout.
++.  if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "riscv32"
++.    if ${PKGREVISION:U0} < 5
++PKGREVISION=	5
++.    endif
++BUILDLINK_ABI_DEPENDS.wolfssl+=	wolfssl>=5.9.4nb3
++.    if ${EMBERBSD_CROSS_LIBC_MODE:U} == "static"
++# The static TLS provider publishes its thread libraries in Libs.private.
++USE_TOOLS+=	pkg-config
++CONFIGURE_ARGS+=	PKG_CONFIG="pkg-config --static"
++.    endif
++.  endif
++
 +.include "../../security/wolfssl/buildlink3.mk"
 +CONFIGURE_ARGS+=	--with-wolfssl=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.wolfssl}
  .else
