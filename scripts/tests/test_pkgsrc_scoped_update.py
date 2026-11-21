@@ -1096,6 +1096,73 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((output.stat().st_ino, output.stat().st_mtime_ns), stamp)
 
+    def add_mapped_recipe(self, package):
+        source = 'probes/owner/' + package
+        write(self.ports, source + '/Makefile', 'PKGNAME=mapped-1\n')
+        conf = self.ports / 'pkgsrc/export.conf'
+        with conf.open('a') as stream:
+            stream.write(f'recipe\t{source}\t{package}\n')
+
+    def test_new_non_upstream_mapped_recipe_preserves_neighbor(self):
+        self.add_mapped_recipe('cat/new')
+        commit(self.ports, 'new mapped package')
+        neighbor = self.tree / 'cat/pkg/Makefile'
+        stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
+        result = run(self.command + ['--update', '--package', 'cat/new'], self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / 'cat/new/Makefile').read_text(), 'PKGNAME=mapped-1\n')
+        self.assertNotEqual(self.receipt.read_bytes(), self.old_receipt)
+        self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
+        self.assertFalse(self.marker.exists())
+
+    def test_unselected_new_mapped_recipe_preserves_export(self):
+        self.add_mapped_recipe('cat/new')
+        result = self.update()
+        self.assert_refused_unchanged(result)
+        self.assertFalse((self.tree / 'cat/new').exists())
+        self.assertFalse(self.marker.exists())
+
+    def test_scoped_update_refuses_implicit_recipe_move_to_mapped_owner(self):
+        self.new_overlay()
+        command = self.command + ['--update', '--package', 'cat/new']
+        result = run(command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        old_receipt = self.receipt.read_bytes()
+        installed = self.tree / 'cat/new/Makefile'
+        stamp = (installed.stat().st_ino, installed.stat().st_mtime_ns)
+        shutil.rmtree(self.ports / 'pkgsrc/cat/new')
+        self.add_mapped_recipe('cat/new')
+        result = run(command, self.ports, check=False)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.receipt.read_bytes(), old_receipt)
+        self.assertEqual(installed.read_text(), 'PKGNAME=new-1\n')
+        self.assertEqual((installed.stat().st_ino, installed.stat().st_mtime_ns), stamp)
+        self.assertFalse(self.marker.exists())
+
+    def test_new_mapping_cannot_reuse_an_existing_overlay_owner(self):
+        self.add_mapped_recipe('cat/new')
+        initial = run(self.command + ['--update', '--package', 'cat/new'], self.ports, check=False)
+        self.assertEqual(initial.returncode, 0, initial.stdout + initial.stderr)
+        old_receipt = self.receipt.read_bytes()
+        installed = self.tree / 'cat/new/Makefile'
+        stamp = (installed.stat().st_ino, installed.stat().st_mtime_ns)
+        conf = self.ports / 'pkgsrc/export.conf'
+        with conf.open('a') as stream:
+            stream.write('recipe\tprobes/owner/cat/new\tcat/reused\n')
+        new = run(self.command + ['--update', '--package', 'cat/reused'], self.ports, check=False)
+        self.assertNotEqual(new.returncode, 0, new.stdout + new.stderr)
+        self.assertEqual(self.receipt.read_bytes(), old_receipt)
+        self.assertEqual((installed.stat().st_ino, installed.stat().st_mtime_ns), stamp)
+        self.assertFalse((self.tree / 'cat/reused').exists())
+        self.assertFalse(self.marker.exists())
+
+    def test_mapped_recipe_upstream_collision_still_requires_replaces(self):
+        self.add_mapped_recipe('cat/pkg')
+        result = self.update()
+        self.assert_refused_unchanged(result)
+        self.assertIn('selected recipe replacement conflicts with pkgsrc/replaces', result.stderr)
+        self.assertFalse(self.marker.exists())
+
     def test_probe_owned_replacement_requires_declared_and_selected_overlay(self):
         write(self.ports, 'probes/owner/cat/pkg/Makefile', 'PKGNAME=probe-1\n')
         write(self.ports, 'pkgsrc/export.conf',

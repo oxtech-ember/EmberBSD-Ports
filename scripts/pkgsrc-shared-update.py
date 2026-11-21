@@ -374,10 +374,18 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                for package, overlay in overlays.items()):
             continue
         raise ValueError('changed export input outside selected outputs: ' + name)
+    previous_mapped_outputs = {row[2] for row in old_records if row[0] == 'recipe'}
+    new_mapped_outputs = {
+        package for package, source in selected_recipes.items()
+        if package not in previous_mapped_outputs
+        and 'pkgsrc/' + package not in old_snapshot['trees']
+        and source not in old_snapshot['trees']
+    }
+    mapped_additions = added | new_mapped_outputs
     def unaffected(rows):
         return [row for row in rows if not (row[0] in ('patch', 'git-apply') and row[1] in scoped_patches)
                 and not (row[0] == 'recipe-patch' and len(row) == 4 and row[2] in packages)
-                and not (row[0] == 'recipe' and len(row) == 3 and row[2] in added
+                and not (row[0] == 'recipe' and len(row) == 3 and row[2] in mapped_additions
                          and overlays.get(row[2]) == row[1])
                 and not (row[0] == 'file' and len(row) == 3 and
                          (row[2] in selected_files or selected_output(row[2])))]
