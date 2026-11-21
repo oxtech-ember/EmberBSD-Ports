@@ -309,7 +309,8 @@ build_existing_order || fail "ordinary legacy rebuild: $(cat "$out/legacy.log")"
     fail 'ordinary rebuild did not establish provider and archive evidence'
 grep -Fqx 'TARGET package-install' "$out/targets" || fail 'ordinary rebuild did not compile/package'
 : > "$out/targets"
-build_existing_order || fail "post-migration reuse: $(cat "$out/legacy.log")"
+# Ordinary nodes also run with shared staging explicitly disabled.
+CROSS_BULK_SHARED_BUILD=no build_existing_order || fail "post-migration reuse: $(cat "$out/legacy.log")"
 [ ! -s "$out/targets" ] || fail 'post-migration run repeated package work'
 
 # The kept phase cache can still name the old provider after selection changed.

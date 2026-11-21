@@ -1173,6 +1173,7 @@ query_dependencies()
 {
     qd_path=$1 qd_output=$2 qd_last=$3
     shift 3
+    if [ "${provider_role:-target}" = target ] && [ -n "${shared_arg:-}" ]; then set -- "$@" "$shared_arg"; fi
     bmk -C "$PKGSRCDIR/$qd_path" "$@" _MAKEVARS_MK=defined "_DEPENDS_FILE=$qd_output.depends" \
         "_RDEPENDS_FILE=$qd_output.rdepends" "$qd_output.$qd_last" < /dev/null
 }
@@ -1706,21 +1707,37 @@ target_install_bmake()
     fi
 }
 
+# The recipe selects shared devel packaging by this argument. Query exactly
+# that role as well. A verified archive can be checked after the stage was
+# cleaned; materializing a package still requires a ready, physical stage.
+target_stage_context()
+{
+    shared_arg= shared_provider=
+    shared_pair_for_path "$1"
+    [ -n "$shared_pair" ] || return 0
+    if [ "$1" = "$shared_consumer" ]; then shared_provider=standalone; fi
+    sc_dir=$run/shared-$shared_pair
+    [ "$(cat "$sc_dir/enabled" 2>/dev/null)" = yes ] || return 0
+    sc_stage=$(cat "$sc_dir/stage") || return 1
+    if [ "$1" = "$shared_consumer" ]; then
+        sc_key=$(echo "$shared_producer" | tr / _)
+        case "$2" in
+            stored-stage) [ -s "$run/$sc_key.verified-source" ] || return 0 ;;
+            install) [ -f "$sc_dir/producer-ready" ] && [ -d "$sc_stage" ] || return 0 ;;
+            standalone) return 0 ;;
+        esac
+        shared_provider=$sc_key
+    fi
+    sc_variable=$(cat "$sc_dir/variable") || return 1
+    shared_arg=$sc_variable=$sc_stage
+}
+
 # Run the install targets $2... of target package $1, one bmake run each.
 target_install()
 {
     tpath=$1
     shift
-    shared_arg=
-    shared_pair_for_path "$tpath" || :
-    if [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ]; then
-        shared_stage=$(cat "$run/shared-$shared_pair/stage")
-        shared_var=$(cat "$run/shared-$shared_pair/variable")
-        if [ "$tpath" = "$shared_producer" ] ||
-            { [ -f "$run/shared-$shared_pair/producer-ready" ] && [ -d "$shared_stage" ]; }; then
-            shared_arg=$shared_var=$shared_stage
-        fi
-    fi
+    target_stage_context "$tpath" install || return 1
     for target do
         if [ -n "$shared_arg" ]; then
             if [ "${stage_local:-no}" = yes ] || [ "${metadata_repackage:-no}" = yes ]; then
@@ -1899,6 +1916,16 @@ shared_pair_producer_succeeded()
     fi
 }
 
+# A ready binary has no local source proof. Snapshot only source producers
+# that may supply a devel package in this run.
+remember_source_producer()
+{
+    shared_pair_for_path "$path"
+    [ -n "$shared_pair" ] && [ "$path" = "$shared_producer" ] &&
+        [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ] || return 0
+    cp "$state/source-inputs/$key" "$run/$key.verified-source"
+}
+
 # Restore a completed producer's full stage without rebuilding or reinstalling
 # its package. All temporary producer variables stay inside this subshell.
 shared_pair_restore_producer()
@@ -1917,7 +1944,7 @@ shared_pair_restore_producer()
     [ "$producer_work" = "$(cat "$shared_dir/wrkdir")" ] || return 0
     [ -f "$packages/$producer_name.tgz" ] || return 0
     producer_key=$(echo "$shared_producer" | tr / _)
-    [ -f "$run/$producer_key.verified-source" ] || return 0
+    cmp -s "$run/$producer_key.verified-source" "$state/source-inputs/$producer_key" || return 0
     read -r _ _ _ producer_providers < "$state/source-inputs/$producer_key" || return 0
     [ -n "$producer_providers" ] && [ "$producer_providers" = "$(cat "$producer_work/.cross-bulk-providers" 2>/dev/null)" ] || return 0
     wrkdir=$producer_work
@@ -2043,6 +2070,10 @@ source_archive_current()
     set -f
     $target_pkg_info -e "$name" > /dev/null || { set +f; return 1; }
     set +f
+    case "$sac_deps" in
+        stage-*) target_stage_context "$path" stored-stage || return 1 ;;
+        *) target_stage_context "$path" standalone || return 1 ;;
+    esac
     sac_check=$run/$key.current
     resolve_source_providers "$sac_check" || return 1
     sac_actual=$(provider_inputs "$sac_check.rdepends") || return 1
@@ -2051,11 +2082,23 @@ source_archive_current()
 }
 
 provider_inputs()
-{
+(
     set -- "$1" "$target_database" "$native_database" --cache "$run/provider-cache"
-    [ "${provider_role:-target}" != native ] || set -- "$@" --native
-    "$host_python" -B -E -S "$(dirname "$0")/cross_bulk_provider.py" "$@"
-}
+    if [ "${provider_role:-target}" = native ]; then set -- "$@" --native; shared_provider=; fi
+    pi_deps=$("$host_python" -B -E -S "$(dirname "$0")/cross_bulk_provider.py" "$@") || return 1
+    case "${shared_provider:-}" in
+        '') printf '%s\n' "$pi_deps" ;;
+        standalone) printf 'standalone-%s\n' "$pi_deps" ;;
+        *)
+            # The runtime archive excludes development headers. Bind the
+            # producer's verified name, archive, recipe AND provider inputs.
+            pi_record=$run/$shared_provider.verified-source
+            [ -s "$pi_record" ] && cmp -s "$pi_record" "$state/source-inputs/$shared_provider" || return 1
+            pi_producer=$(cat "$pi_record") || return 1
+            pi_hash=$(printf '%s\n%s\n' "$pi_deps" "$pi_producer" | shasum -a 256) || return 1
+            printf 'stage-%s\n' "${pi_hash%% *}" ;;
+    esac
+)
 
 record_source_archive()
 {
@@ -2072,7 +2115,8 @@ record_source_archive()
     archive_metadata_matches "$wrkdir/.rdepends" || return 1
     mkdir -p "$state/source-inputs" &&
         printf '%s %s %s %s\n' "$name" "$package_sha" "$inputs_digest" "$rsa_deps" > "$state/source-inputs/$key.tmp" &&
-        mv "$state/source-inputs/$key.tmp" "$state/source-inputs/$key"
+        mv "$state/source-inputs/$key.tmp" "$state/source-inputs/$key" &&
+        remember_source_producer
 }
 
 # A signed SDK selection is checked at the ready frontier, after all its
@@ -2134,6 +2178,7 @@ build_one()
         stage_local_metadata_changed=no
         [ "$stage_local_identity" != revision ] || stage_local_metadata_changed=yes
         : > "$log"
+        target_stage_context "$path" install || { result "$key" "failed $path shared-stage-context"; return 0; }
         if work_dependencies_current "$wrkdir" "$job.$key" "$path" >> "$log" 2>&1; then
             :
         else
@@ -2168,7 +2213,7 @@ build_one()
     if [ "${stage_local:-no}" != yes ]; then
         build_inputs "$path"
         if (source_archive_current); then
-            : > "$run/$key.verified-source"
+            remember_source_producer || { result "$key" "failed $path source-input-record"; return 0; }
             shared_pair_retire_producer "$path"
             result "$key" "done $path"
             return 0
@@ -2182,6 +2227,7 @@ build_one()
         result "$key" "failed $path shared-stage-restore"
         return 0
     fi
+    target_stage_context "$path" install || { result "$key" "failed $path shared-stage-context"; return 0; }
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
@@ -2251,7 +2297,7 @@ build_one()
             record_source_archive || { result "$key" "failed $path source-input-record"; return 0; }
         fi
         shared_pair_producer_succeeded "$path"
-        if ! shared_pair_ready "$path"; then
+        if ! shared_pair_ready "$path" || [ "$path" != "$shared_producer" ]; then
             [ "${stage_local:-no}" = yes ] || clean_success
         fi
         shared_pair_retire_producer "$path"

@@ -738,14 +738,15 @@ package result.
 When a package set contains both roles of a supported split package,
 `cross-bulk.sh` compares their expanded source, toolchain, option, and compile
 settings and shares the compiled stage only when they match. This currently
-covers LLVM runtime/SDK and Qtbase runtime/devel. Sharing is enabled by
-default; set `CROSS_BULK_SHARED_BUILD=no` to request independent builds. A
-cached producer without its complete same-run stage or differing compile
-inputs use the regular consumer build. With
+covers LLVM runtime/SDK, Qtbase runtime/devel and ICU runtime/devel.
+Set `CROSS_BULK_SHARED_BUILD=no` to request independent builds. A verified
+source producer with a compatible retained build can restore its full
+install stage. Missing build evidence or differing compile inputs select
+independent consumer packaging. With
 `CROSS_BULK_CLEAN_SUCCESS=yes`, the producer workdir is retired only after
 the consumer package succeeds. `scripts/tests/cross-bulk-llvm-shared-stage.sh`
-checks LLVM and Qtbase handoff, input mismatch fallback, cached-producer
-fallback, stage-local recovery, and failure retention.
+checks all three pairs, including stage cleanup, source reuse, independent
+packaging, stage-local recovery and failure retention.
 For the same reason each target package gets one `package-install` run,
 which does the depends, package and install steps. When the sysroot already
 has another version of the package (pkg_info -e PKGBASE), for example one
@@ -997,6 +998,11 @@ provider digests in `STATE/source-inputs`, a newly hashed archive, and current
 runtime requirements obtained from pkgsrc. The selected `pkg_info` checks
 those requirements against the archive and its installed registration. A
 legacy row without source evidence goes through normal package preparation.
+For split packages the dependency query uses the packaging role that produced
+the archive. A shared devel archive also binds the source producer's full
+package name, archive SHA256, recipe and resolved providers. A later pass can
+validate the devel archive after normal stage cleanup when that same source
+producer verifies. A signed binary selection provides no local stage evidence.
 If a retained consumer has no record of its nonempty resolved provider list,
 the first pass preserves the objects. Preserve any required copy, then run
 the selected pkgsrc recipe’s scoped `clean` target and the ordinary bulk build.

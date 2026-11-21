@@ -35,7 +35,9 @@ setup()
     : > "$case_out/tree/pkgtools/pkg_install/Makefile"
     # This fixture tests stage handoff, not the separately tested metadata guard.
     printf '%s\n' 'import sys' 'sys.exit(0)' > "$case_out/tree/mk/package/repackage-metadata-check.py"
-    mkdir -p "$case_out/db"
+    mkdir -p "$case_out/db" "$case_out/host-db/ninja-build-1.13.2"
+    printf '%s\n' '@name ninja-build-1.13.2' > "$case_out/host-db/ninja-build-1.13.2/+CONTENTS"
+    printf '%s\n' 'PKGPATH=devel/ninja-build' > "$case_out/host-db/ninja-build-1.13.2/+BUILD_INFO"
     cat > "$case_out/pkg_info" <<'WRAP'
 #!/bin/sh
 case "$1" in
@@ -86,11 +88,24 @@ if [ -n "$vquery" ]; then
     done
     exit 0
 fi
+# The independent devel build needs Ninja. Partitioning an existing stage
+# suppresses configure/build and pkgsrc omits that tool from both lists.
+write_dependencies()
+{
+    : > "$1"
+    : > "$2"
+    if [ "$dir" = "$out/tree/$consumer" ] && [ -z "$shared" ]; then
+        printf 'tool\tninja-build-[0-9]*\t../../devel/ninja-build\n' > "$1"
+        printf 'tool\tninja-build-[0-9]*\tninja-build-1.13.2\n' > "$2"
+    fi
+}
 case "$target" in
     show-var)
         case "$varname" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
             PACKAGES) echo "$out/packages" ;;
+            _PKG_DBDIR) echo "$out/db" ;;
+            _HOST_PKG_DBDIR) echo "$out/host-db" ;;
             PKG_INFO|NATIVE_PKG_ADD_CMD) echo "$out/pkg_info" ;;
             CROSSTARGETSETTINGS) echo TARGET_SETTING=selected ;;
             *) echo ;;
@@ -121,7 +136,7 @@ case "$target" in
                 *) echo shared ;;
             esac
         done ;;
-    *.rdepends|*.depends) : > "$depends"; : > "$rdepends" ;;
+    *.rdepends|*.depends) write_dependencies "$depends" "$rdepends" ;;
     depends-clean) rm -f "$work/.depends" "$work/.rdepends" ;;
     clean)
         echo "clean:$pkg" >> "$out/calls"
@@ -161,8 +176,7 @@ case "$target" in
         : > "$work/built"
         if [ "$target" != stage-install ]; then
             for phase in extract configure build; do echo "$name" > "$work/.${phase}_done"; done
-            : > "$work/.depends"
-            : > "$work/.rdepends"
+            write_dependencies "$work/.depends" "$work/.rdepends"
             echo "@name $name" > "$packages/All/$name.tgz"
             [ "$target" != package-install ] || cp "$packages/All/$name.tgz" "$out/db/$name"
         fi ;;
@@ -200,10 +214,44 @@ grep -q "^package-install:$consumer_dir:shared$" "$success/calls" || fail 'consu
 if grep -q "^compile:$consumer_dir$" "$success/calls"; then fail 'consumer compiled again after a matching producer build'; fi
 grep -q "^$consumer $consumer_name " "$success/state/done" || fail 'consumer package not recorded done'
 if [ -d "$success/work/$producer_dir" ]; then fail 'producer workdir survived successful consumer packaging with cleanup enabled'; fi
+[ ! -d "$success/work/$consumer_dir" ] || fail 'devel workdir survived requested cleanup'
 last_consumer=$(awk -v p="package-install:$consumer_dir:shared" '$0 == p { n = NR } END { print n + 0 }' "$success/calls")
 last_producer_clean=$(awk -v p="clean:$producer_dir" '$0 == p { n = NR } END { print n + 0 }' "$success/calls")
 [ "$last_producer_clean" -gt "$last_consumer" ] || fail 'producer stage was cleaned before consumer completed'
 if [ -f "$success/work/$producer_dir/.${pair}-shared-full-stage/stale" ]; then fail 'prepare_wrkdir retained an old shared stage'; fi
+
+# A cleaned shared-stage package must reuse only the source producer whose
+# archive, recipe and resolved providers actually produced its headers.
+producer_record=$success/state/source-inputs/$(echo "$producer" | tr / _)
+consumer_record=$success/state/source-inputs/$(echo "$consumer" | tr / _)
+[ "$(awk '{print substr($4, 1, 6)}' "$consumer_record")" = stage- ] || fail 'missing shared consumer evidence'
+before_producer=$(cat "$producer_record")
+before_consumer=$(cat "$consumer_record")
+: > "$success/calls"
+run_build "$success" || fail "warm pair without stage: $(cat "$success/build.log")"
+[ ! -s "$success/calls" ] || fail "warm pair used a package target: $(cat "$success/calls")"
+
+# Identical runtime archive bytes can accompany changed devel inputs.
+printf '%s\n' 'CFLAGS+= -DNEW_HEADER' >> "$success/tree/$producer/Makefile"
+run_build "$success" || fail "changed producer: $(cat "$success/build.log")"
+[ "$(awk '{print $2}' "$producer_record")" = "$(echo "$before_producer" | awk '{print $2}')" ] || fail 'fixture runtime archive changed'
+[ "$(cat "$producer_record")" != "$before_producer" ] && [ "$(cat "$consumer_record")" != "$before_consumer" ] || fail 'producer change did not reach consumer'
+grep -q "^package-install:$consumer_dir:shared$" "$success/calls" || fail 'consumer skipped changed producer inputs'
+
+cp "$success/packages/All/$producer_name.tgz" "$success/intact"
+printf 'changed\n' >> "$success/packages/All/$producer_name.tgz"
+: > "$success/calls"
+if run_build "$success"; then fail 'damaged source producer archive was accepted'; fi
+grep -q "^$producer archive-integrity$" "$success/state/failed" || fail 'producer corruption was not identified'
+[ ! -s "$success/calls" ] || fail 'consumer ran after producer integrity failure'
+cp "$success/intact" "$success/packages/All/$producer_name.tgz"
+
+# An SDK-selected binary can satisfy the package edge, but its old local
+# source receipt cannot establish provenance for devel-only files.
+printf '%s %s\n' "$producer" "$producer_name" > "$success/selected"
+CROSS_BULK_BINARY_INSTALLED=$success/selected run_build "$success" || fail "signed producer: $(cat "$success/build.log")"
+grep -q "^compile:$consumer_dir$" "$success/calls" || fail 'signed selection inherited old stage evidence'
+[ "$(awk '{print substr($4, 1, 11)}' "$consumer_record")" = standalone- ] || fail 'missing independent devel evidence'
 
 mismatch=$out/mismatch
 setup "$mismatch"
