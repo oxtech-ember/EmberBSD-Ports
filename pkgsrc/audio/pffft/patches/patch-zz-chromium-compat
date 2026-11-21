@@ -3,11 +3,11 @@ $NetBSD$
 Adapt Chromium PFFFT patches 01-rmv_printf, 02-decl_validate_simd, and
 03-malloca from chromium/src revision 40c5dfa29b9818dbd7acf7f083e03c5334e02160:
 https://chromium.googlesource.com/chromium/src/+/40c5dfa29b9818dbd7acf7f083e03c5334e02160/third_party/pffft/patches/
-Keep the common 1.1.0 diagnostic API and upstream license notices.
+Keep the common diagnostic API and upstream license notices.
 
 --- include/pffft/pffft.h.orig
 +++ include/pffft/pffft.h
-@@ -99,6 +99,11 @@
+@@ -109,6 +109,11 @@
  extern "C" {
  #endif
  
@@ -49,7 +49,7 @@ Keep the common 1.1.0 diagnostic API and upstream license notices.
  
 --- src/pffft_double.c.orig
 +++ src/pffft_double.c
-@@ -90,11 +90,13 @@
+@@ -88,11 +88,13 @@
  #  define NEVER_INLINE(return_type) return_type __attribute__ ((noinline))
  #  define RESTRICT __restrict
  #  define VLA_ARRAY_ON_STACK(type__, varname__, size__) type__ varname__[size__];
@@ -66,7 +66,7 @@ Keep the common 1.1.0 diagnostic API and upstream license notices.
  
 --- src/pffft_priv_impl.h.orig
 +++ src/pffft_priv_impl.h
-@@ -1470,6 +1470,9 @@
+@@ -1708,6 +1708,9 @@
    /* temporary buffer is allocated on the stack if the scratch pointer is NULL */
    int stack_allocate = (scratch == 0 ? Ncvec*2 : 1);
    VLA_ARRAY_ON_STACK(v4sf, scratch_on_stack, stack_allocate);
@@ -76,15 +76,15 @@ Keep the common 1.1.0 diagnostic API and upstream license notices.
  
    const v4sf *vinput = (const v4sf*)finput;
    v4sf *voutput      = (v4sf*)foutput;
-@@ -1529,6 +1532,7 @@
+@@ -1767,6 +1770,7 @@
      ib = !ib;
    }
    assert(buff[ib] == voutput);
 +  VLA_ARRAY_ON_STACK_FREE(scratch_on_stack);
  }
  
- void FUNC_ZCONVOLVE_ACCUMULATE(SETUP_STRUCT *s, const float *a, const float *b, float *ab, float scaling) {
-@@ -1717,6 +1721,9 @@
+ void FUNC_ZCONVOLVE_ACCUMULATE(const SETUP_STRUCT *s, const float *a, const float *b, float *ab, float scaling) {
+@@ -2029,6 +2033,9 @@
    /* temporary buffer is allocated on the stack if the scratch pointer is NULL */
    int stack_allocate = (scratch == 0 ? Ncvec*2 : 1);
    VLA_ARRAY_ON_STACK(v4sf, scratch_on_stack, stack_allocate);
@@ -94,7 +94,7 @@ Keep the common 1.1.0 diagnostic API and upstream license notices.
    float *buff[2];
    int ib;
    if (scratch == 0) scratch = scratch_on_stack;
-@@ -1763,6 +1770,7 @@
+@@ -2075,6 +2082,7 @@
      ib = !ib;
    }
    assert(buff[ib] == output);
@@ -102,22 +102,21 @@ Keep the common 1.1.0 diagnostic API and upstream license notices.
  }
  
  #define pffft_zconvolve_accumulate_nosimd FUNC_ZCONVOLVE_ACCUMULATE
-@@ -1835,32 +1843,21 @@
-   memcpy(a2.f, f+8, 4*sizeof(float));
+@@ -2199,31 +2207,24 @@
    memcpy(a3.f, f+12, 4*sizeof(float));
  
--  t = a0; u = a1; t.v = VZERO();
+   t = a0; u = a1; t.v = VZERO();
 -  printf("VZERO=[%2g %2g %2g %2g]\n", t.f[0], t.f[1], t.f[2], t.f[3]); assertv4(t, 0, 0, 0, 0);
--  t.v = VADD(a1.v, a2.v);
++  assertv4(t, 0, 0, 0, 0);
+   t.v = VADD(a1.v, a2.v);
 -  printf("VADD(4:7,8:11)=[%2g %2g %2g %2g]\n", t.f[0], t.f[1], t.f[2], t.f[3]); assertv4(t, 12, 14, 16, 18);
--  t.v = VMUL(a1.v, a2.v);
++  assertv4(t, 12, 14, 16, 18);
+   t.v = VMUL(a1.v, a2.v);
 -  printf("VMUL(4:7,8:11)=[%2g %2g %2g %2g]\n", t.f[0], t.f[1], t.f[2], t.f[3]); assertv4(t, 32, 45, 60, 77);
--  t.v = VMADD(a1.v, a2.v,a0.v);
++  assertv4(t, 32, 45, 60, 77);
+   t.v = VMADD(a1.v, a2.v,a0.v);
 -  printf("VMADD(4:7,8:11,0:3)=[%2g %2g %2g %2g]\n", t.f[0], t.f[1], t.f[2], t.f[3]); assertv4(t, 32, 46, 62, 80);
-+  t = a0; u = a1; t.v = VZERO(); assertv4(t, 0, 0, 0, 0);
-+  t.v = VADD(a1.v, a2.v); assertv4(t, 12, 14, 16, 18);
-+  t.v = VMUL(a1.v, a2.v); assertv4(t, 32, 45, 60, 77);
-+  t.v = VMADD(a1.v, a2.v,a0.v); assertv4(t, 32, 46, 62, 80);
++  assertv4(t, 32, 46, 62, 80);
  
    INTERLEAVE2(a1.v,a2.v,t.v,u.v);
 -  printf("INTERLEAVE2(4:7,8:11)=[%2g %2g %2g %2g] [%2g %2g %2g %2g]\n", t.f[0], t.f[1], t.f[2], t.f[3], u.f[0], u.f[1], u.f[2], u.f[3]);
@@ -132,11 +131,10 @@ Keep the common 1.1.0 diagnostic API and upstream license notices.
    t.v = VSWAPHL(a1.v, a2.v);
 -  printf("VSWAPHL(4:7,8:11)=[%2g %2g %2g %2g]\n", t.f[0], t.f[1], t.f[2], t.f[3]);
    assertv4(t, 8, 9, 6, 7);
--  VTRANSPOSE4(a0.v, a1.v, a2.v, a3.v);
--  printf("VTRANSPOSE4(0:3,4:7,8:11,12:15)=[%2g %2g %2g %2g] [%2g %2g %2g %2g] [%2g %2g %2g %2g] [%2g %2g %2g %2g]\n", 
--         a0.f[0], a0.f[1], a0.f[2], a0.f[3], a1.f[0], a1.f[1], a1.f[2], a1.f[3], 
--         a2.f[0], a2.f[1], a2.f[2], a2.f[3], a3.f[0], a3.f[1], a3.f[2], a3.f[3]); 
-+  VTRANSPOSE4(a0.v, a1.v, a2.v, a3.v); 
+   VTRANSPOSE4(a0.v, a1.v, a2.v, a3.v);
+-  printf("VTRANSPOSE4(0:3,4:7,8:11,12:15)=[%2g %2g %2g %2g] [%2g %2g %2g %2g] [%2g %2g %2g %2g] [%2g %2g %2g %2g]\n",
+-         a0.f[0], a0.f[1], a0.f[2], a0.f[3], a1.f[0], a1.f[1], a1.f[2], a1.f[3],
+-         a2.f[0], a2.f[1], a2.f[2], a2.f[3], a3.f[0], a3.f[1], a3.f[2], a3.f[3]);
    assertv4(a0, 0, 4, 8, 12); assertv4(a1, 1, 5, 9, 13); assertv4(a2, 2, 6, 10, 14); assertv4(a3, 3, 7, 11, 15);
  }
  

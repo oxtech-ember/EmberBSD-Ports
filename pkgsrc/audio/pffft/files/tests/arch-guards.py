@@ -9,7 +9,6 @@ with tempfile.TemporaryDirectory(prefix='pffft-arch-guards-') as d:
  for kind in ('float','double'):
   (root/f'pf_neon_{kind}.h').write_bytes((a.source/f'src/simd/pf_neon_{kind}.h').read_bytes())
  (root/'arm_neon.h').write_text('')
- (root/'pf_neon_double_from_avx.h').write_text('')
  def enabled(kind,defines):
   cmd=[a.cc,'-E','-dM','-undef','-nostdinc','-I',str(root),'-x','c',*[f'-D{x}' for x in defines],'-']
   result=subprocess.run(cmd,input=f'#include "pf_neon_{kind}.h"\n',capture_output=True,text=True,check=True)
@@ -17,7 +16,10 @@ with tempfile.TemporaryDirectory(prefix='pffft-arch-guards-') as d:
  for kind in ('float','double'):
   assert enabled(kind,['__aarch64__','__ARM_NEON'])
   assert not enabled(kind,['__aarch64__','__ARM_NEON','PFFFT_SIMD_DISABLE'])
-  assert not enabled(kind,['_M_ARM64'])
+  assert enabled(kind,['_M_ARM64'])
+  assert not enabled(kind,['_M_ARM64','PFFFT_SIMD_DISABLE'])
+  assert not enabled(kind,['__aarch64__','__ARM_NEON__'])
   assert not enabled(kind,['__arm__','__ARMEL__'])
- assert enabled('float',['__arm__','PFFFT_ENABLE_NEON'])
+ assert enabled('float',['__arm__','__ARM_NEON'])
+ assert not enabled('double',['__arm__','__ARM_NEON'])
 print('PFFFT ARM NEON selection guards PASS')

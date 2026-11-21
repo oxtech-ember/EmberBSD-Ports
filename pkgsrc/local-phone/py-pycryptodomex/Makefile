@@ -1,5 +1,5 @@
 # EmberBSD: Cryptodome flavour of pycryptodome (mtkclient dep).
-DISTNAME=	pycryptodomex-3.24.1
+DISTNAME=	pycryptodomex-3.24.2
 PKGNAME=	${PYPKGPREFIX}-${DISTNAME:S/^py//}
 CATEGORIES=	security python
 MASTER_SITES=	${MASTER_SITE_PYPI:=p/pycryptodomex/}

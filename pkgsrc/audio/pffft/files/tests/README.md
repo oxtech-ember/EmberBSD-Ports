@@ -23,8 +23,9 @@ scratch, the void API terminates rather than using a null pointer; externally
 provided scratch remains usable when the small fallback allocation fails.
 Chromium's `04-fix_ptr_cast` is already
 covered by upstream's `uintptr_t` alignment checks. Its `05-fix-arch-detection`
-is covered for Clang/GCC by upstream's SSE feature detection and Ports'
-AArch64 NEON patch. Pure MSVC keeps the existing backend fallback. The explicit extended SIMD
+is covered by upstream's SSE and NEON feature checks. The float backend
+accepts ARMv7 with NEON. The double backend requires AArch64 with NEON.
+Both headers also recognize the MSVC ARM64 target. The explicit extended SIMD
 diagnostic API retains its output.
 
 Run `chromium-compat.py --cc SELECTED_CC --source PREPARED_SOURCE`, adding

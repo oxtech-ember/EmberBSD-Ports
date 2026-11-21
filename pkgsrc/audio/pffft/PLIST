@@ -6,11 +6,11 @@ lib/cmake/pffft/pffft-config-version.cmake
 lib/cmake/pffft/pffft-config.cmake
 lib/cmake/pffft/pffft-targets-release.cmake
 lib/cmake/pffft/pffft-targets.cmake
-${PLIST.darwin}lib/libpffft.1.1.0.dylib
+${PLIST.darwin}lib/libpffft.${PKGVERSION}.dylib
 ${PLIST.darwin}lib/libpffft.1.dylib
 ${PLIST.darwin}lib/libpffft.dylib
 ${PLIST.elf}lib/libpffft.so
 ${PLIST.elf}lib/libpffft.so.1
-${PLIST.elf}lib/libpffft.so.1.1.0
+${PLIST.elf}lib/libpffft.so.${PKGVERSION}
 lib/pkgconfig/pffft.pc
 share/licenses/pffft/LICENSE.txt
