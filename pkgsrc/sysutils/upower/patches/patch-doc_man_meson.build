@@ -1,0 +1,15 @@
+$NetBSD$
+
+Use the distinct filename assigned at extraction to the section 7 source.
+
+--- doc/man/meson.build.orig
++++ doc/man/meson.build
+@@ -8,7 +8,7 @@
+ foreach man: man_pages
+     custom_target(
+         '@0@.@1@'.format(man[0], man[1]),
+-        input: files(join_paths(man[0] + '.xml')),
++        input: files(man[0] == 'UPower' ? 'upower-overview.xml' : man[0] + '.xml'),
+         output: '@0@.@1@'.format(man[0], man[1]),
+         command: [xsltproc, '--output', '@OUTPUT@', '-nonet', 'http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl', '@INPUT@'],
+         build_by_default: get_option('man'),

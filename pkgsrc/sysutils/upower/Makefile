@@ -1,11 +1,13 @@
 # $NetBSD: Makefile,v 1.34 2026/09/02 19:04:38 wiz Exp $
 
-DISTNAME=	upower-v1.91.2
+DISTNAME=	upower-v1.91.5
 PKGNAME=	${DISTNAME:S/v//}
-PKGREVISION=	4
 CATEGORIES=	sysutils
 MASTER_SITES=	https://gitlab.freedesktop.org/upower/upower/-/archive/v${PKGVERSION_NOREV}/
 EXTRACT_SUFX=	.tar.bz2
+# Preserve both UPower(7) and upower(1) sources on case-insensitive hosts.
+EXTRACT_USING=	bsdtar
+EXTRACT_OPTS_TAR+=	-s ,/doc/man/UPower[.]xml$$,/doc/man/upower-overview.xml,
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://upower.freedesktop.org/
