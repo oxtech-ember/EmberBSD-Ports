@@ -1,8 +1,7 @@
 # $NetBSD$
 # Origin: EmberBSD (AI-assisted), first port for the KWin screencast plugin.
 
-DISTNAME=	pipewire-1.6.10
-PKGREVISION=	1
+DISTNAME=	pipewire-1.6.11
 CATEGORIES=	multimedia
 MASTER_SITES=	https://gitlab.freedesktop.org/pipewire/pipewire/-/archive/${PKGVERSION_NOREV}/
 

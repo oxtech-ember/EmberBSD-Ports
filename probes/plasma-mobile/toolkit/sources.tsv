@@ -120,7 +120,7 @@ devel/plasma6-plasma5support	plasma5support-6.8.3.tar.xz	e97329a0b0d200df15ec30c
 x11/plasma6-plasma-activities-stats	plasma-activities-stats-6.8.3.tar.xz	88681ff26460d3498b966aa3d16f4b9ba60e5571408af6341b46f6da35ec141f	https://download.kde.org/stable/plasma/6.8.3/plasma-activities-stats-6.8.3.tar.xz
 geography/qt6-qtlocation	qtlocation-everywhere-src-6.12.0.tar.xz	218696d57c9eb95e8756e9fda62a8eabf94badc507db5f6e8ab9a640c4b0f50d	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtlocation-everywhere-src-6.12.0.tar.xz
 x11/plasma6-plasma-workspace	plasma-workspace-6.8.3.tar.xz	3f984e2d960c252ee6353ef639807379c7d1bb2777fecedd047943209c52ffcb	https://download.kde.org/stable/plasma/6.8.3/plasma-workspace-6.8.3.tar.xz
-multimedia/pipewire	pipewire-1.6.10.tar.gz	93b7c4f1e62fd9ec3a921846c6bfc64442872bb2366c2bbc3ea69a427b79a4f9	https://gitlab.freedesktop.org/pipewire/pipewire/-/archive/1.6.9/pipewire-1.6.9.tar.gz
+multimedia/pipewire	pipewire-1.6.11.tar.gz	f3f70c4af173cc93d05070a9d412efe3ef5889bdf4ac32298e2c0d9ae1350559	https://gitlab.freedesktop.org/pipewire/pipewire/-/archive/1.6.11/pipewire-1.6.11.tar.gz
 x11/plasma6-plasma-desktop	plasma-desktop-6.8.3.tar.xz	aa050cfb1005d6f806dc347bb11bc583d5360dd11d51b4501f6328aa7b26d370	https://download.kde.org/stable/plasma/6.8.3/plasma-desktop-6.8.3.tar.xz
 x11/xdg-user-dirs	xdg-user-dirs-0.20.tar.xz	b8e34286278f4fef3e1bfe9685c395ccc0eb50c14d3a2fb4953dd00fbfd3af39	https://user-dirs.freedesktop.org/releases/xdg-user-dirs-0.20.tar.xz
 devel/SDL3	SDL3-3.4.18.tar.gz	9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3	https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.tar.gz
