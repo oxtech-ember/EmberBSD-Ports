@@ -249,7 +249,7 @@ cp "$success/intact" "$success/packages/All/$producer_name.tgz"
 # An SDK-selected binary can satisfy the package edge, but its old local
 # source receipt cannot establish provenance for devel-only files.
 printf '%s %s\n' "$producer" "$producer_name" > "$success/selected"
-CROSS_BULK_BINARY_INSTALLED=$success/selected run_build "$success" || fail "signed producer: $(cat "$success/build.log")"
+(CROSS_BULK_BINARY_INSTALLED=$success/selected run_build "$success") || fail "signed producer: $(cat "$success/build.log")"
 grep -q "^compile:$consumer_dir$" "$success/calls" || fail 'signed selection inherited old stage evidence'
 [ "$(awk '{print substr($4, 1, 11)}' "$consumer_record")" = standalone- ] || fail 'missing independent devel evidence'
 
