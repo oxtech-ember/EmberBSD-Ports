@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	AIS-catcher-0.70
+DISTNAME=	AIS-catcher-0.71
 PKGNAME=	${DISTNAME:tl}
 CATEGORIES=	ham
 MASTER_SITES=	${MASTER_SITE_GITHUB:=jvde-github/}

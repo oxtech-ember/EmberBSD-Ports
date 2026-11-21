@@ -5,12 +5,12 @@ Origin: EmberBSD; AI-assisted local patch, not submitted upstream.
 
 --- Source/JSON/Parser.cpp.orig
 +++ Source/JSON/Parser.cpp
-@@ -353,7 +353,7 @@
+@@ -421,7 +421,7 @@
  
- 	[[noreturn]] void Parser::error_parser(const std::string &err)
+ 	[[noreturn]] void Parser::error_parser(const std::string &err, bool syntax)
  	{
--		error(err, (int)(tokenStart - p_start));
-+		error(err, (int)((tokenStart ? tokenStart : p) - p_start));
+-		error(err, (int)(tokenStart - p_start), syntax);
++		error(err, (int)((tokenStart ? tokenStart : p) - p_start), syntax);
  	}
  
  	std::string Parser::tokenString() const
