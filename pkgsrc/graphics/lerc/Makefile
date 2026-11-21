@@ -13,6 +13,14 @@ LICENSE=	apache-2.0
 USE_TOOLS+=	pkg-config
 USE_LANGUAGES=	c c++
 
+.include "../../mk/bsd.prefs.mk"
+
+# Preserve source locations in assert diagnostics without recording the build directory.
+.if ${OPSYS} == "NetBSD" && (!empty(PKGSRC_COMPILER:Mclang) || !empty(PKGSRC_COMPILER:Mgcc))
+PKGREVISION=	1
+CXXFLAGS+=	-fmacro-prefix-map=${WRKSRC}=.
+.endif
+
 PKGCONFIG_OVERRIDE+=	Lerc.pc.in
 
 .include "../../devel/cmake/build.mk"
