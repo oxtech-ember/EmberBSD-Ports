@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.47 2026/01/07 08:49:05 wiz Exp $
 
-DISTNAME=	libplist-2.8.0
+DISTNAME=	libplist-2.8.1
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=libimobiledevice/}
 GITHUB_RELEASE=	${PKGVERSION_NOREV}
@@ -26,7 +26,6 @@ PY_PATCHPLIST=			yes
 TOOL_DEPENDS+=	${PYPKGPREFIX}-setuptools-[0-9]*:../../devel/py-setuptools
 .endif
 
-.include "../../devel/py-cython/buildlink3.mk"
 .include "../../devel/py-cython/tool.mk"
 .include "../../lang/python/extension.mk"
 .include "../../mk/bsd.pkg.mk"

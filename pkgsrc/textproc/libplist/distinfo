@@ -1,7 +1,6 @@
 $NetBSD$
 
-BLAKE2s (libplist-2.8.0.tar.bz2) = 64e860dc99ad36be358f5c3404a639fac53b2a8306a1269d0b613980a30f601f
-SHA512 (libplist-2.8.0.tar.bz2) = 8adeb6357c3f4059f94002308d7f23b04d43156c5c7bcd62ea2a6bf077990957b8b53026d3ab31b9bfa892fe9d3b88b20219b1b0be208cb1c179ba88926eaa83
-Size (libplist-2.8.0.tar.bz2) = 519245 bytes
-SHA1 (patch-src_oplist.c) = deab63eb7be65db8bf1e8735d8ca1b3546844b23
-SHA1 (patch-src_jplist.c) = 42d28756a0d44ca80723ade22c0d2aac0160b53a
+BLAKE2s (libplist-2.8.1.tar.bz2) = b4c9c10428d27683d3d87a0e8f622bbe614c186e227fc4262fe59e80a2e57aff
+SHA512 (libplist-2.8.1.tar.bz2) = 5fac7f1a947b73053f41c6765e3225e822cf64a1defe73ffcadeec21c3af2b048de5a3981ccae44ef617932fe56778a470159d09b85ef0d196da160c70b2470f
+Size (libplist-2.8.1.tar.bz2) = 523602 bytes
+SHA1 (patch-cython_plist.pyx) = 55f141324ab6bb4eaa7936b843f2ba5151e8b914
