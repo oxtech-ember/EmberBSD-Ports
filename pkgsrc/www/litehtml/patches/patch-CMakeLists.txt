@@ -30,7 +30,7 @@ Origin: upstream Twidget 866f0971e7cc5cdeaa07571d9095a94a68b31c96; common liteht
 +    endif()
 +    target_compile_options(litehtml PRIVATE -w)
 +    install(TARGETS litehtml EXPORT litehtmlTargets LIBRARY DESTINATION lib)
-+    install(DIRECTORY "${TW_LITEHTML}/include/" DESTINATION include)
++    install(DIRECTORY "${TW_LITEHTML}/include/" DESTINATION include FILES_MATCHING PATTERN "*.h")
 +    install(FILES "${TW_LITEHTML}/LICENSE" DESTINATION share/doc/litehtml)
 +    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION share/doc/litehtml RENAME LICENSE-Twidget)
 +    install(EXPORT litehtmlTargets FILE litehtmlTargets.cmake DESTINATION lib/cmake/litehtml)

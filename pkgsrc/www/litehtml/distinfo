@@ -3,7 +3,7 @@ $NetBSD$
 BLAKE2s (twidget-866f0971e7cc5cdeaa07571d9095a94a68b31c96.tar.gz) = 35051717950ad335fbd6f46295a5a9b1186dd6977474c5fd168d1c256805ef8c
 SHA512 (twidget-866f0971e7cc5cdeaa07571d9095a94a68b31c96.tar.gz) = de54fbfd8d51dfbdb990487d39ed1dc9589208f20fb8e1488529e6da819b37ae270a9e7d1e0b6989eecc8a7d2244a3ba19837f1b1d40b429c7104234c20e1889
 Size (twidget-866f0971e7cc5cdeaa07571d9095a94a68b31c96.tar.gz) = 2788692 bytes
-SHA1 (patch-CMakeLists.txt) = c70f808b63b950f824f34e1e728cbcf62a9b54ea
+SHA1 (patch-CMakeLists.txt) = f06f599d2e8e46e0cc332a0f0931601391ae08df
 SHA1 (patch-core_src_renderer.cpp) = 1fd1c22651edd4cdb39056271d0f1794fa32b217
 SHA1 (patch-litehtml_include_litehtml_document.h) = 91946149d68b478e9c6476efbac7e7a23ecdf38c
 SHA1 (patch-litehtml_include_litehtml_pixel_type.h) = 6e1fb52d2d303b337255f379f8a674b643797cd3
