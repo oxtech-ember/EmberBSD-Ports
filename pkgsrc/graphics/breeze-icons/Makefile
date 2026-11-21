@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.65 2026/09/06 10:05:21 markd Exp $
 
 PKGNAME=	${DISTNAME}
-PKGREVISION=	2
 
 .include "Makefile.common"
 

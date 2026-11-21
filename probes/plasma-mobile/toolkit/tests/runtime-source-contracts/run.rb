@@ -23,7 +23,7 @@ def extract(archives, archive, member)
   output
 end
 {
-  'kcoreaddons-6.31.0.tar.xz' => ['devel/kf6-kcoreaddons', 'kcoreaddons-6.31.0/src/lib/io/kdirwatch.cpp'],
+  'kcoreaddons-6.32.0.tar.xz' => ['devel/kf6-kcoreaddons', 'kcoreaddons-6.32.0/src/lib/io/kdirwatch.cpp'],
   'plasma-workspace-6.8.3.tar.xz' => ['x11/plasma6-plasma-workspace', 'plasma-workspace-6.8.3/startkde/waitforname/waiter.cpp']
 }.each do |archive, (recipe, _)|
   distinfo = File.read(File.join(recipes, recipe, 'distinfo'))
@@ -36,7 +36,7 @@ FileUtils.mkdir_p(work+'/baseline/src/lib/io')
   File.write(work+'/baseline/startkde/waitforname/'+name,
     extract(archives,'plasma-workspace-6.8.3.tar.xz','plasma-workspace-6.8.3/startkde/waitforname/'+name))
 end
-File.write(work+'/baseline/src/lib/io/kdirwatch.cpp',extract(archives,'kcoreaddons-6.31.0.tar.xz','kcoreaddons-6.31.0/src/lib/io/kdirwatch.cpp'))
+File.write(work+'/baseline/src/lib/io/kdirwatch.cpp',extract(archives,'kcoreaddons-6.32.0.tar.xz','kcoreaddons-6.32.0/src/lib/io/kdirwatch.cpp'))
 FileUtils.cp_r(work+'/baseline',work+'/patched')
 patches = ['devel/kf6-kcoreaddons/patches/patch-src_lib_io_kdirwatch.cpp',
            'x11/plasma6-plasma-workspace/patches/patch-startkde_waitforname_argc',

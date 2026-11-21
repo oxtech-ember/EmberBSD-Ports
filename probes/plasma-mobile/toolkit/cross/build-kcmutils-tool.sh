@@ -15,14 +15,14 @@ for path in "$distfiles" "$qt" "$ecm" "$work" "$CMAKE" "$NINJA" "$HOST_CC" "$HOS
 done
 [ "$("$qt/bin/qmake" -query QT_VERSION)" = 6.12.0 ]
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-archive=kcmutils-6.31.0.tar.xz
+archive=kcmutils-6.32.0.tar.xz
 expected=$(awk -F '\t' '$1 == "devel/kf6-kcmutils" { print $3 }' "$toolkit/sources.tsv")
 [ -n "$expected" ] && [ "$(shasum -a 256 "$distfiles/$archive" | awk '{print $1}')" = "$expected" ]
 mkdir "$work"
 mkdir "$work/source" "$work/tooling" "$work/tooling/KF6KCMUtils"
 tar -xf "$distfiles/$archive" -C "$work/source"
 # Native TOOLS_ONLY leaves the independent full target package unchanged.
-"$CMAKE" -S "$work/source/kcmutils-6.31.0" -B "$work/build" -G Ninja \
+"$CMAKE" -S "$work/source/kcmutils-6.32.0" -B "$work/build" -G Ninja \
     -DCMAKE_MAKE_PROGRAM="$NINJA" -DCMAKE_C_COMPILER="$HOST_CC" -DCMAKE_CXX_COMPILER="$HOST_CXX" \
     -DCMAKE_PREFIX_PATH="$qt" -DECM_DIR="$ecm" -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_TESTING=OFF -DTOOLS_ONLY=ON \

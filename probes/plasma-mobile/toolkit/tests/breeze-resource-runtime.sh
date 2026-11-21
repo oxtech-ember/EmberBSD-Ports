@@ -11,7 +11,7 @@ PATH=/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin; export PATH
 umask 077
 mkdir "$work/reference" "$work/empty" "$work/home"
 ln -s /usr/pkg/share/icons/breeze "$work/reference/icons"
-pkg_info -e 'breeze-icons>=6.31.0nb1' > "$work/package.txt"
+pkg_info -e 'breeze-icons>=6.32.0' > "$work/package.txt"
 sysctl kern.boottime > "$work/boot.before"
 ldd "$program" > "$work/linkage.txt"
 grep -q '/usr/pkg/lib/libKF6BreezeIcons' "$work/linkage.txt"

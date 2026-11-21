@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.5 2026/09/06 10:05:16 markd Exp $
 
-BLAKE2s (kquickcharts-6.31.0.tar.xz) = a01d51b859c46e7e73b5b87c6eeeb71f41bb388dd8b46910ddcafac6bc817f5e
-SHA512 (kquickcharts-6.31.0.tar.xz) = 6ed4453ac5134b3b66267d96d0b8930dc7d231432a8046cec067c0c563470263ad665d5d6954ea33b608e56d1d02c9baa9d76b1731713ac94547a171893ef8bc
-Size (kquickcharts-6.31.0.tar.xz) = 112360 bytes
+BLAKE2s (kquickcharts-6.32.0.tar.xz) = 8aa795a8a656dffccf014f6438935b509cd1332dc112e3ca62f3727eecfabd97
+SHA512 (kquickcharts-6.32.0.tar.xz) = 871dfeab77af12abc49dcb00e95d4dc0b45fe0ce34d5d3a824a34d9cb0533ba8a2a7b4273a9b22faa8bd990239ee7a92d0632670c3b6205851160a641a975c69
+Size (kquickcharts-6.32.0.tar.xz) = 112336 bytes

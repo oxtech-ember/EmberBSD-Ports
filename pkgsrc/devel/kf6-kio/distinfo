@@ -1,7 +1,7 @@
 $NetBSD: distinfo,v 1.5 2026/09/06 10:05:13 markd Exp $
 
-BLAKE2s (kio-6.31.0.tar.xz) = b4051f10ba313658655b435ad4dd13a1ab62cb148c2332bd890174d84e5eea92
-SHA512 (kio-6.31.0.tar.xz) = 7fb496954a9726b9bc300aaa4d14a0312e6cfc0e6a040b3b31ed1c400c3f1d61a5cfd9871458e3e37ba1bd47ea3d42b02753d0be1aa3695f64a925e29f38afca
-Size (kio-6.31.0.tar.xz) = 3619544 bytes
+BLAKE2s (kio-6.32.0.tar.xz) = b7387557105dce03ba144e15ac891b5eea91df0fd4fbf458eb2f65852115546a
+SHA512 (kio-6.32.0.tar.xz) = e7b8532bc414f171265123e0b4160466806d06d63ace2246d1d7b0bbdc6d0e8a1860e83399d488011bdfa4df200813fe5ef77c7d2e6c55c9a054b2cb268b83c7
+Size (kio-6.32.0.tar.xz) = 3692132 bytes
 SHA1 (patch-autotests_kcoredirlister__benchmark.cpp) = b0d8c7543c15682f4f1699e9db2cba560a7ab5c2
 SHA1 (patch-src_core_kmountpoint.cpp) = 463809efb317c5eb721209504521a0c0013b0442

@@ -129,7 +129,7 @@ def main():
         for patch in sorted((bluezqt / "patches").iterdir()):
             text = patch.read_text()
             name = re.search(r"^--- (.+)\.orig$", text, re.MULTILINE)[1]
-            original = source.extractfile("bluez-qt-6.31.0/" + name).read().decode()
+            original = source.extractfile("bluez-qt-6.32.0/" + name).read().decode()
             changed = apply_exact(original, text)
             assert changed != original
             if name in ["src/rfkill.cpp", "src/rfkill_p.h"]:

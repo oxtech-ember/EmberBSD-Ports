@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.17 2026/09/06 10:05:11 markd Exp $
 
 .include "Makefile.common"
-PKGREVISION=	2
 
 COMMENT=	Configuration system
 
@@ -15,11 +14,7 @@ CONFLICTS+=	kf6-kconfig-compiler-[0-9]*
 PLIST.kconfig_tools=	yes
 .else
 # The native generators are installed by the matching host-tools package.
-.if ${KF6VER} == "6.31.0"
-DEPENDS+=	kf6-kconfig-compiler-${KF6VER}nb[1-9]*:../../devel/kf6-kconfig-compiler
-.else
 DEPENDS+=	kf6-kconfig-compiler-${KF6VER}{,nb[0-9]*}:../../devel/kf6-kconfig-compiler
-.endif
 post-install:
 	${RUN}${RM} -f \
 	    ${DESTDIR}${PREFIX}/libexec/kf6/kconf_update \

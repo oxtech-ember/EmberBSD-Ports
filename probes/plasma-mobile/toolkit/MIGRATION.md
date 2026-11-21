@@ -8,7 +8,7 @@ The former VM-only resource plan does not constrain the cross build.
 ## One dependency stack
 
 Use GCC 16.2, Python 3.14.8, Meson 1.12.1, shared LLVM 23.1.3,
-Mesa 26.2.4, Qt 6.12.0 LTS and Frameworks 6.31.0. Keep their common recipes,
+Mesa 26.2.4, Qt 6.12.0 LTS and Frameworks 6.32.0. Keep their common recipes,
 ABI and final `/usr/pkg` prefix. Do not add older providers for one consumer.
 The toolkit's final Qt prefix is `/usr/pkg/qt6`. The 23.1.3 target update is
 in progress; the existing 23.1.2 runtime receipt is not evidence for it.
@@ -84,5 +84,5 @@ remote streaming/input and the Mobile workflow each need their actual runtime
 checks. Build-only results must remain labelled as such.
 
 Sources: [Qt cross compilation](https://doc.qt.io/qt-6/cross-compiling-qt.html),
-[Frameworks 6.31 release](https://kde.org/announcements/frameworks/6/6.31.0/),
+[Frameworks 6.32 release](https://kde.org/announcements/frameworks/6/6.32.0/),
 [KRDP 6.8.0 dependencies](https://invent.kde.org/plasma/krdp/-/blob/v6.8.0/CMakeLists.txt).

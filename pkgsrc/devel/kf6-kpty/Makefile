@@ -10,7 +10,6 @@ LICENSE=	gnu-lgpl-v2.1
 .include "../../meta-pkgs/kde/kf6.mk"
 
 .if ${USE_CROSS_COMPILE:Uno} == "yes" && ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
-PKGREVISION=	1 # Refresh base libutil requirements to the stable SONAME.
 .endif
 
 # libutempter is not ported; KPty sessions build without utmp records.

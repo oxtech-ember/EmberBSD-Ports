@@ -35,7 +35,7 @@ for consumer in x11/kf6-kconfigwidgets devel/kf6-kservice security/kf6-kwallet; 
     grep -q '^kf6-kdoctools-generators-6\.31\.0' "$work/$name-tools.txt"
     if grep -q '^kf6-kdoctools[>-][0-9]' "$work/$name-tools.txt"; then exit 1; fi
     "$BMAKE" -C "$pkgsrc/$consumer" -V '${BUILD_DEPENDS}' > "$work/$name-build.txt"
-    grep -q 'kf6-kdoctools>=6.31.0' "$work/$name-build.txt"
+    grep -q 'kf6-kdoctools>=6.32.0' "$work/$name-build.txt"
 done
 # Use upstream's original licensed fixture without copying it into this repo.
 cp "$source/tests/create-from-current-dir-test/docs/kioslave/data/index.docbook" "$work/index.docbook"

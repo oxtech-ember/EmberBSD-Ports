@@ -10,7 +10,7 @@ if len(sys.argv) != 4:
     raise SystemExit('Usage: doctools-metadata.py PKGSRC NATIVE_MAKECONF CROSS_MAKECONF')
 root, native, cross = sys.argv[1:]
 bmake = os.environ['BMAKE']
-expected = 'kf6-kdoctools-generators-6.31.0{,nb[0-9]*}:../../devel/kf6-kdoctools-generators'
+expected = 'kf6-kdoctools-generators-6.32.0{,nb[0-9]*}:../../devel/kf6-kdoctools-generators'
 for config, cross_compile in ((native, 'no'), (cross, 'yes')):
     packages = ['audio/plasma6-plasma-pa', 'devel/kf6-kservice']
     if cross_compile == 'no':

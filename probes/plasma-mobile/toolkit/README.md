@@ -1,6 +1,6 @@
 # Common Qt and Frameworks source candidate
 
-This layer prepares **Qt 6.12.0 LTS** and **KDE Frameworks 6.31.0** for the
+This layer prepares **Qt 6.12.0 LTS** and **KDE Frameworks 6.32.0** for the
 common GCC 16 / LLVM 23 userspace migration. It extends the existing
 [common build-tools profile](../../../profiles/common-build-tools/README.md).
 It does not install another Qt prefix for Plasma. Final package paths remain
@@ -140,7 +140,7 @@ patch explanations are retained. The manifest and adaptations are
 AI-assisted EmberBSD work; these changes have not been submitted or accepted
 upstream. [sources.tsv](sources.tsv) records original archive URLs and SHA256,
 plus the fixed [derived CSS vendor source](../../../pkgsrc/devel/cxx-rust-cssparser/README.md#reproduce-the-derived-vendor-source).
-Qt hashes were compared with the official `.sha256` responses. Frameworks 6.31 archive
+Qt hashes were compared with the official `.sha256` responses. Frameworks 6.32 archive
 hashes are checked against the release server's `.sha256` files; this is not a claim
 of release-signature verification. The recipes also record BLAKE2s, SHA512,
 size and pkgsrc's RCS-filtered patch SHA1.
@@ -210,8 +210,7 @@ CM5 checks cover configuration persistence, native file events and locale lookup
 Shared-cache operation, remaining Frameworks runtimes and Plasma remain pending.
 
 The remaining pkgsrc patches apply to the verified sources with zero fuzz.
-Frameworks 6.31.0 was released on 9 October 2026. Its 69 Frameworks/ECM
-archives replace the unbuilt 6.30 candidate; they do not add a parallel provider.
+The recipes select 72 Frameworks 6.32.0 archives, including Extra CMake Modules. KArchive built and packaged for AArch64.
 Retaining a portability patch does not establish runtime support for every
 platform mentioned by it. No upstream source archive or binary is stored here.
 

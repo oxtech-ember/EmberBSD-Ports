@@ -6,7 +6,7 @@ archive,work,qt=ARGV.map{|p|File.expand_path(p)}
 abort 'Output exists' if File.exist?(work)
 recipe=File.expand_path('../../../../../pkgsrc/devel/kf6-kcoreaddons',__dir__)
 distinfo=File.read(recipe+'/distinfo')
-expected=distinfo[/^SHA512 \(kcoreaddons-6.31.0.tar.xz\) = (\h+)$/,1]
+expected=distinfo[/^SHA512 \(kcoreaddons-6.32.0.tar.xz\) = (\h+)$/,1]
 abort 'Archive hash mismatch' unless expected && Digest::SHA512.file(archive).hexdigest==expected
 patch=recipe+'/patches/patch-src_lib_io_kdirwatch.cpp'
 canonical=File.readlines(patch).reject{|l|l.match?(/\$NetBSD.*/)}.join
@@ -20,7 +20,7 @@ def run(command,log,expected=0,**options)
  out+err
 end
 path='src/lib/io/kdirwatch.cpp'
-s,status=Open3.capture2('tar','-xOf',archive,'kcoreaddons-6.31.0/'+path);abort 'Extraction failed' unless status.success?
+s,status=Open3.capture2('tar','-xOf',archive,'kcoreaddons-6.32.0/'+path);abort 'Extraction failed' unless status.success?
 %w[baseline patched].each{|variant|FileUtils.mkdir_p(work+'/'+variant+'/src/lib/io');File.write(work+'/'+variant+'/'+path,s)}
 # This retained patch is the accepted nb2 behavior, not pristine upstream.
 baseline=__dir__+'/nb2.patch'

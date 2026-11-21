@@ -159,8 +159,8 @@ _EMBERBSD_KF6VER_RECIPES= \
 .if empty(_EMBERBSD_KF6VER_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Frameworks 6 recipe ${PKGPATH} is not prepared in the Plasma toolkit"
 .endif
-.if ${KF6VER} != "6.31.0"
-PKG_FAIL_REASON+= "The common toolkit requires KF6VER=6.31.0"
+.if ${KF6VER} != "6.32.0"
+PKG_FAIL_REASON+= "The common toolkit requires KF6VER=6.32.0"
 .endif
 
 CATEGORIES+=	kde

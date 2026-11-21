@@ -5,7 +5,6 @@
 .include "../../devel/kf6-kconfig/Makefile.common"
 
 PKGNAME=	kf6-kconfig-compiler-${KF6VER}
-PKGREVISION=	1
 COMMENT=	Native KConfig code generators for cross builds
 
 .include "../../meta-pkgs/kde/kf6.mk"

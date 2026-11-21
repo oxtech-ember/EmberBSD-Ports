@@ -1,7 +1,7 @@
 $NetBSD$
 
-BLAKE2s (bluez-qt-6.31.0.tar.xz) = ba4878ad63494ae66df3796a59ed75c4ac66724d90947031bd7d962acae5b07f
-SHA512 (bluez-qt-6.31.0.tar.xz) = e10914d183a5267a5d90bf34a87a5b5ef2bc1b63be7e6b2c85ca6b77c6d37337762ed2f080a4fe5b3c7025fd10a75d85651eee393aa2a626e4364009372896e1
-Size (bluez-qt-6.31.0.tar.xz) = 116420 bytes
+BLAKE2s (bluez-qt-6.32.0.tar.xz) = e33c52769caaa46af16539414b928968187dbc95c4dcf294275d657f9e839e3b
+SHA512 (bluez-qt-6.32.0.tar.xz) = 5e7d3f660a1b958c6a5d29831efcfaa4921a0b05bb6bd25fd3beaf5e11f5c4482b636c6474da0e2be5f78452b5dddc1dcb19597bb8a72d20e5c3e89dbc57c01d
+Size (bluez-qt-6.32.0.tar.xz) = 116444 bytes
 SHA1 (patch-src_a2dp-codecs.h) = 478e34105b41846517a3d4b924e9c9339319053b
 SHA1 (patch-src_rfkill.cpp) = 26854f0ac605189baf0a00d6a0e545e6f530487a

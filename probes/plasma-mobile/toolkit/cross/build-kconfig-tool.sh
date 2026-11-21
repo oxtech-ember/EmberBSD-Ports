@@ -37,7 +37,7 @@ for module in Core Xml LinguistTools; do
 done
 
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-archive=kconfig-6.31.0.tar.xz
+archive=kconfig-6.32.0.tar.xz
 expected=$(awk -F '\t' '$1 == "devel/kf6-kconfig" { print $3 }' "$toolkit/sources.tsv")
 [ -n "$expected" ] && [ "$(shasum -a 256 "$distfiles/$archive" | awk '{print $1}')" = "$expected" ]
 mkdir "$work"
@@ -50,7 +50,7 @@ mkdir "$work/source" "$work/tooling" "$work/tooling/KF6Config"
 }
 # This private native build exists solely to produce kconfig_compiler. The full
 # target package independently keeps its Gui, Qml, Quick and DBus components.
-"$CMAKE" -S "$work/source/kconfig-6.31.0" -B "$work/build" -G Ninja \
+"$CMAKE" -S "$work/source/kconfig-6.32.0" -B "$work/build" -G Ninja \
     -DCMAKE_MAKE_PROGRAM="$NINJA" -DCMAKE_C_COMPILER="$HOST_CC" -DCMAKE_CXX_COMPILER="$HOST_CXX" \
     -DCMAKE_PREFIX_PATH="$qt;$HOST_PACKAGE_PREFIX" -DECM_DIR="$ecm" -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF -DCMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH=OFF \
@@ -61,7 +61,7 @@ mkdir "$work/source" "$work/tooling" "$work/tooling/KF6Config"
     -DQt6LinguistTools_DIR="$qt/lib/cmake/Qt6LinguistTools" > "$work/configure.log" 2>&1
 "$CMAKE" --build "$work/build" --target kconfig_compiler kconf_update --parallel "$JOBS" > "$work/build.log" 2>&1
 run_native "$work/build/bin/kconfig_compiler_kf6" --version > "$work/version.txt"
-grep -qx 'kconfig_compiler 6.31.0' "$work/version.txt"
+grep -qx 'kconfig_compiler 6.32.0' "$work/version.txt"
 "$HOST_READOBJ" --file-headers "$work/build/bin/kconf_update" > "$work/architecture.txt"
 case "$(uname -s)" in Darwin) host_format="Format: Mach-O" ;; Linux) host_format="Format: ELF" ;; *) echo "Unsupported native object format" >&2; exit 2 ;; esac
 grep -F "$host_format" "$work/architecture.txt" >/dev/null || { echo "Wrong native kconf_update object format" >&2; exit 1; }

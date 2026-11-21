@@ -11,7 +11,7 @@ for path in "$dist" "$qt" "$native" "$ecm" "$core" "$work" "$CMAKE" "$NINJA" "$H
     case "$path" in *[!a-zA-Z0-9_./+-]*) exit 2;; esac
 done
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-archive=kauth-6.31.0.tar.xz
+archive=kauth-6.32.0.tar.xz
 expected=$(awk -F '\t' -v name="$archive" '$2 == name {print $3}' "$root/sources.tsv")
 [ -n "$expected" ] && [ "$(shasum -a 256 "$dist/$archive" | awk '{print $1}')" = "$expected" ]
 [ "$("$qt/bin/qmake" -query QT_VERSION)" = 6.12.0 ]

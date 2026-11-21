@@ -11,7 +11,7 @@ distfiles, output = ARGV.map { |path| File.expand_path(path) }
 abort 'Output exists' if File.exist?(output)
 FileUtils.mkdir_p(output)
 recipe = File.expand_path('../../../../../pkgsrc/x11/kf6-kded', __dir__)
-archive = File.join(distfiles, 'kded-6.31.0.tar.xz')
+archive = File.join(distfiles, 'kded-6.32.0.tar.xz')
 distinfo = File.read(File.join(recipe, 'distinfo'))
 expected = distinfo[/^SHA512 \(kded-6\.31\.0\.tar\.xz\) = (\h+)$/, 1]
 abort 'Archive hash mismatch' unless expected && Digest::SHA512.file(archive).hexdigest == expected
@@ -27,7 +27,7 @@ def run(command, log, **options)
 end
 
 run(['tar', '-xf', archive, '-C', output], output+'/extract.log')
-FileUtils.mv(output+'/kded-6.31.0', output+'/baseline')
+FileUtils.mv(output+'/kded-6.32.0', output+'/baseline')
 FileUtils.cp_r(output+'/baseline', output+'/patched')
 run(['patch', '-p0', '-F', '0', '-i', patch], output+'/patch.log', chdir: output+'/patched')
 

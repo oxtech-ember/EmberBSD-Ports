@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	networkmanager-qt-6.31.0
+DISTNAME=	networkmanager-qt-6.32.0
 CATEGORIES=	net
 MASTER_SITES=	${MASTER_SITE_KDE:=frameworks/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz

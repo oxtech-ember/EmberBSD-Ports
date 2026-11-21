@@ -93,7 +93,7 @@ for mode in no yes; do
             require "$log" -DENABLE_KCM=ON
             require "$log" -DENABLE_CONFIG_QT=ON
             require "$log" qt6-qtbase\>=6.12.0
-            require "$log" kf6-kcmutils\>=6.31.0
+            require "$log" kf6-kcmutils\>=6.32.0
             ;;
         esac
         if sed -n 's/^tree=//p' "$log" | tr ' ' '\n' | \

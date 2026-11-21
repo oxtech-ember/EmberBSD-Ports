@@ -2,7 +2,6 @@
 # Origin: EmberBSD (AI-assisted). Native KDocTools generators for cross builds.
 
 PKGNAME=	kf6-kdoctools-generators-${KF6VER}
-PKGREVISION=	2
 
 COMMENT=	Native KDocTools generators for cross-built KDE documentation
 

@@ -799,7 +799,7 @@ versionless roots and do not define another recipe, resolver, cache, or prefix.
   The [Qt private mutex event](probes/plasma-mobile/toolkit/tests/qt-mutex/README.md)
   has source-level descriptor-pressure, sanitizer and target ABI checks;
   updated package and physical runtime acceptance remain pending.
-  [Qt 6.12/KF6.31 source recipes](probes/plasma-mobile/toolkit/README.md)
+  [Qt 6.12/KF6.32 source recipes](probes/plasma-mobile/toolkit/README.md)
   and the [shared FFmpeg9 recipe](profiles/common-media/README.md) pass
   source/export checks. Qtbase, SVG, ShaderTools, ImageFormats, LanguageServer and Declarative 6.12.0 now pass
   [Mac cross packaging and sysroot installation](probes/plasma-mobile/toolkit/cross/qt-packages.md).

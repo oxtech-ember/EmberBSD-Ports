@@ -26,7 +26,7 @@ ecm = File.realpath(options[:ecm])
 abort 'Output must be a new directory' if File.exist?(output) || File.symlink?(output)
 recipe = File.expand_path('../../../../../pkgsrc/devel/kf6-kcoreaddons', __dir__)
 distinfo = File.read(recipe + '/distinfo')
-expected = distinfo[/^SHA512 \(kcoreaddons-6.31.0.tar.xz\) = (\h+)$/, 1]
+expected = distinfo[/^SHA512 \(kcoreaddons-6.32.0.tar.xz\) = (\h+)$/, 1]
 abort 'Archive checksum mismatch' unless expected && Digest::SHA512.file(archive).hexdigest == expected
 baseline_patch = __dir__ + '/nb3.patch'
 abort 'Retained nb3 patch checksum mismatch' unless Digest::SHA256.file(baseline_patch).hexdigest ==
@@ -79,7 +79,7 @@ end
 source_parent = output + '/source'
 FileUtils.mkdir_p(source_parent)
 run.call('extract', ['tar', '-xf', archive, '-C', source_parent])
-source = source_parent + '/kcoreaddons-6.31.0'
+source = source_parent + '/kcoreaddons-6.32.0'
 implementation = source + '/src/lib/io/kdirwatch.cpp'
 original = File.binread(implementation)
 patches.each do |patch|

@@ -30,9 +30,9 @@ def main():
         parser.error("all input and output paths must be absolute")
     if args.work.exists():
         parser.error("select a new work directory")
-    expected = "22b25448c6b5372ee4fba15bb938e698a599cec0d69816ceb0405451c879c827"
+    expected = "53f9705366f1e142e921f3ec314d673d51341bd20d358c33ebe8fe4218d2cd6b"
     if hashlib.sha256(args.archive.read_bytes()).hexdigest() != expected:
-        parser.error("BluezQt 6.31.0 archive checksum differs")
+        parser.error("BluezQt 6.32.0 archive checksum differs")
     # Qt's public version file includes this generated implementation.
     qt_version = args.qt_prefix / "lib/cmake/Qt6Core/Qt6CoreConfigVersionImpl.cmake"
     if not qt_version.is_file() or not re.search(
@@ -69,7 +69,7 @@ def main():
 
     with tarfile.open(args.archive) as archive:
         archive.extractall(args.work, filter="data")
-    source = args.work / "bluez-qt-6.31.0"
+    source = args.work / "bluez-qt-6.32.0"
     patches = Path(__file__).resolve().parent / "recipes/comms/kf6-bluez-qt/patches"
     for patch in sorted(patches.iterdir()):
         run(patch.name, ["patch", "-f", "-F", "0", "-p0", "-i", patch], cwd=source)

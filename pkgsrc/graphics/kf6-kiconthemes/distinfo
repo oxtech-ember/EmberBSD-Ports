@@ -1,6 +1,6 @@
 $NetBSD: distinfo,v 1.5 2026/09/06 10:05:15 markd Exp $
 
-BLAKE2s (kiconthemes-6.31.0.tar.xz) = 242607fe1d95ffc74d8e4bf4ad6af710d74bee1922ec0ce16f2169f1327a33b3
-SHA512 (kiconthemes-6.31.0.tar.xz) = 0860f978beab0b354c7131123bcd240af57890b4de4546094b648f3906eef74f20d7ef606fbbdd5852bae924047609de8ad85cb1c241b534b93d2a1d7e6be411
-Size (kiconthemes-6.31.0.tar.xz) = 1255328 bytes
+BLAKE2s (kiconthemes-6.32.0.tar.xz) = 9170851ee23d5d1399921757bfb55e14c7a7c9435417dc54878e4488ef268ea4
+SHA512 (kiconthemes-6.32.0.tar.xz) = c1c37f07c7e76b4f3154ea6194bd992a749a1fe9417b700c8dd185370b2536e0196ffb46ecf65a92e3a0341df68653b6ca99393fcc78a6289ed5cd1c2af6cecd
+Size (kiconthemes-6.32.0.tar.xz) = 1255504 bytes
 SHA1 (patch-CMakeLists.txt) = 8a476806fde4ad0cd14996ee70269e6d6b494607

@@ -12,7 +12,7 @@ query() { # MAKECONF PKGPATH ARGS...
     config=$1 path=$2; shift 2
     MAKECONF="$config" "$BMAKE" -C "$pkgsrc/$path" _MAKEVARS_MK=defined _PKGSRC_BARRIER=yes "$@"
 }
-generators='kf6-kdoctools-generators-6.31.0{,nb[0-9]*}:../../devel/kf6-kdoctools-generators'
+generators='kf6-kdoctools-generators-6.32.0{,nb[0-9]*}:../../devel/kf6-kdoctools-generators'
 toolbase=$(query "$cross" devel/kf6-kdoctools -V '${TOOLBASE}')
 [ -n "$toolbase" ]
 # The target package and consumers that use KDocTools directly or through
@@ -42,7 +42,7 @@ query "$cross" devel/kf6-kservice EMBERBSD_KF6_DOCTOOLS_HOST=/nonexistent-ember-
 if grep -q nonexistent-ember-generator "$work/legacy.txt"; then exit 1; fi
 query "$cross" devel/kf6-kdoctools -n emberbsd-native-doctools-check > "$work/check-plan.txt"
 grep -Fq "$toolbase/lib/cmake/KF6DocTools" "$work/check-plan.txt"
-grep -Fq 'PACKAGE_VERSION "6.31.0"' "$work/check-plan.txt"
+grep -Fq 'PACKAGE_VERSION "6.32.0"' "$work/check-plan.txt"
 # A TOOL_DEPENDS recursion builds the generators natively from the same
 # release, and the package refuses cross builds.
 query "$cross" devel/kf6-kdoctools-generators USE_CROSS_COMPILE=no -V '${USE_CROSS_COMPILE:Uno:tl}' -V '${PKG_FAIL_REASON}' \
@@ -53,7 +53,7 @@ query "$cross" devel/kf6-kdoctools-generators USE_CROSS_COMPILE=no -V '${USE_CRO
 query "$cross" archivers/kf6-karchive USE_CROSS_COMPILE=no -V '${PKG_FAIL_REASON}' > "$work/native-reference.txt"
 sed -n 2p "$work/native.txt" | cmp -s - "$work/native-reference.txt" ||
     { echo "The native generators cannot be built: $(sed -n 2p "$work/native.txt")" >&2; exit 1; }
-[ "$(sed -n 3p "$work/native.txt")" = kf6-kdoctools-generators-6.31.0 ]
+[ "$(sed -n 3p "$work/native.txt")" = kf6-kdoctools-generators-6.32.0 ]
 [ "$(sed -n 4p "$work/native.txt")" = "$(query "$cross" devel/kf6-kdoctools -V '${DISTFILES}')" ]
 sed -n 5p "$work/native.txt" | grep -q -- '-DINSTALL_INTERNAL_TOOLS=ON'
 sed -n 6p "$work/native.txt" | grep -q docbook-xsl

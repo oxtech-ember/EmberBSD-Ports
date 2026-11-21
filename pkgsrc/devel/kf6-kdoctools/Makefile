@@ -1,6 +1,5 @@
 # $NetBSD: Makefile,v 1.16 2026/09/06 10:05:12 markd Exp $
 
-PKGREVISION=	4
 
 .include "Makefile.common"
 

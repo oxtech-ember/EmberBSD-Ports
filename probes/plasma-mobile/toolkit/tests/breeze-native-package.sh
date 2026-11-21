@@ -12,7 +12,7 @@ query() { # MAKECONF PKGPATH ARGS...
     config=$1 path=$2; shift 2
     MAKECONF="$config" "$BMAKE" -C "$pkgsrc/$path" _MAKEVARS_MK=defined _PKGSRC_BARRIER=yes "$@"
 }
-generators='breeze-icons-generators-6.31.0{,nb[0-9]*}:../../graphics/breeze-icons-generators'
+generators='breeze-icons-generators-6.32.0{,nb[0-9]*}:../../graphics/breeze-icons-generators'
 query "$cross" graphics/breeze-icons -V '${USE_CROSS_COMPILE:tl}' -V '${PKG_FAIL_REASON}' \
     -V '${TOOL_DEPENDS}' -V '${CMAKE_CONFIGURE_ARGS}' -V '${TOOLBASE}' > "$work/target.txt"
 [ "$(sed -n 1p "$work/target.txt")" = yes ]
@@ -48,7 +48,7 @@ query "$cross" graphics/breeze-icons-generators USE_CROSS_COMPILE=no -V '${USE_C
 query "$cross" archivers/kf6-karchive USE_CROSS_COMPILE=no -V '${PKG_FAIL_REASON}' > "$work/native-reference.txt"
 sed -n 2p "$work/native.txt" | cmp -s - "$work/native-reference.txt" ||
     { echo "The native generators cannot be built: $(sed -n 2p "$work/native.txt")" >&2; exit 1; }
-[ "$(sed -n 3p "$work/native.txt")" = breeze-icons-generators-6.31.0 ]
+[ "$(sed -n 3p "$work/native.txt")" = breeze-icons-generators-6.32.0 ]
 [ "$(sed -n 4p "$work/native.txt")" = "$(query "$cross" graphics/breeze-icons -V '${DISTFILES}')" ]
 for arg in -DINSTALL_HOST_TOOLS=ON -DSKIP_INSTALL_ICONS=ON -DWITH_ICONS_LIBRARY=OFF; do
     sed -n 5p "$work/native.txt" | tr -s ' ' '\n' | grep -Fqx -- "$arg"

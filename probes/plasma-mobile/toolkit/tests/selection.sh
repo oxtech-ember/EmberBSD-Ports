@@ -22,7 +22,7 @@ cat > "$work/Makefile" <<'MAKE'
 all:
 	@if test -n '${PKG_FAIL_REASON:U}'; then printf '%s\n' '${PKG_FAIL_REASON}'; exit 1; fi
 	@test '${QTVERSION:U6.12.0}' = 6.12.0
-	@test '${KF6VER:U6.31.0}' = 6.31.0
+	@test '${KF6VER:U6.32.0}' = 6.32.0
 	@test '${PLASMAVER:U6.8.3}' = 6.8.3
 	@test -z '${GCC_REQD:U}'
 MAKE
@@ -65,7 +65,7 @@ grep -q 'is not prepared in the Plasma toolkit' "$work/unprepared-kf.log"
 if (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH=x11/qt6-qtbase QTVERSION=6.11.2) > "$work/old-qt.log" 2>&1; then exit 1; fi
 grep -q 'requires QTVERSION=6.12.0' "$work/old-qt.log"
 if (cd "$work" && "$make" -r -m / FAMILY=kf PKGPATH=devel/kf6-kconfig KF6VER=6.30.0) > "$work/old-kf.log" 2>&1; then exit 1; fi
-grep -q 'requires KF6VER=6.31.0' "$work/old-kf.log"
+grep -q 'requires KF6VER=6.32.0' "$work/old-kf.log"
 if (cd "$work" && "$make" -r -m / FAMILY=plasma PKGPATH=x11/plasma6-layer-shell-qt PLASMAVER=6.7.4) > "$work/old-plasma.log" 2>&1; then exit 1; fi
 grep -q 'requires PLASMAVER=6.8.3' "$work/old-plasma.log"
 if (cd "$work" && "$make" -r -m / FAMILY=plasma PKGPATH=x11/plasma6-unprepared) > "$work/unprepared-plasma.log" 2>&1; then exit 1; fi

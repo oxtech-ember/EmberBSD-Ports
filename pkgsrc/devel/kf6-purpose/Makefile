@@ -3,7 +3,6 @@
 DISTNAME=	purpose-${KF6VER}
 # Purpose 6.31 removed the pastebin share plugin. The previous PLIST still
 # named pastebinplugin.so and purpose6_pastebin.mo, so packaging failed.
-PKGREVISION=	2
 CATEGORIES=	devel
 
 HOMEPAGE=	https://community.kde.org/Frameworks
