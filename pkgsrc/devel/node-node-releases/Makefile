@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream node-releases module.
-DISTNAME= node-releases-2.0.63
-PKGNAME= node-node-releases-2.0.63
+DISTNAME= node-releases-2.0.65
+PKGNAME= node-node-releases-2.0.65
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/node-releases/-/
 DIST_SUBDIR= node-node-releases

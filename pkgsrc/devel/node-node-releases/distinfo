@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (node-node-releases/node-releases-2.0.63.tgz) = ac49252360fbd65ed75e0314d16a82ae5d0749cd74b20c45bd0cd9ca5325d4bf
-SHA512 (node-node-releases/node-releases-2.0.63.tgz) = ea58b641a9cbb005e9207d91ea3efb333472bcecabbdd4ea94ab4ee0280174718dbcdf7d6597f2c6ccc7739a39f88641583e6ee87cf083cdc9a065e6a99346f5
-Size (node-node-releases/node-releases-2.0.63.tgz) = 6144 bytes
+BLAKE2s (node-node-releases/node-releases-2.0.65.tgz) = d13d270078d2d75611f283989993a85073eff31ecd90fc2f057a0b48fced0006
+SHA512 (node-node-releases/node-releases-2.0.65.tgz) = 3dfbe87ec190f8c88e4083e45fd7d4f042d45a6cb9ccbef809d41aa61fe2b262accdf1647f05dac347068b06f0ca6da14fd939fa677297c3b9590d4c0fc10798
+Size (node-node-releases/node-releases-2.0.65.tgz) = 6164 bytes

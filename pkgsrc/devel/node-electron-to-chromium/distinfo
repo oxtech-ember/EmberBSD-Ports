@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (node-electron-to-chromium/electron-to-chromium-1.5.477.tgz) = ba3c3acb282f5516694b706e4b264dafc5141f59e38c610ceaa0f46a222a5cc2
-SHA512 (node-electron-to-chromium/electron-to-chromium-1.5.477.tgz) = 3cdfbe178cd66685431968a7c4c9d20a956a2a1a853897cb5f1754f1b6092ae74012c1cbfd729521338a5956df32dd6bdbbe8c8bd4432d4f551f1f6e289e1131
-Size (node-electron-to-chromium/electron-to-chromium-1.5.477.tgz) = 36435 bytes
+BLAKE2s (node-electron-to-chromium/electron-to-chromium-1.5.492.tgz) = 0871fae958316f3ae57253e219070bb0401901c99927bfdb2a1e0d5f2ea68ee9
+SHA512 (node-electron-to-chromium/electron-to-chromium-1.5.492.tgz) = e2e32cee89a16a32a2b9dd06a802cb4dacd2ff3caf1cb4cb9835954d1f9ee819f2268e5b48dae987f268456105249998ef972df610a2486b1b145f5f2dee600f
+Size (node-electron-to-chromium/electron-to-chromium-1.5.492.tgz) = 36759 bytes

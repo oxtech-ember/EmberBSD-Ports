@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream electron-to-chromium module.
-DISTNAME= electron-to-chromium-1.5.477
-PKGNAME= node-electron-to-chromium-1.5.477
+DISTNAME= electron-to-chromium-1.5.492
+PKGNAME= node-electron-to-chromium-1.5.492
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/electron-to-chromium/-/
 DIST_SUBDIR= node-electron-to-chromium

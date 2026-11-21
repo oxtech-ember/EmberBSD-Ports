@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream caniuse-lite module.
-DISTNAME= caniuse-lite-1.0.30001820
-PKGNAME= node-caniuse-lite-1.0.30001820
+DISTNAME= caniuse-lite-1.0.30001826
+PKGNAME= node-caniuse-lite-1.0.30001826
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/caniuse-lite/-/
 DIST_SUBDIR= node-caniuse-lite
