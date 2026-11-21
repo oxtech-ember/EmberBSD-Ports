@@ -131,6 +131,23 @@ indexed archive, checks an unchanged consumer, changes an object, and checks a
 missing index. The upstream bmake source and deterministic archive format are
 retained; this is an EmberBSD fix.
 
+## GNU archive index
+
+On macOS, bmake looks for the `__.SYMDEF` table of contents of an archive. An
+ELF archive from llvm-ar has the GNU symbol table `/` instead, so bmake found
+no table and built each OS archive again in each make pass. A consumer could
+then link while a private archive, such as libzstd, was written again.
+`pkgsrc-bmake-gnu-archive-index.patch` takes the GNU symbol table as the index
+on hosts without SVR4 archives, only when it is the exact first member of the
+archive. An archive without any index is still built again. A deterministic
+table has time zero and uses the archive time, as above. The package revision
+changes.
+
+The regression `tests/bmake-gnu-archive-index.py` accepts `--make`, `--cc`,
+`--ar` (llvm-ar) and `--work`. An archive with a GNU symbol table must be up
+to date for `make -q`; a Darwin archive without an index must not. The check
+runs on macOS only, where bmake looks for `__.SYMDEF`; elsewhere it skips.
+
 ## Executable-relative defaults
 
 The common recipe configures system makefiles and the mksh default relative to
