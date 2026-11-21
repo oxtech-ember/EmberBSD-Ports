@@ -91,4 +91,8 @@ CONFIGURE_ENV+= GDBUS_CODEGEN=${TOOLBASE}/bin/gdbus-codegen
 .endif
 .include "../../x11/libX11/buildlink3.mk"
 .include "../../mk/pam.buildlink3.mk"
+.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	9
+.endif
+
 .include "../../mk/bsd.pkg.mk"

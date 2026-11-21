@@ -87,4 +87,8 @@ BUILDLINK_API_DEPENDS.cairo+=   cairo>=1.18
 .include "../../graphics/cairo/buildlink3.mk"
 .include "../../graphics/freetype2/buildlink3.mk"
 .include "../../devel/meson/build.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	5
+.endif
+
 .include "../../mk/bsd.pkg.mk"

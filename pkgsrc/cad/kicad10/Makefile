@@ -139,4 +139,8 @@ BUILDLINK_API_DEPENDS.wxGTK32+=	wxGTK32>=3.2.12nb20
 .include "../../x11/wxGTK32/buildlink3.mk"
 # needs 64-bit CAS for std::atomic<size_t>
 .include "../../mk/atomic64.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	4
+.endif
+
 .include "../../mk/bsd.pkg.mk"

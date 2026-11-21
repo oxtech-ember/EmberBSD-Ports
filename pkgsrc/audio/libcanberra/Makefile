@@ -48,4 +48,8 @@ PLIST_VARS+=		oss
 .if ${OSS_TYPE} != "none"
 PLIST.oss=	yes
 .endif
+.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	27
+.endif
+
 .include "../../mk/bsd.pkg.mk"

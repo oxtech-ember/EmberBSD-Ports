@@ -197,4 +197,8 @@ PLIST_SRC+=	PLIST.gtk4
 .include "../../textproc/expat/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"
 .include "../../mk/dlopen.buildlink3.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	21
+.endif
+
 .include "../../mk/bsd.pkg.mk"

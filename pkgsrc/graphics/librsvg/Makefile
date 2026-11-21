@@ -80,4 +80,8 @@ EMBER_CARGO_PREFIX?=	${TOOLBASE}
 EMBER_CARGO_PATCH_SET=	yes
 .include "../../lang/rust/emberbsd-cargo-patches.mk"
 .include "../../lang/python/pyversion.mk"
+.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	3
+.endif
+
 .include "../../mk/bsd.pkg.mk"

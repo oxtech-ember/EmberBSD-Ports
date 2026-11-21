@@ -64,4 +64,8 @@ post-install:
 	cd ${DESTDIR}${PREFIX}/bin && ${LN} -fs wish${TK_BASEVER} wish
 
 .include "../../lang/tcl/buildlink3.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64" && !empty(PKG_OPTIONS:Mbidi)
+PKGREVISION=	1
+.endif
+
 .include "../../mk/bsd.pkg.mk"

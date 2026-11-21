@@ -71,4 +71,8 @@ BUILDLINK_API_DEPENDS.cairo+=	cairo>=1.18.2
 .include "../../multimedia/gst-plugins1-bad/buildlink3.mk"
 .include "../../textproc/iso-codes/buildlink3.mk"
 .include "../../lang/python/tool.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	4
+.endif
+
 .include "../../mk/bsd.pkg.mk"

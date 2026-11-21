@@ -55,4 +55,8 @@ PKGCONFIG_OVERRIDE_STAGE=	post-configure
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../lang/python/tool.mk"
 .include "../../lang/python/extension.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64" && !empty(PKG_OPTIONS:Mdbus)
+PKGREVISION=	5
+.endif
+
 .include "../../mk/bsd.pkg.mk"

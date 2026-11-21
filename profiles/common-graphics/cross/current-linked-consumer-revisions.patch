@@ -1,0 +1,33 @@
+--- a/graphics/raqm/Makefile
++++ b/graphics/raqm/Makefile
+@@ -24,4 +24,8 @@
+ .include "../../devel/meson/build.mk"
+ .include "../../fonts/harfbuzz/buildlink3.mk"
+ .include "../../graphics/freetype2/buildlink3.mk"
++.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
++PKGREVISION=	2
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libass/Makefile
++++ b/multimedia/libass/Makefile
+@@ -27,4 +27,8 @@
+ .include "../../fonts/harfbuzz/buildlink3.mk"
+ .include "../../graphics/freetype2/buildlink3.mk"
+ .include "../../textproc/enca/buildlink3.mk"
++.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/net/avahi/Makefile
++++ b/net/avahi/Makefile
+@@ -41,4 +41,8 @@
+ 	${INSTALL_DATA} ${WRKSRC}/docs/README ${DESTDIR}${PREFIX}/share/doc/avahi
+ 	${INSTALL_DATA} ${WRKSRC}/docs/TODO ${DESTDIR}${PREFIX}/share/doc/avahi
+ 
++.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	11
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
