@@ -15,6 +15,7 @@ COMMENT=	Fast and lightweight HTML/CSS rendering engine
 LICENSE=	modified-bsd
 
 USE_LANGUAGES=		c c++
+USE_TOOLS+=		pkg-config
 USE_CC_FEATURES=	c99
 USE_CXX_FEATURES=	c++17
 
