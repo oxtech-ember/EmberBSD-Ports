@@ -2,7 +2,7 @@
 
 VERSION=	0.14.1
 PKGNAME=	gumbo-parser-${VERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 DISTNAME=	gumbo-parser-${VERSION}
 CATEGORIES=	www
 MASTER_SITES=	-https://codeberg.org/grisha/gumbo-parser/archive/${VERSION}.tar.gz
