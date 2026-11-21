@@ -1,0 +1,2 @@
+Ministream reads application metadata from an AppStream manifest using GLib.
+It provides the application details used in libadwaita About dialogs.

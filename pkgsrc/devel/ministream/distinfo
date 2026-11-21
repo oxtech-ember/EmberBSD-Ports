@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (ministream-0.99.1.tar.gz) = 07c2b89336a05e8b70d17537e4cbed52caea8a6ff4461a2fa1d685afae9516f7
+SHA512 (ministream-0.99.1.tar.gz) = cad415edd5c573bbb41e9b0f045d16f5c80cd10ee32d54b14c8070b24581d867803881ff26b86effc9c73ea1a0cd9157b9eb35fb0367f882b48340417ec1163c
+Size (ministream-0.99.1.tar.gz) = 25555 bytes

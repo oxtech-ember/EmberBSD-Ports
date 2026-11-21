@@ -1,0 +1,7 @@
+@comment $NetBSD$
+include/ministream/ministream-version.h
+include/ministream/ministream.h
+lib/libministream.so
+lib/libministream.so.1
+lib/libministream.so.${PKGVERSION}
+lib/pkgconfig/ministream.pc
