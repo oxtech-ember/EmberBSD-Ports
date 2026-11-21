@@ -32,6 +32,10 @@ BUILDLINK_TRANSFORM+=	rm:-Wl,--fatal-warnings
 
 .include "options.mk"
 
+.if !empty(PKG_OPTIONS:Mdrm)
+PKGREVISION=		5 # The DRM backend embeds the hwdata 0.413 PNP ID table.
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .if defined(EMBERBSD_WAYLAND_SCANNER)
 .include "../../devel/wayland-protocols/cross-scanner.mk"
@@ -41,7 +45,7 @@ PKG_FAIL_REASON+= "Cross wlroots requires the validated native Wayland scanner m
 .endif
 
 .if !empty(PKG_OPTIONS:Mdrm)
-EMBERBSD_NATIVE_GRAPHICS_PC= hwdata:0.412
+EMBERBSD_NATIVE_GRAPHICS_PC= hwdata:0.413
 .include "../../sysutils/hwdata/native-meson.mk"
 .endif
 

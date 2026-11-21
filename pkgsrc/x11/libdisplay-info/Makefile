@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.5 2026/01/10 17:39:35 bsiegert Exp $
 
 DISTNAME=	libdisplay-info-0.4.0
+PKGREVISION=	1 # Regenerate the compiled PNP ID table from hwdata 0.413.
 CATEGORIES=	x11
 MASTER_SITES=	https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/${PKGVERSION_NOREV}/downloads/
 EXTRACT_SUFX=	.tar.xz
@@ -14,8 +15,8 @@ USE_TOOLS+=	pkg-config
 PYTHON_FOR_BUILD_ONLY=	tool
 PYTHON_VERSION_REQD=	315
 MESON_ARGS+=	--wrap-mode=nofallback
-TOOL_DEPENDS+=	hwdata>=0.412:../../sysutils/hwdata
-EMBERBSD_NATIVE_GRAPHICS_PC= hwdata:0.412
+TOOL_DEPENDS+=	hwdata>=0.413:../../sysutils/hwdata
+EMBERBSD_NATIVE_GRAPHICS_PC= hwdata:0.413
 SUBST_CLASSES+=	python
 SUBST_STAGE.python=	pre-configure
 SUBST_FILES.python=	meson.build

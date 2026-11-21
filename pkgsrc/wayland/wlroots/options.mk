@@ -58,7 +58,7 @@ MESON_ARGS+= -Dexamples=false
 .endif
 .if !empty(PKG_OPTIONS:Mdrm)
 # Upstream resolves pnp.ids through native pkg-config metadata.
-TOOL_DEPENDS+= hwdata>=0.412:../../sysutils/hwdata
+TOOL_DEPENDS+= hwdata>=0.413:../../sysutils/hwdata
 .include "../../x11/libdisplay-info/buildlink3.mk"
 .endif
 .if !empty(PKG_OPTIONS:Mlibinput)

@@ -60,7 +60,7 @@ def main():
     assert set(drm['PKG_OPTIONS'].split())==set('glesv2 drm libinput session color-management libliftoff'.split())
     assert set(['-Drenderers=gles2','-Dbackends=drm,libinput','-Dsession=enabled',
         '-Dcolor-management=enabled','-Dlibliftoff=enabled']) <= set(shlex.split(drm['MESON_ARGS']))
-    assert 'hwdata>=0.412:../../sysutils/hwdata' in drm['TOOL_DEPENDS']
+    assert 'hwdata>=0.413:../../sysutils/hwdata' in drm['TOOL_DEPENDS']
     assert 'glslang' not in drm['TOOL_DEPENDS'] and not re.search(r'vulkan-loader|cairo|xcb-util',drm['DEPENDS'])
     checks.append('DRM stage retains input, session, color and plane allocation')
     native = parse('native', ['USE_CROSS_COMPILE=no'])

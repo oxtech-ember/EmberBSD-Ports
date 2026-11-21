@@ -26,8 +26,8 @@ end
   puts "PASS: #{name} checks real host metadata; native path remains unchanged"
 end
 {
-  'wrong-version' => ['EMBERBSD_NATIVE_GRAPHICS_PC=hwdata:0.411'],
-  'missing-module' => ['EMBERBSD_NATIVE_GRAPHICS_PC=absent-graphics-metadata:0.412']
+  'wrong-version' => ['EMBERBSD_NATIVE_GRAPHICS_PC=hwdata:0.412'],
+  'missing-module' => ['EMBERBSD_NATIVE_GRAPHICS_PC=absent-graphics-metadata:0.413']
 }.each do |name, extra|
   out = run.call(name, 'x11/libdisplay-info', extra, ['emberbsd-native-graphics-check'], false)
   abort 'wrong metadata was not rejected by the guard' unless out.include?('Native graphics metadata does not match')

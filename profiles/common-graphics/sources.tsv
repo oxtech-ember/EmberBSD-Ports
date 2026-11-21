@@ -14,7 +14,7 @@ x11/xkeyboard-config	xkeyboard-config-2.48.tar.xz	b77041324f0109f77161ee43743fe0
 devel/input-headers	libopeninput-1.31.3-10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz	fbba09ed60a9a411b9ae7ee5c92daf069a3b4926ad052ac8cbcfb7c3ff82abbf	https://github.com/sizeofvoid/libopeninput/archive/10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz
 devel/libevdev-chunk	libevdev-openbsd-20231112.tar.gz	2689f7bc4c11d3d40dd06ed7f8ca528fb92a24966a8a0031ac3f64956988d319	https://code.tetaneutral.net/mherrb/libevdev-openbsd/archive/20231112.tar.gz
 x11/libxkbcommon	xkbcommon-1.13.2.tar.gz	acc4d5f7c3cbba5f9f8d08d8bdbeede84ecede46792f47929aa9321873385528	https://github.com/xkbcommon/libxkbcommon/archive/xkbcommon-1.13.2.tar.gz
-sysutils/hwdata	hwdata-0.412.tar.gz	f0c64cd7e31d70a5fb3a52e53ab50a61e74c0421a6381eaa45114eec3bde5fe7	https://github.com/vcrhonek/hwdata/archive/v0.412.tar.gz
+sysutils/hwdata	hwdata-0.413.tar.gz	5a71ab7a48c668ef912fcfdbec046949087019f8dd7fb967445d36fbeb778350	https://github.com/vcrhonek/hwdata/archive/v0.413.tar.gz
 sysutils/seatd	seatd-0.9.3.tar.gz	302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96	https://github.com/kennylevinsen/seatd/archive/refs/tags/0.9.3.tar.gz
 x11/libdisplay-info	libdisplay-info-0.4.0.tar.xz	43b180baa143e2035654759d84e2b2f5ee77d5fe817c423838c7fe59c0d68459	https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/0.4.0/downloads/libdisplay-info-0.4.0.tar.xz
 graphics/libliftoff	libliftoff-0.5.0.tar.gz	3309218c3137a70faada653690802b514e4e46d9b38e7d9d5948ffcc4831f3b1	https://gitlab.freedesktop.org/emersion/libliftoff/-/archive/v0.5.0/libliftoff-v0.5.0.tar.gz
