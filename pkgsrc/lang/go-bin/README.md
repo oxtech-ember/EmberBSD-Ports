@@ -1,7 +1,7 @@
 # go-bin
 
 This recipe installs the official upstream binary release of Go
-`${GO127_VERSION}` (1.27.3) for the build host. It is the bootstrap seed for
+`${GO127_VERSION}` (1.27.4) for the build host. It is the bootstrap seed for
 `lang/go127` when no native go127 is installed. It is not a second maintained
 Go version: the version comes from `lang/go/version.mk`, and the recipe never
 selects an older release. It retains the NetBSD pkgsrc attribution and the

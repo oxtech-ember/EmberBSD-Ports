@@ -1,7 +1,6 @@
 # Fontconfig prefix-owned defaults
 
-The official GitLab tag API confirms 2.18.3 (2026-08-06) as the current stable
-release: [upstream release](https://gitlab.freedesktop.org/fontconfig/fontconfig/-/releases/2.18.3).
+The recipe uses [Fontconfig 2.18.4](https://gitlab.freedesktop.org/fontconfig/fontconfig/-/releases/2.18.4).
 
 On Darwin, NetBSD and Linux, where Meson verifies `dladdr` and `Dl_info`, a private data
 anchor locates the loaded `libfontconfig.so[.*]` or `libfontconfig*.dylib`.

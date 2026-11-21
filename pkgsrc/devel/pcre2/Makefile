@@ -14,6 +14,12 @@ HOMEPAGE=	https://www.pcre.org/
 COMMENT=	Perl Compatible Regular Expressions library (major version 2)
 LICENSE=	modified-bsd
 
+.include "../../mk/bsd.prefs.mk"
+
+.if ${OBJECT_FMT} == "ELF"
+PKGREVISION=	1
+.endif
+
 USE_LANGUAGES=		c
 USE_LIBTOOL=		yes
 GNU_CONFIGURE=		yes

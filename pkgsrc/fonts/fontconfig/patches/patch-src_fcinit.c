@@ -6,7 +6,7 @@ Origin: pkgsrc and EmberBSD contributors (AI-assisted).
 
 --- src/fcinit.c.orig
 +++ src/fcinit.c
-@@ -36,42 +36,83 @@
+@@ -36,36 +36,72 @@
  #  pragma message("To suppress these warnings, define FC_NO_MT.")
  #endif
  
@@ -96,18 +96,7 @@ Origin: pkgsrc and EmberBSD contributors (AI-assisted).
  }
  
  static FcConfig *
- FcInitFallbackConfigWithFilter (FcConfig *config, const FcChar8 *sysroot)
- {
-     FcConfig *fallback = FcInitFallbackConfig (sysroot);
-+
-+    if (!fallback) {
-+        FcConfigDestroy (config);
-+        return NULL;
-+    }
- 
-     /* Copy filter data */
-     fallback->filter_func = config->filter_func;
-@@ -114,14 +155,25 @@
+@@ -118,14 +154,25 @@
  
  	return fallback;
      }
@@ -135,7 +124,7 @@ Origin: pkgsrc and EmberBSD contributors (AI-assisted).
  	env_file = getenv ("FONTCONFIG_FILE");
  	env_path = getenv ("FONTCONFIG_PATH");
  	if ((env_file != NULL && env_file[0] != 0) ||
-@@ -133,7 +185,7 @@
+@@ -137,7 +184,7 @@
  	             "Fontconfig warning: no <cachedir> elements found. Check configuration.\n");
  	    fprintf (stderr,
  	             "Fontconfig warning: adding <cachedir>%s</cachedir>\n",
@@ -144,7 +133,7 @@ Origin: pkgsrc and EmberBSD contributors (AI-assisted).
  	}
  	prefix = FcConfigXdgCacheHome();
  	if (!prefix)
-@@ -149,7 +201,7 @@
+@@ -153,7 +200,7 @@
  	    fprintf (stderr,
  	             "Fontconfig warning: adding <cachedir prefix=\"xdg\">fontconfig</cachedir>\n");
  
@@ -153,7 +142,7 @@ Origin: pkgsrc and EmberBSD contributors (AI-assisted).
  	    !FcConfigAddCacheDir (config, (FcChar8 *)prefix)) {
  	    FcConfig      *fallback;
  	    const FcChar8 *sysroot;
-@@ -160,11 +212,13 @@
+@@ -164,11 +211,13 @@
  	             "Fontconfig error: out of memory");
  	    if (prefix)
  		FcStrFree (prefix);

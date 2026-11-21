@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.143 2026/08/17 01:30:38 pgoyette Exp $
 
-DISTNAME=	fontconfig-2.18.3
-PKGREVISION=	4
+DISTNAME=	fontconfig-2.18.4
 CATEGORIES=	fonts
 MASTER_SITES=	https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/${PKGVERSION_NOREV}/
 EXTRACT_SUFX=	.tar.xz
@@ -9,10 +8,9 @@ EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.fontconfig.org/
 COMMENT=	Library for configuring and customizing font access
-LICENSE=		fontconfig-2.18.3
+LICENSE=		fontconfig-2.18.4
 
-# https://bugs.freedesktop.org/show_bug.cgi?id=101280
-TOOL_DEPENDS+=	gperf-[0-9]*:../../devel/gperf
+TOOL_DEPENDS+=	gperf>=0:../../devel/gperf
 
 USE_LIBTOOL=		yes
 USE_TOOLS+=		pkg-config msgfmt
@@ -23,7 +21,8 @@ MESON_ARGS+=		-Ddoc=disabled # docbook2man and docbook2html are required.
 
 CPPFLAGS.SunOS+=	-D__EXTENSIONS__
 
-PKGCONFIG_OVERRIDE=	fontconfig.pc.in
+PKGCONFIG_OVERRIDE=	output/meson-private/fontconfig.pc
+PKGCONFIG_OVERRIDE_STAGE=	post-configure
 
 PKG_SYSCONFSUBDIR=	fontconfig
 
@@ -69,7 +68,7 @@ TMPLDIR=	${PREFIX}/share/fontconfig/conf.avail
 MAKE_DIRS+=	${PKG_SYSCONFDIR}/conf.d
 # following list from ${WRKSRC}/conf.d/Makefile.am
 FC_STDCONF=	\
-	10-hinting-full.conf	\
+	10-hinting-slight.conf	\
 	10-scale-bitmap-fonts.conf \
 	10-yes-antialias.conf	\
 	10-sub-pixel-none.conf	\

@@ -67,9 +67,9 @@ Not submitted upstream.
  .endif
  
  # current supported Ruby's version
--RUBY33_VERSION=		3.3.12
--RUBY34_VERSION=		3.4.10
- RUBY40_VERSION=		4.0.7
+-RUBY33_VERSION=		3.3.13
+-RUBY34_VERSION=		3.4.12
+ RUBY40_VERSION=		4.0.9
  
  # current API compatible version; used for version of shared library
 -RUBY33_API_VERSION=	3.3.0

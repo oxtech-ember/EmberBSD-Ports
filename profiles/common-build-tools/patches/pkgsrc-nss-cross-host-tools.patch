@@ -10,7 +10,7 @@ diff --git a/devel/nss/Makefile b/devel/nss/Makefile
  # Release Notes
  # https://firefox-source-docs.mozilla.org/security/nss/releases/index.html
  
--DISTNAME=		nss-3.129
+-DISTNAME=		nss-3.131.1
 +DISTNAME=		nss-3.132
  CATEGORIES=		devel security
  MASTER_SITES=		${MASTER_SITE_MOZILLA_ALL:=security/nss/releases/NSS_${PKGVERSION_NOREV:S/./_/g}_RTM/src/}
@@ -25,8 +25,8 @@ diff --git a/devel/nss/Makefile b/devel/nss/Makefile
 +MAKE_FLAGS+=		OS_TEST=${NSS_CPU_ARCH:Q}
  MAKE_FLAGS+=		NATIVE_CC=${NATIVE_CC:Q}
  MAKE_FLAGS+=		NATIVE_CFLAGS=
-+MAKE_FLAGS+=		NATIVE_FLAGS=${NATIVE_CPPFLAGS:Q}\ ${NATIVE_CFLAGS:Q}
 -MAKE_FLAGS+=		NATIVE_LDFLAGS=
++MAKE_FLAGS+=		NATIVE_FLAGS=${NATIVE_CPPFLAGS:Q}\ ${NATIVE_CFLAGS:Q}
 +MAKE_FLAGS+=		NATIVE_LDFLAGS=${NATIVE_LDFLAGS:Q}
  MAKE_FLAGS+=		NATIVE_EXTRA_SHARED_LIBS=
  
@@ -35,11 +35,11 @@ diff --git a/devel/nss/distinfo b/devel/nss/distinfo
 --- a/devel/nss/distinfo
 +++ b/devel/nss/distinfo
 @@ -1,8 +1,8 @@
- $NetBSD: distinfo,v 1.218 2026/09/10 10:02:09 wiz Exp $
+ $NetBSD: distinfo,v 1.218.2.1 2026/10/21 23:26:27 maya Exp $
  
--BLAKE2s (nss-3.129.tar.gz) = bda9dba110d063efae30987f5065e88071752716bace7b8c5482f542119d82cd
--SHA512 (nss-3.129.tar.gz) = ffad7bd7dbbd388c88072b21553f533ed721575b1a4dabbbd65a5f62c2f9e4b0e33e45c02d5f3a68b19b364e73f4880ab82924a673bdc2d1754237cde47b6b37
--Size (nss-3.129.tar.gz) = 87255363 bytes
+-BLAKE2s (nss-3.131.1.tar.gz) = e23c8ecf4880ee1d2586aadf00af0a25523c7584fdbb0256dfae80888192fc16
+-SHA512 (nss-3.131.1.tar.gz) = d76217d89da49bc5dbe1374a1d45bece66565dfe528ecffc8612b0a0c9aaa3060356add0b5e9f42445344c65b95a0a7e61bb6f125069f030fea2081d89aed0b5
+-Size (nss-3.131.1.tar.gz) = 88058024 bytes
 +BLAKE2s (nss-3.132.tar.gz) = ae8e9e60b37651da28dab314167e2a9fa4f143d8ad1dfc43a8ea928d63bb079a
 +SHA512 (nss-3.132.tar.gz) = 9e0936f1b3f1480351895b371e6571440ff0bfcd0c069f0d558006e07ce870b6bebb440bc96e3e1d45fdd3c288da11c7380f3f69646ab1e3c79311f648ce12f9
 +Size (nss-3.132.tar.gz) = 87788090 bytes

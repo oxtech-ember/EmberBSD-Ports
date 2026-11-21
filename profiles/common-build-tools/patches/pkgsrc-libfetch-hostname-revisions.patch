@@ -1,0 +1,23 @@
+Rebuild the library and static consumers with the quarterly branch TLS hostname check.
+Origin: EmberBSD (AI-assisted).
+
+--- a/net/libfetch/Makefile
++++ b/net/libfetch/Makefile
+@@ -4 +4 @@
+-PKGREVISION=	8
++PKGREVISION=	9	# Include the branch TLS hostname check.
+--- a/net/libfetch/buildlink3.mk
++++ b/net/libfetch/buildlink3.mk
+@@ -12 +12 @@
+-BUILDLINK_ABI_DEPENDS.libfetch+=	libfetch>=2.40nb7
++BUILDLINK_ABI_DEPENDS.libfetch+=	libfetch>=2.40nb9
+--- a/net/fetch/Makefile
++++ b/net/fetch/Makefile
+@@ -4 +4 @@
+-PKGREVISION=	5
++PKGREVISION=	6	# Link libfetch with TLS hostname checks.
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -10 +10 @@
+-PKGREVISION=		23
++PKGREVISION=		24	# Include the updated libfetch source.

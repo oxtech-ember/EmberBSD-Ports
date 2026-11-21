@@ -14,7 +14,7 @@ tools, sysroot, pkgconfig, base, source, license = ARGV.first(6).map { |p| File.
 work = File.expand_path(ARGV[6])
 abort 'NEW_WORK must be new and absolute' unless ARGV[6].start_with?('/') && !File.exist?(work) && !File.symlink?(work)
 packages = ARGV.drop(7).map { |p| File.realpath(p) }
-required = %w[pango-1.58.2nb2 glib2-2.90.1 pcre2-10.49 fribidi-1.0.17 png-1.6.59 freetype2-2.14.3nb1 fontconfig-2.18.3 harfbuzz-14.6.0 cairo-1.18.6]
+required = %w[pango-1.58.2nb2 glib2-2.90.1 pcre2-10.49nb1 fribidi-1.0.18 png-1.6.59 freetype2-2.14.3nb1 fontconfig-2.18.4 harfbuzz-14.6.0 cairo-1.18.6]
 names = packages.map { |p| File.basename(p, '.tgz') }
 abort 'missing current text package or duplicate input' unless (required - names).empty? && names.uniq == names
 abort 'Pango fixture source mismatch' unless Digest::SHA256.file(source).hexdigest == '342385b6ca3b7c73455d7c80a13b7dbe4489e00bc3bd4c5bd6ed4dce421e374a'
@@ -122,7 +122,7 @@ end
 File.write(bundle + '/source/recursive-needed.tsv', closure.join("\n") + "\n")
 abort "unrecorded recursive dependencies:\n#{missing.join("\n")}" unless missing.empty?
 abort 'wrong target compiler' unless run(bundle+'/source/compiler-target.log', {}, cc, '-dumpmachine') == 'aarch64--netbsd'
-modules = {'pangocairo'=>'1.58.2', 'pangoft2'=>'1.58.2', 'glib-2.0'=>'2.90.1', 'harfbuzz'=>'14.6.0', 'cairo'=>'1.18.6', 'fontconfig'=>'2.18.3', 'freetype2'=>'26.6.20'}
+modules = {'pangocairo'=>'1.58.2', 'pangoft2'=>'1.58.2', 'glib-2.0'=>'2.90.1', 'harfbuzz'=>'14.6.0', 'cairo'=>'1.18.6', 'fontconfig'=>'2.18.4', 'freetype2'=>'26.6.20'}
 modules.each do |name,version|
   actual = run(bundle+'/source/version-'+name+'.log', env, pkgconfig, '--modversion', name)
   abort "wrong #{name} version: #{actual}" unless actual == version

@@ -4,9 +4,9 @@
 --- a/lang/nodejs/Makefile
 +++ b/lang/nodejs/Makefile
 @@ -1,23 +1,221 @@
- # $NetBSD: Makefile,v 1.360 2026/09/10 07:44:25 adam Exp $
+ # $NetBSD: Makefile,v 1.360.2.1 2026/10/25 09:16:50 bsiegert Exp $
  
--DISTNAME=	node-v26.8.2
+-DISTNAME=	node-v26.12.1
 +DISTNAME=	node-v26.13.1
 +PKGREVISION=	3
  EXTRACT_SUFX=	.tar.xz
@@ -208,7 +208,7 @@
 +CONFIGURE_ARGS+=	--shared-gtest
  CONFIGURE_ARGS+=	--shared-nghttp3
  CONFIGURE_ARGS+=	--shared-ngtcp2
-+
+ 
 +# The SDK target must select GYP's target flavor independently of the host.
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 +.  if ${EMBERBSD_CROSS_TARGET:U} == "amd64"
@@ -217,7 +217,7 @@
 +CONFIGURE_ARGS+= --dest-os=netbsd --dest-cpu=arm64 --cross-compiling
 +.  endif
 +.endif
- 
++
  CHECK_INTERPRETER_SKIP+=	lib/node_modules/corepack/shims/*.ps1
  CHECK_PORTABILITY_SKIP+=	deps/uv/autogen.sh
 +# The build does not use this V8 profiling script; the Node 26 update dropped
@@ -226,7 +226,7 @@
  CHECK_PORTABILITY_SKIP+=	deps/v8/tools/cppgc/export_to_github.sh
  CHECK_PORTABILITY_SKIP+=	deps/v8/tools/cppgc/test_cmake.sh
  CHECK_PORTABILITY_SKIP+=	tools/macos-installer/pkgbuild/npm/scripts/preinstall
-@@ -36,8 +233,77 @@
+@@ -36,8 +234,77 @@
  .include "../../devel/libatomic/buildlink3.mk"
  .endif
  
@@ -307,13 +307,13 @@
  .include "../../www/nghttp3/buildlink3.mk"
 --- a/lang/nodejs/distinfo
 +++ b/lang/nodejs/distinfo
-@@ -1,31 +1,60 @@
- $NetBSD: distinfo,v 1.331 2026/09/10 07:44:25 adam Exp $
+@@ -1,29 +1,60 @@
+ $NetBSD: distinfo,v 1.331.2.1 2026/10/25 09:16:50 bsiegert Exp $
  
--BLAKE2s (node-v26.8.2.tar.xz) = 415dbc91a567e3f572eb41db4d215de24e5ede0ab735f2066897ac02de2d8f07
--SHA512 (node-v26.8.2.tar.xz) = b4331a00b3c1aa508d374b6d09042dedf4fd78c21c5aec46b3017c5fa1aa67f670bc5ef20449e625cd40b775b9582c44f018e321637883cbfc567e46c174c64e
--Size (node-v26.8.2.tar.xz) = 61307988 bytes
--SHA1 (patch-common.gypi) = 4620bcaf4d953bc415319a957fe41e1a70b94357
+-BLAKE2s (node-v26.12.1.tar.xz) = 1afb13ee9f319ff3bbde5c6ccc0ac3cda90df92af4556fb4994ab0779fd30dee
+-SHA512 (node-v26.12.1.tar.xz) = f6f76e258af33f7f877c65a2141d281ea307aae017a90bb8a75a7d4df271ad9d17c7d0edfd5751a977edd6bdb03c704d727628c4c7215c878d421787a35240f2
+-Size (node-v26.12.1.tar.xz) = 62570464 bytes
+-SHA1 (patch-common.gypi) = 901ec961585bd0726e9f1ea1ee2dbc0c791bb6c7
 +
 +
 +
@@ -324,10 +324,8 @@
 +SHA1 (patch-configure.py) = d9f43ac117386da95bd4fcb478d6c04204800f37
 +SHA1 (patch-configure_node__cross) = e02f55c982e907a73ae8cc615c71706a4db39c71
  SHA1 (patch-deps_cares_cares.gyp) = 22b44f2ac59963f694dfe4f4585e08960b3dec32
--SHA1 (patch-deps_histogram_src_hdr__histogram.c) = 0921ca4f7b3410e9f1b88f5ac1a7c006ba9f7b72
  SHA1 (patch-deps_uv_common.gypi) = 29f0c382b68f77749a71ce39fa2ca37338ca18ec
  SHA1 (patch-deps_uvwasi_include_wasi__serdes.h) = 32b85ef5824b96b35aba9280bbe7aa7899d9e5cf
--SHA1 (patch-deps_v8_src_base_memcopy.h) = 4e557fe0d17082c7465893c3886a1555d1ca01c1
 -SHA1 (patch-deps_v8_src_base_platform_memory.h) = 10603b12ccdb97df87de70a2b91b96739c2ab13b
 -SHA1 (patch-deps_v8_src_base_platform_platform-freebsd.cc) = b47025f33d2991275bbcd15dbabb28900afab0e1
 -SHA1 (patch-deps_v8_src_base_platform_platform-openbsd.cc) = 5e593879dbab095f99e82593272a0de91043f9a8
@@ -392,16 +390,16 @@
 --- a/lang/nodejs/patches/patch-common.gypi
 +++ b/lang/nodejs/patches/patch-common.gypi
 @@ -1,20 +1,37 @@
--$NetBSD: patch-common.gypi,v 1.14 2025/06/10 17:12:03 adam Exp $
+-$NetBSD: patch-common.gypi,v 1.14.12.1 2026/10/25 09:16:51 bsiegert Exp $
 +$NetBSD$
  
 -Add support for NetBSD.
 +Support NetBSD and the selected Darwin deployment target.
  
----- common.gypi.orig	2025-06-09 16:53:41.000000000 +0000
+---- common.gypi.orig	2026-10-07 07:39:43.000000000 +0000
 +--- common.gypi.orig
  +++ common.gypi
--@@ -503,11 +503,11 @@
+-@@ -588,11 +588,11 @@
 +@@ -1,6 +1,7 @@
 + {
 +   'variables': {
@@ -414,16 +412,14 @@
             'NOMINMAX',
           ],
         }],
---      [ 'OS in "linux freebsd openbsd solaris aix os400 openharmony"', {
--+      [ 'OS in "linux freebsd netbsd openbsd solaris aix os400 openharmony"', {
-+-      [ 'OS in "linux freebsd openbsd solaris aix os400 openharmony zos"', {
+ -      [ 'OS in "linux freebsd openbsd solaris aix os400 openharmony zos"', {
+-+      [ 'OS in "linux freebsd openbsd solaris aix os400 openharmony zos netbsd"', {
 ++      [ 'OS in "linux freebsd netbsd openbsd solaris aix os400 openharmony zos"', {
           'cflags': [ '-pthread' ],
           'ldflags': [ '-pthread' ],
         }],
---      [ 'OS in "linux freebsd openbsd solaris android aix os400 cloudabi openharmony"', {
--+      [ 'OS in "linux freebsd netbsd openbsd solaris android aix os400 cloudabi openharmony"', {
-+-      [ 'OS in "linux freebsd openbsd solaris android aix os400 cloudabi openharmony zos"', {
+ -      [ 'OS in "linux freebsd openbsd solaris android aix os400 cloudabi openharmony zos"', {
+-+      [ 'OS in "linux freebsd openbsd solaris android aix os400 cloudabi openharmony zos netbsd"', {
 ++      [ 'OS in "linux freebsd netbsd openbsd solaris android aix os400 cloudabi openharmony zos"', {
           'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
           'cflags_cc': [
@@ -809,40 +805,6 @@
 +           'link_settings': {
 +             'libraries': [
 +               '-L/usr/pkg/lib -Wl,-R/usr/pkg/lib -lexecinfo',
---- a/lang/nodejs/patches/patch-deps_histogram_src_hdr__histogram.c
-+++ /dev/null
-@@ -1,13 +0,0 @@
--$NetBSD: patch-deps_histogram_src_hdr__histogram.c,v 1.1 2026/08/16 11:56:45 ryoon Exp $
--
----- deps/histogram/src/hdr_histogram.c.orig	2026-08-16 07:43:18.222206955 +0000
--+++ deps/histogram/src/hdr_histogram.c
--@@ -36,7 +36,7 @@
-- 
-- /* Runtime-dispatched AVX2 path: keep the rest of this TU at the project's
--    baseline ISA so the shipped binary does not silently require AVX2. */
---#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)) \
--+#if (defined(__x86_64__) || defined(_M_X64) || defined(_M_IX86)) \
--     && (defined(__GNUC__) || defined(__clang__)) && !defined(__INTEL_COMPILER) && !defined(_MSC_VER)
-- #  define HDR_HAS_AVX2_DISPATCH 1
-- #  include <immintrin.h>
---- a/lang/nodejs/patches/patch-deps_v8_src_base_memcopy.h
-+++ /dev/null
-@@ -1,15 +0,0 @@
--$NetBSD: patch-deps_v8_src_base_memcopy.h,v 1.1 2026/05/06 08:21:01 adam Exp $
--
--Add missing include for CHAR_BIT.
--https://github.com/nodejs/node/issues/63146
--
----- deps/v8/src/base/memcopy.h.orig	2026-05-06 07:22:58.678410124 +0000
--+++ deps/v8/src/base/memcopy.h
--@@ -5,6 +5,7 @@
-- #ifndef V8_BASE_MEMCOPY_H_
-- #define V8_BASE_MEMCOPY_H_
-- 
--+#include <climits>
-- #include <stdlib.h>
-- 
-- #include <atomic>
 --- a/lang/nodejs/patches/patch-deps_v8_src_base_platform_memory.h
 +++ /dev/null
 @@ -1,15 +0,0 @@

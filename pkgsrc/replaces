@@ -412,7 +412,6 @@ lang/libcxxabi
 mail/ruby-mail
 www/ruby-rouge
 textproc/ruby-sanitize
-www/ruby-crass
 
 # Redmine plugins that load on Redmine 7.
 devel/ruby-redmine_lightbox2
@@ -450,7 +449,6 @@ textproc/libunistring
 
 # Keep Mozilla trust data and its OpenSSL wedge in sync.
 security/mozilla-rootcerts
-security/mozilla-rootcerts-openssl
 
 # Common native XML generator.
 textproc/xmlstarlet

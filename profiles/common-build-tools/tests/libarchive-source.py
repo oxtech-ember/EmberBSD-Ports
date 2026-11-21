@@ -56,7 +56,7 @@ def main():
         return result.stdout
 
     patches = ("pkgsrc-libarchive-3.8.10-import.patch", "pkgsrc-libarchive-3.8.10.patch",
-               "pkgsrc-libarchive-bmake.patch", "pkgsrc-libarchive-3.8.11.patch")
+               "pkgsrc-libarchive-3.8.11.patch")
     pins = dict(line.split("\t")[:2] for line in
                 (root / "profiles/common-build-tools/sources.tsv").read_text().splitlines()
                 if line and not line.startswith("#"))

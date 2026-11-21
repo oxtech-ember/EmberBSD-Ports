@@ -125,7 +125,7 @@ external = {
   /\Alib(?:stdc\+\+|gcc_s)\.so/ => 'ember-gcc16-cxx-runtime-16.2.0',
   /\Alibpcre2-/ => 'pcre2-10.49',
   /\Alib(?:glib|gobject|gio|gmodule|gthread)-2\.0\.so/ => 'glib2-cpu-2.90.1',
-  /\Alibffi\.so/ => 'libffi-3.8.0nb1',
+  /\Alibffi\.so/ => 'libffi-3.8.1',
   /\Alib(?:avcodec|avformat|avutil|avfilter|avdevice|swscale|swresample)\.so/ => 'ffmpeg9-9.0.2nb2',
   /\Alibx265\.so/ => 'x265-4.2', /\Alibxml2\.so/ => 'libxml2-2.15.4nb1'
 }

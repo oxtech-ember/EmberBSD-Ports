@@ -65,8 +65,8 @@ the [package guide](gdb/package.md) connects it to the OS-owned development imag
 
 ## Source and preparation
 
-The base is pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`
-(`pkgsrc-2026Q3`). Apply the original NetBSD update
+The GCC update was prepared against pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
+The [pkgsrc submodule](../../upstream/pkgsrc) pins the current base. Apply the original NetBSD update
 [`823a3b483b7ffeb73973f911458d6ba22c74efc4`](https://github.com/NetBSD/pkgsrc/commit/823a3b483b7ffeb73973f911458d6ba22c74efc4)
 to `gcc16`, `gcc16-libs`, and `gcc16-libjit` together. This imports the
 16.2.0 version and archive checksums without advancing unrelated packages.

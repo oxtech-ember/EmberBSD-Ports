@@ -6,20 +6,20 @@ help2man generation. Origin: EmberBSD (AI-assisted), not submitted upstream.
 
 --- bin/Makefile.in.orig
 +++ bin/Makefile.in
-@@ -835,10 +835,16 @@
- $(top_builddir)/lib/libfribidi.la:
- 	cd $(top_builddir)/lib && $(MAKE) $(AM_MAKEFLAGS) libfribidi.la
- 
-+ifneq ($(build),$(host))
-+# Release archives include this page; target executables cannot run here.
-+fribidi.1:
-+	@test -r $@ || { echo 'Missing release manpage: fribidi.1' >&2; exit 1; }
-+else
- %.1: %
- 	$(top_srcdir)/missing --run help2man ./$< --no-info \
- 	--version-string=- -n "$(shell ./$< --help | head -n 2 | tail -n 1)" \
- 	--output=$@
-+endif
- 
- -include $(top_srcdir)/git.mk
- 
+@@ -839,13 +839,9 @@
+ # output, which is not possible when that binary is built for a different
+ # host. Fall back to a man page shipped in the source tree (e.g. from a
+ # release tarball) if there is one, otherwise skip generating it.
+-@CROSS_COMPILING_TRUE@%.1: %
+-@CROSS_COMPILING_TRUE@	@if test -f $(srcdir)/$@; then \
+-@CROSS_COMPILING_TRUE@	  cp $(srcdir)/$@ $@; \
+-@CROSS_COMPILING_TRUE@	else \
+-@CROSS_COMPILING_TRUE@	  echo "$@: skipping man page generation; help2man can't run $< while cross-compiling" >&2; \
+-@CROSS_COMPILING_TRUE@	  : > $@; \
+-@CROSS_COMPILING_TRUE@	fi
++@CROSS_COMPILING_TRUE@fribidi.1:
++@CROSS_COMPILING_TRUE@	@test -s $(srcdir)/$@ || { echo "Missing release manpage: $@" >&2; exit 1; }
++@CROSS_COMPILING_TRUE@	@test -s $@ || cp $(srcdir)/$@ $@
+ @CROSS_COMPILING_FALSE@%.1: %
+ @CROSS_COMPILING_FALSE@	$(top_srcdir)/missing --run help2man ./$< --no-info \
+ @CROSS_COMPILING_FALSE@	--version-string=- -n "$(shell ./$< --help | head -n 2 | tail -n 1)" \

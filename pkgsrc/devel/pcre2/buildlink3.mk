@@ -6,7 +6,12 @@ BUILDLINK_TREE+=	pcre2
 PCRE2_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.pcre2+=	pcre2>=10.21
+.include "../../mk/bsd.prefs.mk"
+.if ${OBJECT_FMT} == "ELF"
+BUILDLINK_ABI_DEPENDS.pcre2+=	pcre2>=10.49nb1
+.else
 BUILDLINK_ABI_DEPENDS.pcre2+=	pcre2>=10.49
+.endif
 BUILDLINK_PKGSRCDIR.pcre2?=	../../devel/pcre2
 
 # Consumers pass PCRE2_CONFIG to configure as the pcre2-config to run.

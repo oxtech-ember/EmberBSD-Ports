@@ -18,21 +18,19 @@ Libarchive [3.8.11](https://github.com/libarchive/libarchive/releases/tag/v3.8.1
 was released on 2026-10-30 as a security and bug-fix release. Its archive and
 SHA256 are also recorded in [sources.tsv](../sources.tsv).
 
-The export applies these unmodified NetBSD patches in order:
+The export uses these NetBSD changes in order:
 
 1. [f09692cc](https://github.com/NetBSD/pkgsrc/commit/f09692cc2727cf2defd37e5331aab77679b5d1e7)
    imports new files and updates files without local pkgsrc changes.
 2. [fa7406b5](https://github.com/NetBSD/pkgsrc/commit/fa7406b5b9db17afe08b0ab675ee45f3121b365e)
    merges the remaining vendor update and selects version 3.8.10.
-3. [318cf450](https://github.com/NetBSD/pkgsrc/commit/318cf4509f47ad80519d1905ac7673a3c516bb31)
-   replaces `$^` in test-list generation for older supported bmake versions.
-
-4. `pkgsrc-libarchive-3.8.11.patch` applies the official 3.8.10 to 3.8.11
+   The quarterly base already carries the [bmake source-list fix](https://github.com/NetBSD/pkgsrc/commit/318cf4509f47ad80519d1905ac7673a3c516bb31).
+3. `pkgsrc-libarchive-3.8.11.patch` applies the official 3.8.10 to 3.8.11
    release difference to `archivers/libarchive/files`, takes `configure`
    verbatim from 3.8.11, and selects version 3.8.11. It is an AI-assisted
    EmberBSD adaptation generated from the two official release archives.
 
-The NetBSD patches retain original authorship and licenses. All four byte hashes
+The NetBSD patches retain original authorship and licenses. The three applied patch hashes
 are pinned in [sources.tsv](../sources.tsv) and checked before application. Git applies the
 original binary manual updates as well as source and regression data.
 `pkgsrc-libarchive-consumers.patch` carries the same bmake correction into

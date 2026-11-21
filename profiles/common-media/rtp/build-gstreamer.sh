@@ -79,10 +79,10 @@ pins = {}
   end
 end
 ffi_recipe = File.join(pkgsrc, 'devel/libffi')
-ffi_hash = File.read(ffi_recipe + '/distinfo')[/^SHA512 \(libffi-3\.8\.0\.tar\.gz\) = ([0-9a-f]{128})$/, 1]
+ffi_hash = File.read(ffi_recipe + '/distinfo')[/^SHA512 \(libffi-3\.8\.1\.tar\.gz\) = ([0-9a-f]{128})$/, 1]
 abort 'Unexpected pinned libffi source' unless ffi_hash
-pins['libffi-3.8.0.tar.gz'] = {'sha512' => ffi_hash, 'recipe' => 'devel/libffi',
-  'url' => pins.fetch('libffi-3.8.0.tar.gz').fetch('url')}
+pins['libffi-3.8.1.tar.gz'] = {'sha512' => ffi_hash, 'recipe' => 'devel/libffi',
+  'url' => pins.fetch('libffi-3.8.1.tar.gz').fetch('url')}
 
 prepare = lambda do |name, archive, recipe|
   base = File.join(work, name)
@@ -402,7 +402,7 @@ record_make_commands = lambda do |base|
 end
 
 components = [
- ['libffi', 'libffi-3.8.0.tar.gz', ffi_recipe, :configure, ['--disable-multi-os-directory', '--includedir=' + prefix + '/include', '--disable-static']],
+ ['libffi', 'libffi-3.8.1.tar.gz', ffi_recipe, :configure, ['--disable-multi-os-directory', '--includedir=' + prefix + '/include', '--disable-static']],
  ['pcre2', 'pcre2-10.49.tar.gz', pkgsrc + '/devel/pcre2', :configure, ['--enable-pcre2-16', '--enable-pcre2-32', '--disable-jit', '--disable-static', '--enable-pcre2grep-libz', '--enable-pcre2grep-libbz2']],
  ['glib', 'glib-2.90.1.tar.xz', pkgsrc + '/devel/glib2', :meson, ['-Dtests=false', '-Dinstalled_tests=false', '-Dintrospection=disabled', '-Ddtrace=disabled', '-Dglib_debug=disabled', '-Dlibmount=disabled', '-Dsysprof=disabled', '-Dselinux=disabled', '-Dlibelf=disabled', '-Ddocumentation=false', '-Dman-pages=disabled', '-Dnls=enabled', '-Dlocalstatedir=/var', '-Druntime_dir=/var/run']],
  ['gstreamer', 'gstreamer-1.28.8.tar.xz', pkgsrc + '/multimedia/gstreamer1', :meson, ['-Dtools=enabled', '-Dcheck=enabled', '-Dtests=disabled', '-Dexamples=disabled', '-Dbenchmarks=disabled', '-Dintrospection=disabled', '-Dptp-helper=disabled', '-Dcoretracers=enabled', '-Dnls=enabled']],

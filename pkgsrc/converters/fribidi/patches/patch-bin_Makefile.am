@@ -6,19 +6,20 @@ help2man generation. Origin: EmberBSD (AI-assisted), not submitted upstream.
 
 --- bin/Makefile.am.orig
 +++ bin/Makefile.am
-@@ -23,9 +23,15 @@
- $(top_builddir)/lib/libfribidi.la:
- 	cd $(top_builddir)/lib && $(MAKE) $(AM_MAKEFLAGS) libfribidi.la
- 
-+ifneq ($(build),$(host))
-+# Release archives include this page; target executables cannot run here.
+@@ -28,13 +28,9 @@
+ # output, which is not possible when that binary is built for a different
+ # host. Fall back to a man page shipped in the source tree (e.g. from a
+ # release tarball) if there is one, otherwise skip generating it.
+-%.1: %
+-	@if test -f $(srcdir)/$@; then \
+-	  cp $(srcdir)/$@ $@; \
+-	else \
+-	  echo "$@: skipping man page generation; help2man can't run $< while cross-compiling" >&2; \
+-	  : > $@; \
+-	fi
 +fribidi.1:
-+	@test -r $@ || { echo 'Missing release manpage: fribidi.1' >&2; exit 1; }
-+else
++	@test -s $(srcdir)/$@ || { echo "Missing release manpage: $@" >&2; exit 1; }
++	@test -s $@ || cp $(srcdir)/$@ $@
+ else
  %.1: %
  	$(top_srcdir)/missing --run help2man ./$< --no-info \
- 	--version-string=- -n "$(shell ./$< --help | head -n 2 | tail -n 1)" \
- 	--output=$@
-+endif
- 
- -include $(top_srcdir)/git.mk

@@ -24,7 +24,7 @@ and receiver support is not established by these tests.
 - Upstream: https://github.com/eclipse-zenoh/zenoh-pico, release 1.10.1.
 - Revision: `e1ab223a28aaebb5dec1e70d98eab152332f777a`.
 - Archive SHA256: `b662b7f6b9094684311a22748b3d45a595fad62d2f7793283f43e553b2175ddc`.
-- pkgsrc pin: `fff4deb639a1a640476203c80f752fb77b6cb14b`, pkgsrc-2026Q3.
+- The original tests used pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b` (`pkgsrc-2026Q3`).
 - Upstream BSD platform implementation; no new OS abstraction is introduced.
 - The test harness uses explicit build parallelism because BSD make rejects
   the original bare `-j`. Its nested shared-library test selects its own library

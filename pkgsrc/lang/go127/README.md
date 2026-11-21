@@ -1,13 +1,13 @@
 # Common Go 1.27 provider
 
-This recipe builds Go 1.27.3 from the official source archive and retains the
+This recipe builds Go 1.27.4 from the official source archive and retains the
 pkgsrc-2026Q3 Go127 recipe, installation layout, and portability patches.
-The version selection in `files/pkgsrc-version.patch` applies to every export,
-including the `lang/go` metapackage and consumers using `go-module.mk`.
+The pinned pkgsrc `lang/go/version.mk` selects this release for the
+`lang/go` metapackage and consumers using `go-module.mk`.
 Source: [Go downloads](https://go.dev/dl/),
-[release history](https://go.dev/doc/devel/release#go1.27.3).
+[release history](https://go.dev/doc/devel/release#go1.27.4).
 The source SHA256 is
-`6e7749035cf360f06b2575d162ea79df9fda8ef671889e5c375f8e50777f26bb`.
+`73cfb8571aec0c01177687db87163d46aa20e9779672772891aa17654d9a6099`.
 Go retains its upstream BSD license. The recipe changes and regression are
 local, AI-assisted EmberBSD work; they have not been submitted upstream.
 
@@ -78,7 +78,7 @@ Consumers compile Go source against this common provider. Version updates
 require rebuilding affected Go programs; this provider alone does not prove
 Dawn generators, TypeScript, or target applications work.
 
-The Darwin arm64 validation built the source package with Ports Clang/LLD
+The Go 1.27.3 Darwin arm64 validation built the source package with Ports Clang/LLD
 23.1.4 and macOS SDK 27.0. A staged Go module linked a C++ `std::string`
 consumer and returned the independently expected result `42`; missing C++
 compiler and linker inputs failed. That consumer excluded the package work

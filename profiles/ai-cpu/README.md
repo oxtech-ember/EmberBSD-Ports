@@ -75,9 +75,9 @@ submodule revision that differs from the recorded Git link. It exports the
 pinned upstream tree and adds every local category, including `local-ai/`; it does not resolve dependencies,
 download application sources, or maintain an installed-package database.
 
-The pkgsrc pin is `fff4deb639a1a640476203c80f752fb77b6cb14b` on
-`pkgsrc-2026Q3`. Its unrelated `databases/py-whisper` package is not whisper.cpp.
-The two new recipes are absent from this pinned upstream tree.
+The [pkgsrc submodule](../../upstream/pkgsrc) pins the `pkgsrc-2026Q3` base.
+EmberBSD supplies both C++ recipes. Upstream `databases/py-whisper` provides
+a separate Python package.
 
 ## Install and remove
 

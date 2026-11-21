@@ -1,7 +1,7 @@
-$NetBSD: distinfo,v 1.24 2024/10/08 15:38:42 wiz Exp $
+$NetBSD: distinfo,v 1.24.16.1 2026/11/11 10:30:22 maya Exp $
 
-BLAKE2s (fribidi-1.0.17.tar.xz) = d79d29dfbede580544a87624901e7c0b17782b77df02c0db60b98568099663c6
-SHA512 (fribidi-1.0.17.tar.xz) = 70df8b9b2b8e552e969122227192b04c45e3fa2d133ed3642ba1cf8a8c5855cfeace4e0b009cdb9f58431dfc63fbf7878419594d4d7be095ee4d154d3b7570cc
-Size (fribidi-1.0.17.tar.xz) = 1203284 bytes
-SHA1 (patch-bin_Makefile.am) = 8397eb256498d79d8bd97ecf85e4e3ba646d7ecd
-SHA1 (patch-bin_Makefile.in) = cd4ec56e3f0e9371d3493cda5f603ced26ae350f
+BLAKE2s (fribidi-1.0.18.tar.xz) = e568404f0f5aefa38ea8b9b5eb9650d77fdb2a943e5cf11eff2eb683a538a990
+SHA512 (fribidi-1.0.18.tar.xz) = c7bf95e6695652ee935afc3067cb7667e77859bb6d27e7fc2b5294e1bc17d1a0c2ed5f7eef709999f7e51ec4475934f0a4abefde79bc3db577ca2f4361c92a1c
+Size (fribidi-1.0.18.tar.xz) = 1222656 bytes
+SHA1 (patch-bin_Makefile.am) = a81567d42d3e273261e8530578bfbfd21e898d9f
+SHA1 (patch-bin_Makefile.in) = f4a7aff000a20d1af00547a4fc6b6327f13a13c0

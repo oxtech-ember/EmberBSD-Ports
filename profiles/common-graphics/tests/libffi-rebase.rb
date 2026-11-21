@@ -13,12 +13,12 @@ archives, work = ARGV.take(2).map { |path| File.expand_path(path) }
 pkgsrc = File.expand_path(ARGV[2] || ports + '/upstream/pkgsrc')
 recipe = profile + '/../../pkgsrc/devel/libffi'
 original_recipe = pkgsrc + '/devel/libffi'
-archive = archives + '/libffi-3.8.0.tar.gz'
+archive = archives + '/libffi-3.8.1.tar.gz'
 pin = File.readlines(profile + '/sources.tsv').map { |line| line.split("\t") }.find { |fields| fields.first == 'devel/libffi' }
 abort 'Missing source pin' unless pin
 abort 'Archive SHA256 mismatch' unless Digest::SHA256.file(archive).hexdigest == pin.fetch(2)
 info = File.read(recipe + '/distinfo')
-sha512 = info[/^SHA512 \(libffi-3\.8\.0\.tar\.gz\) = ([0-9a-f]{128})$/, 1]
+sha512 = info[/^SHA512 \(libffi-3\.8\.1\.tar\.gz\) = ([0-9a-f]{128})$/, 1]
 abort 'Archive SHA512 mismatch' unless sha512 && Digest::SHA512.file(archive).hexdigest == sha512
 abort 'Use a new work directory' if File.exist?(work)
 FileUtils.mkdir_p(work)
@@ -75,7 +75,7 @@ patches.each do |name, hash|
   abort 'Patch checksum mismatch: ' + name unless Digest::SHA1.hexdigest(filtered) == hash
   command(['patch', '-f', '-N', '-F', '0', '-p0', '-d', fixed], work + '/' + name + '.log', input: path)
 end
-out, status = Open3.capture2('tar', '-xOf', archive, 'libffi-3.8.0/src/powerpc/ffi_powerpc.h')
+out, status = Open3.capture2('tar', '-xOf', archive, 'libffi-3.8.1/src/powerpc/ffi_powerpc.h')
 abort 'Cannot read original header' unless status.success?
 expected = out.sub('#if defined(__FLOAT128_TYPE__) && defined(__HAVE_FLOAT128)', "#ifdef POWERPC64\n#if defined(__FLOAT128_TYPE__) && defined(__HAVE_FLOAT128)")
 expected = expected.sub("typedef char float128[16] __attribute__((aligned(16)));\n#endif", "typedef char float128[16] __attribute__((aligned(16)));\n#endif\n#endif /* POWERPC64 */")

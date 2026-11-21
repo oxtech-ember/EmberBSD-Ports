@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.30 2026/09/01 08:59:33 adam Exp $
 BLAKE2s (pcre2-10.49.tar.gz) = d00d7ef4d076667d90150fc2e4e8cb419d893b4d61d5aac73a9b326db7143c65
 SHA512 (pcre2-10.49.tar.gz) = 6cfd9f824837078bea959ea89c1494950987892ec9b8546691b1aa94fde37c60429c4711c55f9a629c8a6a86bb6ebae738b3a0ebf6e42c70ab008ec6c394aca0
 Size (pcre2-10.49.tar.gz) = 2880625 bytes
+SHA1 (patch-configure) = 9069921c895a57ad072f7c1564f34b173a144d63

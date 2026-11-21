@@ -34,7 +34,7 @@
 --- a/security/openssl/PLIST
 +++ b/security/openssl/PLIST
 @@ -1,5 +1,4 @@
- @comment $NetBSD: PLIST,v 1.28 2026/08/25 12:57:01 adam Exp $
+ @comment $NetBSD: PLIST,v 1.28.2.1 2026/10/03 19:45:34 bsiegert Exp $
 -bin/c_rehash
  bin/openssl
  include/openssl/aes.h
