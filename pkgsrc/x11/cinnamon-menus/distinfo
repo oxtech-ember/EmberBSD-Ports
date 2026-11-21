@@ -1,9 +1,10 @@
 $NetBSD$
 
-SHA512 (6.6.0.tar.gz) = 65402ac018ca4dfd5d7b26808dc665916564b2d2dcac72a8b57125e903bd95c1ecf4c35efb8088fcffd5fab3f394e85d3643816fae4e055d85a3f9622148b756
-Size (6.6.0.tar.gz) = 96541 bytes
+BLAKE2s (6.8.0.tar.gz) = 64d73e9e645b25ffd3779460dbf7e4e07f01e83b08d40477b41ca65aab046df7
+SHA512 (6.8.0.tar.gz) = 5cda604a853ce1dadd59f131e7b95b202189cfffec14bf04ceec41705aa1fc3dff388c538736ce43ce026ad7c5fe3c10ef9db4f9e9e18a755b9178daf1e75525
+Size (6.8.0.tar.gz) = 97606 bytes
 
 SHA1 (patch-libmenu_gmenu-desktopappinfo.c) = 2a7b9c8b1b8940cf7237aef2213d214aa909e45c
 SHA1 (patch-libmenu_menu-layout.c) = 42a7bf0a6d41d5dd1853e695ee6f127e66850d6d
 SHA1 (patch-libmenu_meson.build) = 123f96b3616c8820b833f5b9077eb923d3eeb417
-SHA1 (patch-meson.build) = 3f0183f3704ba316dc614a606c2a5d447ab47b3a
+SHA1 (patch-meson.build) = 7b7e7858e658cad85b3d9e7bc435dd137037b74d

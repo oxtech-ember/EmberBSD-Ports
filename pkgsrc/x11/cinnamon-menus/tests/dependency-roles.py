@@ -19,7 +19,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[4]
 RECIPE = ROOT / 'pkgsrc/x11/cinnamon-menus'
 PKGPATH = 'x11/cinnamon-menus'
-FIELDS = ('PKGREVISION', 'BUILD_DEPENDS', 'TOOL_DEPENDS', 'MAKE_ENV',
+FIELDS = ('DISTNAME', 'BUILD_DEPENDS', 'TOOL_DEPENDS', 'MAKE_ENV',
           'MESON_CROSS_VARS', 'MESON_BINARIES', 'PKG_FAIL_REASON',
           'BUILDLINK_API_DEPENDS.cinnamon-menus', 'GLIB_PUBLIC')
 
@@ -125,12 +125,15 @@ def evaluate(args, package, mode, consumer=False):
 
 
 def check(args, package):
+    source_set = (ROOT / 'probes/cinnamon-stable/sources.tsv').read_text().splitlines()
+    source_archives = [row.split('\t')[1] for row in source_set if row.startswith(PKGPATH + '\t')]
     output = {}
     for mode in ('native', 'aarch64', 'amd64'):
         values = evaluate(args, package, mode)
         output[mode] = values
         require(not values['PKG_FAIL_REASON'], mode + ': GI metadata refused')
-        require(values['PKGREVISION'] == '4', 'dependency change needs package revision 4')
+        require(source_archives == [values['DISTNAME'] + '.tar.gz'],
+                'CMenu recipe and stable source set select different releases')
         require('gtk3' not in ' '.join(values.values()), mode + ': GTK3 dependency appeared')
         if mode == 'native':
             require('glib2-introspection-' in values['TOOL_DEPENDS'], 'native GIR dependency is absent')

@@ -1,5 +1,23 @@
 # Cinnamon stable port validation
 
+## Cinnamon Menus 6.8.0 and CJS 140.3
+
+The eight archives in `sources.tsv` identify the upstream stable tags and their
+commits. The Cinnamon Menus, Cinnamon Desktop and CJS recipe patches apply to
+those archives with zero fuzz. The Cinnamon Menus release and source manifest
+agree in the native, AArch64 and amd64 metadata fixture.
+
+Cinnamon Menus compiled and linked for EmberBSD/AArch64 with Clang 23.1.4.
+The target query captured the CMenu type hierarchy on the NetBSD 11.1 evbarm
+VM. The release-specific AArch64 dump is stored with the common recipe for the
+default replay build. The generated CMenu GIR passed the callback argument
+and closure checks in `pkgsrc/x11/cinnamon-menus/tests/check-gir.py`.
+
+The CJS locale portability check used the patched 140.3 source. The native
+test passed with and without ASan/UBSan. Its AArch64 executable linked
+without an unresolved `uselocale` symbol. The complete CJS runtime still
+requires the OS thread-locale interface described in [LOCALE.md](LOCALE.md).
+
 ## Cinnamon Menus 6.6.0nb3
 
 The source is the upstream `6.6.0` tag (SHA512

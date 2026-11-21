@@ -5,7 +5,7 @@ Keep the shared cross GI query and linker wrapper.
 
 --- libcinnamon-desktop/meson.build.orig
 +++ libcinnamon-desktop/meson.build
-@@ -14,27 +14,18 @@
+@@ -14,28 +14,18 @@
  libcinnamon_desktop_gir_sources = [
    'display-name.c',
    'edid-parse.c',
@@ -29,11 +29,19 @@ Keep the shared cross GI query and linker wrapper.
  
  libcinnamon_desktop_misc_headers = [
    'gnome-datetime-source.h',
+-  'gnome-desktop-thumbnail-script.h',
 -  'gnome-rr-private.h',
    'edid.h',
    'private.h'
  ]
-@@ -49,16 +40,10 @@
+@@ -44,23 +34,16 @@
+   libcinnamon_desktop_gir_sources,
+   libcinnamon_desktop_misc_headers,
+   'gnome-datetime-source.c',
+-  'gnome-desktop-thumbnail-script.c',
+ ]
+ 
+ cdesktop_headers = [
    'cdesktop-enums.h',
  ]
  libcinnamon_desktop_headers = [
@@ -50,7 +58,7 @@ Keep the shared cross GI query and linker wrapper.
    'gnome-systemd.h',
    'gnome-wall-clock.h',
    'gnome-xkb-info.h',
-@@ -89,22 +74,26 @@
+@@ -91,22 +74,26 @@
    name: 'cinnamon-desktop',
    description: 'Utility library for loading .desktop files',
    version: meson.project_version(),
@@ -81,7 +89,7 @@ Keep the shared cross GI query and linker wrapper.
    install: true,
  )
  
-@@ -115,10 +104,11 @@
+@@ -117,10 +104,11 @@
    export_packages: 'cinnamon-desktop',
    identifier_prefix: 'Gnome',
    symbol_prefix: 'gnome_',

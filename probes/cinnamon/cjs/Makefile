@@ -1,11 +1,10 @@
 # cjs: Cinnamon's JavaScript bindings (gjs fork on SpiderMonkey 140).
-# Use the stable CJS 140.1 tag from the Cinnamon 6.6 source set.
-DISTNAME=	cjs-140.1
-DISTFILES=	140.1.tar.gz
-SITES.140.1.tar.gz=	-https://github.com/linuxmint/cjs/archive/refs/tags/140.1.tar.gz
-PKGREVISION=1
+# Use the stable CJS 140.3 tag from the Cinnamon 6.8 source set.
+DISTNAME=	cjs-140.3
+DISTFILES=	140.3.tar.gz
+SITES.140.3.tar.gz=	-https://github.com/linuxmint/cjs/archive/refs/tags/140.3.tar.gz
 CATEGORIES=	lang
-WRKSRC=		${WRKDIR}/cjs-140.1
+WRKSRC=		${WRKDIR}/cjs-140.3
 
 HOMEPAGE=	https://github.com/linuxmint/cjs
 COMMENT=	JavaScript bindings for Cinnamon (SpiderMonkey 140)

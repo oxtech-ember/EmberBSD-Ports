@@ -1,6 +1,6 @@
 # Thread locale acceptance contract
 
-CJS 140.1 needs the POSIX thread locale selector in EmberBSD libc.
+CJS 140.3 needs the POSIX thread locale selector in EmberBSD libc.
 A Ports wrapper cannot replace dispatch through the calling thread's locale.
 The [interface probe](tests/thread-locale.c) is a consumer acceptance test.
 The selector, its ABI and native libc tests belong to the operating system.

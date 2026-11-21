@@ -1,10 +1,9 @@
 # Cinnamon Menus source recipe
 
-This is the common Cinnamon Menus 6.6.0nb4 recipe. The normal Ports exporter
+This is the common Cinnamon Menus 6.8.0 recipe. The normal Ports exporter
 includes it without a profile or a second preparation step.
-The source archive, four patches, PLIST and GIR regression retain the
-[revision-3 package boundary](../../../probes/cinnamon-stable/VALIDATION.md#cinnamon-menus-660nb3).
-Revision 4 changes dependency metadata. It has no new package or runtime acceptance.
+The [6.6.0nb3 package evidence](../../../probes/cinnamon-stable/VALIDATION.md#cinnamon-menus-660nb3)
+records the last validated target GIR and typelib.
 
 The public buildlink requires Cinnamon Menus 6.6.0 and exposes GLib for
 the installed headers' GIO types. GTK 3 is outside this dependency closure.

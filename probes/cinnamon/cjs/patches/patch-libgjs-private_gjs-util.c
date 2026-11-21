@@ -15,7 +15,10 @@ itself to its GLib thread-data destructor.
  typedef struct {
      locale_t id;
      char* name;
-@@ -88,7 +89,7 @@
+@@ -85,10 +86,10 @@
+     return __builtin_popcount(LC_ALL_MASK) + 1;
+ }
+ 
 -static void gjs_locales_free(GjsLocale** locales) {
 +static void gjs_locales_free(GjsLocale* locales) {
      size_t number_of_categories = get_number_of_locale_categories();
@@ -25,13 +28,16 @@ itself to its GLib thread-data destructor.
          gjs_clear_locale_id(&locale->id);
          g_clear_pointer(&locale->name, g_free);
          g_clear_pointer(&locale->prior_name, g_free);
-@@ -104,4 +105,5 @@
+@@ -104,6 +105,7 @@
  
  static GPrivate gjs_private_locale_key =
      G_PRIVATE_INIT((GDestroyNotify)gjs_locales_free);
 +#endif
  
-@@ -115,5 +117,12 @@
+ /**
+  * gjs_set_thread_locale:
+@@ -114,6 +116,13 @@
+  */
  const char* gjs_set_thread_locale(GjsLocaleCategory category,
                                    const char* locale_name) {
 +#if defined(EMBERBSD_NO_USELOCALE)
@@ -44,10 +50,11 @@ itself to its GLib thread-data destructor.
      locale_t new_locale_id = UNSET_LOCALE_ID, old_locale_id = UNSET_LOCALE_ID;
      char* prior_name = NULL;
      bool success = false;
-@@ -172,5 +181,6 @@
-     if (!success)
+@@ -173,6 +182,7 @@
          return NULL;
  
      return locale->prior_name;
 +#endif
  }
+ 
+ void gjs_textdomain(const char* domain) { textdomain(domain); }

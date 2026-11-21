@@ -1,10 +1,9 @@
 # cinnamon-menus: freedesktop menu library for Cinnamon (CMenu-3.0).
 # GIR is required by the shell at runtime.
-DISTNAME=	cinnamon-menus-6.6.0
-PKGREVISION=4
+DISTNAME=	cinnamon-menus-6.8.0
 CATEGORIES=	x11
 MASTER_SITES=	https://github.com/linuxmint/cinnamon-menus/archive/refs/tags/
-DISTFILES=	6.6.0.tar.gz
+DISTFILES=	6.8.0.tar.gz
 WRKSRC=		${WRKDIR}/${DISTNAME}
 
 HOMEPAGE=	https://github.com/linuxmint/cinnamon-menus

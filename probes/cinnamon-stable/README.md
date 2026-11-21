@@ -1,7 +1,7 @@
-# Cinnamon 6.6 stable port
+# Cinnamon 6.8 stable port
 
-The stable source set in `sources.tsv` uses Cinnamon 6.6.9 and matching
-6.6 component releases. CJS 140.1 uses the common SpiderMonkey 140 ESR
+The stable source set in `sources.tsv` uses Cinnamon 6.8.4 and matching
+6.8 component releases. CJS 140.3 uses the common SpiderMonkey 140 ESR
 provider. GTK 3 is outside the accepted Cinnamon dependency closure. Keep
 GTK 3 out of buildlink dependencies, generated introspection metadata and
 runtime package requirements. Port components that still require GTK 3 in
@@ -10,15 +10,14 @@ Ports against the current supported stack.
 The last packaged Cinnamon Menus revision, 6.6.0nb3, built for EmberBSD/AArch64 with GCC 16.2.0,
 GLib 2.90.1, GObject Introspection 1.86.0 and Meson 1.12.1. Its package
 includes the CMenu library, GIR and typelib. The port repairs the CMenu
-launch callback introspection metadata. CJS 140.1 has focused source and
-target-compiler checks, but the full shell and session remain blocked by
+launch callback introspection metadata. The CJS 140.3 locale portability check passed natively and linked for
+AArch64. The full shell and session remain blocked by
 the missing libc `uselocale()` interface. The other stable components
 still need package recipes and target checks.
 
 The [common Cinnamon Menus recipe](../../pkgsrc/x11/cinnamon-menus/README.md)
-is now revision 4. It separates native generators from target GIR data and
-exports the public GLib dependency. Source and finite metadata checks pass;
-the revision-3 package evidence does not accept a new revision-4 package.
+selects 6.8.0. Its exported dependencies distinguish native generators from
+target GIR data and expose GLib for consumers of the installed headers.
 
 The earlier development probe used Cinnamon 6.7 snapshots and GTK 4
 adaptations. It is not the package basis for this stable port.
@@ -32,7 +31,7 @@ null pointer for an empty element and an invalid pointer for a populated
 element. The repaired destructor uses the actual structure address.
 This is a local AI-assisted change. It is not submitted upstream.
 
-Use the unmodified 140.1 source and an existing native GLib provider:
+The recorded check used the unmodified 140.1 source and a native GLib provider.
 
 ```sh
 python3 tests/cjs-locales.py /absolute/cjs-140.1 /absolute/new-checks \
@@ -53,7 +52,7 @@ See [the validation boundary](VALIDATION.md).
 
 ## Required operating-system contract
 
-CJS 140.1 calls POSIX `uselocale()` from `gjs_set_thread_locale()`.
+CJS 140.3 calls POSIX `uselocale()` from `gjs_set_thread_locale()`.
 The selected EmberBSD libc provides `newlocale()`, `duplocale()` and
 `freelocale()`, but it does not provide `uselocale()`.
 A complete port needs the per-thread locale selector in the operating

@@ -2,11 +2,10 @@
 # Cinnamon probe, Wayland profile: the GTK3-era background, RandR and
 # thumbnail code is not built; the mint27 wallpaper painter lives in the
 # cinnamon package itself (GTK4 + layer-shell).
-DISTNAME=	cinnamon-desktop-6.6.2
-PKGREVISION=1
+DISTNAME=	cinnamon-desktop-6.8.1
 CATEGORIES=	x11
 MASTER_SITES=	https://github.com/linuxmint/cinnamon-desktop/archive/refs/tags/
-DISTFILES=	6.6.2.tar.gz
+DISTFILES=	6.8.1.tar.gz
 WRKSRC=		${WRKDIR}/${DISTNAME}
 
 HOMEPAGE=	https://github.com/linuxmint/cinnamon-desktop
@@ -15,6 +14,9 @@ LICENSE=	gnu-lgpl-v2
 
 USE_TOOLS+=	pkg-config msgfmt
 USE_LANGUAGES=	c
+
+# This Wayland profile omits external thumbnailers.
+MESON_ARGS+=	-Dbubblewrap=disabled
 
 
 # The CinnamonDesktop-3.0 and CDesktopEnums-3.0 typelibs are imported

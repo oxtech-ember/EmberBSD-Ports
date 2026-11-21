@@ -9,19 +9,18 @@ Require Meson 1.2 for the cross GI environment argument.
  # Meson build file
  
  # https://github.com/linuxmint/cinnamon-desktop
--project('cinnamon-desktop', 'c', version : '6.6.2', meson_version : '>=0.56.0')
-+project('cinnamon-desktop', 'c', version : '6.6.2', meson_version : '>=1.2.0')
+-project('cinnamon-desktop', 'c', version : '6.8.1', meson_version : '>=0.56.0')
++project('cinnamon-desktop', 'c', version : '6.8.1', meson_version : '>=1.2.0')
  
  # Before making a release, the LT_VERSION string should be modified.
  # The string is of the form C.R.A.
-@@ -29,25 +29,21 @@
+@@ -29,17 +29,14 @@
  
  math    = cc.find_library('m')
  
 -gdk_pixb= dependency('gdk-pixbuf-2.0',  version: '>=2.22.0')
-+# Wayland profile omits GTK3-only background, thumbnail and RandR code.
- gio     = dependency('gio-2.0',         version: '>=2.37.3')
- glib    = dependency('glib-2.0',        version: '>=2.37.3')
+ gio     = dependency('gio-2.0',         version: '>=2.70')
+ glib    = dependency('glib-2.0',        version: '>=2.70')
 -gtk     = dependency('gtk+-3.0',        version: '>=3.3.16')
  systemd = dependency('libsystemd',      required: get_option('systemd'))
  
@@ -33,6 +32,9 @@ Require Meson 1.2 for the cross GI environment argument.
  iso_codes = dependency('iso-codes')
  udev    = dependency('libudev')
  
+@@ -61,10 +58,8 @@
+ have_bwrap = bwrap_arch_ok and not bwrap_opt.disabled() and seccomp.found() and fontconfig.found()
+ 
  cinnamon_deps = [
 -  gdk_pixb,
    gio,
@@ -41,11 +43,11 @@ Require Meson 1.2 for the cross GI environment argument.
    math,
    systemd,
    udev,
-@@ -55,7 +51,6 @@
+@@ -72,7 +67,6 @@
    xext,
    xkbconf,
    xkbfile,
 -  xrandr,
  ]
  
- use_alsa = get_option('alsa')
+ if have_bwrap
