@@ -8,15 +8,15 @@ unchanged.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
-@@ -74,6 +74,7 @@
+@@ -76,6 +76,7 @@
  option(${PROJECT_NAME}_EXAMPLES "Build the examples" ON)
  option(${PROJECT_NAME}_DOCS "Build the API documentation" OFF)
- option(${PROJECT_NAME}_QT6 "Build against Qt 6" OFF)
+ option(${PROJECT_NAME}_QT6 "Build against Qt 6" ON)
 +option(${PROJECT_NAME}_CODEGENERATOR_ONLY "Only build kdwsdl2cpp, which needs no QtNetwork" OFF)
  
  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ECM/modules")
  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/KDAB/modules")
-@@ -103,8 +104,13 @@
+@@ -119,8 +120,13 @@
  if(${PROJECT_NAME}_QT6)
      set(QT_VERSION_MAJOR 6)
      set(QT_MIN_VERSION "6.0.0")
@@ -32,7 +32,7 @@ unchanged.
      set(${PROJECT_NAME}_LIBRARY_QTID "-qt6")
      set(libkode_QT6 ON)
  else()
-@@ -284,10 +290,18 @@
+@@ -296,10 +302,18 @@
      enable_testing()
  endif()
  

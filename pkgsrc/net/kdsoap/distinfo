@@ -1,9 +1,9 @@
 $NetBSD: distinfo,v 1.4 2025/12/30 02:18:47 markd Exp $
 
-BLAKE2s (kdsoap-2.2.0.tar.gz) = ebf0573c933fa2947f1fc37611d5b739c716105b7e39f63c1ca33d2605cd163d
-SHA512 (kdsoap-2.2.0.tar.gz) = 6ed5cd6a0d02a9faf6881facbd28391c553b3671512153ecd058ab53bfbe9d3f0afa3704d580e66010ddf6a3de7e578a632339f8c1ae7529c28f9d5fd7d1eb5f
-Size (kdsoap-2.2.0.tar.gz) = 11918875 bytes
-SHA1 (patch-CMakeLists.txt) = 7d9a5b45db4d7481acf3dd63ec1bf5eafabd9f3e
+BLAKE2s (kdsoap-2.3.0.tar.gz) = aec566e791ffcef22a47934a5e0bf470cf749e24fecb5093ea4b0adab85ddd02
+SHA512 (kdsoap-2.3.0.tar.gz) = 5903a793550d206dafcc9683c86b3e4098294ce86ecc535304cae27994c8675f037e93daad1f22a920f32772076ace1c95d30428473da2515dafee516ebd199e
+Size (kdsoap-2.3.0.tar.gz) = 1151999 bytes
+SHA1 (patch-CMakeLists.txt) = 1145140d7710d70e8c3c2a6c639b72170985e5ba
 SHA1 (patch-kdwsdl2cpp_CMakeLists.txt) = f163ac3a6b42ec346481bb7006c14ef20a2db859
 SHA1 (patch-kdwsdl2cpp_libkode_common_fileprovider.cpp) = 50577b2398bd09dc72840c61883ae5debdfea79f
-SHA1 (patch-kdwsdl2cpp_src_main.cpp) = 8d43054ec2fde31d76ed84fbf27ed19b3aeb1a65
+SHA1 (patch-kdwsdl2cpp_src_main.cpp) = 6de3a3e1c2fb5d1bead3e551f8a6d94d98b7e4a1

@@ -29,7 +29,8 @@ BUILDLINK_TRANSFORM+=	rm:-Wl,--fatal-warnings
 # net/kdsoap-kdwsdl2cpp (same KDSoap release), through the upstream override
 # knob.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-TOOL_DEPENDS+=	kdsoap-kdwsdl2cpp-2.2.0{,nb[0-9]*}:../../net/kdsoap-kdwsdl2cpp
+.include "../../net/kdsoap/version.mk"
+TOOL_DEPENDS+=	kdsoap-kdwsdl2cpp-${KDSOAP_VERSION}{,nb[0-9]*}:../../net/kdsoap-kdwsdl2cpp
 CMAKE_CONFIGURE_ARGS+=	-DKDSOAP_KDWSDL2CPP_COMPILER=${TOOLBASE}/bin/kdwsdl2cpp-qt6
 .endif
 .include "../../mk/bsd.pkg.mk"

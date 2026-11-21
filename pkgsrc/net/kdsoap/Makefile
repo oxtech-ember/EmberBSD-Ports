@@ -1,7 +1,5 @@
 # $NetBSD: Makefile,v 1.27 2026/09/02 19:03:57 wiz Exp $
 
-PKGREVISION=	5
-
 .include "Makefile.common"
 
 COMMENT=	Qt-based client-side and server-side SOAP component
