@@ -4,7 +4,7 @@
 # https://github.com/aous72/OpenJPH/issues/304
 
 # Origin: pkgsrc; EmberBSD common-provider update (AI-assisted).
-DISTNAME=	OpenJPH-0.32.0
+DISTNAME=	OpenJPH-0.33.0
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_GITHUB:=aous72/}
 GITHUB_TAG=	${PKGVERSION_NOREV}

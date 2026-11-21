@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.89 2026/08/23 07:48:26 wiz Exp $
 
 # Origin: pkgsrc; EmberBSD common-provider update (AI-assisted).
-DISTNAME=	openexr-3.5.2
+DISTNAME=	openexr-3.5.4
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_GITHUB:=AcademySoftwareFoundation/}
 GITHUB_PROJECT=	openexr
@@ -41,7 +41,7 @@ CHECK_PORTABILITY_SKIP+=	share/util/reformat.sh
 .include "../../mk/pthread.buildlink3.mk"
 BUILDLINK_API_DEPENDS.libdeflate+= libdeflate>=1.26
 .include "../../devel/libdeflate/buildlink3.mk"
-BUILDLINK_API_DEPENDS.OpenJPH+= OpenJPH>=0.32.0
+BUILDLINK_API_DEPENDS.OpenJPH+= OpenJPH>=0.33.0
 .include "../../graphics/OpenJPH/buildlink3.mk"
 BUILDLINK_API_DEPENDS.imath+= imath>=3.2.3
 .include "../../math/imath/buildlink3.mk"

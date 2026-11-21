@@ -16,6 +16,6 @@ lib/cmake/openjph/openjph-config.cmake
 lib/cmake/openjph/openjph-targets-release.cmake
 lib/cmake/openjph/openjph-targets.cmake
 lib/libopenjph.so
-lib/libopenjph.so.0.32
+lib/libopenjph.so.0.33
 lib/libopenjph.so.${PKGVERSION}
 lib/pkgconfig/openjph.pc

@@ -6,18 +6,18 @@ strings before existing fatal exits. Do not change codecs.
 
 --- src/test/OpenEXRTest/tmpDir.h.orig
 +++ src/test/OpenEXRTest/tmpDir.h
-@@ -3,6 +3,11 @@
+@@ -2,6 +2,11 @@
+ // SPDX-License-Identifier: BSD-3-Clause
  // Copyright (c) Contributors to the OpenEXR Project.
  //
- 
++
 +#pragma once
 +
 +#include <cstdlib>
 +#include <string>
-+
+ 
  #if defined(ANDROID) || defined(__ANDROID_API__)
  #    define IMF_TMP_DIR "/sdcard/"
- #    define IMF_PATH_SEPARATOR "/"
 @@ -18,3 +23,14 @@
  #    define IMF_TMP_DIR "/var/tmp/"
  #    define IMF_PATH_SEPARATOR "/"
@@ -35,7 +35,7 @@ strings before existing fatal exits. Do not change codecs.
 +}
 --- src/test/OpenEXRTest/main.cpp.orig
 +++ src/test/OpenEXRTest/main.cpp
-@@ -127,7 +127,7 @@
+@@ -140,7 +140,7 @@
          // tempDir += IMF_PATH_SEPARATOR;
          tempDir += "OpenEXRTest_";
  #else
@@ -44,7 +44,7 @@ strings before existing fatal exits. Do not change codecs.
  #endif
          for (int i = 0; i < 8; ++i)
              tempDir += ('A' + rand48.nexti () % 26);
-@@ -148,6 +148,7 @@
+@@ -161,6 +161,7 @@
                        << ") failed: "
                           "errno = "
                        << errno << std::endl;
@@ -54,7 +54,7 @@ strings before existing fatal exits. Do not change codecs.
      }
 --- src/test/OpenEXRUtilTest/main.cpp.orig
 +++ src/test/OpenEXRUtilTest/main.cpp
-@@ -63,7 +63,7 @@
+@@ -76,7 +76,7 @@
          // tempDir += IMF_PATH_SEPARATOR;
          tempDir += "OpenEXRTest_";
  #else
@@ -88,7 +88,7 @@ strings before existing fatal exits. Do not change codecs.
  
  #define TEST_STRING(x) #x
  
-@@ -97,19 +83,14 @@
+@@ -104,19 +90,14 @@
              if (trycount == 2) exit (1);
          }
  #else
@@ -111,27 +111,3 @@ strings before existing fatal exits. Do not change codecs.
              exit (1);
          }
          int status = 0;
---- src/test/OpenEXRTest/testBadTypeAttributes.cpp.orig
-+++ src/test/OpenEXRTest/testBadTypeAttributes.cpp
-@@ -353,9 +353,10 @@
- }
- 
- void
--testWriteBadTypes ()
-+testWriteBadTypes (const std::string& tempDir)
- {
--    static const char* tmpfile = IMF_TMP_DIR "badfile.exr";
-+    const std::string filename = tempDir + "badfile.exr";
-+    const char* tmpfile = filename.c_str ();
- 
-     // attributes should be added automatically for deep files
-     check<DeepScanLineInputFile, DeepScanLineOutputFile> (
-@@ -432,7 +433,7 @@
-     cout << "Testing whether bad type attributes are fixed on write... "
-          << endl;
- 
--    testWriteBadTypes ();
-+    testWriteBadTypes (tempDir);
- 
-     cout << "ok\n" << endl;
- }

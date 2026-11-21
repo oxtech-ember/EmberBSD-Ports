@@ -1,5 +1,14 @@
 # OpenEXR and OpenJPH common providers
 
+The common recipes select OpenEXR 3.5.4 and OpenJPH 0.33.0. OpenEXR
+continues to expose the 3.5 ABI and links to the new OpenJPH SONAME
+`libopenjph.so.0.33`. The installed API check requires OpenEXR 3.5.4.
+The source pins and archive digests are in [sources.tsv](../sources.tsv).
+[OpenEXR release](https://github.com/AcademySoftwareFoundation/openexr/releases/tag/v3.5.4)
+and [OpenJPH release](https://github.com/aous72/OpenJPH/releases/tag/0.33.0).
+
+## Qualification of OpenEXR 3.5.2 and OpenJPH 0.32.0
+
 The update keeps `graphics/openexr` as the single OpenEXR provider.
 OpenEXR 3.5.2 is the official stable release published on 2026-10-03:
 [tag and release](https://github.com/AcademySoftwareFoundation/openexr/releases/tag/v3.5.2).

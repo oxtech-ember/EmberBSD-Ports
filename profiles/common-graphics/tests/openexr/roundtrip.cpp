@@ -125,7 +125,7 @@ int main(int argc, char** argv)
         int major = 0, minor = 0, patch = 0;
         const char* extra = nullptr;
         exr_get_library_version(&major, &minor, &patch, &extra);
-        check(major == 3 && minor == 5 && patch == 2, "Expected OpenEXR 3.5.2 runtime");
+        check(major == 3 && minor == 5 && patch == 4, "Expected OpenEXR 3.5.4 runtime");
         exr::setGlobalThreadCount(2);
         const exr::Compression methods[] = {exr::NO_COMPRESSION, exr::RLE_COMPRESSION,
             exr::ZIPS_COMPRESSION, exr::ZIP_COMPRESSION, exr::PIZ_COMPRESSION,
