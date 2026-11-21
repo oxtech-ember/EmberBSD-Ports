@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(tinyexr VERSION 3.2.0 LANGUAGES C CXX)
+project(tinyexr VERSION 3.4.0 LANGUAGES C CXX)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 find_package(ZLIB REQUIRED)

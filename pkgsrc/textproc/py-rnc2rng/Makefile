@@ -1,8 +1,7 @@
 # $NetBSD$
 # Origin: EmberBSD contributors (AI-assisted). Shared upstream Python dependency.
 
-DISTNAME=	rnc2rng-2.7.0
-PKGREVISION=	1
+DISTNAME=	rnc2rng-2.8.0
 PKGNAME=	${PYPKGPREFIX}-${DISTNAME}
 CATEGORIES=	textproc python
 MASTER_SITES=	${MASTER_SITE_PYPI:=r/rnc2rng/}
@@ -20,7 +19,7 @@ USE_LANGUAGES=	# none
 PY_RENAME_BINARIES=	rnc2rng
 
 do-test:
-	cd ${WRKSRC} && ${SETENV} ${TEST_ENV} ${PYTHONBIN} test.py
+	cd ${WRKSRC} && ${SETENV} ${TEST_ENV} ${PYTHONBIN} -m unittest tests.test_golden
 
 .include "../../lang/python/wheel.mk"
 .include "../../mk/bsd.pkg.mk"
