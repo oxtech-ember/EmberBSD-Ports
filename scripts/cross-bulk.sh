@@ -379,27 +379,15 @@ native_info()
 # PKGNAME $2 or newer. pkg_info matches BASE>=VERSION with the version
 # order that pkgsrc uses for dependency patterns. A newer installed package
 # is current; an older one is not, and its node is built again.
+. "$(dirname "$0")/native-package-current.sh"
+
 native_current()
 {
     [ -n "$1" ] || return 1
-    case "$2" in
-        "$1"-[0-9]*) set -- "$1>=${2#"$1"-}" ;;
-        *) set -- "$1" ;;
-    esac
     set -f
-    if $native_pkg_info -e "$1" > /dev/null 2>&1; then set +f; return 0; fi
+    if native_current_query "$1" "$2" $native_pkg_info > /dev/null; then rc=0; else rc=$?; fi
     set +f
-    return 1
-}
-
-# Whether the native prefix has a package that matches the dependency
-# pattern $1.
-native_satisfies()
-{
-    set -f
-    if $native_pkg_info -e "$1" > /dev/null 2>&1; then set +f; return 0; fi
-    set +f
-    return 1
+    return "$rc"
 }
 
 # Print the PKG_SKIP_REASON of a node on the first line, then its
@@ -445,7 +433,8 @@ node_deps()
     if [ -n "$suffix" ]; then
         base=$(printf '%s\n' "$vars" | sed -n 6p) || return 1
         name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
-        ! native_current "$base" "$name" || current=yes
+        if native_current "$base" "$name"; then current=yes
+        else case $? in 1) ;; *) return 2 ;; esac; fi
     fi
     # pkgsrc resolves each dependency directory from the package that declares
     # it. show-depends-pkgpaths keeps that directory with :C/^[^:]*://, the
@@ -502,10 +491,21 @@ node_deps()
             }
         }') || return 1
     # A dependency is soft only when every pattern that names it is satisfied.
-    printf '%s\n' "$deps" | while read -r dep pattern; do
-        [ -n "$dep" ] || continue
-        if [ -n "$suffix" ] && native_satisfies "$pattern"; then echo "$dep 1"; else echo "$dep 0"; fi
-    done | awk '{ if (!($1 in soft)) soft[$1] = 1; if ($2 == 0) soft[$1] = 0 }
+    soft_rows=$(set -f
+        while read -r dep pattern; do
+            [ -n "$dep" ] || continue
+            if [ -n "$suffix" ] && $native_pkg_info -e "$pattern" > /dev/null; then
+                echo "$dep 1"
+            else
+                rc=$?
+                [ "$rc" -eq 1 ] || exit "$rc"
+                echo "$dep 0"
+            fi
+        done <<EOF
+$deps
+EOF
+    ) || return 2
+    printf '%s\n' "$soft_rows" | awk 'NF == 2 { if (!($1 in soft)) soft[$1] = 1; if ($2 == 0) soft[$1] = 0 }
         END { for (d in soft) print d (soft[d] ? " soft" : "") }' | sort -u
 }
 
@@ -1449,9 +1449,13 @@ build_native()
             esac
         fi
     fi
-    if [ "${stage_local:-no}" != yes ] && native_current "$base" "$name"; then
-        result "$key" "done $nnode"
-        return 0
+    if [ "${stage_local:-no}" != yes ]; then
+        if native_current "$base" "$name"; then
+            result "$key" "done $nnode"
+            return 0
+        else
+            case $? in 1) ;; *) result "$key" "failed $nnode native-pkgdb"; return 0 ;; esac
+        fi
     fi
     install=install why=build
     set -f
