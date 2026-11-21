@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (nanoflann-2.0.1.tar.gz) = ed974d30df5bbcd1b7ca00b2745b3ac4e42165792aff845efa643f778c391eed
-SHA512 (nanoflann-2.0.1.tar.gz) = b283e22beca5bba86cc1eef4b2bd34cbe4d77941850d92ef40039d40fbe879f3c999265eb407f7cc445e903ae2a9eb79b92889f5400144848536462fdf562026
-Size (nanoflann-2.0.1.tar.gz) = 604653 bytes
+BLAKE2s (nanoflann-2.0.2.tar.gz) = c6fd23db9d1f62d5ca1155c54e9df9f53af581cac9c18892d4105e91409d2ee2
+SHA512 (nanoflann-2.0.2.tar.gz) = 05e83b00b472283f02118d61e897a2c0e36249ff5ad43cbe040b4ff3430d16f36b152a1a04ea5bc2391f6277141579a7e25248fb5a9efd5426b3c7264b6ccb83
+Size (nanoflann-2.0.2.tar.gz) = 605357 bytes

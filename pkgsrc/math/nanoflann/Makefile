@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	nanoflann-2.0.1
+DISTNAME=	nanoflann-2.0.2
 CATEGORIES=	math
 MASTER_SITES=	${MASTER_SITE_GITHUB:=jlblancoc/}
 GITHUB_TAG=	${PKGVERSION_NOREV}
