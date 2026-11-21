@@ -139,6 +139,7 @@ include/tf-psa-crypto/private/everest/kremlin/internal/types.h
 include/tf-psa-crypto/private/everest/kremlin/internal/wasmsupport.h
 include/tf-psa-crypto/private/everest/vs2013/Hacl_Curve25519.h
 include/tf-psa-crypto/private/everest/x25519.h
+include/tf-psa-crypto/private/mldsa.h
 include/tf-psa-crypto/version.h
 lib/cmake/MbedTLS/MbedTLSConfig.cmake
 lib/cmake/MbedTLS/MbedTLSConfigVersion.cmake
@@ -156,14 +157,14 @@ ${PLIST.notdarwin}lib/libmbedcrypto.so.${PKGVERSION}
 lib/libmbedtls.a
 lib/libmbedtls.so
 lib/libmbedtls.so.${PKGVERSION}
-lib/libmbedtls.so.23
+lib/libmbedtls.so.24
 lib/libmbedx509.a
 lib/libmbedx509.so
 lib/libmbedx509.so.${PKGVERSION}
 lib/libmbedx509.so.9
 lib/libtfpsacrypto.a
 lib/libtfpsacrypto.so
-lib/libtfpsacrypto.so.1.2.0
+lib/libtfpsacrypto.so.1.3.0
 lib/libtfpsacrypto.so.2
 lib/pkgconfig/mbedcrypto.pc
 lib/pkgconfig/mbedtls.pc

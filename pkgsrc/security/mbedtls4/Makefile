@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.2 2026/01/22 22:55:49 wiz Exp $
 
-DISTNAME=	mbedtls-4.2.0
+DISTNAME=	mbedtls-4.3.0
 PKGNAME=	${DISTNAME:S/mbedtls/mbedtls4/}
 CATEGORIES=	security
 MASTER_SITES=	${MASTER_SITE_GITHUB:=Mbed-TLS/mbedtls/releases/download/mbedtls-${PKGVERSION_NOREV}/}

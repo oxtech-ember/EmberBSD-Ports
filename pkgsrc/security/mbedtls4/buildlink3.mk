@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	mbedtls4
 MBEDTLS4_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.mbedtls4+=	mbedtls4>=4.2.0
-BUILDLINK_ABI_DEPENDS.mbedtls4?=	mbedtls4>=4.2.0
+BUILDLINK_ABI_DEPENDS.mbedtls4?=	mbedtls4>=4.3.0
 BUILDLINK_PKGSRCDIR.mbedtls4?=		../../security/mbedtls4
 
 .endif	# MBEDTLS4_BUILDLINK3_MK
