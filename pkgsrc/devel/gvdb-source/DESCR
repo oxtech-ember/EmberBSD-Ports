@@ -1,0 +1,2 @@
+GVDB reads and writes GVariant databases. GNOME distributes it as a Meson
+subproject. GLib and dconf compile the same sources with their own flags.

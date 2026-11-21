@@ -122,6 +122,7 @@ PREFER.iconv=	pkgsrc
 .include "../../converters/libiconv/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"
 .include "../../devel/libffi/buildlink3.mk"
+.include "../../devel/gvdb-source/build.mk"
 .include "../../devel/meson/build.mk"
 .include "../../devel/pcre2/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"

@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (dconf-51.0.tar.xz) = 497c07c685a32d1e65f98c804e641928e713d3052f592ff880f6b2876a850575
+SHA512 (dconf-51.0.tar.xz) = 729783063b561316d690fa38d9fb4d1df766fca1d30795ef45446e3407f7f3da3aa993c40d26df5464647643a28ea67653c6c2cbecfde79f3a5e79d83d7c8950
+Size (dconf-51.0.tar.xz) = 126604 bytes
+SHA1 (patch-client_meson.build) = 1b9edf13f6d2dbd917c8e88e33a51b077b95370e
+SHA1 (patch-meson.build) = b9bc0702dc3f058664a09a4a50ab2d86400d3070

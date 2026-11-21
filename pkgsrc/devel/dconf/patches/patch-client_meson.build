@@ -1,0 +1,26 @@
+$NetBSD$
+
+Install the supplied Vala bindings in the target data directory. Their
+installation does not execute vapigen or require a target Vala compiler.
+
+--- client/meson.build.orig
++++ client/meson.build
+@@ -63,17 +63,12 @@
+ )
+ 
+ if get_option('vapi')
+-  vapigen_dep = dependency('vapigen')
+-
+   vapi_data = files(
+     'dconf.vapi',
+     'dconf.deps',
+   )
+ 
+-  vapi_dir = vapigen_dep.get_variable(
+-    pkgconfig: 'vapidir',
+-    pkgconfig_define: ['datadir', dconf_datadir]
+-  )
++  vapi_dir = join_paths(dconf_datadir, 'vala', 'vapi')
+ 
+   install_data(
+     vapi_data,

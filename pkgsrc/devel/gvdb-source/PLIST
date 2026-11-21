@@ -1,0 +1,13 @@
+@comment $NetBSD$
+share/gvdb-source/COPYING
+share/gvdb-source/LICENSES/LGPL-2.1-or-later.txt
+share/gvdb-source/gvdb/gvdb-builder.c
+share/gvdb-source/gvdb/gvdb-builder.h
+share/gvdb-source/gvdb/gvdb-format.h
+share/gvdb-source/gvdb/gvdb-reader.c
+share/gvdb-source/gvdb/gvdb-reader.h
+share/gvdb-source/gvdb/tests/autoptr.c
+share/gvdb-source/gvdb/tests/gvdb.c
+share/gvdb-source/gvdb/tests/meson.build
+share/gvdb-source/meson.build
+share/gvdb-source/meson.options

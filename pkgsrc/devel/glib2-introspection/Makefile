@@ -111,6 +111,7 @@ do-install:
 BUILDLINK_API_DEPENDS.gobject-introspection+=	gobject-introspection>=1.86.0nb5
 .include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../devel/libffi/buildlink3.mk"
+.include "../../devel/gvdb-source/build.mk"
 .include "../../devel/meson/build.mk"
 .include "../../devel/pcre2/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"

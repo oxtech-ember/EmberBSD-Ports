@@ -1,0 +1,17 @@
+$NetBSD$
+
+Pass target installation directories separately from sysroot lookup paths.
+
+--- meson.build.orig
++++ meson.build
+@@ -47,6 +47,10 @@
+ 
+ gio_module_dir = gio_dep.get_variable(pkgconfig: 'giomoduledir', pkgconfig_define: ['libdir', dconf_libdir])
+ dbus_session_service_dir = dependency('dbus-1').get_variable(pkgconfig: 'session_bus_services_dir', pkgconfig_define: ['datadir', dconf_datadir])
++
++# A cross pkg-config may prefix installation paths with its target sysroot.
++gio_module_dir = meson.get_external_property('gio_module_dir', gio_module_dir)
++dbus_session_service_dir = meson.get_external_property('dbus_session_service_dir', dbus_session_service_dir)
+ 
+ systemd_userunitdir = get_option('systemduserunitdir')
+ 

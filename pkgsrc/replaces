@@ -1,4 +1,5 @@
 # Local recipes that replace the upstream recipe with the same path.
+devel/dconf
 devel/gdb
 net/wpa_supplicant
 devel/gyp
