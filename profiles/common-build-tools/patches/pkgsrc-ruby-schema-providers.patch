@@ -1,0 +1,103 @@
+Use current Ruby regexp and IDNA providers with the upstream JSON Schemer range.
+Origin: EmberBSD (AI-assisted).
+
+--- a/devel/ruby-regexp_parser/Makefile
++++ b/devel/ruby-regexp_parser/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.26 2026/04/12 14:43:40 taca Exp $
+ 
+-DISTNAME=	regexp_parser-2.12.0
++DISTNAME=	regexp_parser-2.13.4
+ CATEGORIES=	devel
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+--- a/devel/ruby-regexp_parser/PLIST
++++ b/devel/ruby-regexp_parser/PLIST
+@@ -1,8 +1,6 @@
+ @comment $NetBSD: PLIST,v 1.16 2026/04/12 14:43:40 taca Exp $
+ ${GEM_HOME}/cache/${GEM_NAME}.gem
+-${GEM_LIBDIR}/Gemfile
+ ${GEM_LIBDIR}/LICENSE
+-${GEM_LIBDIR}/Rakefile
+ ${GEM_LIBDIR}/lib/regexp_parser.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/error.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression.rb
+@@ -33,9 +31,11 @@
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/methods/options.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/methods/parts.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/methods/printing.rb
++${GEM_LIBDIR}/lib/regexp_parser/expression/methods/quantification.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/methods/referenced_expressions.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/methods/strfregexp.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/methods/tests.rb
++${GEM_LIBDIR}/lib/regexp_parser/expression/methods/to_s.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/methods/traverse.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/quantifier.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/expression/sequence.rb
+@@ -45,14 +45,11 @@
+ ${GEM_LIBDIR}/lib/regexp_parser/lexer.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/parser.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/scanner.rb
+-${GEM_LIBDIR}/lib/regexp_parser/scanner/char_type.rl
+ ${GEM_LIBDIR}/lib/regexp_parser/scanner/errors/premature_end_error.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/scanner/errors/scanner_error.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/scanner/errors/validation_error.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/scanner/properties/long.csv
+ ${GEM_LIBDIR}/lib/regexp_parser/scanner/properties/short.csv
+-${GEM_LIBDIR}/lib/regexp_parser/scanner/property.rl
+-${GEM_LIBDIR}/lib/regexp_parser/scanner/scanner.rl
+ ${GEM_LIBDIR}/lib/regexp_parser/syntax.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/syntax/any.rb
+ ${GEM_LIBDIR}/lib/regexp_parser/syntax/base.rb
+--- a/devel/ruby-regexp_parser/distinfo
++++ b/devel/ruby-regexp_parser/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.28 2026/04/12 14:43:40 taca Exp $
+ 
+-BLAKE2s (regexp_parser-2.12.0.gem) = 43e8d6f5667df415a088a9972af74b3b9434fea100250480ef1672545d3568d9
+-SHA512 (regexp_parser-2.12.0.gem) = 7d7c1ddaa3d9cd436a3d7f4ac53a4ceed3e3cdba85e883a1cb84aa3d3165042af6f3951a4de414a111aac233dfcc46eabc8e59311d3594151861ceb6af2043d5
+-Size (regexp_parser-2.12.0.gem) = 60416 bytes
++BLAKE2s (regexp_parser-2.13.4.gem) = efdf696074048e1a52056ea92872344eb74725458a59c205ad43903e486bcc3d
++SHA512 (regexp_parser-2.13.4.gem) = 2421ae23b1a576e982b7bf3755258fa119f9ec141feddd2245ddd05c3df378c2115be03119842426b30a88d43e43ea26d4a3818670dc1dd6d535499ec44d8288
++Size (regexp_parser-2.13.4.gem) = 54272 bytes
+--- a/devel/ruby-simpleidn/Makefile
++++ b/devel/ruby-simpleidn/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.10 2024/05/26 15:27:54 taca Exp $
+ 
+-DISTNAME=	simpleidn-0.2.3
++DISTNAME=	simpleidn-0.3.0
+ PKGNAME=	${RUBY_PKGPREFIX}-${DISTNAME}
+ CATEGORIES=	devel
+ 
+--- a/devel/ruby-simpleidn/PLIST
++++ b/devel/ruby-simpleidn/PLIST
+@@ -1,15 +1,10 @@
+ @comment $NetBSD: PLIST,v 1.4 2023/08/08 00:35:11 taca Exp $
+ ${GEM_HOME}/cache/${GEM_NAME}.gem
+-${GEM_LIBDIR}/.gitignore
+-${GEM_LIBDIR}/.travis.yml
+-${GEM_LIBDIR}/Gemfile
++${GEM_LIBDIR}/CHANGELOG.md
+ ${GEM_LIBDIR}/LICENCE
+-${GEM_LIBDIR}/README.rdoc
+-${GEM_LIBDIR}/Rakefile
++${GEM_LIBDIR}/README.md
+ ${GEM_LIBDIR}/lib/simpleidn.rb
+ ${GEM_LIBDIR}/lib/simpleidn/uts46mapping.rb
+ ${GEM_LIBDIR}/lib/simpleidn/version.rb
+ ${GEM_LIBDIR}/simpleidn.gemspec
+-${GEM_LIBDIR}/tables/IdnaMappingTable.txt
+-${GEM_LIBDIR}/tables/generate_mapping_table.rb
+ ${GEM_HOME}/specifications/${GEM_NAME}.gemspec
+--- a/devel/ruby-simpleidn/distinfo
++++ b/devel/ruby-simpleidn/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.9 2024/05/26 15:27:54 taca Exp $
+ 
+-BLAKE2s (simpleidn-0.2.3.gem) = 1160d3c5ed02a768496ed8ff2d89cfffa039dae7748df38bcb8284fc5a3f6be8
+-SHA512 (simpleidn-0.2.3.gem) = 11f8bf47a2848169564a0d60df151a9a58e0d18c8edcf503d9af85e72410da32c903ec3e756b877865007749c6146d9e28bff5aaa8cc636867d9c13b41f503ba
+-Size (simpleidn-0.2.3.gem) = 152576 bytes
++BLAKE2s (simpleidn-0.3.0.gem) = 22f4d8a24ca44e6e3d3b3a7ff5b8d760a10311ac3a35c24f6053e650e4b07d6e
++SHA512 (simpleidn-0.3.0.gem) = ef108446db1e2473649e173c6da16d81523b29d36fd8b69d81fa33c4a93d56018a3b4d53d1e47bde0b2d63bdf15228661675ce8c631e4c45b2e42ef305b976e8
++Size (simpleidn-0.3.0.gem) = 44544 bytes

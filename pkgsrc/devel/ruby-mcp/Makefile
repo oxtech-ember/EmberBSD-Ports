@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	mcp-1.8.2
+DISTNAME=	mcp-1.11.0
 CATEGORIES=	devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org

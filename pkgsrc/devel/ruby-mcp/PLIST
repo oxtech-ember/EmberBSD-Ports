@@ -11,7 +11,6 @@ ${GEM_LIBDIR}/lib/mcp/cancelled_error.rb
 ${GEM_LIBDIR}/lib/mcp/client.rb
 ${GEM_LIBDIR}/lib/mcp/client/elicitation.rb
 ${GEM_LIBDIR}/lib/mcp/client/http.rb
-${GEM_LIBDIR}/lib/mcp/client/mcp_param_headers.rb
 ${GEM_LIBDIR}/lib/mcp/client/modern_envelope.rb
 ${GEM_LIBDIR}/lib/mcp/client/oauth.rb
 ${GEM_LIBDIR}/lib/mcp/client/oauth/authorization_request.rb
@@ -27,6 +26,8 @@ ${GEM_LIBDIR}/lib/mcp/client/oauth/pkce.rb
 ${GEM_LIBDIR}/lib/mcp/client/oauth/provider.rb
 ${GEM_LIBDIR}/lib/mcp/client/oauth/storage_backed_provider.rb
 ${GEM_LIBDIR}/lib/mcp/client/paginated_result.rb
+${GEM_LIBDIR}/lib/mcp/client/skill_errors.rb
+${GEM_LIBDIR}/lib/mcp/client/skills.rb
 ${GEM_LIBDIR}/lib/mcp/client/stdio.rb
 ${GEM_LIBDIR}/lib/mcp/client/tool.rb
 ${GEM_LIBDIR}/lib/mcp/configuration.rb
@@ -37,6 +38,7 @@ ${GEM_LIBDIR}/lib/mcp/error_codes.rb
 ${GEM_LIBDIR}/lib/mcp/icon.rb
 ${GEM_LIBDIR}/lib/mcp/instrumentation.rb
 ${GEM_LIBDIR}/lib/mcp/logging_message_notification.rb
+${GEM_LIBDIR}/lib/mcp/mcp_param_headers.rb
 ${GEM_LIBDIR}/lib/mcp/methods.rb
 ${GEM_LIBDIR}/lib/mcp/progress.rb
 ${GEM_LIBDIR}/lib/mcp/prompt.rb
@@ -68,10 +70,15 @@ ${GEM_LIBDIR}/lib/mcp/server/pagination.rb
 ${GEM_LIBDIR}/lib/mcp/server/pending_response.rb
 ${GEM_LIBDIR}/lib/mcp/server/request_state_security.rb
 ${GEM_LIBDIR}/lib/mcp/server/transports.rb
+${GEM_LIBDIR}/lib/mcp/server/transports/event_store.rb
 ${GEM_LIBDIR}/lib/mcp/server/transports/stdio_transport.rb
 ${GEM_LIBDIR}/lib/mcp/server/transports/streamable_http_transport.rb
 ${GEM_LIBDIR}/lib/mcp/server_context.rb
 ${GEM_LIBDIR}/lib/mcp/server_session.rb
+${GEM_LIBDIR}/lib/mcp/skill.rb
+${GEM_LIBDIR}/lib/mcp/skill/directory.rb
+${GEM_LIBDIR}/lib/mcp/skill/frontmatter.rb
+${GEM_LIBDIR}/lib/mcp/skill/resource_entry.rb
 ${GEM_LIBDIR}/lib/mcp/string_utils.rb
 ${GEM_LIBDIR}/lib/mcp/tool.rb
 ${GEM_LIBDIR}/lib/mcp/tool/annotations.rb

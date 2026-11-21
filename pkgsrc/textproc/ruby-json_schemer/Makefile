@@ -10,7 +10,7 @@ LICENSE=	mit
 
 DEPENDS+=	${RUBY_PKGPREFIX}-hana>=1.3<2:../../devel/ruby-hana
 DEPENDS+=	${RUBY_PKGPREFIX}-regexp_parser>=2.0<3:../../devel/ruby-regexp_parser
-DEPENDS+=	${RUBY_PKGPREFIX}-simpleidn>=0.2<0.3:../../devel/ruby-simpleidn
+DEPENDS+=	${RUBY_PKGPREFIX}-simpleidn>=0.2<1:../../devel/ruby-simpleidn
 
 USE_LANGUAGES=	# none
 
