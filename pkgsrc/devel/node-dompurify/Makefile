@@ -1,6 +1,6 @@
 # Origin: EmberBSD contributors (AI-assisted); common upstream DOMPurify.
-DISTNAME= dompurify-3.4.17
-PKGNAME= node-dompurify-3.4.17
+DISTNAME= dompurify-3.4.18
+PKGNAME= node-dompurify-3.4.18
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/dompurify/-/
 EXTRACT_SUFX= .tgz
