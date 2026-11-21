@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream @bufbuild/protobuf module.
-DISTNAME= protobuf-2.16.0
-PKGNAME= node-bufbuild-protobuf-2.16.0
+DISTNAME= protobuf-2.17.0
+PKGNAME= node-bufbuild-protobuf-2.17.0
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@bufbuild/protobuf/-/
 EXTRACT_SUFX= .tgz

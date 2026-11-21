@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (node-jridgewell-resolve-uri/resolve-uri-3.1.2.tgz) = 6692a3714f08faa35473cc1581bd353adaab09bfdb70a56cf4a266cbbceb512c
-SHA512 (node-jridgewell-resolve-uri/resolve-uri-3.1.2.tgz) = 6d12128022233f6d3fb5b5923d63048b9e1054f45913192e0fd9492fe508c542adc15240f305b54eb6f58ccb354455e8d42053359ff98690bd42f98a59da292b
-Size (node-jridgewell-resolve-uri/resolve-uri-3.1.2.tgz) = 9622 bytes
+BLAKE2s (node-jridgewell-resolve-uri/resolve-uri-3.1.3.tgz) = c6a5380d020901ffe8b69dca623fec27d7221121eadff87872af229912b98c8e
+SHA512 (node-jridgewell-resolve-uri/resolve-uri-3.1.3.tgz) = 9614ed8eda0402b5818e2b26b5f4bbeb54bd1e5ca7fa7219a8e6556286755e7f363cc34c56793e8e3fcd842e1f017193b3bc9d38d709891e6fc90053303bb6ee
+Size (node-jridgewell-resolve-uri/resolve-uri-3.1.3.tgz) = 9689 bytes

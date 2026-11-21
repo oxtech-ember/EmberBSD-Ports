@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream @csstools/css-tokenizer module.
-DISTNAME= css-tokenizer-4.0.2
-PKGNAME= node-csstools-css-tokenizer-4.0.2
+DISTNAME= css-tokenizer-4.0.3
+PKGNAME= node-csstools-css-tokenizer-4.0.3
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@csstools/css-tokenizer/-/
 DIST_SUBDIR= node-csstools-css-tokenizer

@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream @jridgewell/resolve-uri module.
-DISTNAME= resolve-uri-3.1.2
-PKGNAME= node-jridgewell-resolve-uri-3.1.2
+DISTNAME= resolve-uri-3.1.3
+PKGNAME= node-jridgewell-resolve-uri-3.1.3
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@jridgewell/resolve-uri/-/
 EXTRACT_SUFX= .tgz

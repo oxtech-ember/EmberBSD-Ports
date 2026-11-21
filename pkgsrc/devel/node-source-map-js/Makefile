@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream source-map-js module.
-DISTNAME= source-map-js-1.2.2
-PKGNAME= node-source-map-js-1.2.2
+DISTNAME= source-map-js-1.2.4
+PKGNAME= node-source-map-js-1.2.4
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/source-map-js/-/
 EXTRACT_SUFX= .tgz

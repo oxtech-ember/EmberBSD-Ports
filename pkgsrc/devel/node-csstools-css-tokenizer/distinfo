@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (node-csstools-css-tokenizer/css-tokenizer-4.0.2.tgz) = 4d77320ba88ce25c28c4f235595db754dd2f2c059804298e4541316109f9988e
-SHA512 (node-csstools-css-tokenizer/css-tokenizer-4.0.2.tgz) = 3a82a84747fbe9d098ebae8995c6e19954ecd9dad88f51945d94d84dc6d48098e1f4dbf8d5a15f676d5b3d04c4466e7e2f97010e8e3ae8d96d076969952e4607
-Size (node-csstools-css-tokenizer/css-tokenizer-4.0.2.tgz) = 10505 bytes
+BLAKE2s (node-csstools-css-tokenizer/css-tokenizer-4.0.3.tgz) = f3b984c8cf7533240d916774d1ef0cef3c91cd43971e45dd4d54a09a51af963b
+SHA512 (node-csstools-css-tokenizer/css-tokenizer-4.0.3.tgz) = 81d9057bf678294d6af18e52dc661271719c3a73b9e9d816c08b39fbdec88f5548288488b4e2149425d4ab854b6dd9d172517e492438f6c2ec9f729e575d7500
+Size (node-csstools-css-tokenizer/css-tokenizer-4.0.3.tgz) = 10476 bytes

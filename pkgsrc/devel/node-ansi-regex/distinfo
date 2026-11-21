@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (ansi-regex-6.5.0.tgz) = 5901647eb51e2294d42e02507469e39e6a18f430c9fbcbc7fc4b4be89ca842ca
-SHA512 (ansi-regex-6.5.0.tgz) = ce1bdb6db76dd646f0ec427d390a3199072e68d47d3f99138fb7bf61d98e494d7468759bc9ca1f27103a8ca7e8132def94b75cb4e17d6476b12ed9929bdf7cc1
-Size (ansi-regex-6.5.0.tgz) = 3507 bytes
+BLAKE2s (ansi-regex-6.6.0.tgz) = 4162e2980b2f60f8c263811afe4594494d476e6c673dcdb0cee1f6b6d02b7be6
+SHA512 (ansi-regex-6.6.0.tgz) = 5d9e5aa5bceb7826d748ac0f8c9b2dbbc474cce8b6e3bc375d8c16c6dc015e0a59ac2c9cd4a6bba7dff163403dfdd88c7b09876c42b3f8522b6966845a394de6
+Size (ansi-regex-6.6.0.tgz) = 4310 bytes

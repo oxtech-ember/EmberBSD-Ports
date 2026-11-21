@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (source-map-js-1.2.2.tgz) = 019a3ca28cc602850ef6c103108c0184121a6ea5fef52dee0db6a316ae38e03d
-SHA512 (source-map-js-1.2.2.tgz) = 2868fff18e37c77e5a6550edb7e27898ad61a0b18750b3187d290e0c93508cd0c2de85b53ea3e8c4cc28d292d4b1633f5041b338dfcdc5e1f2c047cd5cd3f757
-Size (source-map-js-1.2.2.tgz) = 36349 bytes
+BLAKE2s (source-map-js-1.2.4.tgz) = d7a338837c2bf14d3e6d7b295a5c233d93d3c413d95867a30171bde24b85d2df
+SHA512 (source-map-js-1.2.4.tgz) = 27b66332f1ddf4ed5f713ff9574f5059a69297605b5b1dc5e8ed3cb2975ef3635a99ff540741b145520f88d6d5b1d2a4a22cc7892a53a1da37be9d9b032f7530
+Size (source-map-js-1.2.4.tgz) = 38463 bytes

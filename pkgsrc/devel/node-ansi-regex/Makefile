@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream ansi-regex JavaScript module.
-DISTNAME= ansi-regex-6.5.0
-PKGNAME= node-ansi-regex-6.5.0
+DISTNAME= ansi-regex-6.6.0
+PKGNAME= node-ansi-regex-6.6.0
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/ansi-regex/-/
 EXTRACT_SUFX= .tgz
