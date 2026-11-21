@@ -364,7 +364,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         return {line.strip() for line in text.splitlines() if line.strip() and not line.startswith('#')}
     added = replacements(new_replaces) - replacements(old_replaces)
     removed = replacements(old_replaces) - replacements(new_replaces)
-    if removed or not added.issubset(set(packages)) or any(overlays.get(p) != 'pkgsrc/' + p for p in added):
+    if removed or not added.issubset(set(packages)) or any(overlays.get(p) is None for p in added):
         raise ValueError('replacement changes outside selected new overlays')
     for name in changes:
         if (name == 'pkgsrc/replaces' or name == 'pkgsrc/export.conf' or name in selected_sources or
@@ -377,6 +377,8 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     def unaffected(rows):
         return [row for row in rows if not (row[0] in ('patch', 'git-apply') and row[1] in scoped_patches)
                 and not (row[0] == 'recipe-patch' and len(row) == 4 and row[2] in packages)
+                and not (row[0] == 'recipe' and len(row) == 3 and row[2] in added
+                         and overlays.get(row[2]) == row[1])
                 and not (row[0] == 'file' and len(row) == 3 and
                          (row[2] in selected_files or selected_output(row[2])))]
     if unaffected(old_records) != unaffected(new_records):

@@ -1096,6 +1096,27 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((output.stat().st_ino, output.stat().st_mtime_ns), stamp)
 
+    def test_probe_owned_replacement_requires_declared_and_selected_overlay(self):
+        write(self.ports, 'probes/owner/cat/pkg/Makefile', 'PKGNAME=probe-1\n')
+        write(self.ports, 'pkgsrc/export.conf',
+              'file\tresources/owner.txt\tmisc/owner.txt\n'
+              'recipe\tprobes/owner/cat/pkg\tcat/pkg\n')
+        write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
+        old = self.receipt.read_bytes()
+        result = run(self.command + ['--update', '--package', 'cat/other'], self.ports, check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.receipt.read_bytes(), old)
+        result = run(self.command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=probe-1\n')
+
+    def test_undeclared_replacement_remains_rejected(self):
+        write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
+        old = self.receipt.read_bytes()
+        result = run(self.command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.receipt.read_bytes(), old)
+
     def _upstream_recipe_becomes_selected_overlay(self, after_update):
         with self.subTest(after_update=after_update):
             if after_update:
