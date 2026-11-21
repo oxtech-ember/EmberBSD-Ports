@@ -1,0 +1,29 @@
+$NetBSD$
+
+Use a relocatable Darwin install name for the shared library.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- Makefile.orig
++++ Makefile
+@@ -184,9 +184,12 @@
+ 
+ .if $(LINKER_SOSUFFIX) == "dylib"
+ LIB_SOVER	 = liblowdown.$(LIBVER).$(LINKER_SOSUFFIX)
++LIB_SONAME	 = @rpath/$(LIB_SOVER)
+ .else
+ LIB_SOVER	 = liblowdown.$(LINKER_SOSUFFIX).$(LIBVER)
+ .endif
++
++LIB_SONAME	?= $(LIB_SOVER)
+ 
+ # Because the objects will be compiled into a shared library:
+ CFLAGS		+= -fPIC
+@@ -257,7 +260,7 @@
+ $(LIB_SO): $(OBJS) $(COMPAT_OBJS)
+ 	$(CC) $(LINKER_SOFLAG) -o $(LIB_SOVER) $(OBJS) $(COMPAT_OBJS) \
+ 		$(LDFLAGS) $(LDADD_MD5) -lm \
+-		-Wl,${LINKER_SONAME},$(LIB_SOVER) $(LDLIBS)
++		-Wl,${LINKER_SONAME},$(LIB_SONAME) $(LDLIBS)
+ 	ln -sf $(LIB_SOVER) $@
+ 
+ # Uninstall routines.
