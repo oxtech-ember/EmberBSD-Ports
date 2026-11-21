@@ -14,6 +14,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from native_package_current import native_package_names
+
 VARIABLES = (
     'PKGNAME', 'PKGVERSION', 'MACHINE_GNU_PLATFORM', 'MACHINE_ARCH', 'USE_CROSS_COMPILE',
     'BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS',
@@ -75,14 +78,6 @@ def make_variables(values, option='--make-variable'):
     return dict(sorted(result.items()))
 
 
-def native_current_pattern(base, name):
-    """Match cross-bulk native_current: PKGBASE-[0-9]* becomes PKGBASE>=suffix."""
-    prefix = base + '-'
-    if name.startswith(prefix) and len(name) > len(prefix) and name[len(prefix)].isdigit():
-        return base + '>=' + name[len(prefix):]
-    return base
-
-
 def absolute_directory(value, label):
     if not value.startswith('/') or any(character.isspace() for character in value):
         raise ExportError(label + ' is not absolute')
@@ -142,12 +137,14 @@ class Exporter:
         self.contexts = {}
         self.patterns = {}
         self.pending = []
-        self.test_requirements = []
+        self.test_requirements = {}
         self.query_results = {}
         self.file_digests = {}
         self.package_bases = {}
         self.host_argv = None
         self.host_names = None
+        self.host_providers = {}
+        self.using_installed = set()
 
     def run(self, command, **kwargs):
         completed = subprocess.run(command, text=True, capture_output=True,
@@ -217,11 +214,16 @@ class Exporter:
                               result['PKG_SKIP_REASON'] + result['PKG_FAIL_REASON'])
         return result
 
-    def matches(self, pattern, name):
+    def pattern_matches(self, pattern, name):
         completed = subprocess.run([str(self.pkg_admin), 'pmatch', pattern, name],
                                    env=self.environment, text=True,
                                    capture_output=True, timeout=self.args.timeout)
-        if completed.returncode:
+        if completed.returncode not in (0, 1):
+            raise ExportError('pkg_admin pmatch failed with status ' + str(completed.returncode))
+        return completed.returncode == 0
+
+    def matches(self, pattern, name):
+        if not self.pattern_matches(pattern, name):
             raise ExportError('native pkg_admin rejected dependency ' +
                               pattern + ' for ' + name)
 
@@ -301,6 +303,10 @@ class Exporter:
                             self.inputs(package, candidate) != self.nodes[identity]['input_sha256']):
                         raise ExportError('conflicting package variants for ' + identity)
                     self.patterns[identity].add(pattern)
+                    if identity in self.using_installed and not self.pattern_matches(
+                            pattern, self.host_providers[identity][0]):
+                        self.using_installed.remove(identity)
+                        self.pending.append((identity, package, cross, settings, environment, candidate))
             return identity
         if len(self.nodes) >= self.args.max_nodes:
             raise ExportError('dependency closure exceeds --max-nodes')
@@ -358,7 +364,7 @@ class Exporter:
                 recursive_env.pop(key)
         # A current host package keeps the packages it still provides. Its own
         # build tools are not part of this graph; cross-bulk does not schedule them.
-        current = self.host_node_is_current(package, cross, settings, environment, metadata)
+        current = self.host_node_is_current(identity, package, cross, settings, environment, metadata)
         children = []
         for variable, kind in DEPENDENCIES.items():
             if current and variable not in ('DEPENDS', 'TEST_DEPENDS'):
@@ -371,9 +377,9 @@ class Exporter:
                     raise ExportError('invalid native dependency entry')
                 child = self.package_path(path, self.root / package)
                 if kind == 'test' and self.args.dependency_phase == 'build':
-                    self.test_requirements.append({
+                    self.test_requirements[identity, child, pattern] = {
                         'owner': identity, 'role': 'target' if cross == 'yes' else 'host',
-                        'package_path': child, 'pattern': pattern})
+                        'package_path': child, 'pattern': pattern}
                     continue
                 if current and kind == 'test':
                     continue
@@ -386,12 +392,13 @@ class Exporter:
         return children
 
     def merge_children(self, identity, children):
-        edges = set()
+        edges = {}
         for request, kind in children:
             child_id = self.visit(*request)
-            edges.add((child_id, kind))
+            edges.setdefault((child_id, kind), set()).add(request[-1])
         self.nodes[identity]['dependencies'] = [
-            {'id': child, 'kind': kind} for child, kind in sorted(edges)]
+            {'id': child, 'kind': kind, 'patterns': sorted(patterns)}
+            for (child, kind), patterns in sorted(edges.items())]
 
     def prefetch(self, requests):
         """Run all unseen exact metadata requests for one deterministic frontier."""
@@ -502,21 +509,25 @@ class Exporter:
             self.package_bases[key] = lines[0]
         return self.package_bases[key]
 
-    def host_is_current(self, base, name):
-        pattern = native_current_pattern(base, name)
-        completed = subprocess.run(self.host_argv + ['-e', pattern], env=self.environment,
-                                   text=True, capture_output=True, timeout=self.args.timeout)
-        if completed.returncode == 0:
-            return True
-        if completed.returncode == 1:
-            return False
-        raise ExportError('pkg_info -e failed with status ' + str(completed.returncode))
-
-    def host_node_is_current(self, package, cross, settings, environment, metadata):
+    def host_node_is_current(self, identity, package, cross, settings, environment, metadata):
         if not self.host_current or cross != 'no':
             return False
-        return self.host_is_current(self.package_base(package, cross, settings, environment),
-                                    metadata['PKGNAME'])
+        if identity not in self.host_providers:
+            base = self.package_base(package, cross, settings, environment)
+            try:
+                names = native_package_names(self.host_argv, base, metadata['PKGNAME'],
+                                             env=self.environment, timeout=self.args.timeout)
+            except RuntimeError as error:
+                raise ExportError(str(error)) from error
+            if any(name not in self.host_names for name in names):
+                raise ExportError('host package database changed during export')
+            self.host_providers[identity] = names
+        names = self.host_providers[identity]
+        if len(names) != 1 or not all(self.pattern_matches(pattern, names[0])
+                                      for pattern in sorted(self.patterns[identity])):
+            return False
+        self.using_installed.add(identity)
+        return True
 
     def export(self):
         if self.host_current:
@@ -534,9 +545,10 @@ class Exporter:
         if self.host_argv is not None and self.host_pkgnames() != self.host_names:
             raise ExportError('host package database changed during export')
         for identity, node in self.nodes.items():
-            node['input_sha256'] = digest(canonical({
-                'inputs': node['input_sha256'], 'query_context': self.contexts[identity],
-                'required_patterns': sorted(self.patterns[identity])}))
+            inputs = {'inputs': node['input_sha256'], 'query_context': self.contexts[identity]}
+            if identity in self.using_installed:
+                inputs['host-provider'] = self.host_providers[identity][0]
+            node['input_sha256'] = digest(canonical(inputs))
         shared = {'makeconf': self.file_digest(self.makeconf), 'bmake': self.file_digest(self.bmake),
                   'pkg_admin': self.file_digest(self.pkg_admin),
                   'dependency-phase': digest(self.args.dependency_phase.encode()),
@@ -546,9 +558,10 @@ class Exporter:
         if self.native_make_variables:
             shared['native-make-variables'] = digest(canonical(self.native_make_variables))
         if self.host_argv is not None:
+            for helper in ('native-package-current.sh', 'native_package_current.py'):
+                shared[helper] = self.file_digest(Path(__file__).with_name(helper))
             shared['host-pkg-info-argv'] = digest(canonical(self.host_argv))
             shared['host-pkg-info-binary'] = self.file_digest(self.host_argv[0])
-            shared['host-pkg-names'] = digest(canonical(list(self.host_names)))
         for item in self.args.shared_input:
             name, sep, path = item.partition('=')
             if not sep or not re.fullmatch(r'[a-zA-Z0-9_.-]+', name) or name in shared:
@@ -637,7 +650,7 @@ def main():
                 inventory = {'schema': 'ports-test-requirements-v1', 'phase': 'build',
                              'graph_sha256': digest(json_bytes(graph)),
                              'status': 'test-depends-and-tests-pending',
-                             'requirements': sorted(exporter.test_requirements,
+                             'requirements': sorted(exporter.test_requirements.values(),
                                  key=lambda row: (row['owner'], row['package_path'], row['pattern']))}
                 if len(json_bytes(inventory)) > sdk.PORTS_JSON_LIMIT:
                     raise ExportError('test requirements exceed the SDK JSON size limit')

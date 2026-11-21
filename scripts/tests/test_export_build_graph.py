@@ -143,6 +143,8 @@ import sys
 assert sys.argv[1] == 'pmatch'
 pattern, name = sys.argv[2:]
 # Deliberately narrow fixture matcher; production invokes pkg_admin itself.
+if '>=' not in pattern:
+    sys.exit(0 if pattern == name else 1)
 expected, minimum = pattern.split('>=')
 actual, version = name.rsplit('-', 1)
 sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
@@ -195,13 +197,13 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         generator = next(key for key in nodes if key.startswith('host:devel/generator@'))
         bootstrap = next(key for key in nodes if key.startswith('host:devel/bootstrap@'))
         self.assertEqual(nodes['target:devel/app']['dependencies'], [
-            {'id': bootstrap, 'kind': 'tool'},
-            {'id': generator, 'kind': 'tool'},
-            {'id': 'target:devel/library', 'kind': 'build'},
-            {'id': 'target:devel/runtime', 'kind': 'runtime'},
-            {'id': 'target:devel/tests', 'kind': 'test'}])
+            {'id': bootstrap, 'kind': 'tool', 'patterns': ['bootstrap>=1']},
+            {'id': generator, 'kind': 'tool', 'patterns': ['generator>=2']},
+            {'id': 'target:devel/library', 'kind': 'build', 'patterns': ['library>=1']},
+            {'id': 'target:devel/runtime', 'kind': 'runtime', 'patterns': ['runtime>=1']},
+            {'id': 'target:devel/tests', 'kind': 'test', 'patterns': ['tests>=1']}])
         self.assertEqual(nodes[generator]['dependencies'],
-                         [{'id': 'host:devel/hostlib', 'kind': 'build'}])
+                         [{'id': 'host:devel/hostlib', 'kind': 'build', 'patterns': ['hostlib>=1']}])
         calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         calls = {call['package']: call['settings'] for call in calls}
         self.assertEqual(calls['devel/generator']['USE_CROSS_COMPILE'], 'no')
@@ -485,7 +487,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         nodes = self.nodes(graph)
         self.assertEqual(set(nodes), {'host:devel/app', 'host:devel/runtime'})
         self.assertEqual(nodes['host:devel/app']['dependencies'],
-                         [{'id': 'host:devel/runtime', 'kind': 'runtime'}])
+                         [{'id': 'host:devel/runtime', 'kind': 'runtime', 'patterns': ['runtime>=1']}])
         self.assertTrue(cache.is_file())
 
     @unittest.skipUnless(os.environ.get('EMBERBSD_BMAKE'), 'set EMBERBSD_BMAKE for native metadata checks')
@@ -613,7 +615,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.packages['devel/gmake'] = {'TEST_DEPENDS': 'perl5>=1:../../lang/perl5'}
         self.assertIn('cycle', self.run_export(success=False))
         nodes = self.nodes(self.run_export('--dependency-phase', 'build'))
-        self.assertIn({'id': 'target:devel/runtime', 'kind': 'runtime'},
+        self.assertIn({'id': 'target:devel/runtime', 'kind': 'runtime', 'patterns': ['runtime>=1']},
                       nodes['target:devel/app']['dependencies'])
         self.assertIn('host:devel/gmake', nodes)
         self.assertTrue(any(key.startswith('host:lang/perl5@') for key in nodes))
@@ -689,12 +691,13 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
             exporter.file_digest(path)
         self.assertEqual(len(calls), 3)
 
-    def test_additional_constraint_changes_dependency_key(self):
+    def test_additional_constraint_belongs_to_consumer(self):
         self.packages['devel/tests']['DEPENDS'] = 'library>=0:../../devel/library'
         before = self.nodes(self.run_export())
         self.packages['devel/tests']['DEPENDS'] = 'library>=1:../../devel/library'
         after = self.nodes(self.run_export())
-        self.assertNotEqual(before['target:devel/library']['input_sha256'], after['target:devel/library']['input_sha256'])
+        self.assertEqual(before['target:devel/library'], after['target:devel/library'])
+        self.assertNotEqual(before['target:devel/tests']['dependencies'], after['target:devel/tests']['dependencies'])
 
     def test_same_version_different_native_variant_is_rejected(self):
         self.packages['devel/tests']['DEPENDS'] = 'library>=0:../../devel/library'
@@ -846,18 +849,17 @@ sys.exit(2)
         self.assertIn('host:devel/m4', nodes)
         coreutils = next(key for key in nodes if key.startswith('host:sysutils/coreutils@'))
         libtool = next(key for key in nodes if key.startswith('host:devel/libtool-base@'))
-        self.assertIn({'id': 'host:devel/gettext-lib', 'kind': 'runtime'}, nodes[coreutils]['dependencies'])
-        self.assertIn({'id': 'host:devel/m4', 'kind': 'runtime'}, nodes[libtool]['dependencies'])
+        self.assertIn({'id': 'host:devel/gettext-lib', 'kind': 'runtime', 'patterns': ['gettext-lib>=1']}, nodes[coreutils]['dependencies'])
+        self.assertIn({'id': 'host:devel/m4', 'kind': 'runtime', 'patterns': ['m4>=1']}, nodes[libtool]['dependencies'])
         for key, node in nodes.items():
             if key.startswith('host:'):
                 self.assertEqual([edge['kind'] for edge in node['dependencies'] if edge['kind'] != 'runtime'], [])
         shared = graph['context']['shared_inputs']
         argv = [str(info), '-K', str(host)]
-        names = sorted(self.host_names(versions))
         canonical = lambda value: json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
         self.assertEqual(shared['host-pkg-info-argv'], hashlib.sha256(canonical(argv)).hexdigest())
         self.assertEqual(shared['host-pkg-info-binary'], hashlib.sha256(info.read_bytes()).hexdigest())
-        self.assertEqual(shared['host-pkg-names'], hashlib.sha256(canonical(names)).hexdigest())
+        self.assertNotIn('host-pkg-names', shared)
         self.assertIn('host current package database', graph['provenance']['source'])
         calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         discovery = [call for call in calls if call.get('package') == 'pkgtools/pkg_install']
@@ -901,19 +903,38 @@ sys.exit(2)
         calls = [json.loads(line)['package'] for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         self.assertIn('devel/marker', calls)
 
-    def test_pkgbase_mismatch_uses_the_bare_pattern(self):
+    def test_host_provider_must_satisfy_the_incoming_requirement(self):
         self.add_package('devel/alias', {
             'PKGBASE': 'aliasbase', 'PKGNAME': 'alias-tool-1', 'PKGVERSION': '1',
             'BUILD_DEPENDS': 'broken>=1:../../devel/broken'})
-        self.add_package('devel/broken', {'PKG_FAIL_REASON': 'PKGBASE was not used'})
+        self.add_package('devel/broken', {'PKG_FAIL_REASON': 'host node needs a source build'})
         self.packages['devel/app'] = {'TOOL_DEPENDS': 'alias-tool>=1:../../devel/alias'}
         self.enable_host_db(['aliasbase-4'])
-        graph = self.run_export('--host-current')
-        nodes = self.nodes(graph)
-        alias = next(key for key in nodes if key.startswith('host:devel/alias@'))
-        self.assertEqual(nodes[alias]['dependencies'], [])
-        calls = [json.loads(line)['package'] for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
-        self.assertNotIn('devel/broken', calls)
+        self.assertIn('host node needs a source build', self.run_export('--host-current', success=False))
+
+    def test_later_exact_requirement_reopens_host_build(self):
+        self.packages['devel/app'] = {'TOOL_DEPENDS': 'generator>=2:../../devel/generator',
+                                      'DEPENDS': 'runtime>=1:../../devel/runtime'}
+        self.packages['devel/runtime'] = {'DEPENDS': 'tests>=1:../../devel/tests'}
+        self.packages['devel/tests'] = {'TOOL_DEPENDS': 'generator-2:../../devel/generator'}
+        self.enable_host_db(['generator-3'])
+        serial = self.run_export('--host-current')
+        self.assertEqual(serial, self.run_export('--host-current', '--jobs', '3'))
+        self.assertIn('host:devel/hostlib', self.nodes(serial))
+
+    def test_only_selected_host_provider_changes_input(self):
+        self.packages['devel/app'] = {'TOOL_DEPENDS': 'generator>=2:../../devel/generator'}
+        _, host, _ = self.enable_host_db(['generator-2'])
+        before = self.run_export('--host-current')
+        (host / 'names').write_text('generator-2\nunrelated-9\n')
+        self.assertEqual(before, self.run_export('--host-current'))
+        (host / 'names').write_text('generator-3\nunrelated-9\n')
+        after = self.run_export('--host-current')
+        self.assertEqual(before['context'], after['context'])
+        old_nodes, new_nodes = self.nodes(before), self.nodes(after)
+        changed = [key for key in old_nodes if old_nodes[key] != new_nodes[key]]
+        self.assertEqual(len(changed), 1)
+        self.assertTrue(changed[0].startswith('host:devel/generator@'))
 
     def test_host_database_mutation_fails_closed(self):
         self.install_host_cycle(direct_tools=True)

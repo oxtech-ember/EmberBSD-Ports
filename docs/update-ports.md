@@ -7,7 +7,7 @@ select new releases, download sources, run producers, or modify a device.
 
 Use an explicit [EmberBSD SDK](https://github.com/oxtech-ember/EmberBSD-SDK)
 source checkout with `PORTS_PLAN_API = 1`. The first compatible SDK revision is
-`3d27627020c9070415d5232c7f72130c3d2ba90f`. The SDK owns graph validation,
+`16afd1d19aaa7a92ab6a51eb92b264a81f93e1fb`. The SDK owns graph validation,
 input keys, plans, evidence receipts, hashing, and JSON file writes.
 
 ## Shared base dependencies
@@ -116,17 +116,22 @@ That directory must resolve to the host database and must not resolve to the
 target database. For each host node the exporter reads bmake `PKGBASE` and the
 node's `PKGNAME`. When `PKGNAME` matches `PKGBASE-[0-9]*`, it runs
 `pkg_info -e 'PKGBASE>=suffix'`; otherwise it runs `pkg_info -e PKGBASE`. Exit
-0 means the installed package is current, exit 1 means it is not, and any
-other status fails the export. A current host node keeps only its `DEPENDS`
+0 identifies matching installed names, 1 means no match, and other statuses
+fail the export. A single installed provider may supply this node if its name
+also satisfies every incoming pkgsrc requirement. A stricter constraint found
+later in the walk reopens the host node's source dependencies.
+A current host node keeps only its `DEPENDS`
 edges. Build, tool, bootstrap, and indirect dependencies are not queried. In
 the build phase its `TEST_DEPENDS` remain in the test-requirements inventory
 and are not queried or turned into edges. Target nodes are not asked.
 
-The mode records `host-pkg-info-argv`, `host-pkg-info-binary`, and the sorted
-`pkg_info -a -Q PKGNAME` listing as `host-pkg-names`. The listing is hashed
-again after the walk and the export fails, without writing a graph, if the
-database changed. `pkg_info -e` is the current decision. `PKGBASE` is not
-added to the hashed metadata, so node input hashes stay independent of it.
+The exporter snapshots all installed host names before and after the walk and
+rejects concurrent changes. Each reused host node binds its selected provider
+name. Installing an unrelated host package between exports preserves its key.
+This records package selection. The producer still verifies build tool and artifact
+identity before reusing objects when a file can change under the same package name.
+The shared context records the selected pkg_info command and its implementation.
+Each edge carries the sorted pkgsrc patterns evaluated for that consumer.
 Provenance includes `host current package database`.
 
 The exporter asks bmake for expanded dependency variables and loaded makefiles.
