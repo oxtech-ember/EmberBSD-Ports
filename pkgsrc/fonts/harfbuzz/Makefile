@@ -2,10 +2,9 @@
 
 .include "Makefile.common"
 
-PKGREVISION=	3
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 4
+PKGREVISION=	1
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif

@@ -1,9 +1,9 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-x86_64
 recipe: fonts/harfbuzz
-package: harfbuzz-15.0.0
+package: harfbuzz-15.2.0
 program: HarfBuzz-0.0
-types-sha256: a3f76f3428406409f69f73f0893f0421d0eae3f235819d364ec91f9e523fe87c
+types-sha256: 4ef71c98100ce86f46457fc6f7213bc9598af766e4b322b272c6dab70ec3393d
 dump-sha256: 8f7c045c19548637f4cf9b4fe6f65f526dbdb16772aa3c32b428804dc0a4010a
 -->
 <?xml version="1.0"?>

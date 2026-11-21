@@ -9,15 +9,24 @@ from pathlib import Path
 p = argparse.ArgumentParser()
 for name in ('pkgsrc', 'bmake', 'makeconf'):
     p.add_argument('--' + name, type=Path, required=True)
+p.add_argument('--cross-makeconf', type=Path, help='also check a configured EmberBSD cross target')
 a = p.parse_args()
-def query(abi, variable, *extra):
-    return subprocess.run([str(a.bmake), '-C', str(a.pkgsrc/'fonts/harfbuzz'),
+
+def query(abi, variable, *, cross=False, makefile=None):
+    config = [f'MAKECONF={a.cross_makeconf}'] if cross else [
         f'MAKECONF={a.makeconf}', 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
-        'EMBERBSD_DARWIN_TOOLCHAIN_ONLY=yes', f'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE={abi}',
-        *extra, '-v', variable], check=True, capture_output=True, text=True).stdout.strip()
-assert query('__ember1', 'PKGNAME') == 'harfbuzz-15.0.0nb4'
-assert query('__1', 'PKGNAME') == 'harfbuzz-15.0.0nb3'
-assert query('__ember1', 'PKGNAME', 'OPSYS=NetBSD') == 'harfbuzz-15.0.0nb3'
+        'EMBERBSD_DARWIN_TOOLCHAIN_ONLY=yes']
+    command = [a.bmake, '-C', a.pkgsrc/'fonts/harfbuzz']
+    if makefile is not None:
+        command.extend(['-f', makefile])
+    return subprocess.run([*command, *config, f'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE={abi}',
+        '-v', variable], check=True, text=True, stdout=subprocess.PIPE).stdout.strip()
+assert query('__ember1', 'PKGNAME') == 'harfbuzz-15.2.0nb1'
+assert query('__1', 'PKGNAME') == 'harfbuzz-15.2.0'
+if a.cross_makeconf:
+    assert query('__ember1', 'OPSYS', cross=True) == 'NetBSD'
+    assert query('__ember1', 'USE_CROSS_COMPILE', cross=True) == 'yes'
+    assert query('__ember1', 'PKGNAME', cross=True) == 'harfbuzz-15.2.0'
 deps = query('__ember1', 'DEPENDS')
 assert 'libcxx>=23.1.4nb1:' in deps and 'png>=' in deps
 assert 'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE' in query('__ember1', 'BUILD_DEFS')
@@ -28,14 +37,11 @@ with tempfile.TemporaryDirectory() as directory:
     fixture.write_text('DISTNAME= fixture-1\nCATEGORIES= fonts\nCOMMENT= fixture\n'
         'LICENSE= mit\n.include "../../mk/bsd.prefs.mk"\n'
         '.include "../../fonts/harfbuzz/buildlink3.mk"\n.include "../../mk/bsd.pkg.mk"\n')
-    def consumer(abi, *extra):
-        return subprocess.run([str(a.bmake), '-C', str(a.pkgsrc/'fonts/harfbuzz'),
-            '-f', str(fixture), f'MAKECONF={a.makeconf}', 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
-            'EMBERBSD_DARWIN_TOOLCHAIN_ONLY=yes', f'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE={abi}',
-            *extra, '-v', 'BUILDLINK_ABI_DEPENDS.harfbuzz'],
-            check=True, capture_output=True, text=True).stdout
-    assert 'harfbuzz>=15.0.0nb4' in consumer('__ember1')
-    assert 'harfbuzz>=15.0.0nb3' in consumer('__1')
-    assert 'harfbuzz>=15.0.0nb4' not in consumer('__1')
-    assert 'harfbuzz>=15.0.0nb4' not in consumer('__ember1', 'OPSYS=NetBSD')
+    def consumer(abi, *, cross=False):
+        return query(abi, 'BUILDLINK_ABI_DEPENDS.harfbuzz', cross=cross, makefile=fixture)
+    assert 'harfbuzz>=15.2.0nb1' in consumer('__ember1')
+    assert 'harfbuzz>=15.2.0' in consumer('__1')
+    assert 'harfbuzz>=15.2.0nb1' not in consumer('__1')
+    if a.cross_makeconf:
+        assert 'harfbuzz>=15.2.0nb1' not in consumer('__ember1', cross=True)
 print('HarfBuzz native ABI metadata PASS')

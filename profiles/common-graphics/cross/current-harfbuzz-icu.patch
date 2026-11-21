@@ -1,6 +1,14 @@
 --- a/fonts/harfbuzz-icu/Makefile
 +++ b/fonts/harfbuzz-icu/Makefile
-@@ -14,7 +14,6 @@
+@@ -3,7 +3,6 @@
+ # XXX: hack to override meson installation
+ INSTALL_DIRS=
+ 
+-PKGREVISION= 1
+ .include "../../fonts/harfbuzz/Makefile.common"
+ 
+ PKGNAME=	${DISTNAME:S/^harfbuzz-/harfbuzz-icu-/1}
+@@ -14,7 +13,6 @@
  
  MESON_ARGS+=	-Ddocs=disabled
  MESON_ARGS+=	-Dicu=enabled
@@ -15,7 +23,7 @@
  
  BUILDLINK_API_DEPENDS.harfbuzz-icu+=	harfbuzz-icu>=2.1.1
 -BUILDLINK_ABI_DEPENDS.harfbuzz-icu+=	harfbuzz-icu>=14.4.0nb1
-+BUILDLINK_ABI_DEPENDS.harfbuzz-icu+=	harfbuzz-icu>=15.0.0nb1
++BUILDLINK_ABI_DEPENDS.harfbuzz-icu+=	harfbuzz-icu>=15.2.0
  BUILDLINK_PKGSRCDIR.harfbuzz-icu?=	../../fonts/harfbuzz-icu
  
  .include "../../fonts/harfbuzz/buildlink3.mk"
