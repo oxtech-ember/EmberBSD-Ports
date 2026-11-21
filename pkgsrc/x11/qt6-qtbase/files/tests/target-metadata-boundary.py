@@ -91,4 +91,27 @@ with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
         f'-DSimilarPrefix={host_tools}-extra/bin/tool\n'
         '</text>\n'
     )
+    catalog_root = pathlib.Path(temp) / 'translations-only'
+    catalogs = catalog_root / 'translations'
+    catalogs.mkdir(parents=True)
+    (catalogs / 'qtbase_ru.qm').write_bytes(b'catalog')
+    catalog_sbom = catalog_root / 'sbom/qttranslations.spdx'
+    catalog_sbom.parent.mkdir()
+    catalog_sbom.write_text('qttranslations was configured with:\n'
+                            f' -DROOT={work}/.buildlink/lib -DTOOLS={host_tools}/bin\n'
+                            '</text>\n')
+    data_command = command.copy()
+    data_command[3] = str(catalog_root)
+    data_command[-1] = '--translations'
+    subprocess.run(data_command, check=True)
+    assert catalog_sbom.read_text() == ('qttranslations was configured with:\n'
+                                        ' -DROOT=/usr/pkg/lib -DTOOLS=${SDK_NATIVE_PREFIX}/bin\n'
+                                        '</text>\n')
+    data_command[-1] = '--module'
+    failed = subprocess.run(data_command, capture_output=True, text=True)
+    assert failed.returncode != 0 and 'not a staged Qt module tree' in failed.stderr
+    data_command[-1] = '--translations'
+    (catalogs / 'qtbase_ru.qm').unlink()
+    failed = subprocess.run(data_command, capture_output=True, text=True)
+    assert failed.returncode != 0 and 'not a staged Qt translations tree' in failed.stderr
 print('PASS: target metadata buildlink and native-prefix boundaries')

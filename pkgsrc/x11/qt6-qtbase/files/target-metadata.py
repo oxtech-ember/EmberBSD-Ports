@@ -81,18 +81,28 @@ def native(args):
 
 
 def target(args):
-    module = args[-1:] == ["--module"]
+    mode = args[-1] if args[-1:] in (["--module"], ["--translations"]) else ""
+    module = mode != ""
     if module:
         args = args[:-1]
     if len(args) != 7:
-        fail(f"usage: {sys.argv[0]} STAGED_QT SYSROOT WORKDIR PREFIX HOST_TOOLS_PREFIX TARGET_CC TARGET_CXX [--module]")
+        fail(f"usage: {sys.argv[0]} STAGED_QT SYSROOT WORKDIR PREFIX HOST_TOOLS_PREFIX TARGET_CC TARGET_CXX [--module|--translations]")
     root_arg, sysroot_arg, work_arg, prefix_arg, host_arg, target_cc_arg, target_cxx_arg = args
     root, sysroot, work, prefix, host_prefix, target_cc, target_cxx = map(
         absolute_nonroot,
         (root_arg, sysroot_arg, work_arg, prefix_arg, host_arg, target_cc_arg, target_cxx_arg),
     )
 
-    if not (root / "lib/cmake").is_dir():
+    if mode == "--translations":
+        translations = root / "translations"
+        sbom = root / "sbom"
+        if (translations.is_symlink() or not translations.is_dir() or
+                not any(p.is_file() and not p.is_symlink() for p in translations.glob("*.qm")) or
+                sbom.is_symlink() or not sbom.is_dir() or
+                not any(p.is_file() and not p.is_symlink() for p in sbom.glob("*.spdx")) or
+                (root / "lib/cmake").exists()):
+            fail("not a staged Qt translations tree")
+    elif not (root / "lib/cmake").is_dir():
         fail("not a staged Qt module tree")
     if not module:
         if not (root / "lib/cmake/Qt6/Qt6Config.cmake").is_file():
