@@ -1,6 +1,6 @@
 $NetBSD$
 
-BLAKE2s (filelock-4.2.10.tar.gz) = d61410ab8143632d57dd35146a86dc1eb54615855dd1e72468d432702eb28a6f
-SHA512 (filelock-4.2.10.tar.gz) = 81336aa8139b129f68480b1f7795f448037536cce8ab263c5eb9a77c3be49844ef8c6592fdddedc7ed89150264e2ef4fcb957f6df5abed3a6f0ef6192b2374a6
-Size (filelock-4.2.10.tar.gz) = 670595 bytes
+BLAKE2s (filelock-4.2.12.tar.gz) = a1c242487ce2fe4163c105aef4589527a203c1bdd6b302a79234497c864cda8d
+SHA512 (filelock-4.2.12.tar.gz) = 0e5a20dc4b13ccef2cab9ddeb461a1e7322bde0a1ca3369d8268a21b962e8741d1e1936d08331a067b8d360cfe5fc67b7eefec72006c90dc10f200552f2e6eae
+Size (filelock-4.2.12.tar.gz) = 680837 bytes
 
