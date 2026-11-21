@@ -604,3 +604,6 @@ archivers/py-brotlicffi
 archivers/py-zstandard
 security/libssh
 security/dropbear
+
+devel/lxqt-build-tools
+sysutils/lxqt-menu-data

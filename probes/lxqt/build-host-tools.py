@@ -20,9 +20,9 @@ def main():
     args.archive = args.archive.resolve()
     args.host_qt = args.host_qt.resolve()
     args.work = args.work.absolute()
-    expected = "14999ff954e820a23af44389b9f7c65f9e58b2f1c0a559f0badd38f9b459aee6"
+    expected = "eeeeb7dbc2271238306139e660acabe4124b3ebab5434e1e40b1f08cf5bcd4ce"
     if hashlib.sha256(args.archive.read_bytes()).hexdigest() != expected:
-        parser.error("LXQt 2.4.0 archive SHA256 differs")
+        parser.error("LXQt 2.5.0 archive SHA256 differs")
     if not (args.host_qt / "bin/lrelease").is_file():
         parser.error("the selected Qt6 host prefix has no lrelease")
     if args.work.exists():
@@ -30,7 +30,7 @@ def main():
     args.work.mkdir(parents=True)
     with tarfile.open(args.archive) as archive:
         archive.extractall(args.work, filter="data")
-    source = args.work / "lxqt-build-tools-2.4.0"
+    source = args.work / "lxqt-build-tools-2.5.0"
     objects = args.work / "objects"
     commands = [
         [args.cmake, "-S", str(source), "-B", str(objects), "-G", "Ninja",

@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.54 2026/09/02 19:01:39 wiz Exp $
+# $NetBSD: Makefile,v 1.59 2026/11/15 02:01:28 gutteridge Exp $
 
-PKGREVISION= 2
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	lxqt-build-tools-2.4.0
+DISTNAME=	lxqt-build-tools-2.5.0
 CATEGORIES=	devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -16,7 +15,7 @@ USE_TOOLS+=	pkg-config perl
 PKG_SYSCONFSUBDIR=	xdg
 CMAKE_CONFIGURE_ARGS+=	-DLXQT_ETC_XDG_DIR=${PKG_SYSCONFDIR}
 
-BUILDLINK_API_DEPENDS.qt6-qtbase+=	qt6-qtbase>=6.6.0
+BUILDLINK_API_DEPENDS.qt6-qtbase+=	qt6-qtbase>=6.10.0
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../devel/cmake/build.mk"

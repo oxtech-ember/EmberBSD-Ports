@@ -9,7 +9,7 @@ import subprocess
 import tarfile
 
 
-SOURCE_SHA256 = "3487e47562dc19e63358a50c81e51cd0cf1a020397943cadd8db35daeb4866cc"
+SOURCE_SHA256 = "74983c6d27d9b79ba5a20db645a554ea8065cc7e9faa657363a77988a7228a74"
 
 
 def require_equal(actual, expected, name):
@@ -27,7 +27,7 @@ def main():
     args = parser.parse_args()
     source_bytes = args.archive.read_bytes()
     if hashlib.sha256(source_bytes).hexdigest() != SOURCE_SHA256:
-        parser.error("The original lxqt-menu-data 2.4.0 archive differs")
+        parser.error("The original lxqt-menu-data 2.5.0 archive differs")
     if args.work.exists():
         parser.error("The work directory must not exist")
     translator = (args.host_tools / "share/cmake/lxqt2-build-tools/modules/"
@@ -37,7 +37,7 @@ def main():
     args.work.mkdir(parents=True)
     with tarfile.open(args.archive) as source:
         source.extractall(args.work, filter="data")
-    root = args.work / "lxqt-menu-data-2.4.0/menu"
+    root = args.work / "lxqt-menu-data-2.5.0/menu"
     with tarfile.open(args.package) as package:
         payload = {m.name: package.extractfile(m).read()
                    for m in package if m.isfile() and not m.name.startswith("+")}

@@ -1,5 +1,5 @@
 # archive	sha256	original_url
-lxqt-build-tools-2.4.0.tar.xz	14999ff954e820a23af44389b9f7c65f9e58b2f1c0a559f0badd38f9b459aee6	https://github.com/lxqt/lxqt-build-tools/releases/download/2.4.0/lxqt-build-tools-2.4.0.tar.xz
+lxqt-build-tools-2.5.0.tar.xz	eeeeb7dbc2271238306139e660acabe4124b3ebab5434e1e40b1f08cf5bcd4ce	https://github.com/lxqt/lxqt-build-tools/releases/download/2.5.0/lxqt-build-tools-2.5.0.tar.xz
 libqtxdg-4.4.0.tar.xz	34d25949ae7b6275fb54da46187dd8ba41771600353405b15e53bdc90b9e287a	https://github.com/lxqt/libqtxdg/releases/download/4.4.0/libqtxdg-4.4.0.tar.xz
 xterm-412.tgz	b48bc780c1cbc14f6d89269f7e593712af6095876960d650be28b55e5dad65a6	https://invisible-island.net/archives/xterm/xterm-412.tgz
 luit-20260907.tgz	97bd13da3e3aa59785d64504d37389612a327953bb7581508c5fea5182f9f561	https://invisible-island.net/archives/luit/luit-20260907.tgz
@@ -8,7 +8,7 @@ lxqt-session-2.4.0.tar.xz	d77f378ece0bfc7195f1964e88f55919729c3b0a55a858d7155ffa
 qtxdg-tools-4.4.0.tar.xz	f21ba4308eac0effd417d910cc4916df7b6202aaeee777b51bb120f7abc6c5ac	https://github.com/lxqt/qtxdg-tools/releases/download/4.4.0/qtxdg-tools-4.4.0.tar.xz
 libfm-1.4.1.tar.xz	5caa820443d558974648583e37b4d956ae67a6e3df23493f99c2d0e26a11c665	https://raw.githubusercontent.com/lxde/releases/5226c729f1f5cf5f7e78b3574a36b4818bcafb8d/releases/libfm-1.4.1.tar.xz
 menu-cache-1.1.1.tar.xz	8232399b45b0b99bd480ec6df8fb9a5b8e034cc31c90b375916b372631f4531a	https://raw.githubusercontent.com/lxde/releases/5226c729f1f5cf5f7e78b3574a36b4818bcafb8d/releases/menu-cache-1.1.1.tar.xz
-lxqt-menu-data-2.4.0.tar.xz	3487e47562dc19e63358a50c81e51cd0cf1a020397943cadd8db35daeb4866cc	https://github.com/lxqt/lxqt-menu-data/releases/download/2.4.0/lxqt-menu-data-2.4.0.tar.xz
+lxqt-menu-data-2.5.0.tar.xz	74983c6d27d9b79ba5a20db645a554ea8065cc7e9faa657363a77988a7228a74	https://github.com/lxqt/lxqt-menu-data/releases/download/2.5.0/lxqt-menu-data-2.5.0.tar.xz
 libfm-qt-2.4.0.tar.xz	72766d7b41fd1aa06c0a7ef8be015205506ff75963b977e5307994555dcc023b	https://github.com/lxqt/libfm-qt/releases/download/2.4.0/libfm-qt-2.4.0.tar.xz
 pcmanfm-qt-2.4.1.tar.xz	f17f336072993855d92af40052f8f9ddb736df28b538b71a2925a56a038af1db	https://github.com/lxqt/pcmanfm-qt/releases/download/2.4.1/pcmanfm-qt-2.4.1.tar.xz
 lxqt-globalkeys-2.4.0.tar.xz	6f7fb82337bd06823f698df5a1e631059e99e544bfa9a1d7c5b67fd01ff9319a	https://github.com/lxqt/lxqt-globalkeys/releases/download/2.4.0/lxqt-globalkeys-2.4.0.tar.xz
