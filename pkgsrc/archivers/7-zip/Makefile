@@ -1,9 +1,9 @@
 # $NetBSD: Makefile,v 1.16 2026/09/07 05:22:50 adam Exp $
 
-DISTNAME=	7z2605-src
-PKGNAME=	7-zip-26.05
+DISTNAME=	7z2606-src
+PKGNAME=	7-zip-26.06
 CATEGORIES=	archivers
-MASTER_SITES=	https://github.com/ip7z/7zip/releases/download/26.05/
+MASTER_SITES=	https://github.com/ip7z/7zip/releases/download/26.06/
 EXTRACT_SUFX=	.tar.xz
 
 MAINTAINER=	ryoon@NetBSD.org
