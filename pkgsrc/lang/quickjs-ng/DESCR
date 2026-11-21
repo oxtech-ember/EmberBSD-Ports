@@ -1,0 +1,7 @@
+QuickJS-ng is the QuickJS JavaScript engine maintained by the QuickJS-ng
+project. This package builds the 0.17.0 API snapshot pinned by Telegram's
+widget-sandbox QuickJS fork, including its interrupt-handler API. The
+package is namespaced as QuickJS-ng so it can coexist with Bellard QuickJS.
+
+Only the shared engine library and public header are installed. Consumer
+shims and application-specific bytecode framing remain with their owners.

@@ -1,0 +1,51 @@
+$NetBSD$
+
+# Namespace the shared library and install library/header only.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -33,6 +33,7 @@
+ xoption(QJS_BUILD_WERROR "Build with -Werror" OFF)
+ xoption(QJS_BUILD_EXAMPLES "Build examples" OFF)
+ xoption(QJS_BUILD_CLI_STATIC "Build a static qjs executable" OFF)
++xoption(QJS_INSTALL_LIBRARY_ONLY "Install only the shared library and public header" OFF)
+ xoption(QJS_BUILD_CLI_WITH_MIMALLOC "Build the qjs executable with mimalloc" OFF)
+ xoption(QJS_BUILD_CLI_WITH_STATIC_MIMALLOC "Build the qjs executable with mimalloc (statically linked)" OFF)
+ xoption(QJS_DISABLE_PARSER "Disable JS source code parser" OFF)
+@@ -553,22 +554,27 @@
+     set_target_properties(qjs PROPERTIES
+         VERSION ${QJS_VERSION_MAJOR}.${QJS_VERSION_MINOR}.${QJS_VERSION_PATCH}
+         SOVERSION ${QJS_VERSION_MAJOR}
++        OUTPUT_NAME quickjs-ng
+     )
+     install(FILES quickjs.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+     if(QJS_BUILD_LIBC)
+         install(FILES quickjs-libc.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+     endif()
+-    if(NOT IOS AND NOT TVOS AND NOT WATCHOS)
+-        install(TARGETS qjs_exe RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+-        install(TARGETS qjsc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+-        install(FILES qjs.man DESTINATION ${CMAKE_INSTALL_DATADIR}/man/man1 RENAME qjs.1)
+-        install(FILES qjsc.man DESTINATION ${CMAKE_INSTALL_DATADIR}/man/man1 RENAME qjsc.1)
++    if(NOT QJS_INSTALL_LIBRARY_ONLY)
++        if(NOT IOS AND NOT TVOS AND NOT WATCHOS)
++            install(TARGETS qjs_exe RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
++            install(TARGETS qjsc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
++            install(FILES qjs.man DESTINATION ${CMAKE_INSTALL_DATADIR}/man/man1 RENAME qjs.1)
++            install(FILES qjsc.man DESTINATION ${CMAKE_INSTALL_DATADIR}/man/man1 RENAME qjsc.1)
++        endif()
+     endif()
+     install(TARGETS qjs EXPORT qjsConfig
+             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+-    install(EXPORT qjsConfig DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/qjs)
+-    install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
+-    install(DIRECTORY examples DESTINATION ${CMAKE_INSTALL_DOCDIR})
+-endif()
++    if(NOT QJS_INSTALL_LIBRARY_ONLY)
++        install(EXPORT qjsConfig DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/qjs)
++        install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
++        install(DIRECTORY examples DESTINATION ${CMAKE_INSTALL_DOCDIR})
++    endif()
++endif()

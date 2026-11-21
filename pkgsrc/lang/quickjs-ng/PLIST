@@ -1,0 +1,10 @@
+@comment $NetBSD$
+include/quickjs-ng/quickjs.h
+${PLIST.elf}lib/libquickjs-ng.so
+${PLIST.elf}lib/libquickjs-ng.so.0
+${PLIST.elf}lib/libquickjs-ng.so.0.17.0
+${PLIST.darwin}lib/libquickjs-ng.dylib
+${PLIST.darwin}lib/libquickjs-ng.0.dylib
+${PLIST.darwin}lib/libquickjs-ng.0.17.0.dylib
+lib/pkgconfig/quickjs-ng.pc
+share/licenses/quickjs-ng/LICENSE

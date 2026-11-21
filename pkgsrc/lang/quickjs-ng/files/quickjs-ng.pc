@@ -1,0 +1,10 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: quickjs-ng
+Description: QuickJS-ng JavaScript engine
+Version: 0.17.0
+Libs: @COMPILER_RPATH_FLAG@${libdir} -L${libdir} -lquickjs-ng
+Cflags: -I${includedir}/quickjs-ng
