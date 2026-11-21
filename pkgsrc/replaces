@@ -603,3 +603,4 @@ devel/py-hatchling
 archivers/py-brotlicffi
 archivers/py-zstandard
 security/libssh
+security/dropbear

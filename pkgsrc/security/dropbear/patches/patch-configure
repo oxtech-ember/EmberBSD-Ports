@@ -1,0 +1,15 @@
+$NetBSD: patch-configure,v 1.2 2023/12/20 17:09:36 wiz Exp $
+
+this test for the system libtomcrypt needs -ltommath.
+
+--- configure.orig	2022-11-14 14:30:00.000000000 +0000
++++ configure
+@@ -7701,7 +7701,7 @@ then :
+   printf %s "(cached) " >&6
+ else $as_nop
+   ac_check_lib_save_LIBS=$LIBS
+-LIBS="-ltomcrypt  $LIBS"
++LIBS="-ltomcrypt -ltommath $LIBS"
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
