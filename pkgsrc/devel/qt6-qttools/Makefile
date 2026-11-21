@@ -2,7 +2,7 @@
 
 DISTNAME=	qttools-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qttools-${QTVERSION}
-PKGREVISION=	7
+PKGREVISION=	8
 COMMENT=	Qt6 development tools
 CATEGORIES=	devel
 LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
@@ -13,8 +13,6 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Designer.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Help.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6UiTools.pc
 
-# Use the repaired common HTML provider; never embed another litehtml copy.
-CMAKE_CONFIGURE_ARGS+= -DQLITEHTML_USE_SYSTEM_LITEHTML=ON
 # Runtime package without libclang: QDoc is the only libclang consumer.
 # Lupdate keeps its built-in C++ parser. Desktop closures stay free of the
 # Clang and LLVM SDK packages.
@@ -22,6 +20,13 @@ CMAKE_CONFIGURE_ARGS+= -DFEATURE_clang=OFF -DFEATURE_qdoc=OFF
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_DISABLE_FIND_PACKAGE_WrapLibClang=ON
 
 .include "options.mk"
+.if !empty(PKG_OPTIONS:Mhost-tools)
+# The host-tools package does not build Assistant and has no litehtml edge.
+PKGREVISION=	7
+.elif ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# Only the regular native package builds Assistant against shared litehtml.
+CMAKE_CONFIGURE_ARGS+= -DQLITEHTML_USE_SYSTEM_LITEHTML=ON
+.endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Cross builds import the native Linguist and Tools tool packages.
 .include "host-tools.mk"
@@ -42,7 +47,9 @@ PLIST.help=	yes
 .include "../../archivers/zstd/buildlink3.mk"
 .if empty(PKG_OPTIONS:Mhost-tools)
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
+.  if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 .include "../../www/litehtml/buildlink3.mk"
+.  endif
 .endif
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

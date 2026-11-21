@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	litehtml
 .if !defined(LITEHTML_BUILDLINK3_MK)
 LITEHTML_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.litehtml+=	litehtml>=0.10
+BUILDLINK_API_DEPENDS.litehtml+=	litehtml>=0.10nb3
 BUILDLINK_PKGSRCDIR.litehtml?=		../../www/litehtml
 .endif	# LITEHTML_BUILDLINK3_MK
 

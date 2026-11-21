@@ -1,7 +1,9 @@
-@comment $NetBSD: PLIST,v 1.6 2026/06/23 13:56:50 drixter Exp $
+@comment $NetBSD$
+include/litehtml.h
 include/litehtml/background.h
 include/litehtml/borders.h
 include/litehtml/codepoint.h
+include/litehtml/css_effects.h
 include/litehtml/css_length.h
 include/litehtml/css_margins.h
 include/litehtml/css_offsets.h
@@ -10,6 +12,7 @@ include/litehtml/css_position.h
 include/litehtml/css_properties.h
 include/litehtml/css_selector.h
 include/litehtml/css_tokenizer.h
+include/litehtml/css_values.h
 include/litehtml/document.h
 include/litehtml/document_container.h
 include/litehtml/el_anchor.h
@@ -21,12 +24,14 @@ include/litehtml/el_cdata.h
 include/litehtml/el_comment.h
 include/litehtml/el_div.h
 include/litehtml/el_font.h
+include/litehtml/el_form.h
 include/litehtml/el_image.h
 include/litehtml/el_link.h
 include/litehtml/el_para.h
 include/litehtml/el_script.h
 include/litehtml/el_space.h
 include/litehtml/el_style.h
+include/litehtml/el_svg.h
 include/litehtml/el_table.h
 include/litehtml/el_td.h
 include/litehtml/el_text.h
@@ -44,14 +49,15 @@ include/litehtml/html_microsyntaxes.h
 include/litehtml/html_tag.h
 include/litehtml/iterators.h
 include/litehtml/line_box.h
-include/litehtml/litehtml.h
 include/litehtml/master_css.h
 include/litehtml/media_query.h
 include/litehtml/num_cvt.h
 include/litehtml/os_types.h
+include/litehtml/pixel_type.h
 include/litehtml/render_block.h
 include/litehtml/render_block_context.h
 include/litehtml/render_flex.h
+include/litehtml/render_grid.h
 include/litehtml/render_image.h
 include/litehtml/render_inline.h
 include/litehtml/render_inline_context.h
@@ -71,7 +77,7 @@ lib/cmake/litehtml/litehtmlConfig.cmake
 lib/cmake/litehtml/litehtmlTargets-noconfig.cmake
 lib/cmake/litehtml/litehtmlTargets.cmake
 lib/liblitehtml.so
-lib/liblitehtml.so.0
-lib/liblitehtml.so.0.0.0
+lib/liblitehtml.so.1
+lib/liblitehtml.so.1.0.0
 share/doc/litehtml/LICENSE
-share/doc/litehtml/README.md
+share/doc/litehtml/LICENSE-Twidget

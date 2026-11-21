@@ -1,27 +1,74 @@
-$NetBSD: patch-CMakeLists.txt,v 1.6 2026/06/23 13:56:50 drixter Exp $
+$NetBSD$
 
-* create shared library
-* Use PRIVATE instead of PUBLIC keyword since we use
-  dynamic linking and don't want -lgumbo if requesting
-  linkage to litehtml via cmake.
+Origin: upstream Twidget 866f0971e7cc5cdeaa07571d9095a94a68b31c96; common litehtml package integration.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
-@@ -162,7 +162,7 @@
- 	add_compile_options(-Wall -Wextra -Wpedantic -Wfloat-conversion)
+@@ -15,6 +15,41 @@
+ 
+ option(TWIDGET_BUILD_TESTS "Build the TwidgetCore checks" ${PROJECT_IS_TOP_LEVEL})
+ option(TWIDGET_QT "Build twidget_qt, the QPainter backend (needs Qt 6)" OFF)
++option(TWIDGET_LITEHTML_ONLY "Build and install the litehtml library only" OFF)
++
++if(TWIDGET_LITEHTML_ONLY)
++    find_package(PkgConfig REQUIRED)
++    pkg_check_modules(TW_GUMBO REQUIRED IMPORTED_TARGET gumbo)
++    set(TW_LITEHTML "${CMAKE_CURRENT_SOURCE_DIR}/litehtml")
++    file(GLOB TW_LITEHTML_SOURCES CONFIGURE_DEPENDS "${TW_LITEHTML}/src/*.cpp")
++    add_library(litehtml SHARED ${TW_LITEHTML_SOURCES})
++    set_target_properties(litehtml PROPERTIES VERSION 1.0.0 SOVERSION 1 CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
++    target_include_directories(litehtml PUBLIC
++        $<BUILD_INTERFACE:${TW_LITEHTML}/include>
++        $<BUILD_INTERFACE:${TW_LITEHTML}/include/litehtml>
++        $<INSTALL_INTERFACE:include>
++        $<INSTALL_INTERFACE:include/litehtml>
++        PRIVATE "${TW_LITEHTML}/src")
++    target_compile_definitions(litehtml PUBLIC TW_LITEHTML_TWIDGET)
++    target_link_libraries(litehtml PRIVATE PkgConfig::TW_GUMBO)
++    if(APPLE)
++        target_link_libraries(litehtml PUBLIC "-framework CoreFoundation")
++    endif()
++    target_compile_options(litehtml PRIVATE -w)
++    install(TARGETS litehtml EXPORT litehtmlTargets LIBRARY DESTINATION lib)
++    install(DIRECTORY "${TW_LITEHTML}/include/" DESTINATION include)
++    install(FILES "${TW_LITEHTML}/LICENSE" DESTINATION share/doc/litehtml)
++    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION share/doc/litehtml RENAME LICENSE-Twidget)
++    install(EXPORT litehtmlTargets FILE litehtmlTargets.cmake DESTINATION lib/cmake/litehtml)
++    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/litehtmlConfig.cmake"
++        "include(\"\${CMAKE_CURRENT_LIST_DIR}/litehtmlTargets.cmake\")\n"
++        "set_property(TARGET litehtml PROPERTY IMPORTED_NO_SYSTEM TRUE)\n"
++        "if(NOT TARGET litehtml::litehtml)\n"
++        "  add_library(litehtml::litehtml ALIAS litehtml)\n"
++        "endif()\n")
++    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/litehtmlConfig.cmake" DESTINATION lib/cmake/litehtml)
++    return()
++endif()
+ 
+ # widget-sandbox owns the protocol and its JSON helper. Package.swift finds it the same way: a checkout
+ # next to twidget, or the path in TWIDGET_WIDGET_SANDBOX (a URL there is for SwiftPM only).
+@@ -54,19 +89,20 @@
+     add_compile_options(-fwasm-exceptions)
  endif()
  
--add_library(${PROJECT_NAME} ${HEADER_LITEHTML} ${SOURCE_LITEHTML})
-+add_library(${PROJECT_NAME} SHARED ${HEADER_LITEHTML} ${SOURCE_LITEHTML})
- set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_LIB_VERSION} SOVERSION ${PROJECT_SO_VERSION})
- 
- set_target_properties(${PROJECT_NAME} PROPERTIES
-@@ -179,7 +179,7 @@
- target_include_directories(${PROJECT_NAME} PRIVATE include/${PROJECT_NAME})
- 
- # Gumbo
--target_link_libraries(${PROJECT_NAME} PUBLIC gumbo)
-+target_link_libraries(${PROJECT_NAME} PRIVATE gumbo)
- 
- # install and export
- install(TARGETS ${PROJECT_NAME}
+-file(GLOB TW_GUMBO_SOURCES CONFIGURE_DEPENDS "${TW_LITEHTML}/src/gumbo/*.c")
++find_package(PkgConfig REQUIRED)
++pkg_check_modules(TW_GUMBO REQUIRED IMPORTED_TARGET gumbo)
+ file(GLOB TW_LITEHTML_SOURCES CONFIGURE_DEPENDS "${TW_LITEHTML}/src/*.cpp")
+-add_library(litehtml STATIC ${TW_GUMBO_SOURCES} ${TW_LITEHTML_SOURCES})
++add_library(litehtml STATIC ${TW_LITEHTML_SOURCES})
+ add_library(twidget::litehtml ALIAS litehtml)
+ target_include_directories(litehtml
+-    PUBLIC "${TW_LITEHTML}/include" "${TW_LITEHTML}/include/litehtml" "${TW_LITEHTML}/gumbo-include"
++    PUBLIC "${TW_LITEHTML}/include" "${TW_LITEHTML}/include/litehtml"
+     PRIVATE "${TW_LITEHTML}/src")
++target_link_libraries(litehtml PRIVATE PkgConfig::TW_GUMBO)
+ if(APPLE)
+     target_link_libraries(litehtml PUBLIC "-framework CoreFoundation")
+ endif()
+ if(MSVC)
+-    # gumbo expects POSIX strings.h; litehtml is compiled as it comes, without its warnings.
+-    target_include_directories(litehtml PRIVATE "$<$<COMPILE_LANGUAGE:C>:${TW_LITEHTML}/src/gumbo/visualc/include>")
++    # litehtml is compiled as it comes, without its warnings.
+     target_compile_options(litehtml PRIVATE /utf-8 /w)
+ else()
+     target_compile_options(litehtml PRIVATE -w)
