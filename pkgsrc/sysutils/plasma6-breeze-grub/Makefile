@@ -1,9 +1,9 @@
 # $NetBSD$
 
-DISTNAME=	breeze-grub-6.8.2
+DISTNAME=	breeze-grub-6.8.3
 PKGNAME=	plasma6-${DISTNAME}
 CATEGORIES=	sysutils
-MASTER_SITES=	https://download.kde.org/stable/plasma/6.8.2/
+MASTER_SITES=	https://download.kde.org/stable/plasma/${PKGVERSION_NOREV}/
 EXTRACT_SUFX=	.tar.xz
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
