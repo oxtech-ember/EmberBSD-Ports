@@ -45,5 +45,8 @@ do-install:
 	${RM} ${DESTDIR:Q}${_JS_MODULE_DIR:Q}/${_js_backup:Q}
 .endfor
 
-GENERATE_PLIST+= cd ${DESTDIR:Q}${PREFIX:Q}; ${FIND} lib/node_modules/${JS_MODULE_NAME:Q} \( -type f -o -type l \) -print | ${SORT};
+_JS_MODULE_PLIST= ${WRKDIR}/javascript-module.plist
+GENERATE_PLIST+= cd ${DESTDIR:Q}${PREFIX:Q} || exit 1; \
+    ${FIND} lib/node_modules/${JS_MODULE_NAME:Q} \( -type f -o -type l \) -print > ${_JS_MODULE_PLIST:Q} || exit 1; \
+    ${SORT} ${_JS_MODULE_PLIST:Q} || exit 1;
 .include "../../lang/python/tool.mk"

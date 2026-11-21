@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Exercise the actual common JS install target and backup path checks."""
+"""Check the common JS install target, patch backups and generated package list."""
 from pathlib import Path
 import subprocess
 import sys
@@ -22,6 +22,9 @@ with tempfile.TemporaryDirectory(prefix='js-backups-') as temp:
     fixture.write_text(f'''PREFIX= /usr/pkg
 DESTDIR= {root}/dest
 WRKSRC= {root}/src
+WRKDIR= {root}
+FIND= /usr/bin/find
+SORT= /usr/bin/sort
 JS_MODULE_NAME= fixture
 JS_MODULE_PATCH_BACKUPS?= bin/generated.orig
 INSTALL_DATA_DIR= /bin/mkdir -p
@@ -29,6 +32,8 @@ CP= /bin/cp
 RM= /bin/rm -f
 ECHO= /bin/echo
 .include "../../mk/emberbsd-javascript.mk"
+print-plist:
+	@{{ ${{GENERATE_PLIST}} }}
 ''')
     def run(backup):
         return subprocess.run([sys.argv[1], '-C', str(fixture.parent),
@@ -39,6 +44,17 @@ ECHO= /bin/echo
     assert not (dst / 'bin/generated.orig').exists()
     assert (dst / 'upstream.orig').read_text() == 'upstream'
     assert (root / 'src/bin/generated.orig').read_text() == 'generated'
+    def package_list(*options):
+        return subprocess.run([sys.argv[1], '-C', fixture.parent, *options, 'print-plist'],
+                              capture_output=True, text=True)
+    listing = package_list()
+    assert listing.returncode == 0, listing.stderr
+    assert listing.stdout.splitlines() == ['lib/node_modules/fixture/upstream.orig']
+    broken = root / 'partial-find'
+    broken.write_text('#!/bin/sh\necho partial\nexit 1\n')
+    broken.chmod(0o755)
+    for option in ('FIND=' + str(broken), 'SORT=/usr/bin/false'):
+        assert package_list(option).returncode != 0, option
     for invalid in ('/absolute.orig', '../outside.orig', 'bin/../outside.orig', 'bin/generated'):
         assert run(invalid).returncode != 0, invalid
-print('PASS: selected patch backups removed; upstream files and path boundary preserved')
+print('PASS: patch backups, upstream files and package list generation')
