@@ -300,6 +300,8 @@ new_budget_state()
     budget_index=1
     while [ "$budget_index" -le "$budget_count" ]; do
         budget_pkg=p$budget_index
+        # Each budget case measures compilation from its own fresh fixture.
+        rm -rf "$out/work/$budget_pkg" "$out/work/$budget_pkg.built"
         mkdir -p "$out/tree/budget/$budget_pkg"
         echo "budget/$budget_pkg budget/$budget_pkg" >> "$out/budget-edges"
         budget_index=$((budget_index + 1))
@@ -486,6 +488,7 @@ reject_budget_case 6 2 4 10 'CROSS_BULK_JOBS=2 with CROSS_BULK_MAKE_JOBS=4 excee
 reject_budget_case 6 '' 7 10 'CROSS_BULK_MAKE_JOBS=7 exceeds resolved CPU capacity=6'
 
 # SIGTERM: the running packages finish, nothing new starts.
+for pkg in a b c d e f g h i j; do rm -rf "$out/work/$pkg" "$out/work/$pkg.built"; done
 newstate
 : > "$out/calls"
 FAKE_SLEEP=3 BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \

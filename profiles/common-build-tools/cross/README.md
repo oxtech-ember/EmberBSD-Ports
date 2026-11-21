@@ -598,11 +598,11 @@ node. Planning completes the target closure before querying native nodes, so
 native tools needed by target packages receive the same `CROSSTARGETSETTINGS`
 as fetch and build. Native-only tools keep their native context. A native node
 is a job of its own, built with `USE_CROSS_COMPILE=no` and done once the native
-package database has its PKGBASE at the tree's
-PKGNAME version or newer (`pkg_info -e 'BASE>=VERSION'`, the version order
-of pkgsrc dependency patterns), so no package compiles a tool inside its
-dependency step. A native node that the native database already has at that
-version or newer is a leaf: its own tools are not asked, which keeps the
+package database has one matching name at the tree's version or newer
+(`pkg_info -e 'BASE>=VERSION'`) and that installed name satisfies every
+incoming dependency pattern. A current native package retains its runtime
+dependencies and omits its own build tools. A later exact constraint that
+rejects the selected name restores those build edges. This keeps the
 bootstrap tools that need each other (coreutils, gettext-tools, python) out
 of the graph. When two native nodes to build need each other (a revision
 bump of both coreutils and perl), order breaks the cycle at the first sorted
@@ -613,8 +613,7 @@ refuses any other cycle;
 `scripts/tests/cross-bulk-native-cycle.sh NEW_OUTPUT` checks both.
 An older installed package is not current: its node is built
 again and replaces it with the pkgsrc `replace` target (`pkg_add -U`), which
-keeps the packages that depend on it registered. A newer host package, such
-as a host clang, stays current.
+keeps the packages that depend on it registered. A newer host clang stays current when all incoming constraints allow it.
 `scripts/export-build-graph.py --host-current` uses this same `pkg_info -e`
 rule for a publication graph: a current host node keeps only `DEPENDS`.
 It does not apply the `sort_edges` ordering cut, and a target cycle is unchanged.
@@ -986,6 +985,11 @@ provider digests in `STATE/source-inputs`, a newly hashed archive, and current
 runtime requirements obtained from pkgsrc. The selected `pkg_info` checks
 those requirements against the archive and its installed registration. A
 legacy row without source evidence goes through normal package preparation.
+If a retained consumer has no record of its nonempty resolved provider list,
+the first pass preserves the objects. Preserve any required copy, then run
+the selected pkgsrc recipe’s scoped `clean` target and the ordinary bulk build.
+It compiles this consumer with current providers and writes both records.
+A package-install from existing objects cannot establish how they were compiled.
 The SDK's authenticated binary selections use their own exact installed-name
 check. A selected ready binary consumes no compile slots. Among ready source
 nodes, ties in remaining downstream chain length follow the original order.

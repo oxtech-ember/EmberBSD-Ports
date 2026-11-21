@@ -376,8 +376,8 @@ native_info()
 
 # Whether the native prefix has the package base $1 at the version of the
 # PKGNAME $2 or newer. pkg_info matches BASE>=VERSION with the version
-# order that pkgsrc uses for dependency patterns. A newer installed package
-# is current; an older one is not, and its node is built again.
+# order that pkgsrc uses for dependency patterns. The one selected
+# installed name must also meet every incoming consumer requirement.
 . "$(dirname "$0")/native-package-current.sh"
 
 native_current()
@@ -410,7 +410,7 @@ native_current()
 # dependency nodes, one per line. A dependency of a native node that the
 # native prefix already satisfies is followed by the word "soft": sort_edges
 # may drop its edge to break a cycle. A native node that the native prefix
-# already has at its version or newer is not built again, so its own build
+# already satisfies for all consumers is not built again, so its own build
 # tools do not matter. This is what breaks the cycles among the bootstrap
 # tools (coreutils and gettext-tools need each other, python needs both).
 # Its runtime dependencies (DEPENDS) remain its dependency nodes: its
@@ -1455,7 +1455,7 @@ result()
 # the same PKGNAME is and where STATE/done has its record. One that a
 # target package needs gets the target settings (CROSSTARGETSETTINGS)
 # that pkgsrc passes to such a tool. It is done when the native prefix has
-# a package of its PKGBASE at its version or newer. An older one is
+# a matching package at its version or newer accepted by all consumers. An older one is
 # replaced (pkgsrc replace, pkg_add -U), which keeps the packages that
 # depend on it registered. The replace runs alone (see exclusive).
 stage_verify_locked()

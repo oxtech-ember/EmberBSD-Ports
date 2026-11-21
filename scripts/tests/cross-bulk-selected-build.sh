@@ -121,16 +121,19 @@ case "\$target" in
             printf 'full\tdep>=1\t../../cat/dep\n' > "\$depfile"
             printf 'full\tdep>=1\tdep-1.0\n' > "\$resolved"
         fi ;;
-    clean|package|replace) echo "TARGET \$target" >> "$out/targets" ;;
+    clean) rm -rf "$out/work/cat/\$pkg"; echo "TARGET clean" >> "$out/targets" ;;
+    package|replace) echo "TARGET \$target" >> "$out/targets" ;;
     package-install)
         [ -d "$out/state/build.lock" ] || echo "\$pkg" >> "$out/missing-build-lock"
         echo "TARGET \$target" >> "$out/targets"
         work="$out/work/cat/\$pkg"
         mkdir -p "\$work" "$out/packages/All" "$out/target-db/\$pkg-1.0"
         for phase in extract configure build install package; do echo "\$pkg-1.0" > "\$work/.\${phase}_done"; done
+        : > "\$work/.depends"
         : > "\$work/.rdepends"
         printf '@name %s-1.0\n' "\$pkg" > "$out/packages/All/\$pkg-1.0.tgz"
         if [ "\$pkg" = app ]; then
+            printf 'full\tdep>=1\t../../cat/dep\n' > "\$work/.depends"
             printf 'full\tdep>=1\tdep-1.0\n' > "\$work/.rdepends"
             echo '@pkgdep dep>=1' >> "$out/packages/All/\$pkg-1.0.tgz"
         fi
@@ -278,6 +281,31 @@ env BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
 [ "$(wc -l < "$out/targets" | tr -d ' ')" -eq "$target_count" ] ||
     fail 'second selected build rebuilt accepted packages'
 [ ! -e "$out/state/build.lock" ] || fail 'selected build left its state lock'
+
+# A retained pre-change provider list cannot vouch for existing objects.
+# An explicit, scoped clean and ordinary compile establishes both receipts.
+legacy_app=$out/work/cat/app
+rm "$legacy_app/.cross-bulk-providers" "$out/state/source-inputs/cat_app"
+printf 'pre-change object\n' > "$legacy_app/retained.o"
+build_existing_order()
+{
+    env BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
+        CROSS_BULK_SHELL="$selected_shell" CROSS_BULK_CPUS=2 CROSS_BULK_JOBS=1 \
+        "$selected_shell" "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" \
+        > "$out/legacy.log" 2>&1
+}
+if build_existing_order; then fail 'unproven legacy objects were reused'; fi
+grep -q 'kept stage has no evidence' "$out/state/logs/cat_app.worker.log" || fail 'legacy refusal lost its reason'
+[ "$(cat "$legacy_app/retained.o")" = 'pre-change object' ] || fail 'legacy refusal removed objects'
+"$out/bmake" -C "$out/tree/cat/app" clean
+: > "$out/targets"
+build_existing_order || fail "ordinary legacy rebuild: $(cat "$out/legacy.log")"
+[ -s "$legacy_app/.cross-bulk-providers" ] && [ -s "$out/state/source-inputs/cat_app" ] ||
+    fail 'ordinary rebuild did not establish provider and archive evidence'
+grep -Fqx 'TARGET package-install' "$out/targets" || fail 'ordinary rebuild did not compile/package'
+: > "$out/targets"
+build_existing_order || fail "post-migration reuse: $(cat "$out/legacy.log")"
+[ ! -s "$out/targets" ] || fail 'post-migration run repeated package work'
 
 # If dependency ordering fails, selected-build must stop before package targets.
 : > "$out/targets"

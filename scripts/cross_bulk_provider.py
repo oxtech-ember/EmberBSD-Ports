@@ -59,6 +59,8 @@ def package_interface(name, contents, build, inspect_elf, *, inspect_file, inspe
         if item.startswith(('@name ', '@blddep ')):
             continue
         if item.startswith('@'):
+            if item != '@ignore' and not item.startswith(('@cwd ', '@pkgdep ', '@comment ')):
+                raise UnclassifiedProvider('unclassified package directive')
             if not item.startswith(('@comment MD5:', '@comment Symlink:')):
                 records.append(item)
             continue

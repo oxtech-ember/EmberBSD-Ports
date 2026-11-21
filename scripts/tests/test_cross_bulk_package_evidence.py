@@ -45,11 +45,11 @@ with tempfile.TemporaryDirectory() as temp:
 
 build = 'OPSYS=NetBSD\nMACHINE_ARCH=aarch64\nLOCALBASE=/usr/pkg\nPKGPATH=graphics/freetype2\nPROVIDES=/usr/pkg/lib/libft.so.6\n'
 zero = '0' * 32
-def compare(name, *, header=zero, lib=zero, static=zero, read='identical-library'):
+def compare(name, *, header=zero, lib=zero, static=zero, read='identical-library', extra=''):
     contents = (f'@cwd /usr/pkg\n@name {name}\n@blddep bzip2-1\n@pkgdep bzip2>=1\n'
                 f'include/ft.h\n@comment MD5:{header}\nlib/libft.a\n@comment MD5:{static}\n'
                 f'lib/libft.so.6\n@comment MD5:{lib}\n@cwd /usr/pkg\n@ignore\n+BUILD_INFO\n')
-    return package_interface(name, contents.encode(), build,
+    return package_interface(name, (contents + extra).encode(), build,
                              lambda path, md5: read, inspect_file=lambda path, md5: md5,
                              inspect_link=lambda path, target: None)
 before = compare('ft-1.0nb1')
@@ -59,6 +59,13 @@ assert compare('different-ft-1.0.1') != before
 assert compare('ft-1.0.1', header='1'*32) != before
 assert compare('ft-1.0nb2', static='1'*32) != before
 assert compare('ft-1.0nb2', read='unqualified-library') != before
+try:
+    compare('ft-1.0.1', extra='@exec record-install-state %D\n')
+except ValueError as error:
+    assert 'unclassified package directive' in str(error)
+else:
+    raise AssertionError('compared an unqualified installation command')
+
 with tempfile.TemporaryDirectory() as folder:
     prefix = Path(folder)
     db, cache = prefix / 'pkgdb', prefix / 'cache'
