@@ -10,3 +10,7 @@ paths.
 The appliance profile should copy only `sbin/dropbear` and
 `share/examples/rc.d/dropbear` into its image. Provision the pinned host key
 separately and run without `-R`, so startup never creates a host key.
+
+For provisioning hosts, `security/dropbearconvert` installs the key-format
+converter and its manual. It conflicts with both full packages, which
+provide the same executable.

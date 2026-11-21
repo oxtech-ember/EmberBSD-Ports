@@ -15,14 +15,15 @@ USE_TOOLS+=		gmake
 USE_LANGUAGES=	c
 GNU_CONFIGURE=		yes
 CONFIGURE_ARGS+=	--disable-bundled-libtom
+CFLAGS.NetBSD+=		-DHAVE_NETINET_IN_SYSTM_H
+LDFLAGS.SunOS+=		-lsocket -lnsl
+
+.if !defined(DROPBEAR_CONVERT_ONLY)
 CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR}
 
 .include "../../x11/xauth/builtin.mk"
 
 CPPFLAGS+=		-DXAUTH_COMMAND="\"${XAUTHBASE}/bin/xauth\""
-
-CFLAGS.NetBSD+=		-DHAVE_NETINET_IN_SYSTM_H
-LDFLAGS.SunOS+=		-lsocket -lnsl
 
 BUILD_TARGET=		all scp
 
@@ -49,5 +50,7 @@ post-install:
 	${INSTALL_PROGRAM} ${WRKSRC}/scp ${DESTDIR}${PREFIX}/bin/dbscp
 
 .include "../../devel/zlib/buildlink3.mk"
+.endif
+
 .include "../../math/ltm/buildlink3.mk"
 .include "../../security/libtomcrypt/buildlink3.mk"
