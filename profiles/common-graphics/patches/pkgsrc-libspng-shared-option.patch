@@ -1,0 +1,44 @@
+--- a/graphics/libspng/options.mk
++++ b/graphics/libspng/options.mk
+@@ -1,12 +1,22 @@
+ # SPDX-License-Identifier: BSD-2-Clause
+ # Origin: EmberBSD contributors (AI-assisted).
+ PKG_OPTIONS_VAR= PKG_OPTIONS.libspng
+-PKG_SUPPORTED_OPTIONS= examples
++PKG_SUPPORTED_OPTIONS= examples shared
++PKG_SUGGESTED_OPTIONS+= shared
+ 
+ .include "../../mk/bsd.options.mk"
+ 
++PLIST_VARS+= shared
++
+ .if !empty(PKG_OPTIONS:Mexamples)
+ CMAKE_CONFIGURE_ARGS+= -DBUILD_EXAMPLES=ON
+ .else
+ CMAKE_CONFIGURE_ARGS+= -DBUILD_EXAMPLES=OFF
+ .endif
++
++.if !empty(PKG_OPTIONS:Mshared)
++CMAKE_CONFIGURE_ARGS+= -DSPNG_SHARED=ON
++PLIST.shared= yes
++.else
++CMAKE_CONFIGURE_ARGS+= -DSPNG_SHARED=OFF
++.endif
+--- a/graphics/libspng/PLIST
++++ b/graphics/libspng/PLIST
+@@ -4,11 +4,11 @@
+ lib/cmake/spng/SPNGConfigVersion.cmake
+ lib/cmake/spng/SPNGTargets-release.cmake
+ lib/cmake/spng/SPNGTargets.cmake
+-lib/libspng.so
+-lib/libspng.so.0
+-lib/libspng.so.0.7.4
++${PLIST.shared}lib/libspng.so
++${PLIST.shared}lib/libspng.so.0
++${PLIST.shared}lib/libspng.so.0.7.4
+ lib/libspng_static.a
+-lib/pkgconfig/libspng.pc
++${PLIST.shared}lib/pkgconfig/libspng.pc
+ lib/pkgconfig/libspng_static.pc
+ share/licenses/libspng/BSD-2-Clause
+ share/licenses/libspng/libpng-2.0
