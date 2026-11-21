@@ -27,7 +27,7 @@ CMAKE_CONFIGURE_ARGS+=	-DZXCVBN_NATIVE_DICTGEN=${TOOLBASE}/bin/zxcvbn-dictgen
 CMAKE_CONFIGURE_ARGS+=	-DZXCVBN_WORDS_DIR=${TOOLBASE}/share/zxcvbn
 TOOL_DEPENDS+=	qt6-qtshadertools-[0-9]*:../../graphics/qt6-qtshadertools
 CMAKE_CONFIGURE_ARGS+=	-DQSB_EXECUTABLE=${TOOLBASE}/qt6/bin/qsb
-TOOL_DEPENDS+=	telegram-desktop-codegen=${TDESKTOP_VERSION}nb${TDESKTOP_CODEGEN_REVISION}:../../chat/telegram-desktop-codegen
+TOOL_DEPENDS+=	telegram-desktop-codegen=${TDESKTOP_VERSION}:../../chat/telegram-desktop-codegen
 CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_NATIVE_CODEGEN_DIR=${TOOLBASE}/libexec/telegram-desktop-codegen
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
@@ -118,4 +118,6 @@ post-install:
 .include "../../textproc/cld3/buildlink3.mk"
 .include "../../textproc/hunspell/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../www/litehtml/buildlink3.mk"
+.include "../../lang/quickjs-ng/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
