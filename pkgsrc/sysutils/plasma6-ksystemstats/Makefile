@@ -1,7 +1,6 @@
 # $NetBSD$
 
 DISTNAME=	ksystemstats-${PLASMAVER}
-PKGREVISION=	3
 CATEGORIES=	sysutils
 
 HOMEPAGE=	https://kde.org/plasma-desktop/

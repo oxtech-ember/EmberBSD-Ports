@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.8 2026/09/06 10:23:28 markd Exp $
 
 DISTNAME=	plasma5support-${PLASMAVER}
-PKGREVISION=	2
 CATEGORIES=	devel
 
 HOMEPAGE=	https://kde.org/plasma-desktop/

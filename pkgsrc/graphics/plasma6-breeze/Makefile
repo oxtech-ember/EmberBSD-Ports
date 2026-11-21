@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.9 2026/09/06 10:23:29 markd Exp $
 
 DISTNAME=	breeze-${PLASMAVER}
-PKGREVISION=	1
 CATEGORIES=	graphics
 
 HOMEPAGE=	https://kde.org/plasma-desktop/

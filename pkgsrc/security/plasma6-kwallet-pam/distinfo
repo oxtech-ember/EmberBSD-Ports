@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (kwallet-pam-6.8.2.tar.xz) = 372336b3d15cd8c1602aced21fe7745924bedf0a437350f9e74eb6612540bcce
-SHA512 (kwallet-pam-6.8.2.tar.xz) = 4fd6c608faca8f0b2f6282c66b9cb81be2ef7c87497fa08aab2ba7e3ef86c0b6b74191ccbdbb49fe86bc59fe4e0181e1d331d259a5af47b007825e038eedb101
-Size (kwallet-pam-6.8.2.tar.xz) = 22452 bytes
+BLAKE2s (kwallet-pam-6.8.3.tar.xz) = e6f7636fba75ea41c06c3612e96c39c2c835e953064094fba80ddd1d19a8ad0f
+SHA512 (kwallet-pam-6.8.3.tar.xz) = 339bb03664ef836ee321df702cfc880a1d534dc5eb89d6a7b1696c5947b9656b77f17b73f5404ec56d0d605b04760a737455cd4ae601869e36083af7d3cf1c95
+Size (kwallet-pam-6.8.3.tar.xz) = 22468 bytes

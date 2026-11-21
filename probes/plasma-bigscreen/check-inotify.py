@@ -11,7 +11,7 @@ import subprocess
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", type=Path, help="patched Plasma Bigscreen 6.8.0")
+    parser.add_argument("source", type=Path, help="patched Plasma Bigscreen source")
     parser.add_argument("toolchain", type=Path, help="common GCC16 CMake toolchain")
     parser.add_argument("work", type=Path)
     parser.add_argument("--cmake", default="cmake")

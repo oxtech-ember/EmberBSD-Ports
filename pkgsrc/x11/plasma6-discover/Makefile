@@ -9,7 +9,6 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1 AND gnu-fdl-v1.2
 
 .include "../../meta-pkgs/kde/plasma6.mk"
 
-PKGREVISION=	10
 USE_TOOLS+=	msgmerge pkg-config
 
 # PackageKit, Flatpak, Snap, Fwupd and the other Linux stores are not

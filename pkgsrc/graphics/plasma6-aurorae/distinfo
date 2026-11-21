@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:29 markd Exp $
 
-BLAKE2s (aurorae-6.8.2.tar.xz) = df334b6af4bf8d5ed41f28989bcb0b5b22712808b4467f0d339fc410215f6b09
-SHA512 (aurorae-6.8.2.tar.xz) = dc3cfcf2122fcd4b7bb7c2690a5ccb451740845172ad128006852912c3ee6a52fd1a9281f954db42ff31eb36dbeeabd67bc6d019060c3997254723430f440518
-Size (aurorae-6.8.2.tar.xz) = 68560 bytes
+BLAKE2s (aurorae-6.8.3.tar.xz) = 7a49575a75631b40e29ae449d72c7d4e7f447b6c8c9f2e0e039cc990e7ae7a51
+SHA512 (aurorae-6.8.3.tar.xz) = fdb1c5c78071df8d9f763f5f43e444f91b4eef2a466cdb6a4810c49a0d771b73c2a4eb1972b6529623297dceac64746cd25bc07e9861833c6321c3316eb3f11a
+Size (aurorae-6.8.3.tar.xz) = 68596 bytes

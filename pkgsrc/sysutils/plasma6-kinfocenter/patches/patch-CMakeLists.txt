@@ -5,8 +5,7 @@ That page is not built on NetBSD.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
-@@ -27,12 +27,14 @@
- option(BUILD_DOC "Whether to build the documentation" ON)
+@@ -28,11 +28,14 @@
  
  find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS
      Core
@@ -15,7 +14,8 @@ That page is not built on NetBSD.
      Qml
      Widgets
  )
-+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
++
++if(CMAKE_SYSTEM_NAME MATCHES "Linux")
 +    find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Graphs)
 +endif()
  

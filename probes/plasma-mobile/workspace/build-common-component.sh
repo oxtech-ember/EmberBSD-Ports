@@ -14,7 +14,7 @@ export CC CXX
 export PKG_CONFIG_PATH="$PLASMA_PREFIX/lib/pkgconfig:/usr/pkg/lib/pkgconfig:/usr/X11R7/lib/pkgconfig"
 mkdir -p "$WORKSPACE_ROOT/logs" "$PLASMA_PREFIX"
 build_dir="$WORKSPACE_ROOT/build-$component"
-/usr/pkg/qt6/bin/qt-cmake -S "$WORKSPACE_ROOT/src/$component-6.7.5" -B "$build_dir" -G Ninja \
+/usr/pkg/qt6/bin/qt-cmake -S "$WORKSPACE_ROOT/src/$component-6.8.3" -B "$build_dir" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$PLASMA_PREFIX" \
     -DCMAKE_PREFIX_PATH="$PLASMA_PREFIX;/usr/pkg/qt6;/usr/pkg;/usr/X11R7" \

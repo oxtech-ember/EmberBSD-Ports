@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:33 markd Exp $
 
-BLAKE2s (plasma-integration-6.8.2.tar.xz) = 03708edc41d7f30e6f15395016e16a0bd6a68985131733575374b4a56a0d74a3
-SHA512 (plasma-integration-6.8.2.tar.xz) = 1e057b1034b2645a0c817fbc8bcf58b094328cbeabacc4cd04aab75e5bea967c296f86a86bd1fedcbb7eca7036bbdcba8e72693ad4f7a4cc02661967e45d47a7
-Size (plasma-integration-6.8.2.tar.xz) = 95100 bytes
+BLAKE2s (plasma-integration-6.8.3.tar.xz) = f48872232ad2a051197b82fa5e95296450942311aee2ff1e9572f99cb01ccdd3
+SHA512 (plasma-integration-6.8.3.tar.xz) = 11b2eed09f660ee1659b0155ceea64af1bee28ad9e9f754990d8d8d1c3402d80900b3078f39ce0374678dbfc8d5cfcb21c59e47d7e1867b1051c8d01e2279911
+Size (plasma-integration-6.8.3.tar.xz) = 95108 bytes

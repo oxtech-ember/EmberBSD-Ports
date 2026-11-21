@@ -1,8 +1,8 @@
 $NetBSD$
 
-BLAKE2s (plasma-workspace-6.8.2.tar.xz) = 05829156516dc899d6063587f64cdfb09f91b888ee9723c7a94e9f253e3277d6
-SHA512 (plasma-workspace-6.8.2.tar.xz) = 32fd7185d06ba5cd5f77e59b8eb013feaa842c2dff24431f4b75e081c961160a9d0302bcb14e397b1218b53713d6d4168618baee05291668885eb63085fc9c79
-Size (plasma-workspace-6.8.2.tar.xz) = 19398800 bytes
+BLAKE2s (plasma-workspace-6.8.3.tar.xz) = e7bfced337d19aefd8988bb17626ffc887e53334bb8461674910f18eeef859ea
+SHA512 (plasma-workspace-6.8.3.tar.xz) = 663a8aff2195ff054f1544e449b58a8d1850ed158f5d9ffe75e38b5204bd0e51f2364ad315a1aeef07072e153d3f4f2edcd3c8869534742b5b57e519257291a4
+Size (plasma-workspace-6.8.3.tar.xz) = 19399472 bytes
 SHA1 (patch-components_calendar_CMakeLists.txt) = 06ba6c1751001f1b6dcb8e5692fcd24ae1b01084
 SHA1 (patch-ksmserver_CMakeLists.txt) = c377e3e32b2c96dcf87e59167628fe703682e69e
 SHA1 (patch-startkde_config-startplasma.h.cmake) = 79ab1bd7c11a92881e05337f143a6330ec2af47d

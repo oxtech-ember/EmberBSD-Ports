@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (plasma-nano-6.8.2.tar.xz) = 146e7b636dc05028ab45c16909d5bb017d201336d3965d03fe4d8dba3eb32ffc
-SHA512 (plasma-nano-6.8.2.tar.xz) = 037350a3b8127f85c914280a6d4dfa8373af911e75a0b7e20ddd30d77e59fe0e96b4b826629b1db4838026a88a2d981e6722ea0a133e1bfe2559e504be407e9b
-Size (plasma-nano-6.8.2.tar.xz) = 73880 bytes
+BLAKE2s (plasma-nano-6.8.3.tar.xz) = 28ba7a97c03d01445caa47ff1fc1ccc947bd66bbe8c4726866d7bfaf6b8c974a
+SHA512 (plasma-nano-6.8.3.tar.xz) = 704e4a0b2cf7fe496ed670066e026448ae0173a19942f76f2d44db81b0993f02f505577951f0a9d9db02d1659e52a8c3b6b70cb4ed97722d474b6c67ad575915
+Size (plasma-nano-6.8.3.tar.xz) = 73900 bytes

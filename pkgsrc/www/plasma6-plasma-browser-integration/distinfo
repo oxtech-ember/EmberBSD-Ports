@@ -1,6 +1,6 @@
 $NetBSD$
 
-BLAKE2s (plasma-browser-integration-6.8.2.tar.xz) = 5491acf4a72b7335f409a088010eb0cc9a3c05e1d0f7c8ee88b65788b4d667a8
-SHA512 (plasma-browser-integration-6.8.2.tar.xz) = 63797ae9d89cdd1d14c18326ebe69b69782c8bed872101b13a6ac372d8f542b744f3b40f551285fa67c9be83e834786126633afd6aab5d14ebff2a186f1165f0
-Size (plasma-browser-integration-6.8.2.tar.xz) = 249432 bytes
+BLAKE2s (plasma-browser-integration-6.8.3.tar.xz) = 57ff6964e49fc372bfe312ed7bf2d81402d41e594089cebf01a0ea57a55f6c82
+SHA512 (plasma-browser-integration-6.8.3.tar.xz) = a3644b022683dfe9be1062bcee3511a8f1a87e9a506b3f7947b078a77480c94d0a0eb3bf7c8368c9b9731cd78e8aec20226aff81db4b803bef48386aef7c1951
+Size (plasma-browser-integration-6.8.3.tar.xz) = 249216 bytes
 SHA1 (patch-CMakeLists.txt) = c015d73c5b4a1ba82907ee0391fe5ff02db3c779

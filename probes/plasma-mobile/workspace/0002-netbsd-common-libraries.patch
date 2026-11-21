@@ -1,5 +1,5 @@
---- a/layer-shell-qt-6.7.5/CMakeLists.txt
-+++ b/layer-shell-qt-6.7.5/CMakeLists.txt
+--- a/layer-shell-qt-6.8.3/CMakeLists.txt
++++ b/layer-shell-qt-6.8.3/CMakeLists.txt
 @@ -22,6 +22,14 @@
  include(KDEInstallDirs)
  include(KDECMakeSettings)
@@ -15,10 +15,10 @@
  include(ECMSetupVersion)
  include(ECMDeprecationSettings)
  include(ECMGenerateHeaders)
---- a/libkscreen-6.7.5/CMakeLists.txt
-+++ b/libkscreen-6.7.5/CMakeLists.txt
+--- a/libkscreen-6.8.3/CMakeLists.txt
++++ b/libkscreen-6.8.3/CMakeLists.txt
 @@ -14,6 +14,14 @@
- set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
+ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
  include(KDEInstallDirs)
  include(KDECompilerSettings NO_POLICY_SCOPE)
 +
@@ -32,8 +32,8 @@
  include(KDECMakeSettings)
  include(ECMSetupVersion)
  include(ECMMarkAsTest)
---- a/kscreenlocker-6.7.5/CMakeLists.txt
-+++ b/kscreenlocker-6.7.5/CMakeLists.txt
+--- a/kscreenlocker-6.8.3/CMakeLists.txt
++++ b/kscreenlocker-6.8.3/CMakeLists.txt
 @@ -18,6 +18,14 @@
  include(KDEInstallDirs)
  include(KDECMakeSettings)

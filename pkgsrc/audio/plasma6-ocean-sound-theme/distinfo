@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:28 markd Exp $
 
-BLAKE2s (ocean-sound-theme-6.8.2.tar.xz) = 8a4043ba0826f71872ca0019baa2cff4c233446f0383fcc4146bd32398d2fe56
-SHA512 (ocean-sound-theme-6.8.2.tar.xz) = cc12f087451470861575a38d2439a33c04cc778384827b493f2be1f9775ad2848c3cc0d85c2615652e43bef5b66e24f0ea53784cc526f5c0e4ee7203c70b6328
-Size (ocean-sound-theme-6.8.2.tar.xz) = 2148156 bytes
+BLAKE2s (ocean-sound-theme-6.8.3.tar.xz) = 9efbda9bc438badec0e27ccd510643fe289742bfe419cf4c8f28c7c2f2306896
+SHA512 (ocean-sound-theme-6.8.3.tar.xz) = cf77088680e37d94d99a5987b19ef92b2c4aeda10ecbf3fc21b954b94c6cfe64c4129752a76e5854298e9dd4c318c70caf31339d4a4557ef55a07d483f01ab00
+Size (ocean-sound-theme-6.8.3.tar.xz) = 2148172 bytes

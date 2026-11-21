@@ -1,8 +1,8 @@
 $NetBSD$
 
-BLAKE2s (kwin-6.8.2.tar.xz) = 8f70eb43c3253e26e2f760d333bb43339c1186540002e65c99888f09fbb42a39
-SHA512 (kwin-6.8.2.tar.xz) = 878bc0970e6f6288c510ce2cce777ebba601fc9b22be09ddd6c344a9c623ac013a2d4590adb56c7f3ad09507ec5a76095751f5e274dfbcfc3afa9e5ea0399ec1
-Size (kwin-6.8.2.tar.xz) = 9016952 bytes
+BLAKE2s (kwin-6.8.3.tar.xz) = 3ae40c9d94b1b174bfde483f220c2feb0353731f33e8f3b99c4fb15cbaf0c1a3
+SHA512 (kwin-6.8.3.tar.xz) = fcaa17b3d963785f7ec27b77009f8a5e6a11f032ada49f4905c7bc778c37b0dcaa80b2c7b6d5177ec4a6be0054973b117c49eeec39d677ae547ff86e76adaf0e
+Size (kwin-6.8.3.tar.xz) = 9020620 bytes
 SHA1 (patch-01-bsd-executable-path-source) = 70c474c5d6d50530be5ca2c0bf31eb7165098ac1
 SHA1 (patch-02-netbsd-executable-path) = ab35fbc7c5d26656f0069c5839fd33604f354365
 SHA1 (patch-07-vulkan-dynamic-dispatch) = 03ffa84646a5f4c556f141bc8626f398c14adf75

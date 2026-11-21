@@ -685,6 +685,7 @@ share/locale/hu/LC_MESSAGES/kcm_mobileshell.mo
 share/locale/hu/LC_MESSAGES/kcm_waydroidintegration.mo
 share/locale/hu/LC_MESSAGES/plasma_applet_org.kde.plasma.mobile.homescreen.folio.mo
 share/locale/hu/LC_MESSAGES/plasma_applet_org.kde.plasma.mobile.homescreen.halcyon.mo
+share/locale/hu/LC_MESSAGES/plasma_applet_org.kde.plasma.mobile.taskpanel.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.mobileinitialstart.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.private.mobileshell.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.airplanemode.mo
@@ -693,6 +694,7 @@ share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.autohidepanels.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.battery.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.bluetooth.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.caffeine.mo
+share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.darkmode.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.docked.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.donotdisturb.mo
 share/locale/hu/LC_MESSAGES/plasma_org.kde.plasma.quicksetting.flashlight.mo

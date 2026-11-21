@@ -12,7 +12,7 @@ export PKG_CONFIG_PATH=/usr/pkg/lib/pkgconfig:/usr/X11R7/lib/pkgconfig
 : "${CC:=/usr/bin/cc}"
 : "${CXX:=/usr/bin/c++}"
 export CC CXX
-source_dir="$WORKSPACE_ROOT/src/plasma-workspace-6.7.5"
+source_dir="$WORKSPACE_ROOT/src/plasma-workspace-6.8.3"
 build_dir="$WORKSPACE_ROOT/build"
 prefix="$WORKSPACE_ROOT/prefix"
 mkdir -p "$WORKSPACE_ROOT/logs"

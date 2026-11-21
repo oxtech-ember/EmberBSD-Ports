@@ -1,7 +1,7 @@
 $NetBSD$
 
-BLAKE2s (krdp-6.8.2.tar.xz) = 3203c4e044809d3b0ea8892bc1345946ed6f0c9180e6a9ad975deb52d8b8ae37
-SHA512 (krdp-6.8.2.tar.xz) = bab8c5ef6e23f5097e5000acf8eb57f47fa3a517b14717c38f9adb18cf76a7313759b36f3f152db30fec6bdf01a2ab3437c198703a512bd245ff4ea6c091098a
-Size (krdp-6.8.2.tar.xz) = 148496 bytes
+BLAKE2s (krdp-6.8.3.tar.xz) = 0fdb4892cc29d42157f209d59d9a66a7c6c04b5e9ad4ce51b25298e3e8140851
+SHA512 (krdp-6.8.3.tar.xz) = 75859e1a708ed35d5408d522b44ef6a43d3083b032be07bf67ea62a9bab91e9134925384f2925eaf467d97935cfee7696331332a6bd6b99648fd7537cf2c4739
+Size (krdp-6.8.3.tar.xz) = 148584 bytes
 SHA1 (patch-src_EiConnection.cpp) = b37f22a765c86d46acb4d186052a496c43d62de9
 SHA1 (patch-src_RdpConnection.cpp) = 4c7d939a9db293feeb8f631ed7cf8c676d71a16e

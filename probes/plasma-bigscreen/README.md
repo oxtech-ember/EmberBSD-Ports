@@ -1,7 +1,7 @@
 # Plasma Bigscreen 6.8 source port
 
 [Plasma Bigscreen](https://plasma-bigscreen.org/get/) is released as part of
-KDE Plasma. The target is Plasma 6.8.0, released on 14 October 2026.
+KDE Plasma. The target is Plasma 6.8.3.
 The original archive SHA256 in `sources.tsv` matches KDE's `.sha256` response.
 The common target providers remain Qt 6.12, Frameworks 6.31 and GCC16.
 

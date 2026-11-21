@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (polkit-kde-agent-1-6.8.2.tar.xz) = ed9fbfcc1e391f94014e6838985f0b13255fb17a956b6e699689c1d40e1e1c63
-SHA512 (polkit-kde-agent-1-6.8.2.tar.xz) = 3836c1b7f470487111498c1bb93cf03a26a3b834b8ee578656d2c108fb6553c96a3dc661aca1e26310232907f1d73d6b8fd17bd505075f63d7f55f8cec2ba10e
-Size (polkit-kde-agent-1-6.8.2.tar.xz) = 58508 bytes
+BLAKE2s (polkit-kde-agent-1-6.8.3.tar.xz) = da1e13bbf9286b2a067e141dbee943f35eb5a5b2862a1936b99814b2eb5e0508
+SHA512 (polkit-kde-agent-1-6.8.3.tar.xz) = 490a713c5d1f1ac2b470a6498332efaf48a53d57c4993bab01716c5c895e79a7ae8b1476831ba2999e9172305d1f5f177b63ae991e59750c5b955cc889cdde95
+Size (polkit-kde-agent-1-6.8.3.tar.xz) = 58532 bytes

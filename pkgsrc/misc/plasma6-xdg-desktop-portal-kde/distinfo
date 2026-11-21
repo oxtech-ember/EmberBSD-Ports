@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (xdg-desktop-portal-kde-6.8.2.tar.xz) = 0d7587d19b26e8d139cdebcf82a7732e08c504061714eb1fa0d5f4938c1094bb
-SHA512 (xdg-desktop-portal-kde-6.8.2.tar.xz) = 0c8069796a759a453e4de005ddbb85acb84c973777289e5290bf744882326c20a60fdfda2eea6dbada8a0413a374207ebf048a25a2de9fa462e35a7644de383d
-Size (xdg-desktop-portal-kde-6.8.2.tar.xz) = 278432 bytes
+BLAKE2s (xdg-desktop-portal-kde-6.8.3.tar.xz) = abc8b4e91085ceea9d7fed3b5dfcaa49d3239ef1ed264ff7f89a42ac770c2fc4
+SHA512 (xdg-desktop-portal-kde-6.8.3.tar.xz) = 2d3f3a3e24f9a56136bcd8c67f8b31c893e41d4793b30934e5baa133cd6b96fad4ff6a063d33425472f5cae17246aab025d3b8813bb14a04fe240921ee61afb9
+Size (xdg-desktop-portal-kde-6.8.3.tar.xz) = 278496 bytes

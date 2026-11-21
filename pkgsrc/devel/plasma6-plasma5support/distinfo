@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (plasma5support-6.8.2.tar.xz) = 7790e660d44167a3aa193387e1d7ce88f396d8e7f2b93e7cc4c655397cb26f5f
-SHA512 (plasma5support-6.8.2.tar.xz) = 2059f44179e7ddb89c5e23892f254c15c2f7af1f9d6fefe15b1dcb75e6fd3ac9c59af96cda0e71474751925440d5e7303c28a45d0d17d01b744a39a067555275
-Size (plasma5support-6.8.2.tar.xz) = 841664 bytes
+BLAKE2s (plasma5support-6.8.3.tar.xz) = f863fc2b157c5dffc6dc11da2fbcd4ccc90d008eac54e17649b81f325df3fe7f
+SHA512 (plasma5support-6.8.3.tar.xz) = b75689dc7df5afb89d5ce8931242e93a3f22afcf7a49ce13b4a711d807b7ad91140548338a359130f1117314f34bd51865651af4dad655d83cb5c490a8b397ec
+Size (plasma5support-6.8.3.tar.xz) = 841572 bytes

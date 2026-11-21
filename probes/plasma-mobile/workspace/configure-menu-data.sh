@@ -28,7 +28,7 @@ if grep -E '^(SHARE_INSTALL_PREFIX|XDG_DIRECTORY_INSTALL_DIR|CMAKE_INSTALL_DATAR
     echo 'Unsupported legacy menu directory override' >&2
     exit 1
 fi
-if [ "$source_dir" != "$WORKSPACE_ROOT/src/plasma-workspace-6.7.5" ] ||
+if [ "$source_dir" != "$WORKSPACE_ROOT/src/plasma-workspace-6.8.3" ] ||
    [ "$prefix" != "$WORKSPACE_ROOT/prefix" ] ||
    [ "$dataroot_dir" != share ] || [ "$desktop_dir" != share/desktop-directories ] || [ "$sysconf_dir" != etc ]; then
     echo 'Unexpected Workspace source, private prefix, or relative menu install directories' >&2

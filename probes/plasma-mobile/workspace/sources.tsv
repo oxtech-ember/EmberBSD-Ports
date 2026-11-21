@@ -1,6 +1,6 @@
 # component version url sha256
-plasma-workspace	6.7.5	https://download.kde.org/stable/plasma/6.7.5/plasma-workspace-6.7.5.tar.xz	94ab21e2243b7876f65c315f1e545081c6437f5bd0a041ca4fb6c2533ae874c9
-kwin	6.7.5	https://download.kde.org/stable/plasma/6.7.5/kwin-6.7.5.tar.xz	6baa910b732d93c48c90f9c1cc685cc93d0b8de0cdf138c24192c045bc3a48e2
-libkscreen	6.7.5	https://download.kde.org/stable/plasma/6.7.5/libkscreen-6.7.5.tar.xz	df317e03acfadfcbc68981b78131750103fadf4d5c5df6368c9e91e698677219
-layer-shell-qt	6.7.5	https://download.kde.org/stable/plasma/6.7.5/layer-shell-qt-6.7.5.tar.xz	ccdcfec7081ca956f7a52c9113a4df3a226575bfbe98b56a2a9a4d7d7e19e8f0
-kscreenlocker	6.7.5	https://download.kde.org/stable/plasma/6.7.5/kscreenlocker-6.7.5.tar.xz	6c41ce2cb79d2b85d4fbe5a3a61c09e40c70e5a869ae6f0352c7e1cb3b44606b
+plasma-workspace	6.8.3	https://download.kde.org/stable/plasma/6.8.3/plasma-workspace-6.8.3.tar.xz	3f984e2d960c252ee6353ef639807379c7d1bb2777fecedd047943209c52ffcb
+kwin	6.8.3	https://download.kde.org/stable/plasma/6.8.3/kwin-6.8.3.tar.xz	fd5cb783f220ea4526a9afee2f72b582c3e87ef7f91b19bc5c7a6662ffe7fbdc
+libkscreen	6.8.3	https://download.kde.org/stable/plasma/6.8.3/libkscreen-6.8.3.tar.xz	8f0e2157bb55aa36ac632c85bd4411bcbf2424c477cca3126b8b42ad33fa4fb8
+layer-shell-qt	6.8.3	https://download.kde.org/stable/plasma/6.8.3/layer-shell-qt-6.8.3.tar.xz	af3e56be10eb95a5993600449d6c811a08d491f7905c40a1203040b5baf98f9e
+kscreenlocker	6.8.3	https://download.kde.org/stable/plasma/6.8.3/kscreenlocker-6.8.3.tar.xz	03c61481bb8934c6beaf8f8dd986d2679c0f59f8336e548d85f0872b767edf01

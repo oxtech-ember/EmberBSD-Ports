@@ -42,7 +42,7 @@ if ! awk '
     exit 1
 fi
 timeout -k 2 30 dbus-run-session -- "$prefix/bin/plasmashell" --version > "$log_dir/workspace-version.log" 2>&1
-grep -Fx 'plasmashell 6.7.5' "$log_dir/workspace-version.log" >/dev/null
+grep -Fx 'plasmashell 6.8.3' "$log_dir/workspace-version.log" >/dev/null
 timeout -k 2 30 dbus-run-session -- qml "$recipe_dir/module-probe.qml" > "$log_dir/workspace-modules.log" 2>&1
 grep -F 'qml: Workspace QML imports and model constructors succeeded ' "$log_dir/workspace-modules.log" >/dev/null
 timeout -k 2 30 dbus-run-session -- qml "$recipe_dir/clock-probe.qml" > "$log_dir/workspace-clock.log" 2>&1

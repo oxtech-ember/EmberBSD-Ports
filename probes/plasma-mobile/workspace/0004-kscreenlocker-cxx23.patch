@@ -1,6 +1,6 @@
---- a/greeter/pamauthenticator.cpp
-+++ b/greeter/pamauthenticator.cpp
-@@ -91,7 +91,9 @@
+--- a/greeter/worker/main.cpp
++++ b/greeter/worker/main.cpp
+@@ -196,7 +196,9 @@
      auto messages = std::span{msg, nSize};
      Q_ASSERT_X(responses.size() == messages.size(), Q_FUNC_INFO, "Number of PAM messages and responses should be the same");
  
@@ -11,3 +11,23 @@
          bool isSecret = false;
          switch (pamMessage->msg_style) {
          case PAM_PROMPT_ECHO_OFF: {
+--- a/greeter/pamauthenticatormodel.cpp
++++ b/greeter/pamauthenticatormodel.cpp
+@@ -25,12 +25,12 @@
+         if (string.size() != disabled.size()) {
+             return true;
+         }
+-        return std::ranges::all_of(std::views::zip(string, disabled), [](const auto &element) {
+-            if (auto &[aCharacter, bCharacter] = element; aCharacter != bCharacter) {
+-                return true;
++        for (qsizetype i = 0; i < string.size(); ++i) {
++            if (string[i] == disabled[i]) {
++                return false;
+             }
+-            return false;
+-        });
++        }
++        return true;
+     };
+ 
+     constexpr auto fingerprintEnabled = isStaticallyEnabled(KSCREENLOCKER_PAM_FINGERPRINT_SERVICE);

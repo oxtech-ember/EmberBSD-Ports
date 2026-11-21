@@ -224,6 +224,10 @@ qt6/qml/org/kde/breeze/components/components.qmltypes
 qt6/qml/org/kde/breeze/components/kde-qmlmodule.version
 qt6/qml/org/kde/breeze/components/libcomponents.so
 qt6/qml/org/kde/breeze/components/qmldir
+qt6/qml/org/kde/kworkspace/kde-qmlmodule.version
+qt6/qml/org/kde/kworkspace/kworkspace.qmltypes
+qt6/qml/org/kde/kworkspace/libkworkspaceplugin.so
+qt6/qml/org/kde/kworkspace/qmldir
 qt6/qml/org/kde/notificationmanager/kde-qmlmodule.version
 qt6/qml/org/kde/notificationmanager/libnotificationmanagerplugin.so
 qt6/qml/org/kde/notificationmanager/notificationmanager.qmltypes

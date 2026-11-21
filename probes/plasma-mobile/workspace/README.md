@@ -1,6 +1,6 @@
 # Plasma Workspace nested shell probe
 
-This experimental profile builds the genuine Plasma Workspace 6.7.5 shell and
+This experimental profile builds the genuine Plasma Workspace 6.8.3 shell and
 selected runtime modules for a private nested Plasma Mobile session. It is not a
 complete Plasma desktop, login session, or hardware support claim.
 
@@ -18,7 +18,7 @@ LGPL-2.1-only, LGPL-2.1-or-later, LGPL-3.0-only, LGPL-3.0-or-later;
 BSD-2-Clause, BSD-3-Clause, MIT, CC0-1.0, and KDE accepted-license references.
 No upstream source archive or generated executable belongs in this repository.
 
-The KWin 6.7.5 archive supplies its original `src/virtualkeyboard_dbus.h`
+The KWin 6.8.3 archive supplies its original `src/virtualkeyboard_dbus.h`
 (GPL-2.0-or-later). The Qt `qdbuscpp2xml -A` command reproduces the generator
 specified in upstream `src/CMakeLists.txt`; no D-Bus interface is fabricated.
 
@@ -47,14 +47,14 @@ The recorded probe used the existing Qt 6.11.1 and KDE Frameworks 6.26.0
 installation with a common Plasma 6.7.5 source build. Do not install a second
 Qt/KF stack. The common Plasma
 prefix must provide libplasma, KWayland, Plasma Activities, libkscreen,
-LayerShellQt, KScreenLocker and KNightTime 6.7.5, plus Plasma Wayland Protocols
+LayerShellQt, KScreenLocker and KNightTime 6.8.3, plus Plasma Wayland Protocols
 1.21 or newer. Installed Frameworks must include `kf6-kdeclarative`,
 `kf6-kstatusnotifieritem`, `kf6-ksvg`, and their ordinary dependencies.
 Package installation remains a separately coordinated system action.
 Build the current Plasma libraries in the common prefix selected by
 `PLASMA_PREFIX` (default: `$HOME/.cache/emberbsd-plasma-current/install`).
 `build-common-component.sh` builds LayerShellQt, libkscreen, or KScreenLocker
-from the pinned 6.7.5 sources with the portability patches described below.
+from the pinned 6.8.3 sources with the portability patches described below.
 The probe uses NetBSD's `/usr/bin/cc` and `/usr/bin/c++` (GCC 12.5.0), matching
 the existing Qt/KF stack's `libstdc++.so.9`. The pkgsrc GCC 15 package instead
 links `libstdc++.so.7`; combining these two C++ runtimes is rejected. `CC` and

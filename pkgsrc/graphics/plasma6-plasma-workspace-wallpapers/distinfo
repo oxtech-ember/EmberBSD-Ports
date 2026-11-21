@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:29 markd Exp $
 
-BLAKE2s (plasma-workspace-wallpapers-6.8.2.tar.xz) = 0f055bc0e1323d65d23b1ef0e48e2829e99b497a78c53fd0a1c6f8b3b7c5f814
-SHA512 (plasma-workspace-wallpapers-6.8.2.tar.xz) = f0d53faaee7a310b993b97d2b8a066802dee95bdbf468a8d3ac56d1bf170912d15924fa9d9345157114321728252090490422f648d2afb724109969d8b395dc6
-Size (plasma-workspace-wallpapers-6.8.2.tar.xz) = 308212208 bytes
+BLAKE2s (plasma-workspace-wallpapers-6.8.3.tar.xz) = 43bdc635b1cf86586b9bdd02c32b9bc84b013eaaf767095448b4bdd6febb173c
+SHA512 (plasma-workspace-wallpapers-6.8.3.tar.xz) = 77726bf31daeddff80e766901ed597b88b1c353b8170ab7ecc3206bd1873ca1a6713179ffdc8936c82900cba43b61fcd7c6c3d37a9ddd4a955e12d32d9d34f0d
+Size (plasma-workspace-wallpapers-6.8.3.tar.xz) = 308212128 bytes

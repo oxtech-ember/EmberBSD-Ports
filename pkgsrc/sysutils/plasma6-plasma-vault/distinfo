@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (plasma-vault-6.8.2.tar.xz) = 469100871de953e4151641a411f8652e32bc8c0e3b6bd4453d2aff0d8a8c6c5c
-SHA512 (plasma-vault-6.8.2.tar.xz) = 38374df585427e6bfb1cf0e5469b6bf5712a8c8722f3f52352c1341ab0ac3bda49c8bff98ff1292c64eafd0e80ea9912a3a97f6fa4a2cb38fcceaaf459b9fda4
-Size (plasma-vault-6.8.2.tar.xz) = 205388 bytes
+BLAKE2s (plasma-vault-6.8.3.tar.xz) = b35ce133839c68b6bd6994c8ac72cbdae73e497bb71afcf1365bb058cc548195
+SHA512 (plasma-vault-6.8.3.tar.xz) = b8a0c7992774ede7ca94ba8c3fe36eaa29b220e955d028c9488c8483f1c3dd1444b121ecc46816aed52d509fb2c7f98db0970aff6976308d26bd48fa003472c2
+Size (plasma-vault-6.8.3.tar.xz) = 204688 bytes

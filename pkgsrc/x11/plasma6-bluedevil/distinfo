@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (bluedevil-6.8.2.tar.xz) = 7d0c1929a2a6a3ee930cff5a51a29cecf37725be94e7594319208dfb5f56ec3c
-SHA512 (bluedevil-6.8.2.tar.xz) = a18ffd537b0352c40e977239d7836e9de70e6685cf3779d714c4fe877a5aa8c52cfc24393a67a6f251f02ae5ab26d4ac34584741b8b1e8947fa5252a1225fe21
-Size (bluedevil-6.8.2.tar.xz) = 412240 bytes
+BLAKE2s (bluedevil-6.8.3.tar.xz) = 1d8451ff50916bbc7eb1d59c79ff6dc427b761d77ed6a5588304ba9ddc86e05f
+SHA512 (bluedevil-6.8.3.tar.xz) = 1b2f5ac495299f7766d8772907e52dbb45ca558494a5d02b7950cba954fad555f075778987aa9f37fd1b22e6bae73a6df16e3a2bdcdfab420eee0ce311d14fac
+Size (bluedevil-6.8.3.tar.xz) = 412020 bytes
