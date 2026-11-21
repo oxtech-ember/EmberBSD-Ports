@@ -2,7 +2,7 @@
 # Origin: EmberBSD (AI-assisted). Included only for cross builds, after
 # the librsvg cross recipe in graphics/librsvg.
 RUST_TYPE= native
-TOOL_DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
+TOOL_DEPENDS+= rust-bin-1.100.0{,nb[0-9]*}:../../lang/rust-bin
 # Keep the Rust target, std package and binary tools on the selected target.
 .if ${EMBERBSD_CROSS_TARGET:U} == "aarch64"
 _EMBER_GLYCIN_RUST_TARGET= aarch64-unknown-netbsd
@@ -16,7 +16,7 @@ _EMBER_GLYCIN_TRIPLET= x86_64--netbsd
 PKG_FAIL_REASON+= "glycin requires a supported Rust cross target"
 .endif
 .if defined(_EMBER_GLYCIN_STD_PACKAGE)
-TOOL_DEPENDS+= ${_EMBER_GLYCIN_STD_PACKAGE}-1.99.1{,nb[0-9]*}:../../lang/${_EMBER_GLYCIN_STD_PACKAGE}
+TOOL_DEPENDS+= ${_EMBER_GLYCIN_STD_PACKAGE}-1.100.0{,nb[0-9]*}:../../lang/${_EMBER_GLYCIN_STD_PACKAGE}
 .endif
 _EMBER_GLYCIN_RUST_KEY= ${_EMBER_GLYCIN_RUST_TARGET:Uunsupported:tu:S/-/_/g}
 _EMBER_GLYCIN_CC_KEY= ${_EMBER_GLYCIN_RUST_TARGET:Uunsupported:S/-/_/g}
@@ -42,9 +42,9 @@ MAKE_ENV+= CARGO_TARGET_${_EMBER_GLYCIN_RUST_KEY}_LINKER=${WRAPPER_BINDIR}/cc
 _EMBER_GLYCIN_AWK= ${EMBERBSD_NATIVE_AWK:U${TOOLBASE}/bin/nawk}
 _EMBER_GLYCIN_RUST_HOST!= ${TOOLBASE:Q}/bin/rustc -vV | ${_EMBER_GLYCIN_AWK:Q} \
     '/^release: / {release=$$2} /^commit-hash: / {commit=$$2} /^host: / {host=$$2} \
-    END {if (release == "1.99.1" && commit == "58cf8f9c35b355199727627d07ae34a4e2846d67") print host; else exit 1}'
+    END {if (release == "1.100.0" && commit == "0ef1bc386059596dada8fb65b50425aab2ea637a") print host; else exit 1}'
 .if empty(_EMBER_GLYCIN_RUST_HOST) || !empty(_EMBER_GLYCIN_RUST_HOST:C/[A-Za-z0-9_-]//g)
-PKG_FAIL_REASON+= "glycin requires the shared official native Rust 1.99.1 provider"
+PKG_FAIL_REASON+= "glycin requires the shared official native Rust 1.100.0 provider"
 .else
 _EMBER_GLYCIN_HOST_KEY= ${_EMBER_GLYCIN_RUST_HOST:tu:S/-/_/g}
 MAKE_ENV+= CARGO_TARGET_${_EMBER_GLYCIN_HOST_KEY}_LINKER=${EMBERBSD_CROSS_BUILD_CC}
@@ -64,5 +64,5 @@ RUSTFLAGS+= --remap-path-prefix=${WRKDIR}=.
 pre-configure: emberbsd-glycin-rust
 .PHONY: emberbsd-glycin-rust
 emberbsd-glycin-rust:
-	${RUN}${TOOLBASE}/bin/rustc --version | ${GREP} '^rustc 1\.99\.1 '
+	${RUN}${TOOLBASE}/bin/rustc --version | ${GREP} '^rustc 1\.100\.0 '
 	${RUN}${TEST} -n "$$(${FIND} ${TOOLBASE}/lib/rustlib/${_EMBER_GLYCIN_RUST_TARGET:Uunsupported}/lib -name 'libstd-*.rlib' -print)"

@@ -186,8 +186,8 @@ gcc = args.cross_tools / "bin/aarch64--netbsd-gcc"
 assert subprocess.check_output([gcc, "-dumpfullversion"], text=True).strip() == "16.2.0"
 assert subprocess.check_output([gcc, "-dumpmachine"], text=True).strip() == "aarch64--netbsd"
 version = subprocess.check_output([rustc, "-vV"], text=True)
-assert "rustc 1.99.1 (58cf8f9c3 2026-10-13)\n" in version
-assert "commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\n" in version
+assert "rustc 1.100.0 (0ef1bc386 2026-11-09)\n" in version
+assert "commit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a\n" in version
 args.work.mkdir(parents=True)
 source_root = args.work / "source"
 with tarfile.open(args.archive) as archive:

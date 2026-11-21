@@ -13,16 +13,16 @@ work = File.expand_path(ARGV[4])
 abort 'new absolute work directory required' unless ARGV[4].start_with?('/') && !File.exist?(work)
 parent = File.realpath(File.dirname(work))
 abort 'work cannot be inside any input' if [host, tools, sysroot].any? { |p| parent == p || parent.start_with?(p + '/') }
-abort 'source SHA256 mismatch' unless Digest::SHA256.file(archive).hexdigest == '6451598a99e77f07571960f6b21d577399d3a30f33e80cbd2e3a4aae6535d265'
+abort 'source SHA256 mismatch' unless Digest::SHA256.file(archive).hexdigest == '90dab90b8084eb57c35ae2b1d0b70c8e5138ace6023b22c60a5a400f586f63b2'
 rustc = File.join(host, 'bin/rustc')
 cargo = File.join(host, 'bin/cargo')
 version, status = Open3.capture2e(rustc, '-vV')
-abort 'official Rust 1.99 macOS/AArch64 compiler required' unless status.success? &&
-  version.lines.first.chomp == 'rustc 1.99.1 (58cf8f9c3 2026-10-13)' &&
-  version.include?("commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\n") &&
+abort 'official Rust 1.100 macOS/AArch64 compiler required' unless status.success? &&
+  version.lines.first.chomp == 'rustc 1.100.0 (0ef1bc386 2026-11-09)' &&
+  version.include?("commit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a\n") &&
   version.include?("host: aarch64-apple-darwin\n")
 cv, status = Open3.capture2e(cargo, '-V')
-abort 'matching cargo 1.99 required' unless status.success? && cv.start_with?('cargo 1.99.1 ')
+abort 'matching cargo 1.100 required' unless status.success? && cv.start_with?('cargo 1.100.0 ')
 cc = File.join(tools, 'bin/aarch64--netbsd-gcc')
 cxx = File.join(tools, 'bin/aarch64--netbsd-g++')
 ar = File.join(tools, 'bin/aarch64--netbsd-ar')

@@ -20,7 +20,7 @@ LICENSE= mit AND apache-2.0 AND modified-bsd AND isc AND unicode-v3 AND 0-clause
 DEPENDS+= nodejs>=26.12.1<27:../../lang/nodejs
 USE_LANGUAGES= c c++
 USE_TOOLS+= pax
-RUST_REQ= 1.99.1
+RUST_REQ= 1.100.0
 EMBER_CARGO_PATCH_SET= yes
 CARGO_ARGS= build --release --locked ${DEFAULT_CARGO_ARGS}
 MACHO_USE_LOAD_COMMANDS= yes

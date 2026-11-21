@@ -8,13 +8,13 @@ source = File.realpath(source)
 rustc = File.realpath(rustc)
 work = File.expand_path(work)
 abort 'new work directory required' if File.exist?(work)
-text = File.read(File.join(source, 'src/bootstrap/src/lib.rs'))
+text = File.read(File.join(source, 'src/bootstrap/src/core/session.rs'))
 extract = lambda do |signature|
   start = text.index(signature) or abort "missing #{signature}"
   ending = text.index("\n    }\n", start) or abort "unterminated #{signature}"
   text[start..ending + 6]
 end
-methods = %w[pub\ fn\ cp_link_r_excluding pub\ fn\ cp_link_filtered fn\ cp_link_filtered_recurse].map { |s| extract.call(s) }.join("\n")
+methods = %w[pub(crate)\ fn\ cp_link_r_excluding pub(crate)\ fn\ cp_link_filtered fn\ cp_link_filtered_recurse].map { |s| extract.call(s) }.join("\n")
 FileUtils.mkdir_p(work)
 harness = <<'RUST'
 use std::fs::{self, DirEntry};

@@ -1,6 +1,6 @@
-# Shared Rust 1.99 build-host provider
+# Shared Rust build-host provider
 
-The common profiles export `lang/rust-bin` 1.99.1nb3 for the build-host compiler
+The common profiles export `lang/rust-bin` 1.100.0 for the build-host compiler
 needed by current cargo-c and librsvg. The archive is the official Rust release;
 this step does not compile another rustc or LLVM. Native and target components
 remain distinct: a macOS compiler needs a compatible NetBSD target std before
@@ -18,8 +18,9 @@ import has no active archive selection and matching checksum.
 
 Revision nb2 gives the two bundled Darwin LLVM providers the private basename
 `librustLLVM.dylib`. It changes their install IDs and every actual import from
-`@rpath/libLLVM.dylib` to `@rpath/librustLLVM.dylib`. The upstream runpaths and
-their order stay unchanged. The shared LLVM package keeps its own names.
+`@rpath/libLLVM.dylib` to `@rpath/librustLLVM.dylib`. The bundled Darwin rust-lld selects the adjacent private LLVM dylib with
+`@loader_path/../lib`. Rust 1.100.0 also ships universal sanitizer dylibs.
+The Darwin package selects the signed slice matching its architecture.
 The helper checks all Mach-O slices in `bin`, `lib` and `libexec`. It refuses
 unexpected provider layouts, differing provider bytes, existing private names
 and shared hard links before it writes. Each changed image gets an ad hoc
@@ -114,9 +115,10 @@ python3 -B tests/rust-darwin.py /absolute/original-rust \
 ```
 
 The regression reads the real runtime Mach-O graph. The tested Apple Silicon
-layout contains 43 images, two byte-identical LLVM providers and 24 actual LLVM
-consumers. It compares every architecture, install ID, import and runpath before
-and after the helper. Both private providers and all changed consumers must
+layout contains 44 images, two byte-identical LLVM providers and 25 actual LLVM
+consumers. It compares every install ID, import and runpath. The standalone
+rust-lld loads its target's private LLVM through `@loader_path/../lib`. The
+native sanitizer libraries contain the original signed slice for the package CPU. Both private providers and all changed consumers must
 pass strict signature checks. Each restored generic import must fail against
 a foreign generic LLVM sentinel. Removing either private provider must also
 fail its real consumer. A real unrelated dylib in `DYLD_LIBRARY_PATH` is
@@ -253,16 +255,15 @@ It retains pkgsrc source fetching and the shared Rust tool dependency.
 
 ## NetBSD target boundary
 
-The official compiler's private LLVM 23.1.1 backend is part of this upstream
-binary distribution. It is not the target shared LLVM 23.1.2 provider used by
-Mesa and is not rebuilt here.
+Rust 1.100.0 ships its own LLVM 23.1.5 backend. Mesa links the shared
+LLVM library from the Ports LLVM family.
 
 The [target std package](rust-target-std.md) now installs the same-compiler
 source build into this shared host sysroot. Normal package integrity and
 AArch64 VM consumers pass TLS, unwind, C `dlopen`, and a Cargo target built
 with a macOS proc macro and build script. Host Rust/LLVM bytes are unchanged.
-An additional native host-data recipe imports the official x86_64 NetBSD std
-component. Source/ELF fixtures pass; real host metadata acceptance and target
-consumers remain pending. It shares the same Rust 1.99 compiler package.
+The x86_64 NetBSD recipe builds its standard library with the same installed
+host compiler. The distributed NetBSD libraries can carry a different rustc
+version identity even when their version and commit match the Darwin compiler.
 Full librsvg/GIR/pixbuf, labwc surfaces/input/VT and an installed NetBSD
 compiler remain separate acceptance steps.

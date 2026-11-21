@@ -9,7 +9,7 @@ EMBERBSD_CARGO_MK:=
 # The Rust compiler executes on the host, including for cross packages.
 # pkgsrc's native mode avoids adding a target rust-bin through buildlink.
 RUST_TYPE=	native
-TOOL_DEPENDS+=	rust-bin>=${RUST_REQ:U1.99.1}:../../lang/rust-bin
+TOOL_DEPENDS+=	rust-bin>=${RUST_REQ:U1.100.0}:../../lang/rust-bin
 PYTHON_VERSIONS_ACCEPTED=	315
 PYTHON_FOR_BUILD_ONLY=	tool
 .include "../../lang/python/tool.mk"

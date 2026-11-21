@@ -10,7 +10,7 @@ LICENSE= mit AND apache-2.0 AND unicode-v3
 
 USE_LANGUAGES= c c++
 USE_TOOLS+= bsdtar
-RUST_REQ= 1.99.1
+RUST_REQ= 1.100.0
 EMBER_CARGO_PATCH_SET= yes
 CARGO_ARGS= build --release --locked ${DEFAULT_CARGO_ARGS}
 CARGO_INSTALL_ARGS= install --path . --locked --no-track --root ${DESTDIR}${PREFIX} --target-dir ${EMBER_CARGO_OUTPUT} ${DEFAULT_CARGO_ARGS}

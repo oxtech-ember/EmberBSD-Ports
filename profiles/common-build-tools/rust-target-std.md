@@ -1,7 +1,7 @@
 # Target std for the shared Rust build host
 
 `lang/rust-std-x86_64-netbsd` and `lang/rust-std-aarch64-netbsd` provide
-foreign target data for the shared Rust 1.99.1 host compiler. They do not
+foreign target data for the shared Rust 1.100.0 host compiler. They do not
 install a second compiler or rebuild rustc or LLVM. Both default to the shared
 Clang/LLVM target toolchain and the selected target sysroot. The producer runs
 upstream x.py only for stage0 `library`, with vendored dependencies and offline

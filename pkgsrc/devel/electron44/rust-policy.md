@@ -1,6 +1,6 @@
 # Chromium's Rust capability policy
 
-The Electron build uses the shared stable `lang/rust-bin` 1.99.1 compiler. Its
+The Electron build uses the shared stable `lang/rust-bin` 1.100.0 compiler. Its
 reported release and host identity are retained; it is not relabeled as nightly.
 Chromium's pinned source requires unstable compiler flags and allocator
 attributes even when using a custom toolchain. Rust documents
@@ -10,7 +10,7 @@ not a guarantee that future stable releases accept the same inputs.
 
 The recipe's [policy function](files/rust-policy.py) consumes the selected
 `rustc -vV` output and returns a separate producer environment with
-`RUSTC_BOOTSTRAP=1`. The current supported release is exactly 1.99.1. It does
+`RUSTC_BOOTSTRAP=1`. The current supported release is exactly 1.100.0. It does
 not modify the invoking environment, package recipes, compiler installation,
 or other builds. The controller passes this environment only to its GN/Ninja
 producer and sets `emberbsd_rust_unstable_features=true`.

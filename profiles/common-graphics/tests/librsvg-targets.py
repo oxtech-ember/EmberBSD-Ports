@@ -124,7 +124,7 @@ def main():
                        '-V', '${MESON_ARGS}', '-V', '${MESON_BINARY.nm}',
                        '-V', '${MESON_BINARY.strip}', '-V', '${MAKE_ENV}')
         key, cc_key = rust.upper().replace('-', '_'), rust.replace('-', '_')
-        for expected in (std + '-1.99.1', '-Dtriplet=' + rust, triplet + '-nm',
+        for expected in (std + '-1.100.0', '-Dtriplet=' + rust, triplet + '-nm',
                          triplet + '-strip', triplet + '-ar',
                          'CARGO_TARGET_' + key + '_LINKER=', 'CC_' + cc_key + '=',
                          'CXX_' + cc_key + '=', 'AR_' + cc_key + '=',

@@ -57,11 +57,11 @@ configure)
     [ "$#" -eq 0 ] || exit 2
     grep 'pub fn cp_link_r_excluding' "$source/src/bootstrap/src/lib.rs" > /dev/null
     "$host/bin/rustc" -vV > "$work/compiler.txt"
-    grep -qx 'rustc 1.99.1 (58cf8f9c3 2026-10-13)' "$work/compiler.txt"
-    grep -qx 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67' "$work/compiler.txt"
+    grep -qx 'rustc 1.100.0 (0ef1bc386 2026-11-09)' "$work/compiler.txt"
+    grep -qx 'commit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a' "$work/compiler.txt"
     grep -qx 'host: aarch64-apple-darwin' "$work/compiler.txt"
     "$host/bin/cargo" -V > "$work/cargo.txt"
-    grep '^cargo 1\.99\.1 ' "$work/cargo.txt"
+    grep '^cargo 1\.100\.0 ' "$work/cargo.txt"
     [ "$("$cc" -dumpfullversion)" = 16.2.0 ]
     for file in "$cxx" "$ar" "$readelf" "$crt/crtbeginS.o" "$sysroot/usr/include/stdio.h" \
         "$sysroot/usr/pkg/gcc16/lib/libgcc_s.so.1" "$sysroot/usr/lib/libc.so"; do

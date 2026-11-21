@@ -41,7 +41,7 @@ def main():
     scoped, banner = policy.apply(env, version)
     assert 'RUSTC_BOOTSTRAP' not in env and scoped['RUSTC_BOOTSTRAP']=='1'
     assert run('scoped-version', [args.rustc, '-vV'], environment=scoped)==version
-    for bad in (version.replace('1.99.1','1.99.0'), version.replace('1.99.1','1.99.1-nightly'), version+'release: 1.99.1\n'):
+    for bad in (version.replace('1.100.0','1.99.0'), version.replace('1.100.0','1.100.0-nightly'), version+'release: 1.100.0\n'):
         try: policy.apply(env,bad)
         except ValueError: pass
         else: raise AssertionError('unsupported Rust release accepted')
@@ -119,8 +119,8 @@ toolchain("target") { tool("stamp") { command="touch {{output}}" } }
     stable=fixture('stable-default',selected=False,environment=env)
     assert stable['//:probe']['metadata']['capability']==[False]
     fixture('missing-scoped-env',environment=env,error='scoped environment')
-    fixture('wrong-version',release=banner.replace('1.99.1','1.99.0'),error='stable Rust 1.99.1')
-    nightly=fixture('nightly-default',selected=False,release=banner.replace('1.99.1','1.100.0-nightly'),environment=env)
+    fixture('wrong-version',release=banner.replace('1.100.0','1.99.0'),error='stable Rust 1.100.0')
+    nightly=fixture('nightly-default',selected=False,release=banner.replace('1.100.0','1.100.0-nightly'),environment=env)
     assert nightly['//:probe']['metadata']['capability']==[True]
     (work/'ordinary.rs').write_text('pub fn value() -> u32 { 42 }\n')
     # These are the real unconditional Chromium flags, which must be supported

@@ -14,7 +14,7 @@ end
 arch = {'aarch64' => 'aarch64', 'amd64' => 'x86_64'}[target]
 abort 'usage: rust-target-package.rb [--target aarch64|amd64] HOST_PREFIX CROSS_TOOLS TARGET_SYSROOT NEW_WORK' unless ARGV.size == 4 && arch
 triple = arch + '-unknown-netbsd'
-package_name = 'rust-std-' + arch + '-netbsd-1.99.1'
+package_name = 'rust-std-' + arch + '-netbsd-1.100.0'
 host, tools, sysroot = ARGV.first(3).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV[3])
 abort 'new absolute work directory required' unless ARGV[3].start_with?('/') && !File.exist?(work)

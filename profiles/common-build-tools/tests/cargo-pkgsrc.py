@@ -51,7 +51,7 @@ EXTRACT_SUFX= .tar
 LICENSE= 2-clause-bsd
 COMMENT= Cargo tool-routing fixture
 USE_LANGUAGES= c c++
-RUST_REQ= 1.99.1
+RUST_REQ= 1.100.0
 .include "../../lang/rust/emberbsd-cargo.mk"
 .include "../../mk/bsd.pkg.mk"
 ''')

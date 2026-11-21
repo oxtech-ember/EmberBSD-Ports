@@ -43,8 +43,8 @@ https://doc.rust-lang.org/unstable-book/compiler-environment-variables/RUSTC_BOO
 +    rustc_nightly_capability =
 +        filter_include([ rust_revision_pieces[1] ], [ "*-nightly", "*-dev" ]) != []
 +    if (emberbsd_rust_unstable_features) {
-+      assert(rust_revision_pieces[1] == "1.99.1",
-+             "the selected Chromium unstable policy requires stable Rust 1.99.1")
++      assert(rust_revision_pieces[1] == "1.100.0",
++             "the selected Chromium unstable policy requires stable Rust 1.100.0")
 +      assert(getenv("RUSTC_BOOTSTRAP") == "1",
 +             "the selected Chromium unstable policy requires its scoped environment")
 +      # This is capability selection, not a change to rustc_version/channel.

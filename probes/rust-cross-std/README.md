@@ -1,14 +1,14 @@
-# Rust 1.99 target standard library on a macOS build host
+# Rust target standard library on a macOS build host
 
 This source probe builds the NetBSD/AArch64 standard library with the official
-Rust 1.99.1 Apple Silicon compiler and the existing GCC 16.2.0 cross toolchain.
+Rust 1.100.0 Apple Silicon compiler and the existing GCC 16.2.0 cross toolchain.
 It provides the compiler/runtime compatibility check needed before building
 current librsvg for the common Wayland desktop. It is not an installed Rust,
 librsvg or desktop package.
 
 ## Why build std separately?
 
-The checksum-verified NetBSD maintainer's Rust 1.99 binary distribution could
+The checksum-verified NetBSD maintainer's Rust 1.100.0 binary distribution could
 not supply std to the official macOS compiler: a metadata compile returned
 E0514 despite the same reported release and source commit. Matching filenames
 and versions are insufficient to establish compiler metadata compatibility.
@@ -26,9 +26,8 @@ The patch is an EmberBSD adaptation with AI assistance; it has not been
 submitted or accepted upstream. Re-evaluate it when updating Rust. Remove it
 when upstream's unmodified stage0 path passes the same contracts.
 
-The compiler retains its private upstream LLVM 23.1.1 backend. This probe
-neither rebuilds rustc/LLVM nor replaces the target's shared LLVM 23.1.2
-provider used by Mesa. NetBSD unwind links to the existing GCC16 runtime.
+Rust 1.100.0 uses its bundled LLVM 23.1.5 backend. The NetBSD target
+standard library in this probe links the existing GCC16 unwind runtime.
 
 ## Inputs and build
 
@@ -42,19 +41,19 @@ Required inputs:
 
 - Apple Silicon macOS, Ruby, native build tools and upstream bootstrap's
   existing Python dependency; tested with Python 3.14.
-- Official Rust 1.99.1, commit `58cf8f9c35b355199727627d07ae34a4e2846d67`,
+- Official Rust 1.100.0, commit `0ef1bc386059596dada8fb65b50425aab2ea637a`,
   and matching native cargo/host std.
 - The [GCC16 cross toolchain](../../profiles/development-toolchain/cross/README.md)
   and a NetBSD/AArch64 sysroot containing its actual headers, CRT objects,
   libc, libpthread and `/usr/pkg/gcc16/lib/libgcc_s.so.1`.
-- The full verified `rustc-1.99.1-src.tar.xz`, which includes bootstrap and
+- The full verified `rustc-1.100.0-src.tar.xz`, which includes bootstrap and
   vendored crates. The smaller rust-src component is insufficient.
 - A new absolute work directory outside all inputs, with at least 8 GiB free.
 
 ```sh
 PYTHON=/absolute/path/to/python3 ruby build.rb \
   /absolute/host-rust /absolute/cross-tools /absolute/target-sysroot \
-  /absolute/downloads/rustc-1.99.1-src.tar.xz /absolute/new-work
+  /absolute/downloads/rustc-1.100.0-src.tar.xz /absolute/new-work
 ```
 
 The helper uses two jobs and offline vendored Cargo dependencies. It checks
@@ -65,7 +64,7 @@ still determines success.
 
 The output component is
 `out/aarch64-apple-darwin/stage0-sysroot/lib/rustlib/aarch64-unknown-netbsd`.
-Rust 1.99 emits separate `.rmeta` files: keep the entire component, not only
+Rust emits separate `.rmeta` files: keep the entire component, not only
 its `.rlib` files. The helper also links the executable, Rust cdylib and C
 consumer under `runtime/`. Their RPATH selects `/usr/pkg/gcc16/lib`; no build
 sysroot path belongs in installed ELF metadata.

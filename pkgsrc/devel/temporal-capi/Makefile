@@ -15,7 +15,7 @@ COMMENT= Shared C and C++ bindings for ECMAScript Temporal
 LICENSE= mit AND apache-2.0 AND unicode-v3
 USE_LANGUAGES= c c++
 USE_TOOLS+= bsdtar
-RUST_REQ= 1.99.1
+RUST_REQ= 1.100.0
 CARGO_WRKSRC= ${WRKSRC}
 CARGO_ARGS= build --release --locked --features zoneinfo64,compiled_data ${DEFAULT_CARGO_ARGS}
 

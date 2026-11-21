@@ -24,10 +24,10 @@ LICENSE=	2-clause-bsd AND cc0-1.0-universal AND gnu-lgpl-v2.1 AND \
 
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pkg-config
-TOOL_DEPENDS+=	rust-bin>=1.99.1:../../lang/rust-bin
+TOOL_DEPENDS+=	rust-bin>=1.100.0:../../lang/rust-bin
 RUST_TYPE=	native
 CARGO_WRKSRC=	${WRKSRC}/rust
-RUST_REQ=	1.99.1
+RUST_REQ=	1.100.0
 PYTHON_VERSIONS_ACCEPTED=	315
 PYTHON_FOR_BUILD_ONLY=	tool
 EMBER_CARGO_PATCH_SET=	yes

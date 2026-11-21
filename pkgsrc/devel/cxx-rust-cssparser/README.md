@@ -1,6 +1,6 @@
 # Cross-build the CSS parser bridge
 
-This recipe uses the shared Rust 1.99.1 build-host provider and the selected
+This recipe uses the shared Rust 1.100.0 build-host provider and the selected
 selected SDK target wrappers. It accepts only NetBSD 11 targets with matching pkgsrc,
 Rust and target identifiers:
 

@@ -44,11 +44,11 @@ show:
             raise ValueError(result.stdout)
         return dict(zip(variables, values))
     arm = query(); assert not arm['PKG_FAIL_REASON'] and arm['RUST_TARGET'] == 'aarch64-unknown-netbsd'
-    assert 'rust-std-aarch64-netbsd-1.99.1' in arm['TOOL_DEPENDS']
+    assert 'rust-std-aarch64-netbsd-1.100.0' in arm['TOOL_DEPENDS']
     amd = query('CROSS_MACHINE_ARCH=x86_64', 'MACHINE_ARCH=x86_64', 'MACHINE_GNU_PLATFORM=x86_64--netbsd')
     assert not amd['PKG_FAIL_REASON'] and amd['RUST_TARGET'] == 'x86_64-unknown-netbsd'
     assert amd['_EMBER_CSS_CC'] == str(work / 'wrappers/cc') and amd['_EMBER_CSS_CXX'] == str(work / 'wrappers/c++')
-    assert amd['_EMBER_CSS_GNU_TRIPLET'] == 'x86_64--netbsd' and 'rust-std-x86_64-netbsd-1.99.1' in amd['TOOL_DEPENDS']
+    assert amd['_EMBER_CSS_GNU_TRIPLET'] == 'x86_64--netbsd' and 'rust-std-x86_64-netbsd-1.100.0' in amd['TOOL_DEPENDS']
     assert query('CROSS_MACHINE_ARCH=riscv64')['PKG_FAIL_REASON']
     assert query('CROSS_MACHINE_ARCH=x86_64')['PKG_FAIL_REASON']
     assert query('RUST_TARGET=x86_64-unknown-netbsd')['PKG_FAIL_REASON']

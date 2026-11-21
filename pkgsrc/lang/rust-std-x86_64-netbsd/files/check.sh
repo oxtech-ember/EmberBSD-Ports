@@ -20,15 +20,15 @@ for input in "$host" "$source" "$stage"; do
 done
 [ -x "$host/bin/rustc" ] && [ -x "$readelf" ] || fail 'host rustc and target readelf are required'
 [ "$(cat "$source/components")" = rust-std-x86_64-unknown-netbsd ] || fail 'wrong upstream component'
-[ "$(cat "$source/git-commit-hash")" = 58cf8f9c35b355199727627d07ae34a4e2846d67 ] || fail 'wrong upstream compiler commit'
+[ "$(cat "$source/git-commit-hash")" = 0ef1bc386059596dada8fb65b50425aab2ea637a ] || fail 'wrong upstream compiler commit'
 unset RUSTC_BOOTSTRAP RUSTFLAGS CARGO_ENCODED_RUSTFLAGS RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER
 unset DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH DYLD_INSERT_LIBRARIES
 LC_ALL=C
 export LC_ALL
 mkdir "$work"
 "$host/bin/rustc" -vV > "$work/compiler.txt"
-grep -qx 'rustc 1.99.1 (58cf8f9c3 2026-10-13)' "$work/compiler.txt" && \
-    grep -qx 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67' "$work/compiler.txt" || fail 'official Rust 1.99.1 required'
+grep -qx 'rustc 1.100.0 (0ef1bc386 2026-11-09)' "$work/compiler.txt" && \
+    grep -qx 'commit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a' "$work/compiler.txt" || fail 'official Rust 1.100.0 required'
 grep -Eq '^host: (aarch64|x86_64)-apple-darwin$' "$work/compiler.txt" || fail 'official macOS host compiler required'
 component=lib/rustlib/x86_64-unknown-netbsd/lib
 upstream=$source/rust-std-x86_64-unknown-netbsd

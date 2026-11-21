@@ -14,7 +14,7 @@ LICENSE=	modified-bsd AND mit AND apache-2.0 AND isc AND unicode-v3
 
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pax
-RUST_REQ=	1.99.1
+RUST_REQ=	1.100.0
 EMBER_CARGO_PATCH_SET=	yes
 CARGO_ARGS=	build --release --locked --package bindgen-cli ${DEFAULT_CARGO_ARGS}
 CARGO_INSTALL_ARGS= install --path bindgen-cli --locked --no-track \
@@ -29,7 +29,7 @@ GENERATE_PLIST+=	cd ${DESTDIR}${PREFIX}; ${FIND} share/licenses/rust-bindgen -ty
 # The CLI loads libclang at runtime and uses rustfmt by default. Cross
 # builds have no target Rust compiler yet, so they omit the rustfmt runtime.
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-DEPENDS+=	rust-bin>=1.99.1:../../lang/rust-bin
+DEPENDS+=	rust-bin>=1.100.0:../../lang/rust-bin
 .endif
 
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \

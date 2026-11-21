@@ -1,4 +1,4 @@
-Origin: EmberBSD; Rust 1.99.1 stage0 cross-standard-library integration; not submitted upstream.
+Origin: EmberBSD; Rust 1.100.0 stage0 cross-standard-library integration; not submitted upstream.
 
 Std::run builds cross std with local-rebuild=true, but StdLink only copies
 an initial sysroot and omits the new target stamp. Merge the host files,
@@ -9,7 +9,7 @@ Rust source licenses and upstream identifiers are preserved.
 
 --- a/src/bootstrap/src/core/build_steps/compile.rs
 +++ b/src/bootstrap/src/core/build_steps/compile.rs
-@@ -818,7 +818,34 @@
+@@ -811,7 +811,34 @@
                  let _ = fs::remove_dir_all(sysroot.join("lib/rustlib/src/rust"));
              }
  
@@ -45,36 +45,32 @@ Rust source licenses and upstream identifiers are preserved.
          } else {
              if builder.download_rustc() {
                  // Ensure there are no CI-rustc std artifacts.
---- a/src/bootstrap/src/lib.rs
-+++ b/src/bootstrap/src/lib.rs
-@@ -1813,6 +1813,30 @@
-         }
-     }
- 
-+    /// Merge `src` into `dst`, preserving destination directories and files
-+    /// that are absent from the source. Skip the specified source paths and
-+    /// their descendants. Unlike `cp_link_filtered`, this does not replace
-+    /// destination directories; prepared target objects must remain in place.
+--- a/src/bootstrap/src/core/session.rs
++++ b/src/bootstrap/src/core/session.rs
+@@ -1577,16 +1577,25 @@
+     /// Will attempt to use hard links if possible and fall back to copying.
+     #[track_caller]
+     pub(crate) fn cp_link_r(&self, src: &Path, dst: &Path) {
++        self.cp_link_r_excluding(src, dst, &[]);
++    }
++
++    /// Merge host files without importing selected cross-target components.
 +    #[track_caller]
-+    pub fn cp_link_r_excluding(&self, src: &Path, dst: &Path, excluded: &[PathBuf]) {
-+        if self.config.dry_run() {
-+            return;
-+        }
-+        for f in self.read_dir(src) {
-+            let path = f.path();
++    pub(crate) fn cp_link_r_excluding(&self, src: &Path, dst: &Path, excluded: &[PathBuf]) {
+         if self.config.dry_run() {
+             return;
+         }
+         for f in self.read_dir(src) {
+             let path = f.path();
 +            if excluded.iter().any(|root| path.starts_with(root)) {
 +                continue;
 +            }
-+            let dst = dst.join(path.file_name().unwrap());
-+            if t!(f.file_type()).is_dir() {
-+                t!(fs::create_dir_all(&dst));
+             let name = path.file_name().unwrap();
+             let dst = dst.join(name);
+             if t!(f.file_type()).is_dir() {
+                 t!(fs::create_dir_all(&dst));
+-                self.cp_link_r(&path, &dst);
 +                self.cp_link_r_excluding(&path, &dst, excluded);
-+            } else {
-+                self.copy_link(&path, &dst, FileType::Regular);
-+            }
-+        }
-+    }
-+
-     /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
-     /// when this function is called.
-     /// Will attempt to use hard links if possible and fall back to copying.
+             } else {
+                 self.copy_link(&path, &dst, FileType::Regular);
+             }

@@ -68,8 +68,8 @@ for name in ('RUSTFLAGS','CARGO_ENCODED_RUSTFLAGS','CARGO_BUILD_TARGET','RUSTC_B
 def capture(args):
     return subprocess.run([str(x) for x in args], env=env, text=True, capture_output=True, check=True).stdout
 version = capture([native.tool('rustc'), '-vV'])
-if 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\n' not in version:
-    raise ValueError('selected Rust compiler is not the pinned 1.99.1 commit')
+if 'commit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a\n' not in version:
+    raise ValueError('selected Rust compiler is not the pinned 1.100.0 commit')
 host = next(line[6:] for line in version.splitlines() if line.startswith('host: '))
 if host not in ('aarch64-apple-darwin','x86_64-apple-darwin'):
     raise ValueError('unsupported Rust build host')

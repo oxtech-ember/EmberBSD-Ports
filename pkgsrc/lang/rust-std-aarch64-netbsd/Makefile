@@ -1,7 +1,6 @@
 # Origin: EmberBSD (AI-assisted); same-compiler target std, no rustc/LLVM rebuild.
-DISTNAME= rustc-1.99.1-src
-PKGNAME= rust-std-aarch64-netbsd-1.99.1
-PKGREVISION= 4
+DISTNAME= rustc-1.100.0-src
+PKGNAME= rust-std-aarch64-netbsd-1.100.0
 CATEGORIES= lang
 MASTER_SITES= https://static.rust-lang.org/dist/
 EXTRACT_SUFX= .tar.xz
@@ -14,7 +13,7 @@ LICENSE= mit OR apache-2.0
 ONLY_FOR_PLATFORM= Darwin-*-aarch64 Darwin-*-x86_64
 USE_LANGUAGES= c c++ # native bootstrap linker and compiler detection
 PATCH_STRIP= -p1
-DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
+DEPENDS+= rust-bin-1.100.0{,nb[0-9]*}:../../lang/rust-bin
 PYTHON_FOR_BUILD_ONLY= tool
 
 # These are foreign target data, not host-loadable Mach-O libraries.

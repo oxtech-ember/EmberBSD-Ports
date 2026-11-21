@@ -41,5 +41,5 @@ with tempfile.TemporaryDirectory(prefix='glycin-cross-test-') as tmp:
             assert expected in settings, (target, expected, settings)
         assert result[1].strip("'")==triple, result[1]
         assert result[2]=='/selected/cross/bin/'+gnu+'-nm', result[2]
-        assert any(x.startswith(std+'-1.99.1') for x in result[3].split()), result[3]
+        assert any(x.startswith(std+'-1.100.0') for x in result[3].split()), result[3]
 print('glycin amd64/aarch64 target and selected native tools: PASS')

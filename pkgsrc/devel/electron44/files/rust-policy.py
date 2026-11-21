@@ -2,7 +2,7 @@
 # Copyright (c) 2026 EmberBSD contributors.
 # Origin: EmberBSD (AI-assisted).
 """Chromium-only unstable feature policy for the selected common stable Rust."""
-SUPPORTED_RELEASE = '1.99.1'
+SUPPORTED_RELEASE = '1.100.0'
 
 
 def apply(environment, verbose_version):

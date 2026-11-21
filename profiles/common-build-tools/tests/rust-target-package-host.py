@@ -159,8 +159,8 @@ class PackageConsumers(unittest.TestCase):
 
     def test_wrong_package_replies_stop_before_consumers(self):
         for target, arch in (("aarch64", "aarch64"), ("amd64", "x86_64")):
-            package = "rust-std-" + arch + "-netbsd-1.99.1"
-            for reply in (package.replace("1.99.1", "1.99.0"),
+            package = "rust-std-" + arch + "-netbsd-1.100.0"
+            for reply in (package.replace("1.100.0", "1.99.0"),
                           package.replace(arch, "riscv64"), package + "\n" + package,
                           package + "nbx", "prefix-" + package):
                 with self.subTest(target=target, reply=reply):

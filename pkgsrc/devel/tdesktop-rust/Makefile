@@ -15,7 +15,7 @@ COMMENT= Single Rust archive and bindings for desktop-app consumers
 LICENSE= mit AND apache-2.0 AND modified-bsd AND mpl-2.0 AND unicode-v3
 USE_LANGUAGES= c c++
 USE_TOOLS+= bsdtar
-RUST_REQ= 1.99.1
+RUST_REQ= 1.100.0
 EMBER_CARGO_PATCH_SET= yes
 CARGO_WRKSRC= ${WRKDIR}/provider
 INSTALLATION_DIRS= lib lib/pkgconfig include/tlottie include/wallet_engine share/licenses/tdesktop-rust
@@ -26,10 +26,10 @@ TOOL_DEPENDS+= uniffi-bindgen-cpp>=0.9.0:../../devel/uniffi-bindgen-cpp
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .if ${MACHINE_ARCH} == "x86_64"
 EMBER_CARGO_TARGET= x86_64-unknown-netbsd
-TOOL_DEPENDS+= rust-std-x86_64-netbsd>=1.99.1:../../lang/rust-std-x86_64-netbsd
+TOOL_DEPENDS+= rust-std-x86_64-netbsd>=1.100.0:../../lang/rust-std-x86_64-netbsd
 .elif ${MACHINE_ARCH} == "aarch64"
 EMBER_CARGO_TARGET= aarch64-unknown-netbsd
-TOOL_DEPENDS+= rust-std-aarch64-netbsd>=1.99.1:../../lang/rust-std-aarch64-netbsd
+TOOL_DEPENDS+= rust-std-aarch64-netbsd>=1.100.0:../../lang/rust-std-aarch64-netbsd
 .else
 PKG_FAIL_REASON+= "Select an existing shared Rust target std for this ABI"
 .endif

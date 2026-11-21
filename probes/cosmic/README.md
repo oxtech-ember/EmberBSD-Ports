@@ -6,7 +6,7 @@ Its gitlinks select cosmic-comp `8cb1802caada438bb5cc7670dfabdaca5fad0502`
 and cosmic-session `4b0a0a24e98b9e755b6a7146e4cb29539cacda0a`.
 The [manifest](sources.tsv) records the official source archives and SHA256 values.
 
-Use the common stable Rust 1.99.1 host package and its matching
+Use the common stable Rust host package and its matching
 source-built NetBSD standard library. Target C and the Rust linker use
 the common GCC 16.2.0 cross facade. The probe does not install a compiler
 on the target. It does not use a nightly compiler or a target Clang.

@@ -1,7 +1,6 @@
 # Origin: EmberBSD (AI-assisted); shared Rust source and selected LLVM runtime.
-DISTNAME= rustc-1.99.1-src
-PKGNAME= rust-std-wasm32-wasip1-1.99.1
-PKGREVISION= 1
+DISTNAME= rustc-1.100.0-src
+PKGNAME= rust-std-wasm32-wasip1-1.100.0
 CATEGORIES= lang
 MASTER_SITES= https://static.rust-lang.org/dist/
 EXTRACT_SUFX= .tar.xz
@@ -12,7 +11,7 @@ LICENSE= mit OR apache-2.0
 ONLY_FOR_PLATFORM= Darwin-*-aarch64 Darwin-*-x86_64
 USE_LANGUAGES= c c++
 PATCH_STRIP= -p1
-DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
+DEPENDS+= rust-bin-1.100.0{,nb[0-9]*}:../../lang/rust-bin
 TOOL_DEPENDS+= wasi-libc-*:../../lang/wasi-libc
 TOOL_DEPENDS+= wasi-compiler-rt-*:../../lang/wasi-compiler-rt
 PYTHON_FOR_BUILD_ONLY= tool

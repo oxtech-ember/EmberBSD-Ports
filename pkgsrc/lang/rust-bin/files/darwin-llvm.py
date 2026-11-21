@@ -119,6 +119,15 @@ def isolate(prefix, receipt, tools):
         raise ValueError("Unexpected self-importing LLVM provider")
     translated = {name: str(Path(name).with_name("librustLLVM.dylib")) for name in providers}
     changed = providers + consumers
+    # Upstream rust-lld also searches the global Rust lib directory and its
+    # build machine. Its only @rpath dependency is this target's bundled LLVM.
+    rust_lld = str(Path(private[0]).parent.parent / "bin/rust-lld")
+    lld_rpaths = set()
+    for image in before[rust_lld].values():
+        imports = {lib for _, lib in image["imports"] if lib.startswith("@rpath/")}
+        if imports != {OLD} or "@loader_path/../lib" not in image["rpaths"]:
+            raise ValueError("Unexpected Rust linker library search layout")
+        lld_rpaths.update(path for path in image["rpaths"] if path != "@loader_path/../lib")
     storage = {}
     for name in changed:
         path = prefix / name
@@ -139,7 +148,9 @@ def isolate(prefix, receipt, tools):
     commands = []
 
     def run(argv):
-        process = subprocess.run(argv, text=True, capture_output=True, timeout=60)
+        # Updating the bundled LLVM dylib can rewrite hundreds of megabytes.
+        timeout = 3600 if argv[0] == tools["install_name_tool"] else 120
+        process = subprocess.run(argv, text=True, capture_output=True, timeout=timeout)
         commands.append(dict(argv=argv, exit=process.returncode, stdout=process.stdout, stderr=process.stderr))
         if process.returncode:
             raise RuntimeError(f"{argv[0]} failed: {process.stderr}")
@@ -147,6 +158,9 @@ def isolate(prefix, receipt, tools):
     for name in changed:
         path = prefix / translated.get(name, name)
         edits = ["-id", NEW] if name in providers else ["-change", OLD, NEW]
+        if name == rust_lld:
+            for rpath in sorted(lld_rpaths):
+                edits.extend(["-delete_rpath", rpath])
         run([tools["install_name_tool"]] + edits + [str(path)])
         # LLVM rewrites the plain linker signature; it needs no second signer.
         run([tools["codesign"], "--verify", "--strict", str(path)])
@@ -160,6 +174,8 @@ def isolate(prefix, receipt, tools):
     for name in consumers:
         for image in expected[name].values():
             image["imports"] = [[kind, NEW if lib == OLD else lib] for kind, lib in image["imports"]]
+    for image in expected[rust_lld].values():
+        image["rpaths"] = ["@loader_path/../lib"]
     if after != expected or any((prefix / name).exists() or (prefix / name).is_symlink() for name in providers):
         raise RuntimeError("The rewritten Mach-O graph differs from the selected LLVM changes")
     output = dict(before=before, after=after, providers=providers, consumers=consumers, changed=changed, storage=storage, signing_layout=signatures, before_sha256=hashes,

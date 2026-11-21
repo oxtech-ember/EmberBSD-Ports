@@ -19,9 +19,9 @@ RUST_TARGET= ${_EMBER_CSS_RUST_TARGET:Uunsupported}
     "${RUST_TARGET}" != "${_EMBER_CSS_RUST_TARGET:U}"
 PKG_FAIL_REASON+= "cxx-rust-cssparser requires matching NetBSD 11 Rust and compiler targets"
 .endif
-TOOL_DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
+TOOL_DEPENDS+= rust-bin-1.100.0{,nb[0-9]*}:../../lang/rust-bin
 .if defined(_EMBER_CSS_STD_PACKAGE)
-TOOL_DEPENDS+= ${_EMBER_CSS_STD_PACKAGE}-1.99.1{,nb[0-9]*}:../../lang/${_EMBER_CSS_STD_PACKAGE}
+TOOL_DEPENDS+= ${_EMBER_CSS_STD_PACKAGE}-1.100.0{,nb[0-9]*}:../../lang/${_EMBER_CSS_STD_PACKAGE}
 .endif
 # The cross profile selects the native host compiler independently.
 _EMBER_CSS_HOST_CC= ${EMBERBSD_CROSS_BUILD_CC:U}

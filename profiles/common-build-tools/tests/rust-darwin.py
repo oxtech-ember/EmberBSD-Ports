@@ -57,7 +57,7 @@ def mixed_preflight(original_arg, work_arg):
         if process.returncode:
             raise RuntimeError(process.stderr)
     graph = helper.inventory(prefix, tools)
-    assert len(graph) == 43
+    assert len(graph) == 44
     for name in ["lib/libLLVM.dylib", "lib/rustlib/aarch64-apple-darwin/lib/libLLVM.dylib"]:
         assert all(part["identity"] == helper.OLD for part in graph[name].values())
     for name in ["bin/rustc", next(name for name in graph if name.startswith("lib/librustc_driver-"))]:
@@ -122,7 +122,7 @@ def mixed_preflight(original_arg, work_arg):
     assert len(boundary) == 1 and state() == before and not receipt.exists()
     (work / "result.json").write_text(json.dumps(dict(helper_sha256=digest(source), commands=commands,
         mixed_image="bin/rustfmt", graph=graph, before=before, after=state(), refusal=refusal,
-        guard_removed_first_rename=boundary, scope="Real43-image inventory and a real nonmandatory mixed import. Both OLD providers and mandatory imports remain. All files, names, links and modes are unchanged. Only the guard-removal witness intercepts the first rename."), indent=2) + "\n")
+        guard_removed_first_rename=boundary, scope="Real44-image inventory and a real nonmandatory mixed import. Both OLD providers and mandatory imports remain. All files, names, links and modes are unchanged. Only the guard-removal witness intercepts the first rename."), indent=2) + "\n")
     print("PASS: a real mixed import is refused before edits; removing the guard reaches the first rename")
 
 
@@ -147,7 +147,10 @@ def main():
     records = []
 
     def run(name, argv, success=True, data=None, extra=None):
-        process = subprocess.run(argv, cwd=work, env=dict(env, **(extra or {})), input=data, capture_output=True, timeout=120)
+        # A fresh private copy can fault in the complete compiler and LLVM dylib.
+        executable = Path(argv[0])
+        timeout = 600 if executable.is_relative_to(staged) or executable.is_relative_to(work) else 120
+        process = subprocess.run(argv, cwd=work, env=dict(env, **(extra or {})), input=data, capture_output=True, timeout=timeout)
         (work / (name + ".stdout")).write_bytes(process.stdout)
         (work / (name + ".stderr")).write_bytes(process.stderr)
         records.append(dict(name=name, argv=argv, exit=process.returncode))
@@ -163,20 +166,33 @@ def main():
     spec.loader.exec_module(helper)
     tools = tool_selection(helper)
     version = run("version", [str(staged / "bin/rustc"), "-vV"]).stdout.decode()
-    assert version.startswith("rustc 1.99.1 ") and "host: aarch64-apple-darwin\n" in version
+    assert version.startswith("rustc 1.100.0 ") and "host: aarch64-apple-darwin\n" in version
     before, after = helper.inventory(original, tools), helper.inventory(staged, tools)
     providers = {name for name, arches in before.items() if any(image["identity"] == helper.OLD for image in arches.values())}
     consumers = {name for name, arches in before.items() if any(any(lib == helper.OLD for _, lib in image["imports"]) for image in arches.values())}
-    assert len(before) == 43 and len(providers) == 2 and len(consumers) == 24
+    assert len(before) == 44 and len(providers) == 2 and len(consumers) == 25
     translated = {name: str(Path(name).with_name("librustLLVM.dylib")) for name in providers}
     assert set(after) == (set(before) - providers) | set(translated.values())
+    sanitizer_dirs = {Path("lib"), Path("lib/rustlib/aarch64-apple-darwin/lib")}
+    sanitizers = {name for name, arches in before.items()
+                  if Path(name).parent in sanitizer_dirs and Path(name).match("librustc*_rt.*.dylib")
+                  and len(arches) > 1}
+    assert sanitizers
+    for index, name in enumerate(sorted(sanitizers)):
+        thin = work / ("sanitizer-" + str(index) + ".dylib")
+        run("extract-sanitizer-" + str(index), [tools["lipo"], str(original / name), "-thin", "arm64", "-output", str(thin)])
+        assert digest(thin) == digest(staged / name), name
+        run("verify-sanitizer-" + str(index), [tools["codesign"], "--verify", "--strict", str(staged / name)])
     for name, arches in before.items():
         actual = after[translated.get(name, name)]
-        assert set(actual) == set(arches)
-        for arch, image in arches.items():
+        expected_arches = {"arm64"} if name in sanitizers else set(arches)
+        assert set(actual) == expected_arches, name
+        for arch in expected_arches:
+            image = arches[arch]
             result = actual[arch]
             assert result["identity"] == (helper.NEW if name in providers else image["identity"])
-            assert result["rpaths"] == image["rpaths"], name
+            expected_rpaths = ["@loader_path/../lib"] if name.endswith("/bin/rust-lld") else image["rpaths"]
+            assert result["rpaths"] == expected_rpaths, name
             assert result["imports"] == [[kind, helper.NEW if lib == helper.OLD else lib] for kind, lib in image["imports"]]
     driver = next(name for name in consumers if name.startswith("lib/librustc_driver-"))
     stds = list((original / "lib/rustlib/aarch64-apple-darwin/lib").glob("libstd-*.dylib"))
@@ -186,7 +202,7 @@ def main():
     original_hashes = {name: digest(original / name) for name in relative}
     staged_hashes = {name: digest(staged / translated.get(name, name)) for name in relative}
     for name in relative:
-        assert (original_hashes[name] != staged_hashes[name]) == (name in providers or name in consumers), name
+        assert (original_hashes[name] != staged_hashes[name]) == (name in providers or name in consumers or name in sanitizers), name
     assert len({original_hashes[name] for name in providers}) == 1
     control = work / "private-control"
     control.mkdir()
@@ -285,7 +301,7 @@ def main():
         assert digest(original / name) == original_hashes[name]
         assert digest(staged / translated.get(name, name)) == staged_hashes[name]
     (work / "result.json").write_text(json.dumps(dict(original_sha256=original_hashes, staged_sha256=staged_hashes, actual_consumers=sorted(consumers), providers=sorted(providers), original_runtime_macho_images=len(before), staged_runtime_macho_images=len(after), common_llvm_sentinels_unchanged=True, runtime_source_sha256=digest(source), scope="Darwin AArch64 bin/lib/libexec runtime graph, all consumer loader failures, signatures, native allocation/thread/TLS/unwind, Rust/LLVM tools and actual package resolver. No document magic scan, package registration, target execution or leak acceptance."), indent=2) + "\n")
-    print("PASS: both private LLVM identities, all24 consumers, causal loader refusals, native Rust/LLVM, actual package resolver and unchanged inputs")
+    print("PASS: both private LLVM identities, all 25 consumers, causal loader refusals, native Rust/LLVM, actual package resolver and unchanged inputs")
 
 
 if __name__ == "__main__":

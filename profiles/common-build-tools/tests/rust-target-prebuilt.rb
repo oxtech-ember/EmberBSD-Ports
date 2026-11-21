@@ -7,10 +7,10 @@ require 'open3'
 abort 'Usage: rust-target-prebuilt.rb READ_ELF STD_ARCHIVE NEW_WORK' unless ARGV.length == 3
 readelf, archive, work = ARGV.map { |path| File.expand_path(path) }
 abort 'Archive SHA256 differs from the release manifest' unless
-  Digest::SHA256.file(archive).hexdigest == '97569760ad6e042d56ccdac2fd295df8a10351403b9bbca2a19567f8ed6ae46b'
+  Digest::SHA256.file(archive).hexdigest == 'f274668780745dac102794b90aaa787ce6ea0e65909b27324280245ca6cd365e'
 Dir.mkdir(work)
 work = File.realpath(work)
-source = File.join(work, 'rust-std-1.99.1-x86_64-unknown-netbsd')
+source = File.join(work, 'rust-std-1.100.0-x86_64-unknown-netbsd')
 output, error, status = Open3.capture3('tar', '-xf', archive, '-C', work)
 abort output + error unless status.success?
 host = File.join(work, 'host')
@@ -21,8 +21,8 @@ File.write(File.join(host, 'bin/rustc'), <<~SH)
   #!/bin/sh
   set -eu
   if [ "$1" = -vV ]; then
-      echo "rustc ${FIXTURE_VERSION:-1.99.1} (58cf8f9c3 2026-10-13)"
-      echo 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67'
+      echo "rustc ${FIXTURE_VERSION:-1.100.0} (0ef1bc386 2026-11-09)"
+      echo 'commit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a'
       echo 'host: aarch64-apple-darwin'
       exit
   fi
@@ -54,7 +54,7 @@ check = lambda do |name, expected = nil, extra = {}|
   puts "PASS: #{name}"
 end
 check.call('official-elf-and-component')
-check.call('foreign-compiler', 'official Rust 1.99.1 required', { 'FIXTURE_VERSION' => '1.98.0' })
+check.call('foreign-compiler', 'official Rust 1.100.0 required', { 'FIXTURE_VERSION' => '1.98.0' })
 check.call('incompatible-metadata', 'E0514', { 'FIXTURE_REJECT_METADATA' => '1' })
 component = File.join(stage, 'lib/rustlib/x86_64-unknown-netbsd/lib')
 core = Dir[File.join(component, 'libcore-*.rmeta')].fetch(0)

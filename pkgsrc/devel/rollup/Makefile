@@ -27,7 +27,7 @@ DEPENDS+=	nodejs>=26.12.1<27:../../lang/nodejs
 
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pax pkg-config
-RUST_REQ=	1.99.1
+RUST_REQ=	1.100.0
 CARGO_WRKSRC=	${WRKSRC}/rust
 EMBER_CARGO_PATCH_SET=	yes
 CARGO_ARGS=	build --release --locked --package bindings_napi ${DEFAULT_CARGO_ARGS}
