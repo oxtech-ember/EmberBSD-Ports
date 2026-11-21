@@ -39,7 +39,15 @@
  .endif
  .if empty(USE_BUILTIN.libarchive:M[yY][eE][sS])
  CPPFLAGS+=	-I${WRKDIR}/libarchive/libarchive
-@@ -189,9 +184,6 @@
+@@ -148,3 +143,7 @@
++.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++LIBARCHIVE_CONFIGURE_ARGS+=	${CONFIGURE_ARGS:M--build=*} ${CONFIGURE_ARGS:M--host=*}
++.  endif
++
+ LIBARCHIVE_LIBS=	${SED} -n -e 's/^Libs.private://p' \
+ 			${WRKDIR}/libarchive/build/pkgconfig/libarchive.pc 2>/dev/null || echo
+ LIBS+=			${LIBARCHIVE_LIBS:sh}
+@@ -189,9 +188,6 @@
  .if empty(USE_BUILTIN.bzip2:M[yY][eE][sS])
  	@${CP} -R ${FILESDIR.bzip2} ${WRKDIR}/bzip2
  .endif
@@ -49,7 +57,7 @@
  .if empty(USE_BUILTIN.libarchive:M[yY][eE][sS])
  	@${CP} -R ${FILESDIR.libarchive} ${WRKDIR}/libarchive
  .endif
-@@ -201,9 +193,6 @@
+@@ -201,9 +197,6 @@
  pre-configure:
  .if empty(USE_BUILTIN.bzip2:M[yY][eE][sS])
  	cd ${WRKDIR}/bzip2 && ${BUILD_MAKE_CMD} libbz2.a
