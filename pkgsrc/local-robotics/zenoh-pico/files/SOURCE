@@ -1,8 +1,8 @@
 Project: https://github.com/eclipse-zenoh/zenoh-pico
-Version: 1.10.1
-Revision: e1ab223a28aaebb5dec1e70d98eab152332f777a
-Archive: https://codeload.github.com/eclipse-zenoh/zenoh-pico/tar.gz/e1ab223a28aaebb5dec1e70d98eab152332f777a
-SHA256: b662b7f6b9094684311a22748b3d45a595fad62d2f7793283f43e553b2175ddc
+Version: 1.10.2
+Revision: 6a881c21dad1f778d0529eb9f297bea339016526
+Archive: https://codeload.github.com/eclipse-zenoh/zenoh-pico/tar.gz/6a881c21dad1f778d0529eb9f297bea339016526
+SHA256: a1b816a05e5af3d9e50863088987f4b2608c1243507ba833ea5549a35222c9cb
 Packaging: EmberBSD Ports, AI-assisted; not an upstream submission.
 Patch: bound test build parallelism for BSD make; select the tested library without build RPATH.
 Patch: apply existing socket timeout to POSIX TCP sends, including accepted sockets.

@@ -4,7 +4,7 @@ Provide a native Zenoh-Pico package and an independent device-to-ROS example.
 The device side runs C on EmberBSD; the ROS side uses C++ on Ubuntu 24.04
 with ROS 2 Jazzy. This does not port ROS 2 or rmw_zenoh to EmberBSD.
 
-Use current Zenoh-Pico 1.10.1 at e1ab223a28aaebb5dec1e70d98eab152332f777a.
+Use the Zenoh-Pico revision recorded in the [Ports recipe](../../pkgsrc/local-robotics/zenoh-pico/files/SOURCE).
 Both sides use the same version. A direct TCP client-to-peer connection avoids a router
 dependency for this two-participant demonstration. Discovery is an explicitly
 configured listener and endpoint; multicast discovery is not an acceptance claim.

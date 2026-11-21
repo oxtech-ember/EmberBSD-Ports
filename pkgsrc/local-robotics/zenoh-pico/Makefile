@@ -1,9 +1,9 @@
 # Native Zenoh-Pico library and development interfaces.
-DISTNAME=	zenoh-pico-1.10.1
+DISTNAME=	zenoh-pico-1.10.2
 CATEGORIES=	net
 MASTER_SITES=	${MASTER_SITE_GITHUB:=eclipse-zenoh/}
 GITHUB_PROJECT=	zenoh-pico
-GITHUB_TAG=	e1ab223a28aaebb5dec1e70d98eab152332f777a
+GITHUB_TAG=	6a881c21dad1f778d0529eb9f297bea339016526
 WRKSRC=		${WRKDIR}/${GITHUB_PROJECT}-${GITHUB_TAG}
 
 HOMEPAGE=	https://github.com/eclipse-zenoh/zenoh-pico
