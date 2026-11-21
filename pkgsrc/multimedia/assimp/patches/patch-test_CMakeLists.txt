@@ -18,7 +18,7 @@ Use common test dependencies and discover the actual unit executable.
  
  if (MSVC)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING")
-@@ -250,20 +243,16 @@
+@@ -249,20 +242,16 @@
      ${TOOLS}
  )
  
@@ -43,9 +43,9 @@ Use common test dependencies and discover the actual unit executable.
    ADD_DEFINITIONS( -DRAPIDJSON_HAS_STDSTRING=1)
    option( ASSIMP_RAPIDJSON_NO_MEMBER_ITERATOR "Suppress rapidjson warning on MSVC (NOTE: breaks android build)" ON )
    if(ASSIMP_RAPIDJSON_NO_MEMBER_ITERATOR)
-@@ -306,4 +295,4 @@
- 
- add_subdirectory(headercheck)
+@@ -319,4 +308,4 @@
+   install(DIRECTORY models-nonbsd/ DESTINATION ${CMAKE_INSTALL_DATADIR}/assimp/models-nonbsd)
+ endif()
  
 -add_test( unittests unit )
 +add_test(NAME unittests COMMAND $<TARGET_FILE:unit>)

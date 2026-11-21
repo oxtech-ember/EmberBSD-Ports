@@ -4,23 +4,21 @@ Origin: EmberBSD contributors (AI-assisted).
 Exercise 3MF export, archive entries, round-trip and output failure.
 --- test/unit/utD3MFImportExport.cpp
 +++ test/unit/utD3MFImportExport.cpp
-@@ -45,6 +45,9 @@
- #include <assimp/scene.h>
- #include <assimp/Exporter.hpp>
+@@ -47,6 +47,8 @@
  #include <assimp/Importer.hpp>
-+#include <zip.h>
-+#include <cstdio>
+ 
+ #include <cstdio>
 +#include <vector>
++#include <zip.h>
+ #include <string>
  
  #include "AssetLib/3MF/D3MFExporter.h"
- 
-@@ -84,16 +87,48 @@
+@@ -117,16 +119,48 @@
  
  #ifndef ASSIMP_BUILD_NO_EXPORT
  
 -TEST_F(utD3MFImporterExporter, export3MFtoMemTest) {
 -    //EXPECT_TRUE(exporterTest());
--}
 +TEST_F(utD3MFImporterExporter, export3MFFileRoundTrip) {
 +    const char *output = "assimp-3mf-roundtrip.3mf";
 +    std::remove(output);
@@ -42,9 +40,7 @@ Exercise 3MF export, archive entries, round-trip and output failure.
 +        EXPECT_EQ(ZIP_CM_DEFLATE, stat.comp_method);
 +    }
 +    EXPECT_EQ(0, zip_close(archive));
- 
--TEST_F(utD3MFImporterExporter, roundtrip3MFtoMemTest) {
--    /*EXPECT_TRUE(exporterTest());
++
 +    Assimp::Importer result;
 +    const aiScene *roundtrip = result.ReadFile(output, 0);
 +    ASSERT_NE(nullptr, roundtrip);
@@ -52,8 +48,11 @@ Exercise 3MF export, archive entries, round-trip and output failure.
 +    EXPECT_EQ(12u, roundtrip->mMeshes[0]->mNumFaces);
 +    EXPECT_EQ(8u, roundtrip->mMeshes[0]->mNumVertices);
 +    EXPECT_EQ(0, std::remove(output));
-+}
+ }
  
+-TEST_F(utD3MFImporterExporter, roundtrip3MFtoMemTest) {
+-    /*EXPECT_TRUE(exporterTest());
+-
 -    Assimp::Importer importer;
 -    const aiScene *scene = importer.ReadFile("test.3mf", 0);
 -    EXPECT_NE(nullptr, scene));*/
@@ -70,4 +69,4 @@ Exercise 3MF export, archive entries, round-trip and output failure.
 +    EXPECT_EQ(0, std::remove(parent));
  }
  
- #endif // ASSIMP_BUILD_NO_EXPORT
+ TEST_F(utD3MFImporterExporter, exportSkipsNonTriangleFaces) {
