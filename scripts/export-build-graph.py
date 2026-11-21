@@ -140,7 +140,7 @@ class Exporter:
         self.test_requirements = {}
         self.query_results = {}
         self.file_digests = {}
-        self.package_bases = {}
+        self.match_results = {}
         self.host_argv = None
         self.host_names = None
         self.host_providers = {}
@@ -178,7 +178,8 @@ class Exporter:
         # pkgsrc's phony metadata goal keeps .TARGETS out of the default build phase.
         command.append('show-vars')
         queries = []
-        for variable in VARIABLES:
+        variables = VARIABLES + (('PKGBASE',) if self.host_current and cross == 'no' else ())
+        for variable in variables:
             queries += ['-V', '${' + variable + '}']
         # bmake has no GNU .VARIABLES inventory. Its native input graph lists
         # defined names. Query their expanded values separately through -V.
@@ -194,9 +195,9 @@ class Exporter:
         if any(not re.fullmatch(r'FILESDIR\.[A-Za-z0-9_.-]+', name) for name in extra_trees):
             raise ExportError('unsupported FILESDIR variable name in native metadata')
         values = completed.stdout.splitlines()
-        if len(values) != len(VARIABLES):
+        if len(values) != len(variables):
             raise ExportError('unexpected bmake metadata line count for ' + package)
-        result = dict(zip(VARIABLES, values))
+        result = dict(zip(variables, values))
         if extra_trees:
             queries = []
             for variable in extra_trees:
@@ -215,12 +216,16 @@ class Exporter:
         return result
 
     def pattern_matches(self, pattern, name):
+        key = (pattern, name)
+        if key in self.match_results:
+            return self.match_results[key]
         completed = subprocess.run([str(self.pkg_admin), 'pmatch', pattern, name],
                                    env=self.environment, text=True,
                                    capture_output=True, timeout=self.args.timeout)
         if completed.returncode not in (0, 1):
             raise ExportError('pkg_admin pmatch failed with status ' + str(completed.returncode))
-        return completed.returncode == 0
+        self.match_results[key] = completed.returncode == 0
+        return self.match_results[key]
 
     def matches(self, pattern, name):
         if not self.pattern_matches(pattern, name):
@@ -287,7 +292,10 @@ class Exporter:
             records.append([name, checksum])
             for logical in sorted(logical_names.get(path, ())):
                 records.append([logical, checksum])
-        return digest(canonical({'files': sorted(records), 'missing': sorted(missing), 'metadata': metadata}))
+        # PKGBASE selects an installed provider. Its resolved identity is already
+        # bound to the node and moving the query must preserve existing locks.
+        inputs = {k: v for k, v in metadata.items() if k != 'PKGBASE'}
+        return digest(canonical({'files': sorted(records), 'missing': sorted(missing), 'metadata': inputs}))
 
     def visit(self, package, cross, settings, environment, pattern=None):
         identity = self.node_identity(package, cross, settings)
@@ -364,7 +372,7 @@ class Exporter:
                 recursive_env.pop(key)
         # A current host package keeps the packages it still provides. Its own
         # build tools are not part of this graph; cross-bulk does not schedule them.
-        current = self.host_node_is_current(identity, package, cross, settings, environment, metadata)
+        current = self.host_node_is_current(identity, cross, metadata)
         children = []
         for variable, kind in DEPENDENCIES.items():
             if current and variable not in ('DEPENDS', 'TEST_DEPENDS'):
@@ -484,7 +492,17 @@ class Exporter:
         return host_pkg_info_argv(info, host_db, target_db)
 
     def host_pkgnames(self):
-        completed = self.run(self.host_argv + ['-a', '-Q', 'PKGNAME'], env=self.environment)
+        # -Q reads +BUILD_INFO. A registered package need not have a PKGNAME
+        # field there. Match the actual registry names used by the node query.
+        completed = subprocess.run([*self.host_argv, '-e', '*'], env=self.environment,
+                                   text=True, capture_output=True, timeout=self.args.timeout)
+        if completed.returncode == 1 and not completed.stdout and not completed.stderr:
+            # pkg_info also reports "no matches" for an inaccessible database.
+            database = self.host_argv[self.host_argv.index('-K') + 1]
+            with os.scandir(database):
+                return ()
+        if completed.returncode or not completed.stdout:
+            raise ExportError('cannot list installed host packages: ' + completed.stderr.strip()[:2000])
         names = completed.stdout.splitlines()
         if any(not name or any(character.isspace() for character in name) for name in names):
             raise ExportError('invalid host PKGNAME listing')
@@ -492,28 +510,13 @@ class Exporter:
             raise ExportError('duplicate host PKGNAME')
         return tuple(sorted(names))
 
-    def package_base(self, package, cross, settings, environment):
-        key = (package, cross, tuple(sorted(settings.items())))
-        if key not in self.package_bases:
-            command = [str(self.bmake), '-C', str(self.root / package),
-                       'MAKECONF=' + str(self.makeconf),
-                       'USE_CROSS_COMPILE=' + cross, '_MAKEVARS_MK=defined']
-            command += [name + '=' + value for name, value in self.make_variables.items()]
-            if cross == 'no':
-                command += [name + '=' + value for name, value in self.native_make_variables.items()]
-            command += [name + '=' + value for name, value in sorted(settings.items())]
-            command += ['show-var', 'VARNAME=PKGBASE']
-            lines = self.run(command, env=environment).stdout.splitlines()
-            if len(lines) != 1 or lines[0] == '' or any(character.isspace() for character in lines[0]):
-                raise ExportError('missing PKGBASE for ' + package)
-            self.package_bases[key] = lines[0]
-        return self.package_bases[key]
-
-    def host_node_is_current(self, identity, package, cross, settings, environment, metadata):
+    def host_node_is_current(self, identity, cross, metadata):
         if not self.host_current or cross != 'no':
             return False
         if identity not in self.host_providers:
-            base = self.package_base(package, cross, settings, environment)
+            base = metadata['PKGBASE']
+            if not base or any(character.isspace() for character in base):
+                raise ExportError('missing PKGBASE for ' + identity)
             try:
                 names = native_package_names(self.host_argv, base, metadata['PKGNAME'],
                                              env=self.environment, timeout=self.args.timeout)

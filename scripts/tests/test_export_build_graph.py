@@ -8,6 +8,7 @@ import importlib.util
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -86,7 +87,8 @@ if 'show-var' in args and 'show-vars' not in args:
         print(host['vars'][varname])
         sys.exit(0)
     values = json.loads((root / 'metadata.json').read_text())[package]
-    print(values.get(varname) or (directory.name if varname == 'PKGBASE' else ''))
+    assert varname != 'PKGBASE', 'query PKGBASE with the selected package metadata'
+    print(values.get(varname, ''))
     sys.exit(0)
 if tracked:
     events = root / 'events'
@@ -96,7 +98,17 @@ if tracked:
         'package': package, 'cross': settings['USE_CROSS_COMPILE'],
         'pattern': settings.get('PKGNAME_REQD')}))
     (events / (pid + '.start')).write_text(str(__import__('time').monotonic_ns()))
-    __import__('time').sleep(0.05)
+    barrier = root / 'overlap-barrier'
+    if barrier.is_dir() and package != 'devel/app':
+        import time
+        (barrier / pid).touch()
+        until = time.monotonic() + 15
+        while len(list(barrier.iterdir())) < 2:
+            if time.monotonic() >= until:
+                sys.exit('expected a second independent bmake query')
+            time.sleep(0.01)
+    else:
+        __import__('time').sleep(0.05)
 values = json.loads((root / 'metadata.json').read_text())[package]
 values = dict(values)
 options = values.pop('_options_by_required', {})
@@ -106,6 +118,7 @@ cross = settings['USE_CROSS_COMPILE']
 if values.pop('_darwin_sdk_guard', None) and cross == 'no' and 'EMBERBSD_DARWIN_SDK_VERSION' not in settings:
     values['PKG_FAIL_REASON'] = '"compiler-rt Darwin requires explicit OSX_SDK_PATH and EMBERBSD_DARWIN_SDK_VERSION"'
 version = values.get('PKGVERSION', '1')
+values.setdefault('PKGBASE', directory.name)
 values.setdefault('PKGNAME', directory.name + '-' + version)
 values.setdefault('PKGVERSION', version)
 values.setdefault('USE_CROSS_COMPILE', cross)
@@ -215,6 +228,9 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
     def test_parallel_jobs_preserve_graph_and_bound_bmake_concurrency(self):
         common = ('--make-variable', 'TEST_PARALLEL=yes')
         serial = self.run_export(*common)
+        # Hold the first frontier worker until the second actually starts.
+        # Even a slow host must exercise overlapping queries in this test.
+        (self.pkgsrc / 'overlap-barrier').mkdir()
         parallel = self.run_export(*common, '--jobs', '2')
         self.assertEqual(serial, parallel)
         events = self.pkgsrc / 'events'
@@ -772,7 +788,7 @@ if len(args) < 2 or args[0] != '-K':
 db = pathlib.Path(args[1])
 names = [line for line in (db / 'names').read_text().splitlines() if line]
 rest = args[2:]
-if rest[:3] == ['-a', '-Q', 'PKGNAME']:
+if rest == ['-e', '*']:
     marker = db / 'reads'
     count = int(marker.read_text()) if marker.exists() else 0
     marker.write_text(str(count + 1))
@@ -780,7 +796,7 @@ if rest[:3] == ['-a', '-Q', 'PKGNAME']:
     if count >= 1 and alternate.exists():
         names = [line for line in alternate.read_text().splitlines() if line]
     sys.stdout.write(''.join(name + '\n' for name in names))
-    sys.exit(0)
+    sys.exit(0 if names else 1)
 if rest[:1] == ['-e'] and len(rest) == 2:
     pattern = rest[1]
     if pattern.startswith('explode'):
@@ -935,6 +951,19 @@ sys.exit(2)
         changed = [key for key in old_nodes if old_nodes[key] != new_nodes[key]]
         self.assertEqual(len(changed), 1)
         self.assertTrue(changed[0].startswith('host:devel/generator@'))
+
+    @unittest.skipUnless(os.environ.get('EMBERBSD_PKG_INFO'), 'select pkg_info for registry integration')
+    def test_host_registration_without_a_pkgname_build_variable(self):
+        host = self.path / 'host-db'
+        info = os.environ['EMBERBSD_PKG_INFO']
+        self.enable_host_db([], command=shlex.join([info, '-K', str(host)]))
+        self.packages['devel/app'] = {'TOOL_DEPENDS': 'generator>=2:../../devel/generator'}
+        self.assertIn('host:devel/hostlib', self.nodes(self.run_export('--host-current')))
+        registered = host / 'generator-2'
+        registered.mkdir()
+        (registered / '+CONTENTS').write_text('@name generator-2\n@cwd /usr/pkg\n')
+        (registered / '+BUILD_INFO').write_text('PKGPATH=devel/generator\n')
+        self.assertNotIn('host:devel/hostlib', self.nodes(self.run_export('--host-current')))
 
     def test_host_database_mutation_fails_closed(self):
         self.install_host_cycle(direct_tools=True)

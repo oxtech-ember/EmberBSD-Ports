@@ -113,8 +113,9 @@ selection `scripts/cross-bulk.sh` uses when `MAKECONF` is already exported.
 
 `PKG_INFO` must be an absolute executable with one absolute `-K` directory.
 That directory must resolve to the host database and must not resolve to the
-target database. For each host node the exporter reads bmake `PKGBASE` and the
-node's `PKGNAME`. When `PKGNAME` matches `PKGBASE-[0-9]*`, it runs
+target database. The host metadata query reads `PKGBASE` and `PKGNAME` in the
+same bmake invocation. The exporter reuses each pattern and name comparison
+within this export. When `PKGNAME` matches `PKGBASE-[0-9]*`, it runs
 `pkg_info -e 'PKGBASE>=suffix'`; otherwise it runs `pkg_info -e PKGBASE`. Exit
 0 identifies matching installed names, 1 means no match, and other statuses
 fail the export. A single installed provider may supply this node if its name
@@ -125,8 +126,8 @@ edges. Build, tool, bootstrap, and indirect dependencies are not queried. In
 the build phase its `TEST_DEPENDS` remain in the test-requirements inventory
 and are not queried or turned into edges. Target nodes are not asked.
 
-The exporter snapshots all installed host names before and after the walk and
-rejects concurrent changes. Each reused host node binds its selected provider
+The exporter reads registered package names with `pkg_info -e '*'` before
+and after the walk. It rejects a concurrent registry change. Each reused host node binds its selected provider
 name. Installing an unrelated host package between exports preserves its key.
 This records package selection. The producer still verifies build tool and artifact
 identity before reusing objects when a file can change under the same package name.
