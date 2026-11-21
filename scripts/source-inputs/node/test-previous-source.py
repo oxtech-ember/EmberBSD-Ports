@@ -48,7 +48,9 @@ with tempfile.TemporaryDirectory(prefix='node-reuse-fixture-', dir=args.work_dir
     package = root / 'pkgsrc/lang/nodejs'
     (package / 'patches').mkdir(parents=True)
     (root / 'pkgsrc/lang/llvm/Makefile').write_text('DISTNAME= llvm-fixture\n')
-    (root / 'pkgsrc/export.conf').write_text('file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n'
+    (root / 'pkgsrc/export.conf').write_text(
+        'file\tscripts/prepare-pkgsrc.py\tEMBERBSD-SOURCE-IDENTITY/prepare-pkgsrc.py\n'
+        'file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n'
         'file\tprofiles/common-build-tools/node-prune-npm-gyp.py\tlang/nodejs/files/node-prune-npm-gyp.py\n')
     (root / 'pkgsrc/replaces').write_text('# fixture\n')
     run(args.git, '-C', root, 'init', '-q')

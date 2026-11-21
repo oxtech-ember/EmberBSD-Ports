@@ -47,7 +47,9 @@ with tempfile.TemporaryDirectory(prefix='v8-reuse-fixture-', dir=args.work_dir) 
     package = root / 'pkgsrc/lang/v8'
     (package / 'patches').mkdir(parents=True)
     (root / 'pkgsrc/lang/llvm/Makefile').write_text('DISTNAME= llvm-fixture\n')
-    (root / 'pkgsrc/export.conf').write_text('file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n')
+    (root / 'pkgsrc/export.conf').write_text(
+        'file\tscripts/prepare-pkgsrc.py\tEMBERBSD-SOURCE-IDENTITY/prepare-pkgsrc.py\n'
+        'file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n')
     (root / 'pkgsrc/replaces').write_text('# fixture\n')
     run(args.git, '-C', root, 'init', '-q')
     run(args.git, '-C', root, 'add', 'pkgsrc/export.conf')

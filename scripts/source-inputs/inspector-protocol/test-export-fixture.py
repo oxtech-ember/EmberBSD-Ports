@@ -47,7 +47,9 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temp:
     with (recipe / 'distinfo').open('ab') as info:
         info.write(b'SHA1 (patch-fixture) = ' + hashlib.sha1(delta).hexdigest().encode() + b'\n')
     (root / 'pkgsrc/export.conf').write_text(
-        'file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n')
+        'file\tscripts/prepare-pkgsrc.py\tEMBERBSD-SOURCE-IDENTITY/prepare-pkgsrc.py\n'
+        'file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n'
+        'file\tscripts/source-inputs/inspector-protocol/source.py\tEMBERBSD-SOURCE-IDENTITY/inspector-protocol-source.py\n')
     run([a.git, '-C', root, 'init', '-q'])
     run([a.git, '-C', root, 'add', 'pkgsrc/export.conf'])
     run([a.git, '-C', root, 'update-index', '--add', '--cacheinfo',

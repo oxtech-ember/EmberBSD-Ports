@@ -46,6 +46,7 @@ with tempfile.TemporaryDirectory(prefix='v8-export-test-', dir=a.work_dir) as di
     shutil.copytree(ports / 'pkgsrc/lang/v8', root / 'pkgsrc/lang/v8')
     (root / 'pkgsrc/lang/llvm/Makefile').write_text('DISTNAME= llvm-fixture\n')
     (root / 'pkgsrc/export.conf').write_text(
+        'file\tscripts/prepare-pkgsrc.py\tEMBERBSD-SOURCE-IDENTITY/prepare-pkgsrc.py\n'
         'file\tscripts/pkgsrc-source-identity.py\tEMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py\n'
         'file\tscripts/source-inputs/v8/source.py\tEMBERBSD-SOURCE-IDENTITY/v8-source.py\n')
     (root / 'pkgsrc/replaces').write_text('# fixture\n')

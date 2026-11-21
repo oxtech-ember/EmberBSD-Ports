@@ -47,7 +47,7 @@ def effective_package_identity(exported, package, upstream):
     inputs = ('Makefile', 'Makefile.common', 'distinfo', 'patches', 'files')
     exclude = [child.name for child in directory.iterdir()
                if child.name not in inputs and not child.name.endswith('.mk')]
-    exporter = _exporter(Path(__file__).resolve().parents[1])
+    exporter = _exporter(Path(__file__).with_name('prepare-pkgsrc.py'))
     exclude.extend(exporter.export_metadata_paths(directory))
     rows = inventory.snapshot_tree(str(directory), exclude=exclude)
     for relative, row in rows.items():
@@ -71,8 +71,7 @@ def recipe_input(relative):
     return top in RECIPE_INPUTS or ('/' not in relative and top.endswith('.mk'))
 
 
-def _exporter(root):
-    path = Path(root) / 'scripts/prepare-pkgsrc.py'
+def _exporter(path):
     spec = importlib.util.spec_from_file_location('emberbsd_pkgsrc_export_identity', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -118,7 +117,7 @@ def _directory_rows(git, root, directory):
     Ports overlay, so a link contributes its target's content.
     """
     directory = Path(directory)
-    exporter = _exporter(Path(__file__).resolve().parents[1])
+    exporter = _exporter(Path(__file__).with_name('prepare-pkgsrc.py'))
     names, paths = [], []
     for current, dirs, files in os.walk(directory):
         dirs[:] = sorted(name for name in dirs if not exporter.export_metadata(name))
@@ -320,7 +319,7 @@ def git_package_inputs(ports_root, package, git):
     if not isinstance(package, str) or re.fullmatch(
             r'[A-Za-z0-9][A-Za-z0-9+_.-]*/[A-Za-z0-9][A-Za-z0-9+_.-]*', package) is None:
         raise ValueError('invalid package path')
-    exporter = _exporter(root)
+    exporter = _exporter(root / 'scripts/prepare-pkgsrc.py')
     recipes, patches, files, _ = exporter.configuration(root)
     if exporter.version_pruned(package, exporter.version_families(root)):
         raise ValueError('pkgsrc/versions.mk removes ' + package)

@@ -3,6 +3,7 @@
 # Origin: EmberBSD (AI-assisted).
 """Record the staged inspector protocol source content using the selected SDK API."""
 import argparse
+import hashlib
 import importlib.util
 from pathlib import Path
 import sys
@@ -27,7 +28,11 @@ try:
     spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    identity = {'effective': module.effective_package_identity(root, 'devel/inspector-protocol', upstream)}
+    owner = root / 'EMBERBSD-SOURCE-IDENTITY/inspector-protocol-source.py'
+    with owner.open('rb') as stream:
+        owner_hash = hashlib.file_digest(stream, 'sha256').hexdigest()
+    identity = {'effective': module.effective_package_identity(root, 'devel/inspector-protocol', upstream),
+                'owner_sha256': owner_hash}
     stamped = sourceprep.write_prepared_tree_receipt(a.source, package='devel/inspector-protocol', identity=identity)
     # The receipt holds the digest just measured from this tree. Check the
     # written receipt instead of hashing the whole tree a second time.
