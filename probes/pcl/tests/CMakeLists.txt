@@ -44,7 +44,7 @@ add_test(NAME pcl-matrix-check COMMAND pcl-matrix-check)
 set_tests_properties(pcl-matrix-check PROPERTIES TIMEOUT 5)
 
 set(lz4_DIR "${FLANN_PREFIX}/lib/cmake/lz4")
-find_package(lz4 1.10.0 EXACT CONFIG REQUIRED NO_DEFAULT_PATH
+find_package(lz4 1.11.1 EXACT CONFIG REQUIRED NO_DEFAULT_PATH
   NO_CMAKE_FIND_ROOT_PATH PATHS "${lz4_DIR}")
 require_library(LZ4::lz4_shared "${FLANN_PREFIX}")
 add_executable(lz4-zero-buffers

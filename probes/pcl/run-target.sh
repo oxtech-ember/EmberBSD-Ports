@@ -16,7 +16,7 @@ done
 mkdir -p "$out/first" "$out/reinstalled" "$out/upstream" "$out/controls"
 install_packages()
 {
-    for package in eigen3-5.0.1 boost-headers-1.92.0 boost-libs-1.92.0 compiler-rt-23.1.4nb9 lz4-1.10.0 flann-lib-1.9.2 pcl-1.15.1nb1; do
+    for package in eigen3-5.0.1 boost-headers-1.92.0 boost-libs-1.92.0 compiler-rt-23.1.4nb9 lz4-1.11.1 flann-lib-1.9.2 pcl-1.15.1nb1; do
         pkg_add "$packages/$package.tgz"
     done
 }

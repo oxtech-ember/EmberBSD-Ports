@@ -63,7 +63,7 @@ done
 for item in 'share/eigen3/cmake/Eigen3ConfigVersion.cmake:5.0.1' \
     'lib/cmake/Boost-1.92.0/BoostConfigVersion.cmake:1.92.0' \
     'lib/cmake/flann/flann-config-version.cmake:1.9.2' \
-    'lib/cmake/lz4/lz4ConfigVersion.cmake:1.10.0'; do
+    'lib/cmake/lz4/lz4ConfigVersion.cmake:1.11.1'; do
     file=${item%:*} version=${item##*:}
     [ -f "$common/$file" ] && grep -F "set(PACKAGE_VERSION \"$version\")" "$common/$file" >/dev/null || {
         echo "Common dependency version missing: $file ($version)" >&2; exit 2;

@@ -27,7 +27,7 @@ install_packages()
         [ "$#" = 1 ] || { echo "Need exactly one $runtime-23.1.4 package." >&2; exit 2; }
         pkg_add "$1"
     done
-    for package in lz4-1.10.0 flann-lib-1.9.2 pcl-1.15.1nb1 gtsam-4.3.0 png-1.6.59 libjpeg-turbo-3.2.0nb2 sqlite3-3.54.1 opencv-5.0.0 rtabmap-0.23.8; do
+    for package in lz4-1.11.1 flann-lib-1.9.2 pcl-1.15.1nb1 gtsam-4.3.0 png-1.6.59 libjpeg-turbo-3.2.0nb2 sqlite3-3.54.1 opencv-5.0.0 rtabmap-0.23.8; do
         pkg_add "$packages/$package.tgz"
     done
 }

@@ -14,7 +14,7 @@ set(SQLite3_LIBRARY "${SQLITE_PREFIX}/lib/libsqlite3.so")
 find_package(SQLite3 3.54.1 REQUIRED)
 find_package(RTABMap 0.23.8 EXACT REQUIRED COMPONENTS core utilite
     PATHS "${PROBE_PREFIX}/lib/rtabmap-0.23" NO_DEFAULT_PATH)
-find_package(lz4 1.10.0 EXACT REQUIRED CONFIG)
+find_package(lz4 1.11.1 EXACT REQUIRED CONFIG)
 find_package(Threads REQUIRED)
 add_executable(rtabmap-contract contract.cpp)
 target_link_libraries(rtabmap-contract PRIVATE rtabmap::core SQLite::SQLite3)

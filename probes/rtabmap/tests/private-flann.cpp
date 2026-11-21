@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-static_assert(LZ4_VERSION_NUMBER == 11000, "Shared LZ4 1.10.0 headers required");
+static_assert(LZ4_VERSION_NUMBER == 11101, "Shared LZ4 1.11.1 headers required");
 
 static void require(bool condition, const char *message)
 {
@@ -61,7 +61,7 @@ static void check_neighbors(const rtabmap::FlannIndex &index, const cv::Mat &que
 int main()
 {
     try {
-        require(LZ4_versionNumber() == 11000, "shared LZ4 runtime version before private use");
+        require(LZ4_versionNumber() == 11101, "shared LZ4 runtime version before private use");
         cv::Mat features(100, 32, CV_32FC1), queries(100, 32, CV_32FC1);
         for (int row = 0; row < features.rows; ++row) {
             const float offset = row == features.rows - 1 ? -0.25f : 0.25f;
@@ -93,8 +93,8 @@ int main()
                     "private KD-tree restored count");
             check_neighbors(restored, queries);
         }
-        require(LZ4_versionNumber() == 11000, "shared LZ4 runtime version after private use");
-        std::cout << "PASS private KD-tree 100x32: compressed save/load, nearest 2, shared LZ4 11000\n";
+        require(LZ4_versionNumber() == 11101, "shared LZ4 runtime version after private use");
+        std::cout << "PASS private KD-tree 100x32: compressed save/load, nearest 2, shared LZ4 11101\n";
         return 0;
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';

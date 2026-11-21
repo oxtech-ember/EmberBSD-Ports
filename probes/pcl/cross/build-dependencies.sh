@@ -28,7 +28,7 @@ verify_archive()
     printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
 }
 verify_archive flann-1.9.2.tar.gz "$flann_archive"
-verify_archive lz4-1.10.0.tar.gz "$lz4_archive"
+verify_archive lz4-1.11.1.tar.gz "$lz4_archive"
 crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
 headers=$sysroot/usr/pkg/gcc16/include/c++

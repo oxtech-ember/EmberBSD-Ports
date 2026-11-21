@@ -1,7 +1,7 @@
 # MCAP C++ source probe
 
 Record and replay timestamped robot data using MCAP C++ 2.1.3, including
-LZ4 1.10.0 and Zstd 1.5.7 compression. This Ports-owned source probe supplies
+LZ4 1.11.1 and Zstd 1.5.7 compression. This Ports-owned source probe supplies
 the installed header-only C++ library and its shared compression dependencies.
 It is not an installable pkgsrc package or a robot recording service.
 

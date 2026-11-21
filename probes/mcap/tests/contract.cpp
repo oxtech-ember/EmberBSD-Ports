@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
     const std::string mode = argv[1];
     require(mode == "none" || mode == "lz4" || mode == "zstd", "unknown compression");
     require(std::string(mcap::LibraryVersion) == "2.1.3", "MCAP version");
-    require(LZ4_versionNumber() == 11000 && LZ4_VERSION_NUMBER == 11000, "LZ4 version");
+    require(LZ4_versionNumber() == 11101 && LZ4_VERSION_NUMBER == 11101, "LZ4 version");
     require(ZSTD_versionNumber() == 10507 && ZSTD_VERSION_NUMBER == 10507, "Zstd version");
     Files files;
     const auto path = files.add("contract-" + mode + ".mcap");

@@ -15,7 +15,7 @@ ${PLIST.cmake}lib/cmake/lz4/lz4Targets.cmake
 lib/liblz4.a
 lib/liblz4.so
 lib/liblz4.so.1
-lib/liblz4.so.1.10.0
+lib/liblz4.so.1.11.1
 lib/pkgconfig/liblz4.pc
 man/man1/lz4.1
 man/man1/lz4c.1

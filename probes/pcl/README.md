@@ -22,7 +22,7 @@ headers, libc and compiler runtime together. The acceptance package set is:
 | boost-headers 1.92.0 (`devel/boost-headers`) | The common Boost headers |
 | boost-libs 1.92.0 (`devel/boost-libs`) | The common compiled Boost libraries, including Iostreams, Random and Serialization |
 | [compiler-rt 23.1.4](../../pkgsrc/lang/compiler-rt) | The only libatomic (`clang_rt.atomic`) |
-| [lz4 1.10.0](../../pkgsrc/archivers/lz4) | Shared/static compression library and current CLI |
+| [lz4 1.11.1](../../pkgsrc/archivers/lz4) | Shared/static compression library and current CLI |
 | [flann-lib 1.9.2](../../pkgsrc/math/flann-lib) | Shared/static CPU C++ nearest-neighbor search |
 | [pcl 1.15.1nb1](../../pkgsrc/graphics/pcl) | Thirteen selected shared libraries and installed headers |
 
@@ -48,7 +48,7 @@ from [lang/compiler-rt](../../pkgsrc/lang/compiler-rt), the only libatomic.
 ```sh
 CROSS_JOBS=3 sh probes/pcl/cross/build-dependencies.sh \
   /absolute/gcc16-prefix /absolute/task-sysroot \
-  /absolute/flann-1.9.2.tar.gz /absolute/lz4-1.10.0.tar.gz \
+  /absolute/flann-1.9.2.tar.gz /absolute/lz4-1.11.1.tar.gz \
   /absolute/new-dependencies
 
 CROSS_JOBS=3 sh probes/pcl/cross-build.sh \

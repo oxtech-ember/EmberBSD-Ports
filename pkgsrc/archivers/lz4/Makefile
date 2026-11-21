@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted), current common LZ4 package.
-DISTNAME=	lz4-1.10.0
-PKGREVISION=	1
+DISTNAME=	lz4-1.11.1
 CATEGORIES=	archivers
-# The official v1.10.0 release archive (tag commit ebb370ca) matches distinfo.
 MASTER_SITES=	${MASTER_SITE_GITHUB:=lz4/}
 GITHUB_RELEASE=	v${PKGVERSION_NOREV}
 

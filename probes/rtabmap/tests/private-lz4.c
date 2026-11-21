@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#if LZ4_VERSION_NUMBER != 11000
-#error This contract requires the shared LZ4 1.10.0 headers.
+#if LZ4_VERSION_NUMBER != 11101
+#error This contract requires the shared LZ4 1.11.1 headers.
 #endif
 
 int main(int argc, char **argv)

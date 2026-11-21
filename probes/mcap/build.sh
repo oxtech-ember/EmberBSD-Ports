@@ -53,7 +53,7 @@ while read -r name expected url; do
     tar -xf "$work/archives/$name" -C "$work/src"
 done < "$recipe/sources.tsv"
 { uname -a; cmake --version; ninja --version; } > "$work/logs/tools.txt"
-run lz4-configure cmake -S "$work/src/lz4-1.10.0/build/cmake" -B "$work/lz4-build" -G Ninja \
+run lz4-configure cmake -S "$work/src/lz4-1.11.1/build/cmake" -B "$work/lz4-build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
     -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=OFF -DLZ4_BUILD_CLI=OFF
 run lz4-build cmake --build "$work/lz4-build" --parallel "$jobs"
@@ -73,11 +73,11 @@ includedir=\${prefix}/include
 Name: MCAP
 Description: MCAP C++ header-only recording and indexed reading library
 Version: 2.1.3
-Requires: liblz4 = 1.10.0, libzstd = 1.5.7
+Requires: liblz4 = 1.11.1, libzstd = 1.5.7
 Cflags: -I\${includedir}
 PC
 cp "$recipe/sources.tsv" "$recipe/PROVENANCE.md" "$prefix/share/ember-mcap/"
 cp "$work/src/mcap-releases-cpp-v2.1.3/LICENSE" "$prefix/share/ember-mcap/licenses/MCAP-MIT"
-cp "$work/src/lz4-1.10.0/lib/LICENSE" "$prefix/share/ember-mcap/licenses/LZ4-BSD-2-Clause"
+cp "$work/src/lz4-1.11.1/lib/LICENSE" "$prefix/share/ember-mcap/licenses/LZ4-BSD-2-Clause"
 cp "$work/src/zstd-1.5.7/LICENSE" "$prefix/share/ember-mcap/licenses/Zstd-BSD-3-Clause"
 echo "Installed in $prefix; run test.sh next."

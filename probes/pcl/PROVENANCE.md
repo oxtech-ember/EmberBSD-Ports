@@ -8,7 +8,7 @@ Archives are downloaded from their original upstream providers.
 |---|---|---|
 | [PCL 1.15.1](https://github.com/PointCloudLibrary/pcl/releases/tag/pcl-1.15.1) | `3346843ea6b97697a1577293aa9cdf236b5c7ffb` | BSD-3-Clause; Willow Garage, Open Perception and contributors |
 | [FLANN 1.9.2](https://github.com/flann-lib/flann/tree/1.9.2) | `c50f296b0b27e14667d272b37acc63f949b305c4` | BSD-3-Clause; Marius Muja, David G. Lowe and contributors |
-| [LZ4 1.10.0](https://github.com/lz4/lz4/releases/tag/v1.10.0) | `ebb370ca83af193212df4dcbadcc5d87bc0de2f0` | BSD-2-Clause library; GPL-2.0-or-later CLI; Yann Collet and contributors |
+| [LZ4 1.11.1](https://github.com/lz4/lz4/releases/tag/v1.11.1) | `aa4647fad575d01a874aaaadcdbe8e6a40e072f5` | BSD-2-Clause library; GPL-2.0-or-later CLI; Yann Collet and contributors |
 | [Boost 1.92.0](https://github.com/boostorg/boost/releases/tag/boost-1.92.0) | The common pkgsrc `devel/boost-libs` package | Boost Software License 1.0; individual library authors |
 | [Eigen 5.0.1](../../profiles/common-graphics/cross/eigen.md) | `bc3b39870ecb690a623a3f49149a358b95c5781d` | MPL-2.0 with upstream per-file notices |
 | [LLVM 23.1.4](../../pkgsrc/lang/compiler-rt) | Official `llvm-project` release; compiler-rt `clang_rt.atomic` | Apache-2.0 WITH LLVM-exception |

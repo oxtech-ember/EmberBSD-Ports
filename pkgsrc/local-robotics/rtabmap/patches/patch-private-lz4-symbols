@@ -1,7 +1,7 @@
 Keep rtflann's private LZ4 symbols out of the shared RTAB-Map API.
 
 The bundled LZ4 1.7.1 has private stream state layouts. Its global C symbols
-must not interpose the supported shared LZ4 1.10.0 used by public FLANN/PCL.
+must not interpose the supported shared LZ4 1.11.1 used by public FLANN/PCL.
 Limit visibility to the two C implementation files. Keep the private backend,
 its license notices, and the exported C++ RTAB-Map API.
 
