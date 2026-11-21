@@ -2,9 +2,9 @@ $NetBSD: patch-meson.build,v 1.2 2025/08/07 09:33:05 jperkin Exp $
 
 Handle Illumos like Solaris.
 
---- meson.build.orig	2025-02-27 16:29:06.000000000 +0000
+--- meson.build.orig
 +++ meson.build
-@@ -171,14 +171,14 @@ compile_args = [
+@@ -171,14 +171,14 @@
  # See https://gitlab.freedesktop.org/dbus/dbus/-/issues/4
  compile_args += ['-fno-strict-aliasing']
  
@@ -21,16 +21,16 @@ Handle Illumos like Solaris.
      ]
  endif
  
-@@ -429,7 +429,7 @@ else
+@@ -445,7 +445,7 @@
      endif
  endif
  
--if get_option('epoll').disabled()
-+if get_option('epoll').disabled() or host_os.contains('sunos')
+-if get_option('epoll').disabled() or (get_option('epoll').auto() and (host_os != 'linux'))
++if get_option('epoll').disabled() or host_os.contains('sunos') or (get_option('epoll').auto() and (host_os != 'linux'))
      use_linux_epoll = false
  else
      use_linux_epoll = (
-@@ -532,7 +532,7 @@ endif
+@@ -548,7 +548,7 @@
  have_console_owner_file = false
  console_owner_file = get_option('solaris_console_owner_file')
  if console_owner_file != ''
@@ -39,7 +39,7 @@ Handle Illumos like Solaris.
      error('solaris_console_owner_file is only supported on Solaris)')
    endif
    have_console_owner_file = true
-@@ -1379,7 +1379,7 @@ summary_dict += {
+@@ -1395,7 +1395,7 @@
      'Tests socket dir':         test_socket_dir,
  }
  
