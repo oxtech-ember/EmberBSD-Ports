@@ -3,6 +3,7 @@ ${PYSITELIB}/${WHEEL_INFODIR}/METADATA
 ${PYSITELIB}/${WHEEL_INFODIR}/RECORD
 ${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
 ${PYSITELIB}/${WHEEL_INFODIR}/licenses/LICENSE
+${PYSITELIB}/${WHEEL_INFODIR}/top_level.txt
 ${PYSITELIB}/wcwidth/__init__.py
 ${PYSITELIB}/wcwidth/__init__.pyc
 ${PYSITELIB}/wcwidth/__init__.pyo
@@ -18,6 +19,7 @@ ${PYSITELIB}/wcwidth/_wcswidth.pyo
 ${PYSITELIB}/wcwidth/_wcwidth.py
 ${PYSITELIB}/wcwidth/_wcwidth.pyc
 ${PYSITELIB}/wcwidth/_wcwidth.pyo
+${PYSITELIB}/wcwidth/_wcwidth_c.pyi
 ${PYSITELIB}/wcwidth/_width.py
 ${PYSITELIB}/wcwidth/_width.pyc
 ${PYSITELIB}/wcwidth/_width.pyo
