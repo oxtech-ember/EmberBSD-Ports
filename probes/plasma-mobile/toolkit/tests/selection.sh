@@ -14,7 +14,8 @@ command -v "$make" >/dev/null 2>&1 || {
 # Test the production selection blocks. External pkgsrc includes are omitted:
 # these cases check version/recipe selection, not full native recipe parsing.
 sed '/^\.include /d' "$recipes/meta-pkgs/qt6/Makefile.common" > "$work/qt.mk"
-sed '/^\.include /d' "$recipes/meta-pkgs/kde/kf6.mk" > "$work/kf.mk"
+cat "$recipes/meta-pkgs/kde/kf6-version.mk" > "$work/kf.mk"
+sed '/^\.include /d' "$recipes/meta-pkgs/kde/kf6.mk" >> "$work/kf.mk"
 sed '/^\.include /d' "$recipes/meta-pkgs/kde/plasma6.mk" > "$work/plasma.mk"
 cat > "$work/Makefile" <<'MAKE'
 .include "${FAMILY}.mk"
