@@ -1,10 +1,10 @@
 # EmberBSD: Qt 6 WireGuard tray over wg + wireguard-go.
 DISTNAME= EmberBSD-Examples
-PKGNAME= ember-wireguard-0.1.3
+PKGNAME= ember-wireguard-0.1.4
 CATEGORIES= net
 MASTER_SITES= ${MASTER_SITE_GITHUB:=oxtech-ember/}
 GITHUB_PROJECT= EmberBSD-Examples
-GITHUB_TAG= 0c3d85ee276b66172b87c30855f6b8a76d315353
+GITHUB_TAG= 15d01638198427c31db2b57ee20b4939e74a4840
 WRKSRC= ${WRKDIR}/${GITHUB_PROJECT}-${GITHUB_TAG}/desktop/ember-wireguard
 
 HOMEPAGE= https://github.com/oxtech-ember/EmberBSD-Examples/tree/${GITHUB_TAG}/desktop/ember-wireguard
@@ -22,6 +22,7 @@ DEPENDS+=	wireguard-tools-[0-9]*:../../net/wireguard-tools
 DEPENDS+=	wireguard-go>=0.0.20250522nb19:../../net/wireguard-go
 DEPENDS+=	qt6-qttranslations>=6.12.0nb1:../../x11/qt6-qttranslations
 
+PKG_GROUPS+=	wireguard
 OWN_DIRS+=	${PKG_SYSCONFDIR}/wireguard
 
 SPECIAL_PERMS+=	libexec/ember-wireguard-ctl ${SETUID_ROOT_PERMS}
