@@ -12,8 +12,8 @@
 # a package gets one build run (package-install) after show-vars and clean.
 # Usage: cross-bulk-parallel.sh NEW_OUTPUT
 set -eu
-[ "$#" = 1 ] || { [ "$#" = 2 ] && [ "$2" = --ninja-tail ]; } || {
-    echo 'Usage: cross-bulk-parallel.sh NEW_OUTPUT [--ninja-tail]' >&2
+[ "$#" = 1 ] || { [ "$#" = 2 ] && { [ "$2" = --ninja-tail ] || [ "$2" = --ninja-replace ]; }; } || {
+    echo 'Usage: cross-bulk-parallel.sh NEW_OUTPUT [--ninja-tail|--ninja-replace]' >&2
     exit 2
 }
 out=$1
@@ -106,6 +106,11 @@ WRAP
 mkdir -p "$out/registrations"
 cat > "$out/pkg_info" <<WRAP
 #!/bin/sh
+ref=\${3:-\$2}
+case "\${ref##*/}" in
+    long|long-[0-9]*|short1|short1-[0-9]*)
+        if [ -n "\${TAIL_PKG_INFO:-}" ]; then exec "\$TAIL_PKG_INFO" -K "\$TAIL_WORK/real-db" "\$@"; fi ;;
+esac
 case "\$1" in
     -e) [ -f "$out/registrations/\$2" ] && echo "\$2" ;;
     -q) case "\$3" in /*) cat "\$3" ;; *) cat "$out/registrations/\$3" ;; esac ;;
@@ -160,6 +165,13 @@ work()
     [ ! -f \$dir/fail ] || { echo "intentional package failure: \$pkg" >&2; exit 1; }
     : > \$out/work/\$pkg.built
 }
+stage_cookies()
+{
+    mkdir -p \$out/work/\$pkg
+    echo "\$1" > \$out/work/\$pkg/.extract_done
+    : > \$out/work/\$pkg/.depends
+    : > \$out/work/\$pkg/.rdepends
+}
 case "\$target" in
     show-var)
         case "\$varname" in
@@ -197,17 +209,15 @@ case "\$target" in
     *.rdepends|*.depends) : > "\$depends"; : > "\$rdepends" ;;
     _package-clean|depends-clean) : ;;
     depends) ;;
-    package) work ;;
+    package) work && stage_cookies "\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0)" ;;
+    replace) "\$CROSS_BULK_TEST_HOST_PYTHON" -B "\$CROSS_BULK_TEST_NINJA_PROBE" replace "\$pkg" "\$jobs" ;;
     package-install)
         work
         \$add -K \$out/target-db \$pkg || exit 1
         name=\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0)
         echo "@name \$name" > \$out/packages/All/\$name.tgz
         cp \$out/packages/All/\$name.tgz \$out/registrations/\$name
-        mkdir -p \$out/work/\$pkg
-        echo "\$name" > \$out/work/\$pkg/.extract_done
-        : > \$out/work/\$pkg/.depends
-        : > \$out/work/\$pkg/.rdepends ;;
+        stage_cookies "\$name" ;;
     *) echo "UNKNOWN \$target" >> \$out/errors; exit 1 ;;
 esac
 WRAP
@@ -363,18 +373,26 @@ reject_budget_case()
 # Count actual package-work invocations independently of read-only input queries.
 calls() { awk -v dir="$out/tree/t/$1" 'index($0,"-C " dir " ") && $NF ~ /^(clean|package-install|package|replace)$/ {n++} END {print n+0}' "$out/calls"; }
 
-if [ "${2:-}" = --ninja-tail ]; then
+if [ "$#" = 2 ]; then
     : "${CROSS_BULK_TEST_HOST_PYTHON:?}" "${CROSS_BULK_TEST_SDK_SOURCE:?}" "${CROSS_BULK_TEST_NINJA_PROBE:?}"
     : > "$out/edges"
-    for pkg in long short1 short2 short3 short4; do
+    case "$2" in
+        --ninja-tail) packages='long short1 short2 short3 short4'; capacity=10 jobs=5 ;;
+        --ninja-replace)
+            packages='long short1 next1 next2'; capacity=4 jobs=2
+            for next in next1 next2; do
+                for prev in long short1; do echo "t/$prev t/$next" >> "$out/edges"; done
+            done ;;
+    esac
+    for pkg in $packages; do
         mkdir -p "$out/tree/t/$pkg"
         echo "t/$pkg t/$pkg" >> "$out/edges"
     done
     newstate
     # The normal scheduler, package-install barrier and selected CPU resolver.
-    # Only pkgsrc metadata and package installation are fixtures.
+    # The replacement case uses real pkg_add on its isolated database.
     BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
-        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=10 CROSS_BULK_JOBS=5 \
+        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=$capacity CROSS_BULK_JOBS=$jobs \
         run_bulk build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1 || {
             cat "$out/bulk.log" >&2
             tail -n 12 "$out"/state/logs/*.worker.log >&2

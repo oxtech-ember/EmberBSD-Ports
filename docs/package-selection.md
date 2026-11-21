@@ -40,19 +40,22 @@ selection does not overwrite the persistent full-build root list.
 
 Cross-bulk divides the selected CPU budget among ready workers. When one
 worker remains and the dependency queue has no other ready package, the
-scheduler assigns the idle slots to that worker. The pkgsrc CMake Ninja
-generator and the Meson build, test and install targets can use those slots
-while running with Ninja 1.13 or newer. A short file lock coordinates the
-grant with starting the worker's Ninja FIFO. The existing completion event
-triggers the grant. The package install and replacement locks still control
-access to shared files.
+scheduler assigns the idle slots to that worker. A worker waiting for an
+exclusive package replacement also returns its allocation. If only one reader
+is still running, it can use those slots until it finishes or requests a
+replacement itself. The scheduler restores each writer's allocation before
+granting its exclusive replacement. The pkgsrc CMake Ninja generator and the
+Meson build, test and install targets can use those slots with Ninja 1.13
+or newer. A short file lock coordinates the grant with starting the worker's
+Ninja FIFO. Package completion and replacement requests trigger the grant.
+The package install and replacement locks still control access to shared files.
 
 An explicit `CROSS_BULK_MAKE_JOBS` keeps the fixed allocation.
 `MAKE_JOBS_SAFE=no` stays serial and `MAKE_JOBS.<PKGPATH>` or an explicit
 Ninja `-j` retains its package limit. Older Ninja versions and early SDKs
 use the numeric budget. Makefile generators keep their normal make jobs.
 Concurrent Ninja calls in one adaptive worker share the same lock.
-A profile with multiple active workers keeps their original allocations.
+Readers retain their initial allocations while two or more are active.
 
 The [tail measurement](../scripts/tests/cross-bulk-ninja-tail.py) runs five
 real Ninja builds with the selected native Clang, a recording pkgsrc fixture
@@ -61,6 +64,11 @@ to the SDK Python. The report includes total elapsed time, overlap of compiler
 processes across the whole run and after the four short builds finish,
 the time until their serialized fixture installations finish, and the maximum
 RSS of one compiler process. Increasing `--rounds` alternates the measurement order.
+Add `--waiting-replace` to measure a native CMake reader while a short package
+waits to replace its installed version. Both packages update an isolated pkgdb
+using real `pkg_add` before their two dependents start. The benchmark measures
+how long the short package waits within a total budget of four slots. Increase
+`--units` if the reader finishes before the scheduler can grant extra jobs.
 
 ## Small SDK and binary delivery
 

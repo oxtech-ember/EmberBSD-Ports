@@ -882,10 +882,10 @@ stage_supervise()
 # Package-level parallelism. CROSS_BULK_JOBS packages build at once (default:
 # half the selected SDK CPU capacity). Their MAKE_JOBS shares one total budget,
 # with remainder CPUs assigned to earlier ready workers; the scheduler keeps
-# each allocation until completion, granting the final Ninja worker free slots
-# when no other package is ready. MAKE_JOBS_SAFE=no
-# recipes stay serial. CROSS_BULK_MAKE_JOBS sets an explicit per-package value
-# and is checked against the total budget.
+# allocations of running packages. A worker waiting for an exclusive replace
+# returns its slots until its turn. The final reader can use all idle slots.
+# MAKE_JOBS_SAFE=no recipes stay serial. An explicit CROSS_BULK_MAKE_JOBS
+# per-package value is checked against the total budget.
 # CROSS_BULK_CPUS overrides the SDK's detected CPU count.
 host_cpus()
 {
@@ -2702,7 +2702,7 @@ build()
                 jobs_in_use=$((jobs_in_use - completed_jobs))
                 rm -f "$run/$res_key.jobs"
             fi
-            rm -f "$res.result" "$res.replace" "$res.replacing"
+            rm -f "$res.result" "$res.replace" "$res.replacing" "$res.parked"
             running=$((running - 1))
             changed=1
             poll_delay=0.05
@@ -2715,11 +2715,25 @@ build()
         done
         for req in "$run"/*.replace; do
             [ -f "$req" ] || continue
+            # exclusive() waits here after the package command has returned.
+            # It can run again only after this scheduler grants its replace.
+            worker=${req%.replace}
+            if [ -n "$ninja_worker" ] && [ -f "$worker.jobs" ]; then
+                held_jobs=$(cat "$worker.jobs")
+                mv "$worker.jobs" "$worker.parked"
+                jobs_in_use=$((jobs_in_use - held_jobs))
+            fi
             waiting=$((waiting + 1))
             [ -n "$first" ] || first=$req
         done
         if [ "$replacing" = 0 ] && [ "$waiting" -gt 0 ] && [ "$waiting" -ge "$running" ]; then
-            mv "$first" "${first%.replace}.replacing"
+            worker=${first%.replace}
+            if [ -f "$worker.parked" ]; then
+                held_jobs=$(cat "$worker.parked")
+                mv "$worker.parked" "$worker.jobs"
+                jobs_in_use=$((jobs_in_use + held_jobs))
+            fi
+            mv "$first" "$worker.replacing"
             replacing=1 waiting=$((waiting - 1))
             poll_delay=0.05
         fi
@@ -2796,21 +2810,21 @@ build()
                     poll_delay=0.05
                 fi
             done < "$run/ready"
-            # No peer can become ready before the last running worker finishes.
-            # An active Ninja can now use the released slots; other builders keep their fixed -j.
-            if [ -n "$ninja_worker" ] && [ "$running" = 1 ] && [ "$jobs_in_use" -lt "$cpus" ] &&
-               ! grep -q '^R ' "$run/ready"; then
-                for budget in "$run"/*.jobs; do
-                    if ! "$host_python" -B -E -S "$ninja_worker" grant "$budget" "$cpus"; then
-                        echo "Cannot grow the Ninja allocation for $budget; draining the running worker" >&2
-                        stop=1 stop_status=1
-                    fi
-                done
-                jobs_in_use=$cpus
-            fi
-            [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break
         fi
         [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break
+        # Pending replacements stop all new dispatch. Otherwise the reader
+        # can take all free slots only when no other package is ready.
+        if [ -n "$ninja_worker" ] && [ "$stop" = 0 ] && [ "$replacing" = 0 ] &&
+           [ "$running" -eq "$((waiting + 1))" ] && [ "$jobs_in_use" -lt "$cpus" ] &&
+           { [ "$waiting" -gt 0 ] || ! grep -q '^R ' "$run/ready"; }; then
+            for budget in "$run"/*.jobs; do
+                if ! "$host_python" -B -E -S "$ninja_worker" grant "$budget" "$cpus"; then
+                    echo "Cannot grow the Ninja allocation for $budget; draining the running worker" >&2
+                    stop=1 stop_status=1
+                fi
+            done
+            jobs_in_use=$cpus
+        fi
         # Poll promptly after progress, then back off while workers keep running.
         sleep "$poll_delay"
         case "$poll_delay" in
