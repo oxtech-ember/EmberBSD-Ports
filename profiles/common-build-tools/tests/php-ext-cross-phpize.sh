@@ -5,8 +5,8 @@
 # Usage: BMAKE=bmake php-ext-cross-phpize.sh PKGSRC MAKECONF NEW_WORK
 #
 # lang/php/ext.mk runs phpize and configures with --with-php-config. In a
-# cross build both named the target prefix, /usr/pkg/bin/phpize85 and
-# /usr/pkg/bin/php-config85, which the build host does not have, and every
+# cross build both named the target prefix, /usr/pkg/bin/phpize86 and
+# /usr/pkg/bin/php-config86, which the build host does not have, and every
 # PHP extension stopped at configure with status 127. Require that a cross
 # extension depends on the native php of the same version as a tool, runs
 # its TOOLBASE phpize, gets the native php for build-time PHP runs, and
@@ -39,7 +39,7 @@ bm WRKDIR="$wrkdir" -V '${TOOLBASE}' -V '${PREFIX}' -V '${PHP_VER}' \
 	-V '${PHP_PKG_PREFIX}' -V '${PHP_VERSION}' -V '${PHP_API_VERS}' \
 	-V '${PHP_EXTENSION_DIR}' -V '${PHPIZE}' -V '${PHP_CONFIG}' \
 	-V '${BUILDLINK_DIR}' -V '${TOOL_DEPENDS}' -V '${CONFIGURE_ARGS}' \
-	-V '${MAKE_FLAGS}' -V '${BUILDLINK_FILES.php85}' \
+	-V '${MAKE_FLAGS}' -V '${BUILDLINK_FILES.php${PHP_VER}}' \
 	-V '${DISTDIR}/${DISTFILES}' -V '${EXTRACT_ELEMENTS}' > "$work/values"
 {
 	IFS= read -r toolbase; IFS= read -r prefix; IFS= read -r phpver
@@ -81,7 +81,7 @@ case " $(bm USE_CROSS_COMPILE=no -V '${TOOL_DEPENDS}') " in
 *":../../lang/php$phpver "*) fail "a native extension depends on a tool php";;
 esac
 
-# The extension source and the target php-config that the target php85
+# The extension source and the target php-config that the target PHP
 # installs, with the paths it records.
 tar -xJf "$distfile" -C "$work/src" "$element" "${element%%/*}/scripts/php-config.in"
 src=$work/src/$element
@@ -107,7 +107,9 @@ case $phpize in
 "$toolbase"/*) run=$work/tool${phpize#"$toolbase"};;
 *) run=$phpize;;
 esac
-bm WRKDIR="$wrkdir" WRKSRC="$src" PHPIZE="$run" pre-configure \
+# A normal package enters pre-configure after pkgsrc has resolved buildlink
+# prefixes from the target package database. Exercise that same stage.
+bm _PKGSRC_BARRIER=yes WRKDIR="$wrkdir" WRKSRC="$src" PHPIZE="$run" pre-configure \
 	> "$work/phpize.log" 2>&1 ||
 	{ sed 's/^/  /' "$work/phpize.log"; echo "FAIL: pre-configure stopped"; exit 1; }
 [ "$(cat "$work/tool/bin/runs" 2>/dev/null)" = "$src" ] ||
@@ -132,7 +134,7 @@ xpkg=$pkgsrc/textproc/php-xapian
 xm() { MAKECONF=$makeconf "${BMAKE:-bmake}" -C "$xpkg" MAKECONF="$makeconf" "$@"; }
 xwrkdir=$work/xwrk
 xm WRKDIR="$xwrkdir" -V '${PHP_CONFIG}' -V '${BUILDLINK_DIR}' \
-	-V '${CONFIGURE_ENV:MPHP_CONFIG=*}' -V '${BUILDLINK_FILES.php85}' \
+	-V '${CONFIGURE_ENV:MPHP_CONFIG=*}' -V '${BUILDLINK_FILES.php${PHP_VER}}' \
 	-V '${XAPIAN_CONFIG}' -V '${CONFIGURE_ENV:MXAPIAN_CONFIG=*}' \
 	-V '${BUILDLINK_FILES.xapian}' -V '${CONFIGURE_ENV:MPHP=*}' \
 	-V '${TOOL_DEPENDS}' > "$work/xvalues"
@@ -182,7 +184,7 @@ case \$1 in
 esac
 XAPIAN
 chmod +x "$xbuildlink/bin/xapian-config"
-if xm WRKDIR="$xwrkdir" pre-configure > "$work/xapian.log" 2>&1; then
+if xm _PKGSRC_BARRIER=yes WRKDIR="$xwrkdir" pre-configure > "$work/xapian.log" 2>&1; then
 	check_config "$xconfig" "$xbuildlink" php-xapian
 	if [ -x "$xapconfig" ]; then
 		[ "$("$xapconfig" --cxxflags)" = "-I$xbuildlink/include" ] ||

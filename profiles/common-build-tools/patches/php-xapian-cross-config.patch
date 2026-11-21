@@ -1,6 +1,6 @@
 Cross php-xapian reads the target php-config and xapian-config.
 
-textproc/php-xapian configured with PHP_CONFIG=${PREFIX}/bin/php-config85
+textproc/php-xapian configured with PHP_CONFIG=${PREFIX}/bin/php-config for the selected version
 and its configure looks up xapian-config on PATH. In a cross build both
 are the target's, under the target prefix that the build host does not
 have, so configure stopped at "Can't find xapian-config". Use the php-config
@@ -22,7 +22,7 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 +.include "../../lang/php/cross-config.mk"
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +# configure asks php-config for the PHP interpreter and asks the
-+# interpreter for the extension suffix. The target php85 does not run on
++# interpreter for the extension suffix. The target PHP does not run on
 +# the build host; give configure the native php of the same version.
 +CONFIGURE_ENV+=		PHP=${TOOLBASE}/bin/php${PHP_VER}
 +.endif

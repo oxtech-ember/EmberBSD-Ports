@@ -2,15 +2,15 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
 #
-# Usage: BMAKE=bmake php85-cross-php-config-ldflags.sh PKGSRC MAKECONF NEW_WORK
+# Usage: BMAKE=bmake php86-cross-php-config-ldflags.sh PKGSRC MAKECONF NEW_WORK
 #
 # php-config records in ldflags the -L flags of the libraries that configure
 # found. In a cross build these were the sysroot and the buildlink tree in
-# the work directory, so the target php85 package installed a php-config
+# the work directory, so the target php86 package installed a php-config
 # that names build machine paths. check-wrkref did not stop it: the default
 # CHECK_WRKREF ("tools home cross") checks the tools and home directories
 # and TOOLBASE, but neither the buildlink tree nor the sysroot.
-# Require that a cross php85 rewrites ldflags in scripts/php-config after
+# Require that a cross php86 rewrites ldflags in scripts/php-config after
 # configure to the target library directory and its run path, then apply
 # that rewrite to a php-config made from the distfile's
 # scripts/php-config.in with the flags a cross configure records.
@@ -18,7 +18,7 @@ set -eu
 [ "$#" -eq 3 ] || { echo "Usage: $0 PKGSRC MAKECONF NEW_WORK" >&2; exit 2; }
 pkgsrc=$1 makeconf=$2 work=$3
 [ ! -e "$work" ] || { echo "$0: $work exists" >&2; exit 2; }
-pkg=$pkgsrc/lang/php85
+pkg=$pkgsrc/lang/php86
 bm() { MAKECONF=$makeconf "${BMAKE:-bmake}" -C "$pkg" MAKECONF="$makeconf" "$@"; }
 [ "$(bm -V '${USE_CROSS_COMPILE:Uno:tl}')" = yes ] ||
 	{ echo "$0: select a MAKECONF for a cross build" >&2; exit 2; }
@@ -36,7 +36,7 @@ bm WRKDIR="$work/wrk" -V '${_CROSS_DESTDIR}' -V '${BUILDLINK_DIR}' \
 } < "$work/values"
 [ -n "$sysroot" ] || { echo "$0: the MAKECONF names no sysroot" >&2; exit 2; }
 if [ -z "$class" ]; then
-	echo "FAIL: a cross php85 installs php-config with the configure -L flags"
+	echo "FAIL: a cross php86 installs php-config with the configure -L flags"
 	exit 1
 fi
 status=0
@@ -64,6 +64,6 @@ if grep -n -e "$sysroot" -e "$wrkdir" "$cfg"; then
 fi
 [ "$(sh "$cfg" --libs)" = "-lreadline -lm" ] || fail "php-config --libs changed"
 [ -z "$(bm USE_CROSS_COMPILE=no -V '${SUBST_CLASSES:Mcross-ldflags}')" ] ||
-	fail "a native php85 rewrites ldflags"
+	fail "a native php86 rewrites ldflags"
 [ "$status" -eq 0 ] || exit 1
-echo "PASS: the cross php85 php-config records only target library paths"
+echo "PASS: the cross php86 php-config records only target library paths"

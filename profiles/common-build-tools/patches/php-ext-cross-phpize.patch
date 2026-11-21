@@ -1,19 +1,19 @@
 Cross PHP extensions run the native phpize with the target php-config.
 
-lang/php/ext.mk ran ${PREFIX}/bin/phpize85 and configured with
-${PREFIX}/bin/php-config85. In a cross build PREFIX is the target
+lang/php/ext.mk ran ${PREFIX}/bin/phpize for the selected version and configured with
+${PREFIX}/bin/php-config for the selected version. In a cross build PREFIX is the target
 /usr/pkg, which the build host does not have, and every extension
-stopped at configure: "genv: '/usr/pkg/bin/phpize85': No such file or
+stopped at configure: "genv: '/usr/pkg/bin/phpize for the selected version': No such file or
 directory" (status 127). phpize is a build host script: run the native
-phpize of the same version, a tool dependency like the native php85 that
-lang/php85 uses for phar.phar, and use that php for build-time PHP runs.
+phpize of the same version, a tool dependency like the native PHP that
+the selected PHP recipe uses for phar.phar, and use that php for build-time PHP runs.
 configure reads the target php-config, linked into the buildlink tree
 and copied with the include directory in that tree, so the extension
-compiles against the target php85 headers and keeps the target prefix
+compiles against the target PHP headers and keeps the target prefix
 and extension directory. lang/php/cross-config.mk holds the php-config
 copy and the native php tool dependency for packages that run php-config
 without ext.mk. Native builds are unchanged.
-Applies after pkgsrc-php-one-version.patch and pkgsrc-php85-8.5.12.patch.
+Applies after pkgsrc-php-one-version.patch.
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/lang/php/ext.mk
@@ -24,7 +24,7 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +# phpize and build-time PHP runs (gen_stub.php, tests) use the native php
-+# of the same version; the target php85 is not a build host program.
++# of the same version; the target PHP is not a build host program.
 +.include "../../lang/php/cross-config.mk"
 +MAKE_FLAGS+=		PHP_EXECUTABLE=${TOOLBASE}/bin/php${PHP_VER}
 +.endif

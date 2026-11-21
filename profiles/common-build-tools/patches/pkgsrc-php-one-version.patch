@@ -1,8 +1,5 @@
-Origin: EmberBSD, AI-assisted.
-EmberBSD keeps one PHP, 8.5 (pkgsrc/versions.mk). The pinned phpversion.mk
-defaulted to 8.4 and accepted 8.3, 8.2, 7.4 and 5.6 as well. PHP 8.5 is the
-only default and accepted version; the data of the removed versions is gone.
-Not submitted upstream.
+Origin: EmberBSD (AI-assisted).
+Select PHP 8.6 for the interpreter, extensions and external consumers.
 
 --- a/lang/php/phpversion.mk
 +++ b/lang/php/phpversion.mk
@@ -12,8 +9,8 @@ Not submitted upstream.
  #
 -#	Possible: 56 74 82 83 84 85
 -#	Default: 84
-+#	Possible: 85
-+#	Default: 85
++#	Possible: 86
++#	Default: 86
  #
  # === Infrastructure variables ===
  #
@@ -23,14 +20,14 @@ Not submitted upstream.
  #
 -#	Possible: 56 74 82 83 84 85
 -#	Default: 84 85 83 82 74 56
-+#	Possible: 85
-+#	Default: 85
++#	Possible: 86
++#	Default: 86
  #
  # PHP_VERSIONS_INCOMPATIBLE
  #	The PHP versions that are not supported by the package.
  #
 -#	Possible: 56 74 82 83 84 85
-+#	Possible: 85
++#	Possible: 86
  #	Default: (empty)
  #
  # PHP_MINIMUM_TEENY
@@ -39,7 +36,7 @@ Not submitted upstream.
  #	The selected PHP version.
  #
 -#	Possible: 56 74 82 83 84 85
-+#	Possible: 85
++#	Possible: 86
  #	Default: ${PHP_VERSION_DEFAULT}
  #
  # PHP_VERSION
@@ -57,13 +54,13 @@ Not submitted upstream.
  #	package directory.
  #
 -#	Example: ../../lang/php84
-+#	Example: ../../lang/php85
++#	Example: ../../lang/php86
  #
  # PHP_PKG_PREFIX
  #	The prefix that is prepended to the package name.
  #
 -#	Example: php56 php74 php82 php83 php84 php85
-+#	Example: php85
++#	Example: php86
  #
  # PHP_INCDIR
  #	PHP include directory path relative to ${PREFIX}.
@@ -72,11 +69,11 @@ Not submitted upstream.
  #	MACHINE_GNU_ARCH.
  #
 -#	Example: lib/php/8.4/x86_64
-+#	Example: lib/php/8.5/x86_64
++#	Example: lib/php/8.6/x86_64
  #
  # Keywords: php
  #
-@@ -108,11 +108,6 @@
+@@ -108,12 +108,7 @@
  PHPVERSION_MK=	defined
  
  # Define each PHP's version.
@@ -85,21 +82,23 @@ Not submitted upstream.
 -PHP82_VERSION=	8.2.36
 -PHP83_VERSION=	8.3.37
 -PHP84_VERSION=	8.4.28
- PHP85_VERSION=	8.5.13
+-PHP85_VERSION=	8.5.13
++PHP86_VERSION=	8.6.0
  
  _VARGROUPS+=	php
+ _USER_VARS.php=	PHP_VERSION_DEFAULT
 @@ -122,8 +117,8 @@
  
  .include "../../mk/bsd.prefs.mk"
  
 -PHP_VERSION_DEFAULT?=		84
 -PHP_VERSIONS_ACCEPTED?=		84 85 83 82 74 56
-+PHP_VERSION_DEFAULT?=		85
-+PHP_VERSIONS_ACCEPTED?=		85
++PHP_VERSION_DEFAULT?=		86
++PHP_VERSIONS_ACCEPTED?=		86
  .for pv in ${PHP_VERSIONS_ACCEPTED}
  .  if empty(PHP_VERSIONS_INCOMPATIBLE:M${pv})
  _PHP_VERSIONS_ACCEPTED+=	${pv}
-@@ -164,18 +159,7 @@
+@@ -164,19 +159,8 @@
  #
  # set variables for the version we decided to use:
  #
@@ -115,7 +114,9 @@ Not submitted upstream.
 -.elif ${_PHP_VERSION} == 84
 -PHP_VERSION=		${PHP84_VERSION}
 -.elif ${_PHP_VERSION} == 85
-+.if ${_PHP_VERSION} == 85
- PHP_VERSION=		${PHP85_VERSION}
+-PHP_VERSION=		${PHP85_VERSION}
++.if ${_PHP_VERSION} == 86
++PHP_VERSION=		${PHP86_VERSION}
  .else
  # force an error
+ PKG_FAIL_REASON+=	"${_PHP_VERSION} is not a valid package"

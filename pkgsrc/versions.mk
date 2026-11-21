@@ -16,7 +16,7 @@ EMBERBSD_VERSION_FAMILIES+=	lang/python[0-9]*=lang/python315
 EMBERBSD_VERSION_FAMILIES+=	lang/gcc[0-9]*=lang/gcc16*
 EMBERBSD_VERSION_FAMILIES+=	lang/go[0-9]*=lang/go127
 EMBERBSD_VERSION_FAMILIES+=	lang/lua[0-9]*=lang/lua55
-EMBERBSD_VERSION_FAMILIES+=	lang/php[0-9]*=lang/php85
+EMBERBSD_VERSION_FAMILIES+=	lang/php[0-9]*=lang/php86
 EMBERBSD_VERSION_FAMILIES+=	lang/ruby[0-9]*=lang/ruby40
 # Gems that Ruby 4.0 ships as default or bundled gems, at the same or a
 # newer version.

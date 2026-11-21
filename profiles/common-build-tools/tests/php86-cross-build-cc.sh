@@ -2,17 +2,17 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
 #
-# Usage: BMAKE=bmake php85-cross-build-cc.sh PKGSRC MAKECONF [PKGPATH]
+# Usage: BMAKE=bmake php86-cross-build-cc.sh PKGSRC MAKECONF [PKGPATH]
 #
-# php85 builds the opcache JIT helper minilua with BUILD_CC and runs it on the
+# php86 builds the opcache JIT helper minilua with BUILD_CC and runs it on the
 # build machine. configure's default "gcc" was the target compiler wrapper in
 # a cross build, and the build ran an aarch64 NetBSD minilua on the build
 # host. Require that the cross recipe passes BUILD_CC and that a program
-# built with it runs here. PKGPATH is lang/php85 or www/ap-php, which builds
+# built with it runs here. PKGPATH is lang/php86 or www/ap-php, which builds
 # the same PHP source as an Apache module.
 set -eu
 [ "$#" -eq 2 ] || [ "$#" -eq 3 ] || { echo "Usage: $0 PKGSRC MAKECONF [PKGPATH]" >&2; exit 2; }
-pkgsrc=$1 makeconf=$2 pkgpath=${3:-lang/php85}
+pkgsrc=$1 makeconf=$2 pkgpath=${3:-lang/php86}
 bm() { MAKECONF=$makeconf "${BMAKE:-bmake}" -C "$pkgsrc/$pkgpath" MAKECONF="$makeconf" "$@"; }
 [ "$(bm -V '${USE_CROSS_COMPILE:Uno:tl}')" = yes ] ||
 	{ echo "$0: select a MAKECONF for a cross build" >&2; exit 2; }

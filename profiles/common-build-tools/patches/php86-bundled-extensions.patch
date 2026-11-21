@@ -1,0 +1,135 @@
+Origin: EmberBSD (AI-assisted).
+The PHP 8.6 release combines PHP and Zend under BSD-3-Clause. The bundled
+mbstring extension also includes libmbfl (LGPL 2.1). FFI is part of this
+release. Track mbstring headers installed from the source archive.
+
+--- a/converters/php-mbstring/Makefile
++++ b/converters/php-mbstring/Makefile
+@@ -4,7 +4,7 @@
+ PKGREVISION=		1
+ CATEGORIES+=		converters
+ COMMENT=		PHP extension for multibyte characters support
+-LICENSE=		php
++LICENSE=		modified-bsd AND gnu-lgpl-v2.1
+ 
+ CONFLICTS=		php-mbstring-[0-9]*
+ 
+--- a/devel/php-ffi/Makefile
++++ b/devel/php-ffi/Makefile
+@@ -4,9 +4,9 @@
+ PKGREVISION=		2
+ CATEGORIES+=		textproc
+ COMMENT=		PHP extension for Foreign Function Interface
+-LICENSE=		php
++LICENSE=		modified-bsd
+ 
+-PHP_VERSIONS_ACCEPTED=	74 82 83 84 85
++PHP_VERSIONS_ACCEPTED=	86
+ 
+ USE_PHP_EXT_PATCHES=	yes
+ 
+--- a/graphics/php-gd/Makefile
++++ b/graphics/php-gd/Makefile
+@@ -4,7 +4,7 @@
+ PKGREVISION=		14
+ CATEGORIES+=		graphics
+ COMMENT=		PHP extension for GD graphics library
+-LICENSE=		php
++LICENSE=		modified-bsd
+ 
+ CONFLICTS=	php-gd-[0-9]*
+ 
+--- a/textproc/php-intl/Makefile
++++ b/textproc/php-intl/Makefile
+@@ -4,7 +4,7 @@
+ PKGREVISION=		17
+ CATEGORIES+=		textproc
+ COMMENT=		PHP extension for i18n
+-LICENSE=		php
++LICENSE=		modified-bsd
+ 
+ USE_LANGUAGES=		c c++
+ USE_PHP_EXT_PATCHES=	yes
+--- a/www/php-tidy/Makefile
++++ b/www/php-tidy/Makefile
+@@ -4,7 +4,7 @@
+ PKGREVISION=		1
+ CATEGORIES+=		www
+ COMMENT=		PHP extension for tidy functions
+-LICENSE=		php
++LICENSE=		modified-bsd
+ 
+ CONFIGURE_ARGS+=	--with-tidy=shared,${BUILDLINK_PREFIX.tidy}
+ 
+--- a/www/php-fpm/Makefile
++++ b/www/php-fpm/Makefile
+@@ -5,7 +5,7 @@
+ 
+ HOMEPAGE=	https://php-fpm.org/
+ COMMENT=	FPM interface for ${PHP_PKG_PREFIX}
+-LICENSE=	2-clause-bsd
++LICENSE=	modified-bsd AND 2-clause-bsd
+ 
+ USE_TOOLS+=	pkg-config
+ 
+--- /dev/null
++++ b/converters/php-mbstring/PLIST.php86
+@@ -0,0 +1,58 @@
++@comment $NetBSD$
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/cp932_table.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/emoji2uni.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/html_entities.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_7bit.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_base64.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_cjk.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_cp51932.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_htmlent.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_iso2022jp_2004.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_qprint.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_singlebyte.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_ucs2.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_ucs4.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_utf16.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_utf32.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_utf7.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_utf7imap.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_utf8.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/mbfilter_uuencode.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/sjis_mac2uni.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/translit_kana_jisx0201_jisx0208.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_prop.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_big5.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_cns11643.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_cp1252.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_cp932_ext.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_cp936.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_gb18030.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_gb2312.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_jis.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_jis2004.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/unicode_table_uhc.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/filters/utf7_helper.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/eaw_table.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfilter.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfilter_8bit.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfilter_pass.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfilter_wchar.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfl_consts.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfl_convert.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfl_defs.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfl_encoding.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfl_filter_output.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfl_language.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfl_memory_device.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/mbfl/mbfl_string.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_de.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_en.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_hy.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_ja.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_kr.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_neutral.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_ru.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_tr.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_ua.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_uni.h
++${PHP_INCDIR}/ext/mbstring/libmbfl/nls/nls_zh.h

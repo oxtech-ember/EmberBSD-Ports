@@ -6,7 +6,7 @@ set -eu
 pkgsrc=$1 work=$2
 bmake=${BMAKE:-bmake}
 mkdir "$work"
-for kept in cad/kicad10 lang/python315 lang/lua55 lang/gcc16-libs lang/go127 lang/php85 \
+for kept in cad/kicad10 lang/python315 lang/lua55 lang/gcc16-libs lang/go127 lang/php86 \
     lang/ruby40 lang/openjdk21 databases/postgresql18-client \
     databases/mariadb118-client security/openssl lang/tcl x11/tk print/poppler-qt6 \
     graphics/opencv graphics/opencv-contrib; do
@@ -35,7 +35,7 @@ for old in cad/kicad lang/python314 lang/lua54 lang/gcc15 databases/postgresql17
 done
 for kept in cad/kicad10 cad/kicad-symbols cad/kicad-footprints cad/kicad-templates \
     cad/kicad-packages3d lang/python315 lang/lua55 lang/gcc16-libs databases/postgresql18-server \
-    databases/mariadb118-server net/wireshark lang/go127 lang/go-bin lang/php85 \
+    databases/mariadb118-server net/wireshark lang/go127 lang/go-bin lang/php86 \
     lang/tcl x11/tk lang/tclx x11/tktable graphics/opencv graphics/opencv-contrib; do
     [ -z "$(reason "$kept")" ] || { echo "Guard rejected $kept" >&2; exit 1; }
 done
@@ -43,7 +43,7 @@ done
 for knob in lang/lua/luaversion.mk:LUA_VERSION_DEFAULT:55 \
     lang/lua/luaversion.mk:LUA_VERSIONS_ACCEPTED:55 \
     lang/python/pyversion.mk:PYTHON_VERSIONS_ACCEPTED:315 \
-    lang/php/phpversion.mk:PHP_VERSIONS_ACCEPTED:85 \
+    lang/php/phpversion.mk:PHP_VERSIONS_ACCEPTED:86 \
     mk/pgsql.buildlink3.mk:PGSQL_VERSIONS_ACCEPTED:18 \
     mk/mysql.buildlink3.mk:MYSQL_VERSIONS_ACCEPTED:mariadb118 \
     lang/nodejs/nodeversion.mk:NODE_VERSIONS_ACCEPTED:26 \

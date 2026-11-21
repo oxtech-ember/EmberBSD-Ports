@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Check that a cross lang/php85 looks for readline in the buildlink tree.
+"""Check that a cross lang/php86 looks for readline in the buildlink tree.
 
 Before the fix configure looked for /usr/pkg/include/readline/readline.h
 on the build host and stopped with "Please reinstall readline".
@@ -17,7 +17,7 @@ VARIABLES = ("BUILDLINK_DIR", "BUILDLINK_PREFIX.readline", "CONFIGURE_ARGS")
 
 
 def query(args, makeconf, *extra):
-    argv = [args.bmake, "-C", str(args.pkgsrc.resolve(strict=True) / "lang/php85"),
+    argv = [args.bmake, "-C", str(args.pkgsrc.resolve(strict=True) / "lang/php86"),
             "MAKECONF=" + str(makeconf), "PKG_OPTIONS.php=readline", *extra]
     for variable in VARIABLES:
         argv.extend(("-V", "${%s}" % variable))
@@ -43,13 +43,13 @@ def main():
     makeconf = args.makeconf.resolve(strict=True)
     buildlink, _, readline = query(args, makeconf)
     if readline != ["--with-readline=" + buildlink]:
-        print("FAIL: cross php85 passes %r, not the buildlink tree" % readline)
+        print("FAIL: cross php86 passes %r, not the buildlink tree" % readline)
         raise SystemExit(1)
     _, prefix, readline = query(args, makeconf, "USE_CROSS_COMPILE=no")
     if readline != ["--with-readline=" + prefix]:
-        print("FAIL: native php85 passes %r, not the readline prefix" % readline)
+        print("FAIL: native php86 passes %r, not the readline prefix" % readline)
         raise SystemExit(1)
-    print("PASS: cross php85 finds readline in the buildlink tree")
+    print("PASS: cross php86 finds readline in the buildlink tree")
 
 
 if __name__ == "__main__":

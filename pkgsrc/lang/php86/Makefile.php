@@ -1,0 +1,125 @@
+# $NetBSD: Makefile.php,v 1.2 2026/01/10 09:10:48 taca Exp $
+# used by lang/php86/Makefile
+# used by www/ap-php/Makefile
+# used by www/php-fpm/Makefile
+
+# segfaults when buidling with many compilers
+# https://bugs.php.net/bug.php?id=74527
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86236
+.if ${MACHINE_ARCH} == "i386"
+CONFIGURE_ARGS+=	--disable-gcc-global-regs
+.endif
+
+# the binary actually needs full dep on PCRE
+BUILDLINK_DEPMETHOD.pcre2=	full
+
+USE_LIBTOOL=		YES
+USE_LANGUAGES=		c c++
+GNU_CONFIGURE=		YES
+BUILD_DEFS+=		VARBASE
+PLIST_VARS+=		dtrace
+
+.include "../../lang/php86/Makefile.common"
+
+DISTINFO_FILE=	${.CURDIR}/../../lang/php86/distinfo
+PATCHDIR=	${.CURDIR}/../../lang/php86/patches
+
+PLIST_SUBST+=	PHP_VER="${PHP_VER}"
+
+PRINT_PLIST_AWK+=	/${PHP_EXTENSION_DIR:S/\//\\\//g}/ \
+			{ sub(/${PHP_EXTENSION_DIR:S/\//\\\//g}/, \
+				"$${PHP_EXTENSION_DIR}") }
+PRINT_PLIST_AWK+=	/${PHP_VER}/ { sub(/${PHP_VER}/, "$${PHP_VER}") }
+
+CONFIGURE_ARGS+=	--program-suffix=${PHP_VER}
+CONFIGURE_ARGS+=	--with-config-file-path=${PKG_SYSCONFDIR}
+CONFIGURE_ARGS+=	--with-config-file-scan-dir=${PKG_SYSCONFDIR}/php.d
+
+CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR}
+CONFIGURE_ARGS+=	--libdir=${PREFIX}/${PHP_LIBDIR}
+CONFIGURE_ARGS+=	--datadir=${PREFIX}/${PHP_SHAREDIR}
+CONFIGURE_ARGS+=	--localstatedir=${VARBASE}
+
+CONFIGURE_ARGS+=	--without-mysqli
+CONFIGURE_ARGS+=	--without-iconv
+CONFIGURE_ARGS+=	--without-pear
+CONFIGURE_ARGS+=	--without-sqlite3
+CONFIGURE_ARGS+=	--with-external-pcre
+CONFIGURE_ARGS+=	--disable-intl
+CONFIGURE_ARGS+=	--disable-posix
+CONFIGURE_ARGS+=	--disable-pdo
+
+CONFIGURE_ARGS+=	--enable-cgi
+CONFIGURE_ARGS+=	--enable-mysqlnd
+CONFIGURE_ARGS+=	--enable-xml
+#CONFIGURE_ARGS+=	--with-libxml-dir=${PREFIX}
+
+CONFIGURE_ENV+=		PHP_VER=${PHP_VER}
+CONFIGURE_ENV+=		PHP_VAR_SUBST=PHP_VER
+CONFIGURE_ENV+=		EXTENSION_DIR="${PREFIX}/${PHP_EXTENSION_DIR}"
+
+#
+# Workaround for NetBSD: php 8.4 require zlib>=1.2.11.
+# NetBSD 8 and later have zlib 1.2.13 in base system but
+# /usr/lib/pkg-config/zlib.pc is still 1.2.10.
+# So, modify configure script to allow 1.2.10 on NetBSD.
+#
+SUBST_CLASSES+=		zlib
+SUBST_MESSAGE.zlib=	Adjust zlib version
+SUBST_STAGE.zlib=	pre-configure
+SUBST_FILES.zlib+=	build/php.m4
+SUBST_VARS.zlib+=	FAKE_ZLIB_VERSION
+
+.if ${OPSYS} == "NetBSD"
+FAKE_ZLIB_VERSION=	1.2.10
+.else
+FAKE_ZLIB_VERSION=	1.2.11
+.endif
+
+SUBST_CLASSES+=		path
+SUBST_MESSAGE.path=	Fixing common paths.
+SUBST_STAGE.path=	pre-configure
+SUBST_FILES.path+=	build/php.m4
+SUBST_FILES.path+=	php.ini-development php.ini-production
+SUBST_FILES.path+=	sapi/cgi/Makefile.frag
+SUBST_FILES.path+=	sapi/fpm/php-fpm.conf.in sapi/fpm/www.conf.in
+SUBST_FILES.path+=	sapi/fpm/fpm/fpm_conf.c
+SUBST_FILES.path+=	scripts/php-config.in scripts/phpize.in
+SUBST_VARS.path=	PREFIX CGIDIR PHP_VER PHP_API_VERS
+SUBST_VARS.path+=	PHP_EGDIR PHP_INCDIR PHP_LIBDIR
+SUBST_VARS.path+=	TOOLS_PATH.pkg-config PHP_PKGCONFIG_PATH
+
+.include "../../textproc/libxml2/buildlink3.mk"
+# mysqlnd compression links zlib.
+.include "../../devel/zlib/buildlink3.mk"
+
+#CONFIGURE_ARGS+=	--with-pcre-regex=${BUILDLINK_PREFIX.pcre2}
+
+.include "options.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# The installed php.m4 names pkg-config, and php-config and build-defs.h
+# record the configure command. Name the target pkg-config, not the build
+# host tool.
+SUBST_SED.path+=	-e 's,@TOOLS_PATH\.pkg-config@,${LOCALBASE}/bin/pkg-config,g'
+.  if ${PKG_OPTIONS:Mreadline}
+# options.mk passes the buildlink tree to --with-readline; record the
+# target prefix instead.
+SUBST_CLASSES+=			cross-readline
+SUBST_STAGE.cross-readline=	post-configure
+SUBST_MESSAGE.cross-readline=	Recording the target readline prefix.
+SUBST_FILES.cross-readline=	main/build-defs.h scripts/php-config
+SUBST_SED.cross-readline=	-e 's,--with-readline=${BUILDLINK_DIR},--with-readline=${BUILDLINK_PREFIX.readline},g'
+.  endif
+# php-config records the -L flags of the libraries configure found: the
+# sysroot and the buildlink tree in the work directory. Extensions built
+# on the target read them; record the target library directory instead.
+SUBST_CLASSES+=			cross-ldflags
+SUBST_STAGE.cross-ldflags=	post-configure
+SUBST_MESSAGE.cross-ldflags=	Recording the target library directory.
+SUBST_FILES.cross-ldflags=	scripts/php-config
+SUBST_SED.cross-ldflags=	-e 's|^ldflags=.*|ldflags="-L${LOCALBASE}/lib ${COMPILER_RPATH_FLAG}${LOCALBASE}/lib"|'
+.endif
+
+DL_AUTO_VARS=		yes
+.include "../../mk/dlopen.buildlink3.mk"

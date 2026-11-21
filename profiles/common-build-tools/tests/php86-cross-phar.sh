@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
 #
-# Usage: BMAKE=bmake GMAKE=gmake php85-cross-phar.sh PKGSRC MAKECONF NEW_WORK
+# Usage: BMAKE=bmake GMAKE=gmake php86-cross-phar.sh PKGSRC MAKECONF NEW_WORK
 #
 # ext/phar/Makefile.frag runs PHP to make phar.php and phar.phar and prefers
 # the sapi/cli/php the build has just linked. In a cross build that is a
 # target executable, the build host could not run it and install stopped
-# without bin/phar85.phar. Require that a cross lang/php85 depends on the
+# without bin/phar86.phar. Require that a cross lang/php86 depends on the
 # native package of the same version as a tool and passes the TOOLBASE php
 # as PHP_EXECUTABLE and PHP_PHARCMD_EXECUTABLE, and that a native build does
 # not. Then run the upstream phar rules from the distfile with those values,
@@ -18,7 +18,7 @@ set -eu
 [ "$#" -eq 3 ] || { echo "Usage: $0 PKGSRC MAKECONF NEW_WORK" >&2; exit 2; }
 pkgsrc=$1 makeconf=$2 work=$3
 [ ! -e "$work" ] || { echo "$0: $work exists" >&2; exit 2; }
-pkg=$pkgsrc/lang/php85
+pkg=$pkgsrc/lang/php86
 bm() { MAKECONF=$makeconf "${BMAKE:-bmake}" -C "$pkg" MAKECONF="$makeconf" "$@"; }
 [ "$(bm -V '${USE_CROSS_COMPILE:Uno:tl}')" = yes ] ||
 	{ echo "$0: select a MAKECONF for a cross build" >&2; exit 2; }
@@ -28,7 +28,7 @@ pkgname=$(bm -V '${PKGNAME}')
 phpver=$(bm -V '${PHP_VER}')
 native=$toolbase/bin/php$phpver
 case " $(bm -V '${TOOL_DEPENDS}') " in
-*" $pkgname:../../lang/php85 "*) ;;
+*" $pkgname:../../lang/php86 "*) ;;
 *) echo "FAIL: no tool dependency on the native $pkgname"; status=1;;
 esac
 flags=" $(bm -V '${MAKE_FLAGS}') "
@@ -37,11 +37,11 @@ for v in PHP_EXECUTABLE PHP_PHARCMD_EXECUTABLE; do
 	*) echo "FAIL: MAKE_FLAGS does not select $v=$native"; status=1;; esac
 done
 case " $(bm USE_CROSS_COMPILE=no -V '${TOOL_DEPENDS}') " in
-*":../../lang/php85 "*) echo "FAIL: a native php85 depends on itself"; status=1;;
+*":../../lang/php86 "*) echo "FAIL: a native php86 depends on itself"; status=1;;
 esac
 case " $(bm USE_CROSS_COMPILE=no -V '${MAKE_FLAGS}') " in
 *" PHP_EXECUTABLE="*|*" PHP_PHARCMD_EXECUTABLE="*)
-	echo "FAIL: a native php85 overrides its own php"; status=1;;
+	echo "FAIL: a native php86 overrides its own php"; status=1;;
 esac
 grep -qx 'bin/phar${PHP_VER}.phar' "$pkg/PLIST" ||
 	{ echo "FAIL: PLIST lacks bin/phar\${PHP_VER}.phar"; status=1; }
@@ -103,4 +103,4 @@ grep -q ' pack -f ext/phar/phar.phar ' "$work/tool/bin/runs" ||
 [ "$(head -1 "$src/ext/phar/phar.phar")" = "#!/usr/pkg/bin/php$phpver" ] ||
 	{ echo "FAIL: phar.phar does not start with #!/usr/pkg/bin/php$phpver"; exit 1; }
 [ "$status" -eq 0 ] || exit 1
-echo "PASS: cross php85 makes phar.phar with the native php"
+echo "PASS: cross php86 makes phar.phar with the native php"

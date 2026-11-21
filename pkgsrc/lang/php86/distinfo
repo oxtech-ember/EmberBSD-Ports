@@ -1,0 +1,23 @@
+$NetBSD$
+
+BLAKE2s (php-8.6.0.tar.xz) = 366e292ad65a3815b44234ad965d85819bbe5cbc0677ee61de324f793057455b
+SHA512 (php-8.6.0.tar.xz) = 9ac794a7b9c189da3188680af343ea6ca07e34827ab996a78a42ba4eac0b896cb68df730f1edefbcb8ca9772be1bc84335f091ce3a5922f1fad228644765c504
+Size (php-8.6.0.tar.xz) = 15148068 bytes
+SHA1 (patch-build_Makefile.global) = 570d813a05626f633e2ce380ab6668fdc7e8f030
+SHA1 (patch-build_php.m4) = bb72e38ab391ad587962940ba85e8d4de8633dca
+SHA1 (patch-configure.ac) = 20c95915d5e4aa622d04ee923c626789c44fef11
+SHA1 (patch-ext_pcntl_pcntl.c) = 0b741d6b501ae1f4932a98de79a860eef2ee1a14
+SHA1 (patch-ext_phar_Makefile.frag) = 53ea5c58b0bc27d236118d5750a74b1cba43e5dd
+SHA1 (patch-ext_standard_php__fopen__wrapper.c) = cc58bdbdf17718a54526929be50c1809232fd1b3
+SHA1 (patch-php.ini-development) = 2974af3c5f923491d4d23f85a3dcf24d91ce7c86
+SHA1 (patch-php.ini-production) = 023ba88c06470e32b18d5502bc500dd7c2510702
+SHA1 (patch-sapi_apache2handler_config.m4) = 54c5107780134a5eefb33066df4f682d1aa8cd13
+SHA1 (patch-sapi_cgi_Makefile.frag) = 067526fdf543a3c73cc2d1f4ed18da3f94c74d55
+SHA1 (patch-sapi_cgi_config9.m4) = 473d5bd351138538bb6f2c394982df35b6543714
+SHA1 (patch-sapi_cli_Makefile.frag) = 1cd29d09042863acbf5330e406410fdcf75d06b3
+SHA1 (patch-sapi_fpm_fpm_fpm__conf.c) = 26f25b64d71e4d4d89c19b04433b10abc6673504
+SHA1 (patch-sapi_fpm_php-fpm.conf.in) = 86e0de84d2e273bf63e475716c1eda1ea5d7937f
+SHA1 (patch-sapi_fpm_www.conf.in) = 2299f6de1d4c0ead4fe41eca4af5ea3e8e7b3a35
+SHA1 (patch-scripts_Makefile.frag) = e3eb2fd682e0b5048995007c040aebaa9d135fe9
+SHA1 (patch-scripts_php-config.in) = b43fb08f2bcb99fb96fd967efd85ee871382b0c6
+SHA1 (patch-scripts_phpize.in) = 29245d9fc487a0800de4a9a7670b0a65a765bb58
