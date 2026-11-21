@@ -42,10 +42,11 @@ if [ "\${CHECK_AWK_FALLBACK:-no}" = yes ]; then
     exit 1
 fi
 dir= target= varname= varnames= cross=no
-cache=no
+cache=no fresh_makevars=no
 for arg do
     case "\$arg" in
         PBULK_CACHE_DIRECTORY=*) cache=yes ;;
+        _MAKEVARS_MK=defined) fresh_makevars=yes ;;
         USE_CROSS_COMPILE=no) cross=yes ;;
         VARNAME=*) varname=\${arg#VARNAME=} ;;
         VARNAMES=*) varnames=\${arg#VARNAMES=} ;;
@@ -118,8 +119,12 @@ case "\$target" in
         : > "\$depfile"
         : > "\$resolved"
         if [ "\$pkg" = app ]; then
-            printf 'full\tdep>=1\t../../cat/dep\n' > "\$depfile"
-            printf 'full\tdep>=1\tdep-1.0\n' > "\$resolved"
+            provider=dep
+            if [ -f "$out/new-provider" ] && { [ "\$fresh_makevars" = yes ] || [ ! -f "$out/work/cat/app/.configure_makevars.mk" ]; }; then
+                provider=replacement
+            fi
+            printf 'full\t%s>=1\t../../cat/%s\n' "\$provider" "\$provider" > "\$depfile"
+            printf 'full\t%s>=1\t%s-1.0\n' "\$provider" "\$provider" > "\$resolved"
         fi ;;
     clean) rm -rf "$out/work/cat/\$pkg"; echo "TARGET clean" >> "$out/targets" ;;
     package|replace) echo "TARGET \$target" >> "$out/targets" ;;
@@ -306,6 +311,19 @@ grep -Fqx 'TARGET package-install' "$out/targets" || fail 'ordinary rebuild did 
 : > "$out/targets"
 build_existing_order || fail "post-migration reuse: $(cat "$out/legacy.log")"
 [ ! -s "$out/targets" ] || fail 'post-migration run repeated package work'
+
+# The kept phase cache can still name the old provider after selection changed.
+# Both the completed archive and the retained objects must use a fresh resolver.
+mkdir "$out/target-db/replacement-1.0"
+echo '@name replacement-1.0' > "$out/target-db/replacement-1.0/+CONTENTS"
+echo 'OPSYS=NetBSD' > "$out/target-db/replacement-1.0/+BUILD_INFO"
+: > "$legacy_app/.configure_makevars.mk"
+: > "$out/new-provider"
+printf 'keep the old object\n' > "$legacy_app/retained.o"
+if build_existing_order; then fail 'old phase provider concealed a changed source dependency'; fi
+grep -q 'dependency metadata changed' "$out/state/logs/cat_app.worker.log" || fail 'missing changed-provider refusal'
+[ ! -s "$out/targets" ] && [ -s "$legacy_app/retained.o" ] || fail 'changed provider reused or cleaned the old objects'
+rm "$out/new-provider"
 
 # If dependency ordering fails, selected-build must stop before package targets.
 : > "$out/targets"

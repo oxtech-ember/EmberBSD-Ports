@@ -48,7 +48,7 @@ WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
-dir= target= varname= varnames= native=no stage=no queries=
+dir= target= varname= varnames= native=no stage=no queries= fresh_makevars=no
 for a do echo "\$a" >> "$out/calls"; done
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
@@ -58,6 +58,7 @@ while [ "\$#" -gt 0 ]; do
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
         USE_CROSS_COMPILE=no) native=yes; shift ;;
         _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes) stage=yes; shift ;;
+        _MAKEVARS_MK=defined) fresh_makevars=yes; shift ;;
         *=*) shift ;;
         *) target=\${target:+\$target }\$1; shift ;;
     esac
@@ -112,6 +113,12 @@ case "\$target" in
                 FILESDIR) echo "\$dir/files" ;;
                 DISTINFO_FILE) echo "\$dir/distinfo" ;;
                 CFLAGS) echo '-O2' ;;
+                CONFIGURE_ENV)
+                    if [ "\$fresh_makevars" = no ] && [ -f "\$work/.configure_makevars.mk" ]; then
+                        echo FREETYPE_CONFIG=/usr/pkg/bin/freetype-config
+                    else
+                        echo FREETYPE_CONFIG=/bin/freetype-config
+                    fi ;;
                 _COOKIE.configure) echo "\$work/.configure_done" ;;
                 GNU_CONFIGURE) echo no ;;
                 CONFIGURE_DIRS) echo "\$work/demo-1.0" ;;
@@ -127,9 +134,14 @@ case "\$target" in
         echo "TARGET \$target \$native stage=\$stage" >> "$out/targets"
         mkdir -p "\$work"
         if [ ! -f "\$work/.build_done" ]; then
-            echo "COMPILE \$name \$native" >> "$out/targets"
-            echo "object of \$name" > "\$work/demo.o"
-            for c in extract configure build; do echo "\$name" > "\$work/.\${c}_done"; done
+            for c in extract configure; do echo "\$name" > "\$work/.\${c}_done"; done
+            : > "\$work/.configure_makevars.mk"
+            if [ ! -f "\$work/demo.o" ]; then
+                echo "COMPILE \$name \$native" >> "$out/targets"
+                echo "object of \$name" > "\$work/demo.o"
+            fi
+            if [ "\$native" = no ] && [ -f "$out/interrupt" ]; then exit 1; fi
+            echo "\$name" > "\$work/.build_done"
         elif [ "\$(cat "\$work/.build_done")" != "\$name" ] && [ "\$stage" != yes ]; then
             echo "install-check-version refused \$name" >&2; exit 1
         fi
@@ -164,10 +176,16 @@ printf '%s\n' cat/demo cat/demo@native > "$out/state/order"
 printf '%s\n' 'cat/demo cat/demo' 'cat/demo@native cat/demo@native' > "$out/state/edges"
 : > "$out/state/done"
 
-# A first build compiles and records the build inputs of both roles.
+# A fresh compile is interrupted after configure and one target object.
+# The retry sees pkgsrc's generated makevars and must resume that object.
 : > "$out/targets"
+: > "$out/interrupt"
+if bulk interrupted; then fail 'expected the interrupted target to fail'; fi
+[ -f "$target_work/demo.o" ] && [ -f "$target_work/.cross-bulk-start-inputs" ] ||
+    fail 'interruption did not leave the object and starting inputs'
+rm "$out/interrupt"
 bulk first || fail "first build: $(cat "$out/first.log")"
-[ "$(grep -c '^COMPILE demo-1.0nb1' "$out/targets")" -eq 2 ] || fail "first build did not compile both roles: $(cat "$out/targets")"
+[ "$(grep -c '^COMPILE demo-1.0nb1' "$out/targets")" -eq 2 ] || fail "retry did not keep the first target object: $(cat "$out/targets")"
 for w in "$target_work" "$native_work"; do
     grep -Eq '^cross-bulk-inputs-v1 [0-9a-f]{64}$' "$w/.cross-bulk-inputs" || fail "no build-input record in $w"
 done

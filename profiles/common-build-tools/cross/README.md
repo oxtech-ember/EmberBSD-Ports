@@ -963,7 +963,12 @@ set only these, and recipe variables that only feed them, such as
 version or the package name for anything else, the digest includes the
 package name. This includes a bare `PKGVERSION`, `PKGNAME` or revision
 variable in `SUBST_VARS`: `subst.mk` substitutes its value into source files
-before the build, and the metadata path does not run that step again. The versions of installed dependencies are not in the digest.
+before the build, and the metadata path does not run that step again. Installed
+provider versions are checked separately from the recipe digest.
+
+Recipe and provider queries ignore pkgsrc’s generated phase makevars. An
+interrupted build compares the same inputs it evaluated before configure and
+resumes its retained objects when those inputs and the providers still match.
 
 When the next pass finds a `WRKDIR` of the same upstream version with another
 package revision, and the recorded digest is the current one, the build does

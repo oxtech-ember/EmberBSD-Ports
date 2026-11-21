@@ -1053,7 +1053,9 @@ build_inputs()
                 awk '{ for (i=1; i<=NF; i++) if ($i != ".CURDIR" && !seen[$i]++) printf "%s ", $i } END { print ".CURDIR" }')
         fi
     fi
-    bi_vars=$(pkg_vars "$bi_path" "$bi_fields" "$@" 2>> "$log") || return 0
+    # pkgsrc stores phase-local BUILDLINK_PREFIX and tool paths in WRKDIR.
+    # Compare the same recipe evaluation before configure and on every retry.
+    bi_vars=$(pkg_vars "$bi_path" "$bi_fields" "$@" _MAKEVARS_MK=defined 2>> "$log") || return 0
     bi_digest=$(printf '%s\n' "$bi_vars" | "$host_python" -B -E -S "$(dirname "$0")/cross-bulk-inputs.py" \
         --pkgsrc "$PKGSRCDIR" --wrkdir "$wrkdir" --names "$bi_fields" 2>> "$log") || return 0
     case "$bi_digest" in ''|*[!0123456789abcdef]*) return 0 ;; esac
@@ -1165,6 +1167,16 @@ prepare_wrkdir()
 }
 
 
+# Evaluate current dependency selection independently of the phase-local
+# USE_BUILTIN and buildlink values saved by a previous configure/package.
+query_dependencies()
+{
+    qd_path=$1 qd_output=$2 qd_last=$3
+    shift 3
+    bmk -C "$PKGSRCDIR/$qd_path" "$@" _MAKEVARS_MK=defined "_DEPENDS_FILE=$qd_output.depends" \
+        "_RDEPENDS_FILE=$qd_output.rdepends" "$qd_output.$qd_last" < /dev/null
+}
+
 # pkgsrc lists the dependencies of a WRKDIR (.depends) and resolves them to
 # installed packages (.rdepends) once, and a kept WRKDIR keeps both. When a
 # dependency was replaced since then (expat-2.10.0 by expat-2.10.0nb1), the
@@ -1186,9 +1198,7 @@ work_dependencies_current()
         return 0
     fi
     rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
-    if ! bmk -C "$PKGSRCDIR/$wdc_path" "$@" "_DEPENDS_FILE=$wdc_check.depends" \
-        "_RDEPENDS_FILE=$wdc_check.rdepends" "$wdc_check.${wdc_files##* }" \
-        < /dev/null > "$wdc_check.log" 2>&1; then
+    if ! query_dependencies "$wdc_path" "$wdc_check" "${wdc_files##* }" "$@" > "$wdc_check.log" 2>&1; then
         echo "$wdc_path: kept WRKDIR dependency check failed:" >&2
         cat "$wdc_check.log" >&2
         rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
@@ -1985,8 +1995,7 @@ resolve_source_providers()
 {
     rs_file=$1
     rm -f "$rs_file.depends" "$rs_file.rdepends"
-    bmk -C "$PKGSRCDIR/$path" "_DEPENDS_FILE=$rs_file.depends" "_RDEPENDS_FILE=$rs_file.rdepends" \
-        "$rs_file.rdepends" < /dev/null >> "$log" 2>&1
+    query_dependencies "$path" "$rs_file" rdepends >> "$log" 2>&1
 }
 
 start_source_providers()
