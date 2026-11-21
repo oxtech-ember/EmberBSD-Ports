@@ -4,3 +4,4 @@ BLAKE2s (lxqt-build-tools-2.5.0.tar.xz) = b4bcdfe64cd36c0766a54cdf7e2c1a6507b496
 SHA512 (lxqt-build-tools-2.5.0.tar.xz) = 38755ad216854fffda64be85b91d496d94fcfebf48ad8331a4befe3ee27f4d0e7e7cb73f37f76220f6f6a966a24aefc1725d7cc901a9a4553d443f204423dabc
 Size (lxqt-build-tools-2.5.0.tar.xz) = 25684 bytes
 SHA1 (patch-cmake_modules_LXQtCompilerSettings.cmake) = af66a97f051b88d24a4bd7f4479fded720b09cdc
+SHA1 (patch-lxqt-transupdate) = 784aeca3300745452a41b88081ed04f8fa0adf95
