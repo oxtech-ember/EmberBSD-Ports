@@ -17,6 +17,7 @@ import unittest
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[3]
+UPSTREAM = ROOT / 'upstream/pkgsrc'
 PATCH = ROOT / 'profiles/common-build-tools/patches/mozilla-rootcerts-prefix.patch'
 RECIPE = 'security/mozilla-rootcerts-openssl/Makefile'
 PLIST = 'security/mozilla-rootcerts-openssl/PLIST'
@@ -28,8 +29,7 @@ ARGS = None
 
 
 def sources():
-    originals = {name: (ROOT / 'pkgsrc' / name).read_text()
-                 for name in (RECIPE,)}
+    originals = {RECIPE: (UPSTREAM / RECIPE).read_text()}
     return originals, model.replay(originals, PATCH.read_text())
 
 
@@ -43,7 +43,7 @@ class PrefixTests(unittest.TestCase):
         self.assertIn('${DESTDIR}${OPENSSLDIR}', install(result[RECIPE]))
         self.assertIn('${SCRIPT} -d ${DESTDIR} install', install(result[RECIPE]))
         # Existing CA payloads remain under the ordinary package packing list.
-        plist = (ROOT / 'pkgsrc' / PLIST).read_text().splitlines()
+        plist = (UPSTREAM / PLIST).read_text().splitlines()
         self.assertIn('${MYETCDIR}/openssl/certs/ca-certificates.crt', plist)
         self.assertGreater(len([line for line in plist if line.endswith('.pem')]), 100)
         self.assertFalse(any(line.endswith('/cert.pem') for line in plist))
@@ -53,9 +53,11 @@ class PrefixTests(unittest.TestCase):
         self.assertEqual(set(result), {RECIPE})
         record = 'patch\t' + PATCH.relative_to(ROOT).as_posix() + '\n'
         self.assertEqual((ROOT / 'pkgsrc/export.conf').read_text().count(record), 1)
-        for name in ('mozilla-rootcerts', 'mozilla-rootcerts-openssl'):
-            self.assertTrue((ROOT / 'pkgsrc/security' / name).is_dir())
-            self.assertIn('security/' + name, (ROOT / 'pkgsrc/replaces').read_text().splitlines())
+        replaces = (ROOT / 'pkgsrc/replaces').read_text().splitlines()
+        self.assertTrue((ROOT / 'pkgsrc/security/mozilla-rootcerts').is_dir())
+        self.assertIn('security/mozilla-rootcerts', replaces)
+        self.assertTrue((UPSTREAM / RECIPE).is_file())
+        self.assertNotIn('security/mozilla-rootcerts-openssl', replaces)
         self.assertIn('mozilla-rootcerts>=1.1.20261020:', result[RECIPE])
 
     def test_foundation_selects_trust_in_final_prefix(self):
