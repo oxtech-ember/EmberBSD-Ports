@@ -1,4 +1,4 @@
-DISTNAME= esp_pylib-1.2.0
+DISTNAME= esp_pylib-1.2.1
 PKGNAME= ${PYPKGPREFIX}-${DISTNAME:S/_/-/}
 CATEGORIES= comms python
 MASTER_SITES= ${MASTER_SITE_PYPI:=e/esp-pylib/}
