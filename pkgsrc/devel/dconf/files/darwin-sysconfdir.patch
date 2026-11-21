@@ -1,0 +1,136 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Find the ordinary Darwin SDK configuration beside its installed programs,
+library, and GIO module. Keep an explicit system path for detached images.
+
+--- /dev/null
++++ common/dconf-sysconfdir-private.h
+@@ -0,0 +1,6 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++#pragma once
++
++#include <glib.h>
++
++G_GNUC_INTERNAL const gchar *dconf_sysconfdir (void);
+--- common/dconf-paths.c.orig
++++ common/dconf-paths.c
+@@ -21,6 +21,12 @@
+ #include "config.h"
+ 
+ #include "dconf-paths.h"
++#include "dconf-sysconfdir-private.h"
++
++#include <dlfcn.h>
++#include <limits.h>
++#include <stdlib.h>
++#include <string.h>
+ 
+ #include "dconf-enums.h"
+ 
+@@ -251,3 +257,37 @@
+   vars; nonnull; relative; no_double_slash; dir;
+ #undef type
+ }
++
++/* This copy of dconf-common can live in the client, the module, or the CLI. */
++const gchar *
++dconf_sysconfdir (void)
++{
++  static gsize directory;
++
++  if (g_once_init_enter (&directory))
++    {
++      static const gchar * const layouts[] = { "/lib/gio/modules", "/libexec", "/lib", "/bin" };
++      gchar image[PATH_MAX];
++      gchar *result = NULL;
++      Dl_info info;
++
++      if (dladdr ((const void *) dconf_sysconfdir, &info) &&
++          info.dli_fname && realpath (info.dli_fname, image))
++        {
++          gchar *parent = g_path_get_dirname (image);
++
++          for (guint i = 0; i < G_N_ELEMENTS (layouts); i++)
++            if (g_str_has_suffix (parent, layouts[i]))
++              {
++                parent[strlen (parent) - strlen (layouts[i])] = '\0';
++                result = g_strconcat (parent, "/etc", NULL);
++                break;
++              }
++          g_free (parent);
++        }
++
++      g_once_init_leave (&directory, (gsize) (result ? result : g_strdup (SYSCONFDIR)));
++    }
++
++  return (const gchar *) directory;
++}
+--- bin/dconf.c.orig
++++ bin/dconf.c
+@@ -35,6 +35,7 @@
+ #include "client/dconf-client.h"
+ #include "common/dconf-enums.h"
+ #include "common/dconf-paths.h"
++#include "common/dconf-sysconfdir-private.h"
+ #include "gvdb/gvdb-builder.h"
+ #include "gvdb/gvdb-reader.h"
+ 
+@@ -968,7 +969,7 @@
+ static gchar *
+ get_system_db_path ()
+ {
+-    return g_build_filename (SYSCONFDIR, "dconf", "db", NULL);
++    return g_build_filename (dconf_sysconfdir (), "dconf", "db", NULL);
+ }
+ 
+ static gboolean
+--- engine/dconf-engine-profile.c.orig
++++ engine/dconf-engine-profile.c
+@@ -19,6 +19,7 @@
+  */
+ 
+ #include "config.h"
++#include "common/dconf-sysconfdir-private.h"
+ 
+ #include "dconf-engine-profile.h"
+ #include "dconf-engine-mockable.h"
+@@ -215,7 +216,7 @@
+ dconf_engine_open_profile_file (const gchar *profile)
+ {
+   const gchar * const *xdg_data_dirs;
+-  const gchar *prefix = SYSCONFDIR;
++  const gchar *prefix = dconf_sysconfdir ();
+   FILE *fp;
+ 
+   xdg_data_dirs = g_get_system_data_dirs ();
+--- engine/dconf-engine-source-system.c.orig
++++ engine/dconf-engine-source-system.c
+@@ -19,6 +19,7 @@
+  */
+ 
+ #include "config.h"
++#include "common/dconf-sysconfdir-private.h"
+ 
+ #include "dconf-engine-source-private.h"
+ 
+@@ -47,7 +48,7 @@
+   GvdbTable *table;
+   gchar *filename;
+ 
+-  filename = g_build_filename (SYSCONFDIR "/dconf/db", source->name, NULL);
++  filename = g_build_filename (dconf_sysconfdir (), "dconf", "db", source->name, NULL);
+   table = gvdb_table_new (filename, FALSE, &error);
+ 
+   if (table == NULL)
+--- meson.build.orig
++++ meson.build
+@@ -22,7 +22,7 @@
+ cc = meson.get_compiler('c')
+ 
+ # compiler flags
+-common_flags = ['-DSYSCONFDIR="@0@"'.format(dconf_sysconfdir)]
++common_flags = ['-DSYSCONFDIR="/etc"']
+ 
+ if get_option('buildtype').contains('debug')
+   common_flags += cc.get_supported_arguments([

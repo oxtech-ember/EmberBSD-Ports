@@ -29,6 +29,18 @@ PKGCONFIG_OVERRIDE_STAGE=	post-build
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# This ordinary LOCALBASE package uses the standard etc directory.
+PREFIX?=	${LOCALBASE}
+_DCONF_SYSCONFDIR=	${PKG_SYSCONFDIR:U${PKG_SYSCONFDIR.dconf:U${PKG_SYSCONFBASE}}}
+.if empty(PKG_SYSCONFSUBDIR) && ${_DCONF_SYSCONFDIR} == ${PREFIX}/etc
+PKGREVISION=	1
+
+post-patch:
+	${RUN} ${PATCH} ${PATCH_ARGS} ${PATCH_FUZZ_FACTOR} < ${FILESDIR:Q}/darwin-sysconfdir.patch
+.endif
+.endif
+
 .include "../../devel/gvdb-source/build.mk"
 BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.76
 #.include "../../textproc/gtk-doc/buildlink3.mk"
