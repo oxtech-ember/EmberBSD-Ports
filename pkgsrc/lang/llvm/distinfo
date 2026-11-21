@@ -15,3 +15,4 @@ SHA1 (patch-cmake_modules_UseLibtool.cmake) = 4853c19149f8dff87868e3979009d344d5
 SHA1 (patch-lib_ObjCopy_MachO_MachOLayoutBuilder.cpp) = 58d558224ad898a98e0a0804074a7aaeb12005fe
 SHA1 (patch-lib_ObjCopy_MachO_MachOObjcopy.cpp) = f57c59063b9a16b75c962ee6e7927cb02fa96219
 SHA1 (patch-test_tools_llvm_objcopy_MachO_reexport.test) = a10b4b0f2842d17ec7e7b99e238e304129796cd3
+SHA1 (patch-lib_Support_Parallel.cpp) = 0072624256cbffeb26da80dee5c3e978b8a22f02

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Actual pkgsrc PLIST contracts; no LLVM build.
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -45,17 +46,19 @@ bmake = os.environ.get('BMAKE', host + '/bin/bmake')
 common = [bmake, 'MAKECONF=' + str(work / 'mk.conf'), 'AWK=' + host + '/bin/nawk', 'CAT=/bin/cat', 'SED=/usr/bin/sed', 'TEST=/bin/test', 'MKDIR=/bin/mkdir -p',
     'PERL5=' + host + '/bin/perl', 'FIND=/usr/bin/find', 'LN=/bin/ln', 'INSTALL_DATA_DIR=/usr/bin/install -d', 'X11_TYPE=modular',
     'TOOL_PYTHONBIN=' + sys.executable, 'EMBERBSD_SDK_SOURCE=' + sdk_source]
-for tool in ('m4', 'yacc'):
-    result = subprocess.run(['/usr/bin/xcrun', '--find', tool], capture_output=True, text=True)
-    (work / ('xcrun-' + tool + '.log')).write_text(result.stdout + result.stderr)
-    common.append('OSX_PATH_TO_' + tool.upper() + '=' + (result.stdout.strip() if result.returncode == 0 else ''))
-result = subprocess.run([host + '/sbin/pkg_info', '-K', host + '/pkgdb', '-Q', 'PKG_OPTIONS', 'libxml2'], capture_output=True, text=True)
+if sys.platform == 'darwin':
+    for tool in ('m4', 'yacc'):
+        result = subprocess.run(['/usr/bin/xcrun', '--find', tool], capture_output=True, text=True)
+        (work / ('xcrun-' + tool + '.log')).write_text(result.stdout + result.stderr)
+        common.append('OSX_PATH_TO_' + tool.upper() + '=' + (result.stdout.strip() if result.returncode == 0 else ''))
+pkgtools = os.environ.get('HOST_PKGTOOLS_BIN', host + '/sbin')
+result = subprocess.run([pkgtools + '/pkg_info', '-K', host + '/pkgdb', '-Q', 'PKG_OPTIONS', 'libxml2'], capture_output=True, text=True)
 assert result.returncode == 0, 'installed native libxml2 option receipt required: ' + result.stderr
 (work / 'native-libxml2-options.txt').write_text(result.stdout)
 common.append('PKG_BUILD_OPTIONS.libxml2=' + result.stdout.strip())
 cross = ['USE_CROSS_COMPILE=yes', 'CROSS_OPSYS=NetBSD', 'CROSS_OS_VERSION=11.0', 'CROSS_OPSYS_VERSION=110000', 'CROSS_MACHINE_ARCH=x86_64', 'CROSS_LOWER_OPSYS=netbsd',
     'CROSS_LOWER_OPSYS_VERSUFFIX=', 'CROSS_LOWER_OS_VARIANT=', 'CROSS_LOWER_VARIANT_VERSION=', 'CROSS_LOWER_VENDOR=', 'CROSS_OBJECT_FMT=ELF', 'CROSS_LOCALBASE=/usr/pkg',
-    'CROSS_DESTDIR=' + str(sysroot), 'TOOLDIR=' + tools, 'CROSS_PKG_TOOLS_BIN=' + host + '/sbin', 'USE_PKGSRC_GCC_RUNTIME=no']
+    'CROSS_DESTDIR=' + str(sysroot), 'TOOLDIR=' + tools, 'CROSS_PKG_TOOLS_BIN=' + pkgtools, 'USE_PKGSRC_GCC_RUNTIME=no']
 
 
 def run(label, package, *arguments):
@@ -87,8 +90,9 @@ def plist(label, package, *mode):
 
 runtime = plist('runtime', 'llvm', *cross)
 assert sorted(runtime) == sorted(['include/llvm/Support/LICENSE.TXT', 'lib/libLLVM.so.23.1', 'lib/libLLVM-23.so', 'lib/libLLVM.so', 'lib/libLTO.so.23.1', 'lib/libLTO.so', 'lib/libRemarks.so.23.1', 'lib/libRemarks.so'])
-assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb5'
+assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb6'
 sdk = plist('devel', 'llvm-devel', *cross)
+assert run('devel-name', 'llvm-devel', *cross, '-v', 'PKGNAME').strip() == 'llvm-devel-23.1.4nb8'
 assert all(p in sdk for p in ('bin/llvm-config', 'bin/llvm-tblgen', 'include/llvm/IR/Module.h', 'lib/cmake/llvm/LLVMConfig.cmake', 'lib/libLLVMCore.a',
                      'lib/cmake/llvm/emberbsd/BuildVariables.inc',
                      'lib/cmake/llvm/emberbsd/LibraryDependencies.inc',
@@ -105,7 +109,7 @@ native_args = ['USE_CROSS_COMPILE=no', 'PKGSRC_COMPILER=gcc', 'CC=' + HOST_CC, '
 native = plist('native', 'llvm', *native_args)
 assert 'bin/llvm-config' in native and 'include/llvm/IR/Module.h' in native
 reasons = run('devel-metadata', 'llvm-devel', *cross, '-v', 'PKG_FAIL_REASON', '-v', 'DEPENDS', '-v', 'CONFLICTS', '-v', 'DISTINFO_FILE', '-v', 'PATCHDIR').splitlines()
-assert not reasons[0] and 'llvm-23.1.4nb5:' in reasons[1] and 'llvm<23.1.4nb4' in reasons[2] and \
+assert not reasons[0] and 'llvm-23.1.4nb6:' in reasons[1] and 'llvm<23.1.4nb4' in reasons[2] and \
        str(owner / 'distinfo') in reasons[3] and str(owner / 'patches') in reasons[4]
 consumer = tree / 'devel/llvm-split-consumer'
 consumer.mkdir()
@@ -138,7 +142,9 @@ assert sorted(plist('runtime-arm', 'llvm', *arm)) == sorted(runtime)
 for i, bad in enumerate(('LLVM_PACKAGE_PART=devel', 'PKGREVISION=1', 'CROSS_MACHINE_ARCH=i386')):
     reasons = run('bad-contract-' + str(i), 'llvm', *[arg for arg in cross if not arg.startswith(bad.split('=')[0] + '=')], bad, '-v', 'PKG_FAIL_REASON')
     assert reasons.strip(), bad
-assert run('native-name', 'llvm', *native_args, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb8'
+native_opsys, native_name = run('native-name', 'llvm', *native_args, '-v', 'OPSYS', '-v', 'PKGNAME').splitlines()
+native_revision = 9 if native_opsys == 'NetBSD' else 8
+assert native_name == f'llvm-23.1.4nb{native_revision}'
 assert run('native-sdk-refused', 'llvm-devel', *native_args, '-v', 'PKG_FAIL_REASON').strip()
 original = work / 'full-stage'
 prefix = original / 'usr/pkg'

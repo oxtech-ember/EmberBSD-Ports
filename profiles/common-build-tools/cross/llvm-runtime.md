@@ -4,8 +4,8 @@ NetBSD cross builds for AArch64 and amd64 produce two ordinary source packages:
 
 | Package | Payload |
 | --- | --- |
-| `llvm-23.1.4nb3` | Shared libLLVM, libLTO and libRemarks, their aliases and the upstream license notice. |
-| `llvm-devel-23.1.4nb5` | Target tools, headers, static archives, CMake exports, test support and host llvm-config metadata. Requires the exact runtime package. |
+| `llvm-23.1.4nb6` | Shared libLLVM, libLTO and libRemarks, their aliases and the upstream license notice. |
+| `llvm-devel-23.1.4nb8` | Target tools, headers, static archives, CMake exports, test support and host llvm-config metadata. Requires the exact runtime package. |
 
 The runtime keeps the original name for dependency and vulnerability matching.
 The SDK requires the matching runtime revision listed above. Its direct
@@ -81,6 +81,8 @@ query requires installed native libxml2 option metadata. All writable recipe
 copies, objects, package archives and databases stay in the new test directory.
 The test creates its own minimal cross-root header fixture for metadata and
 install-hook checks; it does not require or write to an SDK sysroot.
+If the selected native pkgtools live outside the host prefix, set
+`HOST_PKGTOOLS_BIN` to their absolute directory.
 
 ```sh
 export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK

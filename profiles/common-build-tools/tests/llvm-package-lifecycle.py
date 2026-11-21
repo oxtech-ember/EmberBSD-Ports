@@ -15,10 +15,11 @@ if len(args) != 3:
 host, fixture = map(os.path.realpath, args[:2])
 work = Path(args[2]).absolute()
 work.mkdir()
+pkgtools = os.environ.get('HOST_PKGTOOLS_BIN', host + '/sbin')
 
 
 def run(label, tool, *arguments, expect=True):
-    result = subprocess.run([host + '/sbin/' + tool, *map(str, arguments)], cwd=work, env={k: v for k, v in os.environ.items() if k != 'PKG_PATH'}, capture_output=True, text=True)
+    result = subprocess.run([pkgtools + '/' + tool, *map(str, arguments)], cwd=work, env={k: v for k, v in os.environ.items() if k != 'PKG_PATH'}, capture_output=True, text=True)
     (work / (label + '.log')).write_text(result.stdout + result.stderr)
     assert (result.returncode == 0) == expect, label + ': ' + result.stdout + result.stderr
     return result.stdout
@@ -29,7 +30,7 @@ assert re.fullmatch('[0-9]{8}', version)
 (work / 'BUILD_INFO').write_text('OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=x86_64\nOBJECT_FMT=ELF\nLICENSE=2-clause-bsd\nPKGTOOLS_VERSION=' + version + '\nEMBERBSD_TEST_FIXTURE=yes\n')
 (work / 'COMMENT').write_text('Labelled LLVM package partition fixture')
 (work / 'DESCR').write_text('Synthetic text payloads. This is not a LLVM binary package.\n')
-old, runtime, sdk = 'llvm-23.1.4', 'llvm-23.1.4nb5', 'llvm-devel-23.1.4nb7'
+old, runtime, sdk = 'llvm-23.1.4', 'llvm-23.1.4nb6', 'llvm-devel-23.1.4nb8'
 packages = {}
 for name, stage, manifest, dependency in [(old, 'full-stage', 'full', None), (runtime, 'runtime-stage', 'runtime', None), (sdk, 'devel-stage', 'devel', runtime)]:
     prefix = Path(fixture, stage, 'usr/pkg')

@@ -78,8 +78,8 @@ default; recipes carry no GCC_REQD) and common Python.
 Native cache, RTTI, dependency and ELF evidence remains required.
 
 NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).
-The execution-only image receives `llvm-23.1.4nb3`; the build-host target sysroot
-also needs `llvm-devel-23.1.4nb5`. Native LLVM remains a full package.
+The execution-only image receives `llvm-23.1.4nb6`; the build-host target sysroot
+also needs `llvm-devel-23.1.4nb8`. Native LLVM remains a full package.
 ## Inherited patch decisions
 
 NetBSD RCS identifiers, authorship and licenses are preserved. These recipes,
