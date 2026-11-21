@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.35 2026/09/02 19:01:21 wiz Exp $
 
-DISTNAME=	appstream-1.1.6
-PKGREVISION=	3
+DISTNAME=	appstream-1.2.3
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ximion/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -55,20 +54,6 @@ PLIST.gir=	yes
 PLIST.man=	yes
 .endif
 
-# Hard-coded path to /usr/include for libstemmer.h.
-SUBST_CLASSES+=		paths
-SUBST_STAGE.paths=	pre-configure
-SUBST_MESSAGE.paths=	Fixing absolute paths.
-SUBST_FILES.paths=	meson.build
-SUBST_SED.paths=	-e 's,/usr/include,${PREFIX}/include,g'
-# libstemmer's include path is hard-coded. On a cross build that path is
-# inside the sysroot, not on the build host.
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-SUBST_SED.paths+=	-e 's,/usr/pkg/include,${EMBERBSD_CROSS_SYSROOT}/usr/pkg/include,g'
-.else
-SUBST_SED.paths+=	-e 's,/usr/pkg/include,${PREFIX}/include,g'
-.endif
-
 .include "../../devel/wayland/platform.mk"
 .if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)
 .include "../../devel/wayland/buildlink3.mk"
@@ -79,7 +64,6 @@ SUBST_SED.paths+=	-e 's,/usr/pkg/include,${PREFIX}/include,g'
 .include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../devel/meson/build.mk"
 .include "../../textproc/libfyaml/buildlink3.mk"
-.include "../../textproc/libstemmer/buildlink3.mk"
 .include "../../textproc/libxmlb/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"
 .include "options.mk"

@@ -11,7 +11,11 @@ BUILDLINK_PKGSRCDIR.appstream?=		../../devel/appstream
 
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
+pkgbase:=	appstream
+.include "../../mk/pkg-build-options.mk"
+.if !empty(PKG_BUILD_OPTIONS.appstream:Mstemming)
 .include "../../textproc/libstemmer/buildlink3.mk"
+.endif
 .include "../../textproc/libxmlb/buildlink3.mk"
 .include "../../textproc/libfyaml/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"

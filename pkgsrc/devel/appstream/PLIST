@@ -19,6 +19,7 @@ include/appstream/as-icon.h
 include/appstream/as-image.h
 include/appstream/as-issue.h
 include/appstream/as-launchable.h
+include/appstream/as-locale.h
 include/appstream/as-macros.h
 include/appstream/as-metadata.h
 include/appstream/as-pool.h
@@ -86,6 +87,7 @@ share/locale/kw/LC_MESSAGES/appstream.mo
 share/locale/lt/LC_MESSAGES/appstream.mo
 share/locale/nb/LC_MESSAGES/appstream.mo
 share/locale/nl/LC_MESSAGES/appstream.mo
+share/locale/nn/LC_MESSAGES/appstream.mo
 share/locale/oc/LC_MESSAGES/appstream.mo
 share/locale/pl/LC_MESSAGES/appstream.mo
 share/locale/pt/LC_MESSAGES/appstream.mo
@@ -141,5 +143,5 @@ ${PLIST.qt}include/AppStreamQt/video.h
 ${PLIST.qt}lib/cmake/AppStreamQt/AppStreamQtConfig.cmake
 ${PLIST.qt}lib/cmake/AppStreamQt/AppStreamQtConfigVersion.cmake
 ${PLIST.qt}lib/libAppStreamQt.so
-${PLIST.qt}lib/libAppStreamQt.so.1.1.6
+${PLIST.qt}lib/libAppStreamQt.so.${PKGVERSION}
 ${PLIST.qt}lib/libAppStreamQt.so.3

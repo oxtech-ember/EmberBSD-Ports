@@ -3,8 +3,8 @@
 # Discover 6.8 requires the AppStreamQt library from this recipe.
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.appstream
-PKG_SUPPORTED_OPTIONS=	qt
-PKG_SUGGESTED_OPTIONS=	qt
+PKG_SUPPORTED_OPTIONS=	qt stemming
+PKG_SUGGESTED_OPTIONS=	qt stemming
 
 .include "../../mk/bsd.options.mk"
 
@@ -36,4 +36,11 @@ appstream-qt-host-moc:
 .endif
 .else
 MESON_ARGS+=	-Dqt=false
+.endif
+
+.if !empty(PKG_OPTIONS:Mstemming)
+MESON_ARGS+=	-Dstemming=true
+.include "../../textproc/libstemmer/buildlink3.mk"
+.else
+MESON_ARGS+=	-Dstemming=false
 .endif

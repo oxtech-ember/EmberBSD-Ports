@@ -6,6 +6,12 @@ desktop can run on EmberBSD. Strategy: only current upstream releases;
 every NetBSD adaptation lives in recipe patches here and is offered
 upstream once it builds.
 
+The Dock and libadwaita builds use the common `devel/appstream` and
+`textproc/libxmlb` recipes from the exported Ports tree. Set
+`PKG_OPTIONS.appstream= -qt -stemming` for the smaller Pantheon build.
+Plasma Discover selects the default Qt binding. The default search uses
+Snowball stemming.
+
 ## Version pairing
 
 | Component | Version | Source |
@@ -144,11 +150,8 @@ packages only. Chain state after this pass:
 ## Dock chain 
 
 elementary replaced plank with **dock 8.3.3** (GTK4 + granite-7 +
-libadwaita). New recipes: **libxmlb 0.3.29nb1** (introspection off - the
-shared GI cross machinery is recorded as a promotion-time follow-up for
-this leaf), **appstream 1.1.6nb1** (stemming/libstemmer and man off; itstool
-comes as a host tool through a cross branch in `mk/tools/itstool.mk`;
-host appstreamcli brew binary serves the native release-metadata lookups),
+libadwaita). The Dock uses the common libxmlb and AppStream recipes
+with the Pantheon options above. The original probe built
 **libadwaita 1.9.4** (library only for now: introspection and vapi are
 prepared for the GI cross machinery but blocked on a live query target).
 The gtk4 recipe gains the GI cross block and a meson patch (host
