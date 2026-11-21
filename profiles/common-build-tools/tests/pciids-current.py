@@ -37,12 +37,12 @@ for module in (emberbsd_sdk, errors, inventory, jsonio, paths, process):
     if not module_path.is_relative_to(sdk_package):
         parser.error(f'SDK module is outside the selected SDK source: {module.__name__}')
 
-COMMIT = '86e7077e4b7947be28d4de891c69f7ae64da0286'
+COMMIT = 'bc2920f3fc38e42d0aecc8ce4b17d1ed034dbd70'
 ARCHIVE = f'pci.ids-{COMMIT}.tar.gz'
-ARCHIVE_SHA256 = '0935bb070fcb0a199e0a918e977e233e57a463f0e518733f3377bee8ab120f72'
-ARCHIVE_SIZE = 380456
-VERSION = '2026.10.22'
-PKGNAME = 'pciids-20261022'
+ARCHIVE_SHA256 = '78b062cdc25ca7dca9953a510dc582d1697fa71e76d2a7aa839ad571f849e098'
+ARCHIVE_SIZE = 382698
+VERSION = '2026.11.21'
+PKGNAME = 'pciids-20261121'
 EXPECTED = {
     ('1002', '7550'): 'Navi 48 [Radeon RX 9070/9070 XT/9070 GRE]',
     ('10de', '2b85'): 'GB202 [GeForce RTX 5090]',
@@ -158,7 +158,7 @@ def main():
             'The common source pin does not match this exact upstream archive.')
     recipe = ports / 'pkgsrc/misc/pciids'
     makefile = (recipe / 'Makefile').read_text()
-    require(f'PKGNAME=\tpciids-20261022' in makefile and
+    require(f'PKGNAME=\tpciids-20261121' in makefile and
             f'GITHUB_TAG=\t{COMMIT}' in makefile and
             'LICENSE=\tmodified-bsd OR gnu-gpl-v2' in makefile,
             'Package version, source commit or license expression differs.')
@@ -206,7 +206,7 @@ def main():
     jsonio.write_json(work / 'export-success.json', passed)
     require(passed['status'] == 0, 'The exporter failed to replace the pinned package.')
     exported_makefile = (work / 'exported-pkgsrc/misc/pciids/Makefile').read_text()
-    require(f'PKGNAME=\tpciids-20261022' in exported_makefile and
+    require(f'PKGNAME=\tpciids-20261121' in exported_makefile and
             f'GITHUB_TAG=\t{COMMIT}' in exported_makefile and
             'PKGNAME=\tpciids-20200222' not in exported_makefile,
             'The export did not contain the current package recipe.')

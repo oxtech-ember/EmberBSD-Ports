@@ -1,10 +1,10 @@
 # EmberBSD: current upstream PCI ID data snapshot.
 DISTNAME=	pci.ids
-PKGNAME=	pciids-20261022
+PKGNAME=	pciids-20261121
 CATEGORIES=	misc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=pciutils/}
 GITHUB_PROJECT=	pciids
-GITHUB_TAG=	86e7077e4b7947be28d4de891c69f7ae64da0286
+GITHUB_TAG=	bc2920f3fc38e42d0aecc8ce4b17d1ed034dbd70
 WRKSRC=		${WRKDIR}/pciids-${GITHUB_TAG}
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
