@@ -38,6 +38,7 @@ printf '# DIR: %s m\n' "$out/outside/x" > "$out/target-db/x-1.0/+DIRS"
 echo x > "$out/target-db.refcount/dirs$out/outside/x/x-1.0"
 v() { printf '%s\n' "$4" > "$out/vars/$1.$2.$3"; }
 v a target PKGNAME a-1.0
+v a target PKGFILE "$out/packages/All/a-1.0.tgz"
 v a target TOOL_DEPENDS 'dbus>=1.0nb2:../../n/dbus'
 v dbus native PKGNAME dbus-1.0nb2
 cat > "$out/pkg_info" <<'WRAP'

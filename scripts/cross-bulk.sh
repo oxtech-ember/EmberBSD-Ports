@@ -958,6 +958,15 @@ locks=$state/locks
 native_db='$native_db'
 WRAPPER
     cat <<'WRAPPER'
+if [ "${1:-}" = --check-depending ]; then
+    # pkgsrc replace passes -U -D. Keep pkg_add's checks of all installed
+    # reverse dependencies when the requested source would downgrade a tool.
+    shift
+    for arg do
+        shift
+        [ "$arg" = -D ] || set -- "$@" "$arg"
+    done
+fi
 db=default
 prev=
 for arg do
@@ -1526,6 +1535,13 @@ build_native()
     set -f
     [ -z "$base" ] || ! $native_pkg_info -e "$base" > /dev/null 2>&1 || install=replace
     set +f
+    if [ "${package_only:-no}" != yes ] && [ -f "$state/native-requirements" ] &&
+        { [ "${stage_local:-no}" != yes ] || ! $native_pkg_info -e "$name" > /dev/null; }; then
+        if ! native_recipe_satisfies_consumers "$@" >> "$log" 2>&1; then
+            result "$key" "failed $nnode native-requirement"
+            return 0
+        fi
+    fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
         bi_role=native
@@ -1550,12 +1566,11 @@ build_native()
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1
         elif [ "$install" = replace ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1 &&
-                { native_replace_keeps_libraries "$base" "$native_packages/All/$name" >> "$log" 2>&1 ||
-                    { why=replace; false; }; } &&
+                { why=replace; native_replace_keeps_libraries "$base" "$native_packages/All/$name" >> "$log" 2>&1; } &&
                 if [ "${stage_local:-no}" = yes ]; then
-                    bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes replace < /dev/null >> "$log" 2>&1
+                    native_replace "$@" < /dev/null >> "$log" 2>&1
                 else
-                    exclusive "$key" bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes replace < /dev/null >> "$log" 2>&1
+                    exclusive "$key" native_replace "$@" < /dev/null >> "$log" 2>&1
                 fi
         else
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1
@@ -1569,6 +1584,46 @@ build_native()
     echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $nnode" >> "$state/progress"
     result "$key" "failed $nnode $why"
 }
+
+native_recipe_satisfies_consumers()
+(
+    set -f
+    patterns=$(awk -v node="$nnode" '$1 == node {print $2}' "$state/native-requirements") || return 1
+    [ -n "$patterns" ] || return 0
+    admin=$(mk -C "$PKGSRCDIR/$path" "$@" show-var VARNAME=PKG_ADMIN) || return 1
+    [ -n "$admin" ] || { echo 'The native PKG_ADMIN is empty' >&2; return 1; }
+    for pattern in $patterns; do
+        $admin pmatch "$pattern" "$name" || {
+            echo "Native recipe $name cannot satisfy $pattern required by the selected graph" >&2
+            return 1
+        }
+    done
+)
+
+# Called with the shared prefix exclusive, after building the proposed archive.
+native_replace()
+(
+    set -f
+    if current=$(native_current_query "$base" "$name" $native_pkg_info); then
+        case "$current" in
+            ''|*[[:space:]]*) echo "Cannot identify a single installed native $base to replace" >&2; return 1 ;;
+            "$name") ;;
+            *)
+                # This is an actual downgrade. Require graph evidence and
+                # keep pkg_add's checks of consumers outside that graph.
+                [ -f "$state/native-requirements" ] || {
+                    echo "Run order to establish the native requirements before replacing $current with $name" >&2
+                    return 1
+                }
+                set -- "$@" "NATIVE_PKG_ADD_CMD=$run/pkg_add --check-depending"
+                ;;
+        esac
+    else
+        # An older installed version follows the ordinary upgrade path.
+        [ "$?" = 1 ] || return 1
+    fi
+    bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes replace
+)
 
 # Whether replacing the installed native package $1 with the binary package
 # $2 (a PKGNAME under PACKAGES-native/All, without its suffix) keeps every

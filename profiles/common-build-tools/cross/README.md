@@ -613,7 +613,14 @@ refuses any other cycle;
 `scripts/tests/cross-bulk-native-cycle.sh NEW_OUTPUT` checks both.
 An older installed package is not current: its node is built
 again and replaces it with the pkgsrc `replace` target (`pkg_add -U`), which
-keeps the packages that depend on it registered. A newer host clang stays current when all incoming constraints allow it.
+keeps the packages that depend on it registered. A newer host clang stays
+current when all incoming constraints allow it. Before installing a native
+recipe into the prefix, cross-bulk checks its name against the ordered
+graph with `pkg_admin pmatch`. During a downgrade `pkg_add -U`
+also checks every registered reverse dependency, including packages outside
+the order. If an exact dependency would break, the old tool stays installed
+and the package log names the dependent. Run `order` first for a saved graph
+that predates native dependency patterns.
 `scripts/export-build-graph.py --host-current` uses this same `pkg_info -e`
 rule for a publication graph: a current host node keeps only `DEPENDS`.
 It does not apply the `sort_edges` ordering cut, and a target cycle is unchanged.

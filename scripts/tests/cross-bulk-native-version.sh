@@ -54,6 +54,14 @@ for f in "$db/$base"-[0-9]*; do
 done
 exit 1
 WRAP
+cat > "$out/pkg_add" <<'WRAP'
+#!/bin/sh
+# pkgsrc supplies -D on replace. Without it pkg_add checks installed users.
+out=${0%/*}
+printf '%s\n' "$@" > "$out/install-args"
+for arg do [ "$arg" != -D ] || exit 0; done
+[ ! -f "$out/external-exact" ] || { echo 'Dependency of external-1.0 cannot be satisfied' >&2; exit 1; }
+WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
@@ -64,6 +72,7 @@ while [ "\$#" -gt 0 ]; do
         -C) dir=\$2; shift 2 ;;
         VARNAME=*) varname=\${1#VARNAME=}; shift ;;
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
+        NATIVE_PKG_ADD_CMD=*) pkg_add=\${1#NATIVE_PKG_ADD_CMD=}; shift ;;
         USE_CROSS_COMPILE=no) mode=native; shift ;;
         *=*) shift ;;
         *) target=\$1; shift ;;
@@ -88,7 +97,7 @@ case "\$target" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
             PACKAGES) echo \$out/packages ;;
             PKG_INFO) echo "\$out/pkg_info -K \$out/native-db" ;;
-            NATIVE_PKG_ADD_CMD) echo \$out/pkg_info ;;
+            NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
             *) value "\$varname" ;;
         esac ;;
     show-vars) for n in \$varnames; do value \$n; done ;;
@@ -97,6 +106,9 @@ case "\$target" in
     package) ;;
     install|replace)
         name=\$(value PKGNAME)
+        if [ \$target = replace ] && [ \$pkg = clang ]; then
+            \$pkg_add -K "\$out/native-db" -U -D "\$out/\$name.tgz" || exit 1
+        fi
         if [ \$target = install ] && ls \$out/native-db/\$(value PKGBASE)-[0-9]* > /dev/null 2>&1; then
             echo "\$name: an older version is already installed"; exit 1
         fi
@@ -107,7 +119,7 @@ case "\$target" in
     *) echo "bmake: don't know how to make \$target. Stop"; exit 2 ;;
 esac
 WRAP
-chmod +x "$out/bmake" "$out/pkg_info"
+chmod +x "$out/bmake" "$out/pkg_info" "$out/pkg_add"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 bulk() {
     BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
@@ -134,4 +146,31 @@ v a target TOOL_DEPENDS 'clang>=23.1.4nb9:../../c/clang tclsh>=1:../../d/tclsh'
 v tclsh native DEPENDS 'clang-23.1.4nb9:../../c/clang'
 bulk order "$out/list" "$out/state" > "$out/exact-order.log" 2>&1 || fail "$(cat "$out/exact-order.log")"
 grep -qx 'e/cmake@native c/clang@native' "$out/state/edges" || fail 'late exact constraint did not reopen clang'
-echo 'PASS: native selection preserves satisfied tools and reopens late exact dependencies'
+# Protect a consumer outside the order, and reject an incompatible recipe
+# before invoking pkgsrc replace. Removing that conflict allows the downgrade.
+touch "$out/external-exact"
+if bulk build "$out/state/order" "$out/state" > "$out/external.log" 2>&1; then fail 'broke external dependency'; fi
+grep -q external-1.0 "$out/state/logs/c_clang@native.log" || fail 'missing external consumer diagnostic'
+[ -f "$out/native-db/clang-23.1.4nb11" ] || fail 'lost the original native tool'
+printf '%s\n' -K "$out/native-db" -U "$out/clang-23.1.4nb9.tgz" > "$out/expected-args"
+cmp "$out/install-args" "$out/expected-args" || fail 'incorrect strict pkg_add arguments'
+rm "$out/external-exact" "$out/install-args"
+v tclsh native DEPENDS 'clang-23.1.4nb10:../../c/clang'
+bulk order "$out/list" "$out/state" > "$out/unsatisfied-order.log" 2>&1 || fail "$(cat "$out/unsatisfied-order.log")"
+if bulk build "$out/state/order" "$out/state" > "$out/unsatisfied.log" 2>&1; then fail 'installed unsatisfying recipe'; fi
+grep -q 'cannot satisfy clang-23.1.4nb10' "$out/state/logs/c_clang@native.log" || fail 'missing recipe conflict diagnostic'
+[ ! -f "$out/install-args" ] && [ -f "$out/native-db/clang-23.1.4nb11" ] || fail 'mutated prefix on recipe conflict'
+# The same unmet late edge must reject an upgrade and a first installation
+# before either one reaches pkgsrc's install or replace target.
+mv "$out/native-db/clang-23.1.4nb11" "$out/native-db/clang-23.1.4nb8"
+if bulk build "$out/state/order" "$out/state" > "$out/upgrade-conflict.log" 2>&1; then fail 'upgraded to an unsatisfying recipe'; fi
+[ -f "$out/native-db/clang-23.1.4nb8" ] && [ ! -f "$out/install-args" ] || fail 'mutated native prefix on upgrade conflict'
+rm "$out/native-db/clang-23.1.4nb8"
+if bulk build "$out/state/order" "$out/state" > "$out/fresh-conflict.log" 2>&1; then fail 'installed an unsatisfying fresh recipe'; fi
+[ ! -f "$out/native-db/clang-23.1.4nb9" ] || fail 'fresh install left an unsatisfying tool'
+touch "$out/native-db/clang-23.1.4nb11"
+v tclsh native DEPENDS 'clang-23.1.4nb9:../../c/clang'
+bulk order "$out/list" "$out/state" > "$out/reorder.log" 2>&1 || fail "$(cat "$out/reorder.log")"
+bulk build "$out/state/order" "$out/state" > "$out/downgrade.log" 2>&1 || fail "$(cat "$out/downgrade.log")"
+[ -f "$out/native-db/clang-23.1.4nb9" ] && [ ! -f "$out/native-db/clang-23.1.4nb11" ] || fail 'allowed downgrade did not install'
+echo 'PASS: native selection and replacement preserve graph constraints and registered consumers'
