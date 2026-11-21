@@ -18,6 +18,7 @@ include/libnm/nm-device-bt.h
 include/libnm/nm-device-dummy.h
 include/libnm/nm-device-ethernet.h
 include/libnm/nm-device-generic.h
+include/libnm/nm-device-geneve.h
 include/libnm/nm-device-hsr.h
 include/libnm/nm-device-infiniband.h
 include/libnm/nm-device-ip-tunnel.h
@@ -66,6 +67,7 @@ include/libnm/nm-setting-dcb.h
 include/libnm/nm-setting-dummy.h
 include/libnm/nm-setting-ethtool.h
 include/libnm/nm-setting-generic.h
+include/libnm/nm-setting-geneve.h
 include/libnm/nm-setting-gsm.h
 include/libnm/nm-setting-hostname.h
 include/libnm/nm-setting-hsr.h
@@ -90,6 +92,7 @@ include/libnm/nm-setting-ovs-patch.h
 include/libnm/nm-setting-ovs-port.h
 include/libnm/nm-setting-ppp.h
 include/libnm/nm-setting-pppoe.h
+include/libnm/nm-setting-prefix-delegation.h
 include/libnm/nm-setting-proxy.h
 include/libnm/nm-setting-serial.h
 include/libnm/nm-setting-sriov.h
