@@ -25,6 +25,7 @@ ${PHP_INCDIR}/Zend/zend_ast.h
 ${PHP_INCDIR}/Zend/zend_atomic.h
 ${PHP_INCDIR}/Zend/zend_attributes.h
 ${PHP_INCDIR}/Zend/zend_attributes_arginfo.h
+${PHP_INCDIR}/Zend/zend_autoload.h
 ${PHP_INCDIR}/Zend/zend_bitset.h
 ${PHP_INCDIR}/Zend/zend_build.h
 ${PHP_INCDIR}/Zend/zend_builtin_functions.h
@@ -86,6 +87,8 @@ ${PHP_INCDIR}/Zend/zend_objects.h
 ${PHP_INCDIR}/Zend/zend_objects_API.h
 ${PHP_INCDIR}/Zend/zend_observer.h
 ${PHP_INCDIR}/Zend/zend_operators.h
+${PHP_INCDIR}/Zend/zend_partial.h
+${PHP_INCDIR}/Zend/zend_perf_stat.h
 ${PHP_INCDIR}/Zend/zend_portability.h
 ${PHP_INCDIR}/Zend/zend_property_hooks.h
 ${PHP_INCDIR}/Zend/zend_ptr_stack.h
@@ -180,6 +183,7 @@ ${PHP_INCDIR}/ext/pcre/php_pcre.h
 ${PHP_INCDIR}/ext/random/php_random.h
 ${PHP_INCDIR}/ext/random/php_random_csprng.h
 ${PHP_INCDIR}/ext/random/php_random_uint128.h
+${PHP_INCDIR}/ext/random/random_decl.h
 ${PHP_INCDIR}/ext/session/mod_files.h
 ${PHP_INCDIR}/ext/session/mod_user.h
 ${PHP_INCDIR}/ext/session/php_session.h
@@ -198,6 +202,7 @@ ${PHP_INCDIR}/ext/spl/spl_observer.h
 ${PHP_INCDIR}/ext/standard/base64.h
 ${PHP_INCDIR}/ext/standard/basic_functions.h
 ${PHP_INCDIR}/ext/standard/basic_functions_arginfo.h
+${PHP_INCDIR}/ext/standard/basic_functions_decl.h
 ${PHP_INCDIR}/ext/standard/crc32.h
 ${PHP_INCDIR}/ext/standard/crc32_x86.h
 ${PHP_INCDIR}/ext/standard/credits.h
@@ -218,6 +223,9 @@ ${PHP_INCDIR}/ext/standard/head.h
 ${PHP_INCDIR}/ext/standard/html.h
 ${PHP_INCDIR}/ext/standard/html_tables.h
 ${PHP_INCDIR}/ext/standard/info.h
+${PHP_INCDIR}/ext/standard/io_poll.h
+${PHP_INCDIR}/ext/standard/io_poll_arginfo.h
+${PHP_INCDIR}/ext/standard/io_poll_decl.h
 ${PHP_INCDIR}/ext/standard/md5.h
 ${PHP_INCDIR}/ext/standard/pageinfo.h
 ${PHP_INCDIR}/ext/standard/password_arginfo.h
@@ -256,6 +264,7 @@ ${PHP_INCDIR}/ext/standard/user_filters_arginfo.h
 ${PHP_INCDIR}/ext/standard/winver.h
 ${PHP_INCDIR}/ext/uri/php_uri.h
 ${PHP_INCDIR}/ext/uri/php_uri_common.h
+${PHP_INCDIR}/ext/uri/php_uri_decl.h
 ${PHP_INCDIR}/ext/uri/uri_parser_php_parse_url.h
 ${PHP_INCDIR}/ext/uri/uri_parser_rfc3986.h
 ${PHP_INCDIR}/ext/uri/uri_parser_whatwg.h
@@ -277,12 +286,14 @@ ${PHP_INCDIR}/main/php_glob.h
 ${PHP_INCDIR}/main/php_globals.h
 ${PHP_INCDIR}/main/php_ini.h
 ${PHP_INCDIR}/main/php_ini_builder.h
+${PHP_INCDIR}/main/php_io.h
 ${PHP_INCDIR}/main/php_main.h
 ${PHP_INCDIR}/main/php_memory_streams.h
 ${PHP_INCDIR}/main/php_network.h
 ${PHP_INCDIR}/main/php_odbc_utils.h
 ${PHP_INCDIR}/main/php_open_temporary_file.h
 ${PHP_INCDIR}/main/php_output.h
+${PHP_INCDIR}/main/php_poll.h
 ${PHP_INCDIR}/main/php_reentrancy.h
 ${PHP_INCDIR}/main/php_scandir.h
 ${PHP_INCDIR}/main/php_streams.h
@@ -294,6 +305,7 @@ ${PHP_INCDIR}/main/rfc1867.h
 ${PHP_INCDIR}/main/snprintf.h
 ${PHP_INCDIR}/main/spprintf.h
 ${PHP_INCDIR}/main/streams/php_stream_context.h
+${PHP_INCDIR}/main/streams/php_stream_errors.h
 ${PHP_INCDIR}/main/streams/php_stream_filter_api.h
 ${PHP_INCDIR}/main/streams/php_stream_glob_wrapper.h
 ${PHP_INCDIR}/main/streams/php_stream_mmap.h
@@ -301,6 +313,8 @@ ${PHP_INCDIR}/main/streams/php_stream_plain_wrapper.h
 ${PHP_INCDIR}/main/streams/php_stream_transport.h
 ${PHP_INCDIR}/main/streams/php_stream_userspace.h
 ${PHP_INCDIR}/main/streams/php_streams_int.h
+${PHP_INCDIR}/main/streams/stream_errors_arginfo.h
+${PHP_INCDIR}/main/streams/stream_errors_decl.h
 ${PHP_INCDIR}/main/streams/userspace_arginfo.h
 ${PHP_INCDIR}/sapi/cli/cli.h
 ${PLIST.embed}${PHP_INCDIR}/sapi/embed/php_embed.h
@@ -313,6 +327,10 @@ ${PHP_LIBDIR}/build/config.sub
 ${PHP_LIBDIR}/build/gen_stub.php
 ${PHP_LIBDIR}/build/libtool.m4
 ${PHP_LIBDIR}/build/ltmain.sh
+${PHP_LIBDIR}/build/ltoptions.m4
+${PHP_LIBDIR}/build/ltsugar.m4
+${PHP_LIBDIR}/build/ltversion.m4
+${PHP_LIBDIR}/build/lt~obsolete.m4
 ${PHP_LIBDIR}/build/php.m4
 ${PHP_LIBDIR}/build/php_cxx_compile_stdcxx.m4
 ${PHP_LIBDIR}/build/phpize.m4
