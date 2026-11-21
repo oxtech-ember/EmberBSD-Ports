@@ -3,6 +3,7 @@
 # thumbnail code is not built; the mint27 wallpaper painter lives in the
 # cinnamon package itself (GTK4 + layer-shell).
 DISTNAME=	cinnamon-desktop-6.8.1
+PKGREVISION=	1
 CATEGORIES=	x11
 MASTER_SITES=	https://github.com/linuxmint/cinnamon-desktop/archive/refs/tags/
 DISTFILES=	6.8.1.tar.gz

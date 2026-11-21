@@ -57,6 +57,20 @@ with tarfile.open(args.package, "r:gz") as package:
         namespace = root.find("{*}namespace")
         assert namespace is not None
         assert f"{namespace.get('name')}-{namespace.get('version')}" == typelib_stem
+        if typelib_stem == "CinnamonDesktop-3.0":
+            gio_types = {
+                "connection": "Gio.DBusConnection",
+                "cancellable": "Gio.Cancellable",
+                "callback": "Gio.AsyncReadyCallback",
+                "res": "Gio.AsyncResult",
+            }
+            for function_name in ("start_systemd_scope", "start_systemd_scope_finish"):
+                node = namespace.find(f"{{*}}function[@name='{function_name}']")
+                assert node is not None and node.get("introspectable") != "0", function_name
+                for param in node.findall("{*}parameters/{*}parameter"):
+                    name = param.get("name")
+                    if name in gio_types:
+                        assert param.find("{*}type").get("name") == gio_types[name], name
         for element in root.iter():
             if element.tag.split("}")[-1] in ("include", "package"):
                 reference = "-".join(
