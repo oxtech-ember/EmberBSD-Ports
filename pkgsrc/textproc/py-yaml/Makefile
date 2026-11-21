@@ -1,8 +1,7 @@
 # $NetBSD: Makefile,v 1.40 2026/06/28 15:41:43 wiz Exp $
 # Origin: EmberBSD (AI-assisted), require the real current Cython/libyaml extension.
 
-DISTNAME=	pyyaml-6.0.3
-PKGREVISION=	1
+DISTNAME=	pyyaml-6.0.4
 PKGNAME=	${PYPKGPREFIX}-${DISTNAME:S/py//}
 CATEGORIES=	textproc python
 MASTER_SITES=	${MASTER_SITE_PYPI:=P/PyYAML/}
