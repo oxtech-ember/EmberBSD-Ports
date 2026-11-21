@@ -21,6 +21,11 @@ CONFIGURE_ARGS+=	--disable-ipv6
 .endif
 
 .if !empty(PKG_OPTIONS:Mssl)
+.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+# The supported NetBSD 11 base sets provide different OpenSSL SONAMEs.
+PREFER.openssl=		pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
+.  endif
 .  include "../../security/openssl/buildlink3.mk"
 .  if ${OPSYS} == "SunOS"
 CONFIGURE_ARGS+=	--with-openssl=yes
