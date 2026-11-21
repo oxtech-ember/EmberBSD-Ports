@@ -3,7 +3,7 @@
 
 # Note that parallel/spirv-headers must be kept in sync with what this
 # package expects.
-DISTNAME=	SPIRV-LLVM-Translator-23.1.2
+DISTNAME=	SPIRV-LLVM-Translator-23.1.3
 PKGNAME=	${DISTNAME:tl}
 
 .include "../../mk/bsd.prefs.mk"
@@ -47,7 +47,7 @@ PKGCONFIG_OVERRIDE+=	LLVMSPIRVLib.pc.in
 .include "../../devel/cmake/build.mk"
 BUILDLINK_API_DEPENDS.llvm+= llvm>=23.1.4<23.2
 .include "../../lang/llvm/buildlink3.mk"
-BUILDLINK_API_DEPENDS.spirv-headers+= spirv-headers>=1.4.363.0
+BUILDLINK_API_DEPENDS.spirv-headers+= spirv-headers>=1.4.363.0nb2
 .include "../../parallel/spirv-headers/buildlink3.mk"
 BUILDLINK_API_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb1
 .include "../../parallel/spirv-tools/buildlink3.mk"

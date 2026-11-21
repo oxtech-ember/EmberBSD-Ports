@@ -15,12 +15,12 @@ def query(abi, variable, *extra):
         f'MAKECONF={a.makeconf}', 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
         'EMBERBSD_DARWIN_TOOLCHAIN_ONLY=yes', f'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE={abi}',
         *extra, '-v', variable], check=True, capture_output=True, text=True).stdout.strip()
-assert query('__ember1', 'PKGNAME') == 'spirv-llvm-translator-23.1.2nb1'
-assert query('__1', 'PKGNAME') == 'spirv-llvm-translator-23.1.2'
-assert query('__ember1', 'PKGNAME', 'OPSYS=NetBSD') == 'spirv-llvm-translator-23.1.2'
+assert query('__ember1', 'PKGNAME') == 'spirv-llvm-translator-23.1.3nb1'
+assert query('__1', 'PKGNAME') == 'spirv-llvm-translator-23.1.3'
+assert query('__ember1', 'PKGNAME', 'OPSYS=NetBSD') == 'spirv-llvm-translator-23.1.3'
 deps = query('__ember1', 'DEPENDS')
 assert 'libcxx>=23.1.4nb1:' in deps and 'llvm>=23.1.4nb5:' in deps
-assert 'clang>=23.1.4nb11<23.2:' in query('__ember1', 'BUILD_DEPENDS')
+assert 'clang>=23.1.4nb12<23.2:' in query('__ember1', 'BUILD_DEPENDS')
 assert 'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE' in query('__ember1', 'BUILD_DEFS')
 with tempfile.TemporaryDirectory() as directory:
     fixture = Path(directory)/'consumer.mk'
@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory() as directory:
             'EMBERBSD_DARWIN_TOOLCHAIN_ONLY=yes', f'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE={abi}',
             *extra, '-v', 'BUILDLINK_ABI_DEPENDS.spirv-llvm-translator'],
             check=True, capture_output=True, text=True).stdout
-    assert 'spirv-llvm-translator>=23.1.2nb1<23.2' in consumer('__ember1')
-    assert 'spirv-llvm-translator>=23.1.2nb1<23.2' not in consumer('__1')
-    assert 'spirv-llvm-translator>=23.1.2nb1<23.2' not in consumer('__ember1', 'OPSYS=NetBSD')
+    assert 'spirv-llvm-translator>=23.1.3nb1<23.2' in consumer('__ember1')
+    assert 'spirv-llvm-translator>=23.1.3nb1<23.2' not in consumer('__1')
+    assert 'spirv-llvm-translator>=23.1.3nb1<23.2' not in consumer('__ember1', 'OPSYS=NetBSD')
 print('SPIR-V translator native ABI metadata PASS')
