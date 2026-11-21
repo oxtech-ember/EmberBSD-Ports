@@ -1,0 +1,85 @@
+--- a/devel/php-raphf2/Makefile
++++ b/devel/php-raphf2/Makefile
+@@ -2,6 +2,7 @@
+ 
+ MODNAME=	raphf
+ PECL_VERSION=	2.0.2
++PKGREVISION=	1
+ CATEGORIES=	devel
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+@@ -11,7 +12,7 @@
+ 
+ TOOL_DEPENDS+=	re2c>=0.13.0.4:../../devel/re2c
+ 
+-PHP_VERSIONS_ACCEPTED=	74 82 83 84 85
++PHP_VERSIONS_ACCEPTED=	74 82 83 84 85 86
+ 
+ USE_LANGUAGES=	c c++
+ USE_LIBTOOL=	yes
+--- a/devel/php-raphf2/distinfo
++++ b/devel/php-raphf2/distinfo
+@@ -3,3 +3,5 @@
+ BLAKE2s (php-raphf/raphf-2.0.2.tgz) = f6440f0a8ef0606797a43adc06b88e0b57cc96dd9a533459238a82cb79ea0773
+ SHA512 (php-raphf/raphf-2.0.2.tgz) = ca82e95bfaa9012de2c46334ff9095c8e214c108d58ed778c33541c9a39b53e2edc5539af1da075a11f025c209ea6cd1439f902be12f5726fb9fbc7c194e30b2
+ Size (php-raphf/raphf-2.0.2.tgz) = 16262 bytes
++SHA1 (patch-src_php_raphf_api.h) = e2d9ac585664d0ab36e0354fd01da86e3cdd0b4f
++SHA1 (patch-src_php_raphf_api.c) = 5719c73fdacd8fa4fc4b7dfc2830d18dde368c88
+--- /dev/null
++++ b/devel/php-raphf2/patches/patch-src_php_raphf_api.h
+@@ -0,0 +1,28 @@
++$NetBSD$
++
++Use the current Zend result type in the public resource-factory API.
++
++--- src/php_raphf_api.h.orig
+++++ src/php_raphf_api.h
++@@ -207,6 +207,12 @@
++ 	unsigned free_on_abandon:1;
++ };
++ 
+++#if PHP_VERSION_ID < 80000
+++typedef ZEND_RESULT_CODE php_raphf_result;
+++#else
+++typedef zend_result php_raphf_result;
+++#endif
+++
++ /**
++  * Register a persistent handle provider in MINIT.
++  *
++@@ -226,7 +232,7 @@
++  * @param dtor \a data destructor
++  * @return SUCCESS/FAILURE
++  */
++-PHP_RAPHF_API ZEND_RESULT_CODE php_persistent_handle_provide(
+++PHP_RAPHF_API php_raphf_result php_persistent_handle_provide(
++ 		zend_string *name, php_resource_factory_ops_t *fops,
++ 		void *data, void (*dtor)(void *));
++ 
+--- /dev/null
++++ b/devel/php-raphf2/patches/patch-src_php_raphf_api.c
+@@ -0,0 +1,24 @@
++$NetBSD$
++
++Use the current Zend names for the status type and non-GC destructor.
++
++--- src/php_raphf_api.c.orig
+++++ src/php_raphf_api.c
++@@ -309,7 +309,7 @@
++ 	pefree(provider, 1);
++ }
++ 
++-ZEND_RESULT_CODE php_persistent_handle_provide(zend_string *name,
+++php_raphf_result php_persistent_handle_provide(zend_string *name,
++ 		php_resource_factory_ops_t *fops, void *data, void (*dtor)(void *))
++ {
++ 	php_persistent_handle_provider_t *provider = pemalloc(sizeof(*provider), 1);
++@@ -528,7 +528,7 @@
++ 		if (php_persistent_handle_statall(HASH_OF(return_value))) {
++ 			return;
++ 		}
++-		zval_dtor(return_value);
+++		zval_ptr_dtor_nogc(return_value);
++ 	}
++ 	RETURN_FALSE;
++ }
