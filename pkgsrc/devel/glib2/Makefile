@@ -33,6 +33,9 @@ LDFLAGS.SunOS+=		-lnsl -lsocket
 LDFLAGS.FreeBSD+=	-liconv
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD"
+PKGREVISION=	7	# Updated libffi shared-library requirement.
+.endif
 .if ${USE_CROSS_COMPILE:U:tl} == yes
 MESON_CROSS_ARCH_VARS+=			growing_stack
 MESON_CROSS_OPSYS_VARS+=		have_c99_snprintf

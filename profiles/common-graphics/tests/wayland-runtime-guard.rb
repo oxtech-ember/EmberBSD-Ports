@@ -20,7 +20,7 @@ File.write(tool, <<~SH)
   # This fixture models pkg_info outcomes; it is not a package provider.
   case "$GUARD_FIXTURE" in
     absent) exit 1;;
-    present) echo wayland-devel-1.26.0nb2; exit 0;;
+    present) echo wayland-devel-1.26.0nb4; exit 0;;
     db-error) echo 'fixture database read error' >&2; exit 1;;
     stdout-error) echo 'fixture unexpected output'; exit 1;;
     tool-error) exit 2;;

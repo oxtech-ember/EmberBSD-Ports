@@ -2,6 +2,10 @@
 
 DISTNAME=	gobject-introspection-1.86.0
 PKGREVISION=	11
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD"
+PKGREVISION=	12	# Updated libffi shared-library requirement.
+.endif
 CATEGORIES=	devel gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gobject-introspection/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz

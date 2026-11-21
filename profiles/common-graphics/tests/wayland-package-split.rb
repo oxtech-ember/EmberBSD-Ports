@@ -23,26 +23,31 @@ Dir.children(source + '/devel').reject { |n| %w[wayland wayland-devel wayland-sp
   File.symlink(source + '/devel/' + name, tree + '/devel/' + name)
 end
 commands = []
+query_timeout = Integer(ENV.fetch('WAYLAND_PACKAGE_CHECK_TIMEOUT', '30'), 10)
+abort 'A positive command timeout is required.' unless query_timeout.positive?
 run = lambda do |label, argv, expected = true|
   output = ''
+  diagnostics = ''
   status = nil
-  Open3.popen2e(*argv, pgroup: true) do |input, stream, process|
+  Open3.popen3(*argv, pgroup: true) do |input, stdout, stderr, process|
     input.close
-    reader = Thread.new { stream.read }
+    output_reader = Thread.new { stdout.read }
+    diagnostics_reader = Thread.new { stderr.read }
     begin
-      status = Timeout.timeout(30) { process.value }
+      status = Timeout.timeout(query_timeout) { process.value }
     rescue Timeout::Error
       Process.kill('KILL', -process.pid) rescue Errno::ESRCH
       process.value
     ensure
-      output = reader.value
+      output = output_reader.value
+      diagnostics = diagnostics_reader.value
     end
   end
-  File.write(work + '/' + label + '.log', output)
+  File.write(work + '/' + label + '.log', output + diagnostics)
   commands << { label: label, argv: argv, status: status&.exitstatus }
   File.write(work + '/commands.json', JSON.pretty_generate(commands) + "\n")
-  abort label + ': query exceeded 30 seconds' unless status
-  abort label + ': unexpected status: ' + output unless status.success? == expected
+  abort "#{label}: command exceeded #{query_timeout} seconds" unless status
+  abort label + ': unexpected status: ' + output + diagnostics unless status.success? == expected
   output
 end
 %w[wayland wayland-devel].each do |name|
@@ -92,13 +97,14 @@ end
 %w[bin/wayland-scanner include/wayland-client.h include/wayland-server.h lib/pkgconfig/wayland-client.pc lib/pkgconfig/wayland-scanner.pc share/wayland/wayland.xml].each do |path|
   abort 'SDK lost required interface: ' + path unless sdk.include?(path)
 end
-%w[wayland wayland-devel].each do |name|
+{'wayland' => 'wayland-1.26.0nb3', 'wayland-devel' => 'wayland-devel-1.26.0nb4'}.each do |name, expected|
   identity = query.call(name + '-identity', name, cross + ['-V', '${PKGNAME}', '-V', '${PKG_FAIL_REASON}']).lines
-  abort 'Wrong package identity or failure reason.' unless identity[0].strip == name + '-1.26.0nb2' && identity.drop(1).join.strip.empty?
+  abort 'Wrong package identity or failure reason.' unless identity[0].strip == expected && identity.drop(1).join.strip.empty?
 end
-abort 'Native identity changed.' unless query.call('native-name', 'wayland', ['USE_CROSS_COMPILE=no', '-V', '${PKGNAME}']).strip == 'wayland-1.26.0nb2'
+native_identity = native_fields.first == 'NetBSD' ? 'wayland-1.26.0nb3' : 'wayland-1.26.0nb2'
+abort 'Native identity changed.' unless query.call('native-name', 'wayland', ['USE_CROSS_COMPILE=no', '-V', '${PKGNAME}']).strip == native_identity
 sdk_fields = query.call('sdk-metadata', 'wayland-devel', cross + ['-V', '${DEPENDS}', '-V', '${DISTINFO_FILE}', '-V', '${PATCHDIR}', '-V', '${FILESDIR}'])
-abort 'SDK lost exact runtime or source owner.' unless sdk_fields.include?('wayland-1.26.0nb2:../../devel/wayland') && %w[distinfo patches files].all? { |p| sdk_fields.include?(owner + '/' + p) }
+abort 'SDK lost exact runtime or source owner.' unless sdk_fields.include?('wayland-1.26.0nb3:../../devel/wayland') && %w[distinfo patches files].all? { |p| sdk_fields.include?(owner + '/' + p) }
 FileUtils.mkdir_p(tree + '/devel/wayland-split-consumer')
 File.write(tree + '/devel/wayland-split-consumer/Makefile', <<~MAKE)
   DISTNAME= wayland-split-contract-1

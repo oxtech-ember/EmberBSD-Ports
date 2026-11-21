@@ -4,9 +4,8 @@
 EMBERBSD_WAYLAND_PKGDIR:= ${.PARSEDIR:tA}
 WAYLAND_VERSION=	1.26.0
 DISTNAME=	wayland-${WAYLAND_VERSION}
-# Native and cross packages use one revision. Cross tool dependencies
-# then accept the native build-host package.
-PKGREVISION=	2
+WAYLAND_RUNTIME_REVISION=	2
+PKGREVISION=	${WAYLAND_RUNTIME_REVISION}
 CATEGORIES=	devel
 MASTER_SITES=	https://gitlab.freedesktop.org/wayland/wayland/-/releases/${PKGVERSION_NOREV}/downloads/
 EXTRACT_SUFX=	.tar.xz
@@ -30,6 +29,9 @@ PKGCONFIG_OVERRIDE_STAGE=	pre-install
 PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-scanner.pc
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD"
+WAYLAND_RUNTIME_REVISION=	3	# Updated libffi shared-library requirement.
+.endif
 
 # EmberBSD: the macOS build host needs only the native wayland-scanner.
 # The upstream libraries and tests do not support Darwin. Target and native
@@ -52,7 +54,7 @@ PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-server.pc
 PKG_FAIL_REASON+= "The wayland SDK role belongs to devel/wayland-devel"
 .endif
 PKGNAME=	wayland-devel-${WAYLAND_VERSION}
-PKGREVISION=	3
+PKGREVISION=	4
 COMMENT=	Wayland target SDK for the development-host sysroot
 DISTINFO_FILE=	${EMBERBSD_WAYLAND_PKGDIR}/distinfo
 PATCHDIR=	${EMBERBSD_WAYLAND_PKGDIR}/patches
@@ -68,11 +70,11 @@ PLIST_VARS+=	runtime_split
 PKG_FAIL_REASON+= "The wayland runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
 .if defined(EMBERBSD_WAYLAND_DEVEL)
-.  if ${PKGREVISION} != 3
-PKG_FAIL_REASON+= "The wayland SDK split requires package revision 3"
+.  if ${PKGREVISION} != 4
+PKG_FAIL_REASON+= "The wayland SDK split requires package revision 4"
 .  endif
-.elif ${PKGREVISION} != 2
-PKG_FAIL_REASON+= "The wayland runtime split requires package revision 2"
+.elif ${PKGREVISION} != ${WAYLAND_RUNTIME_REVISION}
+PKG_FAIL_REASON+= "The wayland runtime split requires package revision ${WAYLAND_RUNTIME_REVISION}"
 .endif
 PLIST.runtime_split=	yes
 WAYLAND_FULL_PLIST_SRC=	${EMBERBSD_WAYLAND_PKGDIR}/PLIST
@@ -84,8 +86,8 @@ WAYLAND_PACKAGE_PART=	devel
 PKG_FAIL_REASON+= "The wayland SDK recipe must select the devel partition"
 .endif
 PLIST_SRC=	${WAYLAND_DEVEL_PLIST_SRC}
-DEPENDS+=	wayland-${WAYLAND_VERSION}nb2:../../devel/wayland
-CONFLICTS+=	wayland<${WAYLAND_VERSION}nb2
+DEPENDS+=	wayland-${WAYLAND_VERSION}nb${WAYLAND_RUNTIME_REVISION}:../../devel/wayland
+CONFLICTS+=	wayland<${WAYLAND_VERSION}nb${WAYLAND_RUNTIME_REVISION}
 .else
 WAYLAND_PACKAGE_PART=	runtime
 .if ${WAYLAND_PACKAGE_PART} != "runtime"

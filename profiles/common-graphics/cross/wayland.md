@@ -52,7 +52,7 @@ selection checks do not compile Wayland or run target code.
 
 The NetBSD AArch64 and amd64 cross recipes split Wayland at revision 2.
 `wayland-1.26.0nb2` contains twelve shared-library files and aliases, plus
-the original `COPYING` notice. `wayland-devel-1.26.0nb2` contains the other
+the original `COPYING` notice. `wayland-devel-1.26.0nb4` contains the other
 23 entries: headers, scanner, protocol data and development metadata.
 It depends on that exact runtime. The two partitions do not overlap.
 Their union is the complete upstream installation plus the notice.
@@ -62,7 +62,7 @@ After installation, the selector first validates the complete staged inventory
 and all symlink targets. Only then does it remove the other partition.
 New, missing, unsafe or overlapping entries fail the package.
 Normal package checks remain enabled. Native EmberBSD builds retain the full
-35-entry package at the same revision, `wayland-1.26.0nb2`. This native
+35-entry package at the same revision, `wayland-1.26.0nb3`. This native
 package satisfies the `wayland>=1.26.0nb2` tool dependencies of cross packages.
 
 The upstream libraries and tests do not support Darwin. On a macOS build
@@ -71,7 +71,7 @@ host the same recipe therefore builds only the scanner
 the executable, `wayland-scanner.pc`, the Autoconf and Make fragments, and
 the protocol XML and DTD. This host package keeps the name
 `wayland-1.26.0nb2` and satisfies the same tool dependencies. It does not
-use epoll-shim or libffi. Target and native EmberBSD packages do not change.
+use epoll-shim or libffi. NetBSD runtime packages link libffi 3.8.1.
 
 The cross buildlink requires `wayland-devel` only during target compilation.
 Application runtime dependencies retain `wayland`. The build-host scanner
@@ -87,6 +87,9 @@ BMAKE=/absolute/native/bmake ruby ../tests/wayland-package-split.rb \
     /absolute/pkgsrc /absolute/cross.mk.conf /absolute/wayland-WRKSRC \
     /absolute/complete-DESTDIR /absolute/new-check
 ```
+
+Metadata and staging commands each have a 30-second timeout. Set
+`WAYLAND_PACKAGE_CHECK_TIMEOUT` in seconds when the export is on slow storage.
 
 These checks pass with the actual GCC16 AArch64 revision-1 stage.
 Separate fresh revision-2 builds now pass ordinary package creation and the
