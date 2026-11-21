@@ -20,9 +20,12 @@ match = re.search(r"for \(i = 0; i < l && \*p; i\+\+, p\+\+\) \{\s*"
 assert match is not None
 assert re.match(r'\s*if \(i < l\) \{\s*e = FTP_PROTOCOL_ERROR;\s*goto ouch;\s*\}',
                 ftp[match.end():]) is not None
-for package, revision in (('net/libfetch', 6), ('pkgtools/pkg_install', 10)):
+common = (root / 'net/libfetch/files/common.c').read_text()
+assert 'SSL_set1_host(conn->ssl, URL->host);' in common
+for package, minimum in (('net/libfetch', 9), ('net/fetch', 6), ('pkgtools/pkg_install', 24)):
     text = (root / package / 'Makefile').read_text()
-    assert re.search(r'^PKGREVISION=\s*' + str(revision) + r'\s*$', text, re.MULTILINE)
+    revision = re.search(r'^PKGREVISION=[ \t]*(\d+)\b', text, re.MULTILINE)
+    assert revision and int(revision[1]) >= minimum, package
 assert 'FILESDIR.libfetch?=' in (root / 'pkgtools/pkg_install/Makefile').read_text()
 # Compile the actual exported loop in a bounded local harness. Inputs below are
 # complete valid records; no server or unpatched baseline is exercised.
@@ -52,4 +55,4 @@ with tempfile.TemporaryDirectory(prefix='libfetch-source-') as temporary:
     subprocess.run([str(compiler), '-Wall', '-Wextra', '-Werror', *flags, str(source),
                     '-o', str(binary)], env=env, check=True)
     subprocess.run([str(binary)], env=env, check=True)
-print('PASS: exported guard, affected revisions, and valid bounded parser records')
+print('PASS: exported FTP guard, TLS hostname check, affected revisions, and valid bounded parser records')
