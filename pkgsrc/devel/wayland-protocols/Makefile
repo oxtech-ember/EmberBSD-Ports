@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.25 2026/06/07 18:26:20 wiz Exp $
 
-DISTNAME=	wayland-protocols-1.49
+DISTNAME=	wayland-protocols-1.50
 CATEGORIES=	devel
 MASTER_SITES=	https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/${PKGVERSION_NOREV}/downloads/
 EXTRACT_SUFX=	.tar.xz

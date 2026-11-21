@@ -18,7 +18,8 @@ def main():
     args = parser.parse_args()
     if any(not value.is_absolute() for value in vars(args).values()) or args.work.exists():
         parser.error('use absolute inputs and a new work directory')
-    for name in ('mesa-26.3.0.tar.xz','wayland-protocols-1.49.tar.xz'):
+    protocols_archive = 'wayland-protocols-1.50.tar.xz'
+    for name in ('mesa-26.3.0.tar.xz', protocols_archive):
         if not (args.distdir/name).is_file():
             parser.error('cache the recipe-pinned archive first: '+name)
     args.work.mkdir()
@@ -131,14 +132,15 @@ EMBERBSD_COMMON_GRAPHICS_CROSS=yes
          'LLVM_CONFIG_PATH=/usr/bin/false','pre-configure'], 'overridden LLVM_CONFIG_PATH')
     run('protocols-missing-scanner','devel/wayland-protocols',['emberbsd-graphics-scanner-input-check'],
         'require EMBERBSD_WAYLAND_SCANNER')
-    run('MesaLib-missing-generators','graphics/MesaLib',['emberbsd-mesa-generators-check'],
-        'requires an absolute sealed EMBERBSD_MESA_GENERATORS')
+    run('MesaLib-missing-generators','graphics/MesaLib',
+        ['EMBERBSD_MESA_GENERATORS='+str(args.work/'missing-generators'),'emberbsd-mesa-generators-check'],
+        'require an installed.sha256 seal')
     # License and source integrity remain ordinary framework checks.
     run('MesaLib-license','graphics/MesaLib',['LICENSE=source-phase-unaccepted-license','fetch'],
         'license')
     corrupt=args.work/'corrupt-cache';corrupt.mkdir()
-    shutil.copyfile(args.distdir/'wayland-protocols-1.49.tar.xz',corrupt/'wayland-protocols-1.49.tar.xz')
-    with (corrupt/'wayland-protocols-1.49.tar.xz').open('ab') as stream:stream.write(b'changed')
+    shutil.copyfile(args.distdir/protocols_archive,corrupt/protocols_archive)
+    with (corrupt/protocols_archive).open('ab') as stream:stream.write(b'changed')
     run('protocols-corrupt','devel/wayland-protocols',['DISTDIR='+str(corrupt),'checksum'],
         'Checksum')
     summary={'actual_pkgsrc_cases':checks,
