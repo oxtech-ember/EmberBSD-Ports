@@ -18,7 +18,7 @@ DEPENDS+= clang-${LLVM_VERSION}{,nb*}:../../lang/clang
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
 PKGREVISION= 1
-DEPENDS+= clang>=23.1.4nb12:../../lang/clang
+DEPENDS+= clang>=23.1.6nb1:../../lang/clang
 .endif
 _CLANG_OWNER= ${_PKGSRCDIR}/lang/clang
 _CLANG_OWNER_OBJ= ${WRKDIR}/clang-owner

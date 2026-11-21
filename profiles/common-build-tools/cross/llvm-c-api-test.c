@@ -104,6 +104,6 @@ main(void)
 	LLVMDisposeBuilder(builder);
 	LLVMDisposeModule(module);
 	LLVMContextDispose(context);
-	puts("PASS: LLVM 23.1.4 C API module, verifier rejection and bitcode roundtrip");
+	puts("PASS: LLVM 23.1.6 C API module, verifier rejection and bitcode roundtrip");
 	return EXIT_SUCCESS;
 }

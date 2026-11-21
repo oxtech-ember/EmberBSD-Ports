@@ -49,11 +49,11 @@ emberbsd-graphics-llvm-input-check:
 	    echo 'Mesa rejects an overridden LLVM_CONFIG_PATH' >&2; exit 1; \
 	}; \
 	${TEST} -x "$$ember_graphics_llvm" || { \
-	    echo 'The graphics LLVM helper must be an installed-metadata llvm-config for LLVM 23.1.4' >&2; exit 1; \
+	    echo 'The graphics LLVM helper must be an installed-metadata llvm-config for LLVM 23.1.6' >&2; exit 1; \
 	}; \
 	if test "$$ember_graphics_llvm" = ${EMBERBSD_CROSS_LLVM_CONFIG:U:Q}; then \
-	    ${TEST} "$$($$ember_graphics_llvm --version)" = 23.1.4 || { \
-	        echo 'The graphics LLVM helper must report LLVM 23.1.4' >&2; exit 1; \
+	    ${TEST} "$$($$ember_graphics_llvm --version)" = 23.1.6 || { \
+	        echo 'The graphics LLVM helper must report LLVM 23.1.6' >&2; exit 1; \
 	    }; \
 	else \
 	    ${EMBERBSD_CROSS_BUILD_PYTHON:Q} -B ${PKGSRCDIR:Q}/lang/llvm/files/cross-llvm-config.py \

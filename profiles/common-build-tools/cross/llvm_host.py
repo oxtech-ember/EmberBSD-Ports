@@ -10,8 +10,8 @@ import tarfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '../../pkgsrc/lang/llvm/files'))
 from sdk_source import load_sdk
 
-SOURCE = 'llvm-project-23.1.4.src'
-SOURCE_SHA = '819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2'
+SOURCE = 'llvm-project-23.1.6.src'
+SOURCE_SHA = 'd3b86ab29cfb4445a6652e5c2642ccc75e04e38084dde3701d323320f35a31da'
 
 
 def checked_paths(values):
@@ -105,7 +105,7 @@ def native(kind, arguments):
     env['PATH'] = toolset.path
     env['SHELL'] = toolset.tool('sh')
     env['PKG_CONFIG'] = toolset.tool('pkg-config')
-    if llvm and (not Path(llvm, 'lib/cmake/llvm/LLVMConfig.cmake').is_file() or query([llvm + '/bin/llvm-config', '--version'], env=env) != '23.1.4'):
+    if llvm and (not Path(llvm, 'lib/cmake/llvm/LLVMConfig.cmake').is_file() or query([llvm + '/bin/llvm-config', '--version'], env=env) != '23.1.6'):
         raise SDKError('Matching native LLVM build required')
     os.mkdir(work)
     # CMake's GetHostTriple runs "sh config.guess" through PATH, and on Darwin
@@ -144,7 +144,7 @@ def native(kind, arguments):
     for tool in outputs:
         path = work + '/native/bin/' + tool
         version = query([path, '--version'], env=env)
-        if '23.1.4' not in version:
+        if '23.1.6' not in version:
             raise SDKError('Unexpected native generator version: ' + tool)
         result[tool] = dict(path=path, version=version)
     write_json(work + '/outputs.json', result)

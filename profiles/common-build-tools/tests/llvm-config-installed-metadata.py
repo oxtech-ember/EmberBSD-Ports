@@ -71,13 +71,13 @@ def main():
         prefix = target / 'usr/pkg'
         config = prefix / 'lib/cmake/llvm/LLVMConfig.cmake'
         config.parent.mkdir(parents=True)
-        config.write_text('set(LLVM_PACKAGE_VERSION 23.1.4)\n'
+        config.write_text('set(LLVM_PACKAGE_VERSION 23.1.6)\n'
                           'set(LLVM_HOST_TRIPLE "aarch64--netbsd")\n'
                           'set(LLVM_TARGETS_TO_BUILD AArch64)\n'
                           'set(LLVM_ENABLE_ASSERTIONS OFF)\n')
         header = prefix / 'include/llvm/Config/llvm-config.h'
         header.parent.mkdir(parents=True)
-        header.write_text('#define LLVM_VERSION_STRING "23.1.4"\n'
+        header.write_text('#define LLVM_VERSION_STRING "23.1.6"\n'
                           '#define LLVM_HOST_TRIPLE "aarch64--netbsd"\n'
                           '#define LLVM_DEFAULT_TARGET_TRIPLE "aarch64--netbsd"\n')
         metadata = prefix / 'lib/cmake/llvm/emberbsd'
@@ -92,7 +92,7 @@ def main():
         library = prefix / 'lib/libLLVM-23.so'
         library.parent.mkdir(parents=True, exist_ok=True)
         library.write_text('fixture library\n')
-        def helper(path, *, version='23.1.4', triple='aarch64-unknown-netbsd',
+        def helper(path, *, version='23.1.6', triple='aarch64-unknown-netbsd',
                    reported_prefix=None, reported_root=None):
             reported_root = Path(reported_root or target).resolve()
             reported_prefix = Path(reported_prefix or reported_root / 'usr/pkg').resolve()
@@ -153,7 +153,7 @@ def main():
         host_prefix = root / 'host prefix'
         host_config = host_prefix / 'bin/llvm-config'
         host_config.parent.mkdir(parents=True)
-        host_config.write_text('#!' + sys.executable + '\nprint("23.1.4")\n')
+        host_config.write_text('#!' + sys.executable + '\nprint("23.1.6")\n')
         host_config.chmod(0o755)
         host_cpp = host_prefix / 'bin/clang++'
         native_ld = host_prefix / 'bin/ld.lld'
@@ -205,7 +205,7 @@ def main():
         recorded = []
         def fake_capture(argv):
             if '--version' in argv:
-                return '23.1.4'
+                return '23.1.6'
             if '--libfiles' in argv:
                 return ' '.join(__import__('shlex').quote(str(host_prefix.resolve() / 'lib' / ('lib' + name + '.a'))) for name in ('LLVMSupport', 'LLVMTargetParser', 'LLVMDemangle'))
             return ''

@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory() as tmp:
     source=root/'source'; build=root/'build'; info=build/'meson-info'; info.mkdir(parents=True)
     for name in ('drirc_home','drirc_configdir'): (source/'src/util/tests'/name).mkdir(parents=True)
     (source/'VERSION').write_text('26.2.6\n')
-    (build/'build.ninja').write_text('-DGALLIVM_USE_ORCJIT=1 -DLLVM_IS_SHARED=1 23.1.4')
+    (build/'build.ninja').write_text('-DGALLIVM_USE_ORCJIT=1 -DLLVM_IS_SHARED=1 23.1.6')
     (build/'compile_commands.json').write_text('[]')
     (info/'intro-projectinfo.json').write_text(json.dumps({'version':'26.2.6'}))
     opts={'prefix':'/usr/pkg','llvm':'enabled','shared-llvm':'enabled','build-tests':True,'egl':'enabled','gles2':'enabled','glx':'dri','gallium-drivers':['llvmpipe','softpipe','virgl','radeonsi'],'platforms':['wayland','x11']}

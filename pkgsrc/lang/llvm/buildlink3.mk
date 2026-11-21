@@ -6,12 +6,12 @@ BUILDLINK_TREE+=	llvm
 LLVM_BUILDLINK3_MK:=
 
 .include "../../mk/bsd.fast.prefs.mk"
-BUILDLINK_API_DEPENDS.llvm+=	llvm>=23.1.4
+BUILDLINK_API_DEPENDS.llvm+=	llvm>=23.1.6
 BUILDLINK_PKGSRCDIR.llvm?=	../../lang/llvm
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-BUILDLINK_API_DEPENDS.llvm+= llvm>=23.1.4nb2
-BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.4nb2
+BUILDLINK_API_DEPENDS.llvm+= llvm>=23.1.6
+BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.6
 .include "../../lang/llvm-devel/buildlink3.mk"
 .endif
 

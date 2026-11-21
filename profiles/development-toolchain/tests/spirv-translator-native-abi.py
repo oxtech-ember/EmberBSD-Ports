@@ -19,8 +19,8 @@ assert query('__ember1', 'PKGNAME') == 'spirv-llvm-translator-23.1.3nb1'
 assert query('__1', 'PKGNAME') == 'spirv-llvm-translator-23.1.3'
 assert query('__ember1', 'PKGNAME', 'OPSYS=NetBSD') == 'spirv-llvm-translator-23.1.3'
 deps = query('__ember1', 'DEPENDS')
-assert 'libcxx>=23.1.4nb1:' in deps and 'llvm>=23.1.4nb5:' in deps
-assert 'clang>=23.1.4nb12<23.2:' in query('__ember1', 'BUILD_DEPENDS')
+assert 'libcxx>=23.1.6:' in deps and 'llvm>=23.1.6nb1:' in deps
+assert 'clang>=23.1.6nb1<23.2:' in query('__ember1', 'BUILD_DEPENDS')
 assert 'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE' in query('__ember1', 'BUILD_DEFS')
 with tempfile.TemporaryDirectory() as directory:
     fixture = Path(directory)/'consumer.mk'

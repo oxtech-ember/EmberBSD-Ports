@@ -361,7 +361,7 @@ def seal_locked(args):
     require(project['version'] == '26.3.0', 'Wrong Mesa build version')
     options = {row['name']: row['value'] for row in json.loads((metadata / 'intro-buildoptions.json').read_text())}
     require(options['b_ndebug'] == 'false', 'Native tools must retain assertions')
-    require('23.1.4' in (build / 'build.ninja').read_text(), 'Native tools must use LLVM23')
+    require('23.1.6' in (build / 'build.ninja').read_text(), 'Native tools must use LLVM23')
     tools = {'mesa_clc': 'src/compiler/clc/mesa_clc', 'vtn_bindgen2': 'src/compiler/spirv/vtn_bindgen2'}
     if 'powervr' in profiles:
         tools['pco_clc'] = 'src/imagination/pco/uscgen/pco_clc'
@@ -543,7 +543,7 @@ def seal_locked(args):
             scope += ' Intel shader interfaces are bound; full Intel shader generation is a separate target build gate.'
         scope += ' No target execution.'
         host_record = '/'.join((host_policy['os'], host_policy['cpu'], host_policy['compiler_family']))
-        write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-2', mesa='26.3.0', llvm='23.1.4',
+        write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-2', mesa='26.3.0', llvm='23.1.6',
                    source=str(source), build=str(build), archive_sha256=MESA_SHA256, profiles=profiles,
                    host=host_record, host_prefix=str(prefix),
                    commands=commands, inputs=input_hashes, directory_inputs=directory_inputs,

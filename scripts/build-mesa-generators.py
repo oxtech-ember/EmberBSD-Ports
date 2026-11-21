@@ -25,7 +25,7 @@ DEPENDENCIES = (
     'py315-mako>=1.4.3', 'py315-packaging>=26.3', 'py315-yaml>=6.0.3nb1',
     'py315-lxml>=6.1.3', 'py315-rnc2rng>=2.7.0',
     'py315-rply>=0.7.8', 'py315-appdirs>=1.4.4',
-    'llvm>=23.1.4<23.1.5', 'clang>=23.1.4<23.1.5',
+    'llvm>=23.1.6<23.1.7', 'clang>=23.1.6<23.1.7',
     'spirv-headers>=1.4.363.0', 'spirv-tools>=2026.4',
     'spirv-llvm-translator>=23.1.2<23.2',
 )
@@ -303,7 +303,7 @@ def build(arguments, sdk_root):
                 return destination.resolve(strict=True)
 
             mesa_archive = fetch('mesa-26.3.0.tar.xz', graphics / 'sources.tsv')
-            require(query([tools['llvm-config'], '--version']) == '23.1.4',
+            require(query([tools['llvm-config'], '--version']) == '23.1.6',
                     'Native LLVM must match the shared Mesa dependency')
             llvm_prefix = Path(query([tools['llvm-config'], '--prefix'])).resolve(strict=True)
             require(llvm_prefix == host, 'llvm-config selects a different prefix')

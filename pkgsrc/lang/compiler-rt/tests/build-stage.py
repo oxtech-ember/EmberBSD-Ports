@@ -54,10 +54,10 @@ class BuildStage(unittest.TestCase):
             sysroot=str(self.root / 'base'), os_source='/selected/os', git='/selected/git', target='aarch64',
             phase='builtins', jobs=2, host_prefix='/native', target_prefix='/target', host_compiler_family='clang')
         self.recipe = dict(ports_revision='a'*40, files={'pkgsrc/lang/compiler-rt/files/build.py': 'b'*64})
-        self.prepared = dict(llvm_version='23.1.4', source=dict(archive='llvm-project-23.1.4.src.tar.xz', sha512='c'*128),
+        self.prepared = dict(llvm_version='23.1.6', source=dict(archive='llvm-project-23.1.6.src.tar.xz', sha512='c'*128),
                              recipe=self.recipe)
         self.context = dict(os_revision='d'*40, files={'usr/include/stdint.h': 'e'*64}, symlinks={})
-        self.compiler = dict(version='23.1.4', resource_dir='/target/lib/clang/23', binaries={
+        self.compiler = dict(version='23.1.6', resource_dir='/target/lib/clang/23', binaries={
             role: dict(selected_path='/target/bin/' + name)
             for role, name in [('cc','clang'), ('cxx','clang++'), ('ld','ld.lld'), ('ar','llvm-ar'),
                                ('ranlib','llvm-ranlib'), ('nm','llvm-nm'), ('strip','llvm-strip')]})

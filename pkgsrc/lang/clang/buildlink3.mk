@@ -8,10 +8,10 @@ CLANG_BUILDLINK3_MK:=
 .include "../../mk/bsd.fast.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-BUILDLINK_ABI_DEPENDS.clang+= clang>=23.1.4nb12
+BUILDLINK_ABI_DEPENDS.clang+= clang>=23.1.6nb1
 .endif
 
-BUILDLINK_API_DEPENDS.clang+=	clang>=23.1.4
+BUILDLINK_API_DEPENDS.clang+=	clang>=23.1.6
 BUILDLINK_PKGSRCDIR.clang?=	../../lang/clang
 
 BUILDLINK_FILES.clang+=		bin/amdgpu-arch

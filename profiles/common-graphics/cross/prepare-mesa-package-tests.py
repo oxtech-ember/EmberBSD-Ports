@@ -125,7 +125,7 @@ def main(argv):
     expected = ['llvmpipe','softpipe','virgl'] + (['v3d'] if arch == 'aarch64' else []) + (['zink'] if zink else []) + (['iris'] if iris else []) + (['radeonsi'] if radeon else [])
     require(drivers == sorted(expected) and sorted(options['platforms']) == ['wayland','x11'], 'unexpected drivers/platforms')
     ninja = (build/'build.ninja').read_text()
-    require(all(x in ninja for x in ('-DGALLIVM_USE_ORCJIT=1','-DLLVM_IS_SHARED=1','23.1.4')), 'shared LLVM ORC build required')
+    require(all(x in ninja for x in ('-DGALLIVM_USE_ORCJIT=1','-DLLVM_IS_SHARED=1','23.1.6')), 'shared LLVM ORC build required')
     inputs = [Path(__file__), owner/'mesa-render.c', owner/'run-mesa-package-tests.sh', cc, readelf, package, source/'VERSION', build/'build.ninja', build/'compile_commands.json'] + [info/n for n in ('intro-projectinfo.json','intro-buildoptions.json','intro-tests.json')]
     if iris:
         inputs.append(source / 'src/intel/decoder/tests/gentest.xml')

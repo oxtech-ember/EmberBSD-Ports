@@ -13,7 +13,7 @@ import sys
 import tempfile
 from llvm_config_validation import target_ldflags, validate_llvm_config
 
-VERSION = '23.1.4'
+VERSION = '23.1.6'
 
 
 def require(condition, message):

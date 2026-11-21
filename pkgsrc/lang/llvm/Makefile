@@ -27,7 +27,6 @@ EMBERBSD_LLVM_PKGDIR:= ${.PARSEDIR:tA}
 .include "version.mk"
 
 PKGNAME=	llvm-${LLVM_VERSION}
-PKGREVISION=	8
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -92,14 +91,11 @@ LDFLAGS.SunOS+=		-lsocket -lnsl
 
 .include "../../mk/bsd.prefs.mk"
 
-.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-PKGREVISION= 9
-.endif
-
 # The native Darwin runtime is part of the C++ ABI used by libLLVM.
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
+PKGREVISION= 1
+DEPENDS+= libcxx>=23.1.6:../../lang/libcxx
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
 
@@ -120,16 +116,8 @@ PKG_FAIL_REASON+= "The separate LLVM SDK requires a NetBSD cross build; native L
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The LLVM runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-.if defined(EMBERBSD_LLVM_DEVEL)
-PKGREVISION= 8
-.if ${PKGREVISION} != 8
-PKG_FAIL_REASON+= "The LLVM SDK requires package revision 8"
-.endif
-.else
-PKGREVISION= 6
-.if ${PKGREVISION} != 6
-PKG_FAIL_REASON+= "The LLVM runtime requires package revision 6"
-.endif
+.if ${PKGREVISION:U0} != 0
+PKG_FAIL_REASON+= "The LLVM runtime and SDK require the release package revision"
 .endif
 # Both partitions come from the same full build with native Python tools.
 PYTHON_FOR_BUILD_ONLY= tool
@@ -146,8 +134,8 @@ DEPENDS+= ${PYDEPENDENCY}
 PKG_FAIL_REASON+= "The LLVM SDK recipe must select the devel partition"
 .endif
 PLIST_SRC= ${LLVM_DEVEL_PLIST_SRC}
-DEPENDS+= llvm-${LLVM_VERSION}nb6:../../lang/llvm
-CONFLICTS+= llvm<${LLVM_VERSION}nb4
+DEPENDS+= llvm-${LLVM_VERSION}:../../lang/llvm
+CONFLICTS+= llvm<23.1.4nb4
 .else
 LLVM_PACKAGE_PART= runtime
 .if ${LLVM_PACKAGE_PART} != "runtime"

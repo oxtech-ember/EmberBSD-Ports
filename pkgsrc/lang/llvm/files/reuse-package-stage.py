@@ -48,7 +48,7 @@ def context(path):
     target, arch = value['target'], value['target']['arch']
     triple = {'aarch64': 'aarch64--netbsd', 'x86_64': 'x86_64--netbsd'}.get(arch)
     check(triple and target == dict(opsys='NetBSD', version='11.0', arch=arch, triple=triple), 'Unsupported LLVM target ABI')
-    check(value['version'] == '23.1.4', 'Unsupported LLVM source version')
+    check(value['version'] == '23.1.6', 'Unsupported LLVM source version')
     check(type(value['install_strip']) is bool, 'Explicit CMake install strip mode required')
     check(isinstance(value['flags'], dict) and value['flags'], 'Missing compile contract')
     for key in ('source', 'build', 'recipe', 'sdk_recipe'):

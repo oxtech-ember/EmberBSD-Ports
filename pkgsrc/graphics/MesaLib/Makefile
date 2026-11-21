@@ -214,7 +214,7 @@ pre-configure:
 .endif
 .if empty(PKG_OPTIONS:Msoftpipe-only)
 	${TEST} -x ${LLVM_CONFIG_PATH:Q}
-	${TEST} "$$(${LLVM_CONFIG_PATH} --version)" = 23.1.4
+	${TEST} "$$(${LLVM_CONFIG_PATH} --version)" = 23.1.6
 	${TEST} "$$(${LLVM_CONFIG_PATH} --shared-mode --link-shared)" = shared
 	${TEST} "$$(${LLVM_CONFIG_PATH} --has-rtti)" = YES
 	${LLVM_CONFIG_PATH} --link-shared --libs core executionengine orcjit native > /dev/null

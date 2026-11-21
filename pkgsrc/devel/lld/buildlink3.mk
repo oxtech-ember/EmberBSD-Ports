@@ -8,10 +8,10 @@ LLD_BUILDLINK3_MK:=
 .include "../../mk/bsd.fast.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-BUILDLINK_ABI_DEPENDS.lld+= lld>=23.1.4nb7
+BUILDLINK_ABI_DEPENDS.lld+= lld>=23.1.6nb1
 .endif
 
-BUILDLINK_API_DEPENDS.lld+=	lld>=23.1.4
+BUILDLINK_API_DEPENDS.lld+=	lld>=23.1.6
 BUILDLINK_PKGSRCDIR.lld?=	../../devel/lld
 
 .include "../../lang/llvm/buildlink3.mk"

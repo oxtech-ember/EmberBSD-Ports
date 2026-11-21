@@ -22,14 +22,14 @@ class Tests(unittest.TestCase):
         for p in (self.build / 'include/llvm/Config', self.build / 'tools/llvm-config', self.prefix / 'include/llvm/Config', self.prefix / 'lib', self.native / 'bin'): p.mkdir(parents=True)
         self.real = r / 'helper/bin/llvm-config.real'; self.real.parent.mkdir(parents=True); self.real.write_text('fixture'); self.real.chmod(0o755); self.native_triple = 'arm64-apple-darwin'
         (self.native / 'bin/llvm-config').touch()
-        for name, data in (('llvm-config.h', '#define LLVM_VERSION_STRING "23.1.4"\n'), ('abi-breaking.h', 'abi\n')):
+        for name, data in (('llvm-config.h', '#define LLVM_VERSION_STRING "23.1.6"\n'), ('abi-breaking.h', 'abi\n')):
             (self.build / 'include/llvm/Config' / name).write_text(data); (self.prefix / 'include/llvm/Config' / name).write_text(data)
-        (self.build / 'include/llvm/Config/config.h').write_text('#define PACKAGE_VERSION "23.1.4"\n')
+        (self.build / 'include/llvm/Config/config.h').write_text('#define PACKAGE_VERSION "23.1.6"\n')
         (self.build / 'tools/llvm-config/LibraryDependencies.inc').write_text('fixture')
         (self.build / 'tools/llvm-config/BuildVariables.inc').write_text('#define LLVM_OBJ_ROOT ' + json.dumps(str(self.build)) + '\n#define LLVM_CXXFLAGS "-std=c++17 -DABI=1"\n' + ''.join('#define ' + x + ' 1\n' for x in ('LLVM_ENABLE_DYLIB','LLVM_LINK_DYLIB','LLVM_HAS_RTTI')))
         self.cache = self.build / 'CMakeCache.txt'; self.cache.write_text(''.join(k+':STRING='+v+'\n' for k,v in {'CMAKE_SYSROOT':str(self.root),'CMAKE_INSTALL_PREFIX':'/usr/pkg','LLVM_ENABLE_ASSERTIONS':'OFF','LLVM_BUILD_LLVM_DYLIB':'ON','LLVM_LINK_LLVM_DYLIB':'ON','LLVM_ENABLE_RTTI':'ON'}.items()))
         self.lib = self.prefix / 'lib/libLLVM-23.so'; self.lib.write_bytes(b'fixture')
-        self.answers = {'--version':'23.1.4','--prefix':str(self.prefix),'--includedir':str(self.prefix/'include'),'--libdir':str(self.prefix/'lib'),'--has-rtti':'YES','--assertion-mode':'OFF','--shared-mode':'shared','--host-target':'x86_64-unknown-netbsd','--cxxflags':'-I'+str(self.prefix/'include')+' -std=c++17 -DABI=1','--ldflags':'-L'+str(self.prefix/'lib'),'--libfiles':str(self.lib),'--libs':'-lLLVM'}
+        self.answers = {'--version':'23.1.6','--prefix':str(self.prefix),'--includedir':str(self.prefix/'include'),'--libdir':str(self.prefix/'lib'),'--has-rtti':'YES','--assertion-mode':'OFF','--shared-mode':'shared','--host-target':'x86_64-unknown-netbsd','--cxxflags':'-I'+str(self.prefix/'include')+' -std=c++17 -DABI=1','--ldflags':'-L'+str(self.prefix/'lib'),'--libfiles':str(self.lib),'--libs':'-lLLVM'}
         def output(cmd, **kw):
             if cmd[0] == str(self.native/'bin/llvm-config'): return self.native_triple+'\n'
             if '--list' in cmd: return 'fixture loader list\n'

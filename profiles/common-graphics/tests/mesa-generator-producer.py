@@ -160,7 +160,7 @@ class ProducerTests(unittest.TestCase):
             build = Path(temporary)
             directory = build / 'meson-info'; directory.mkdir()
             metadata = directory / 'intro-compilers.json'
-            for family, version in (('gcc', '16.2.0'), ('clang', '23.1.4')):
+            for family, version in (('gcc', '16.2.0'), ('clang', '23.1.6')):
                 self.native.compiler_family = family
                 self.native.compiler = {'version': version}
                 expected = {'host': {language: {'id': family, 'version': version,

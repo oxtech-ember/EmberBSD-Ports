@@ -12,7 +12,7 @@ import subprocess
 import sys
 from llvm_config_validation import validate_llvm_config
 
-VERSION = '23.1.4'
+VERSION = '23.1.6'
 
 
 def fail(message):

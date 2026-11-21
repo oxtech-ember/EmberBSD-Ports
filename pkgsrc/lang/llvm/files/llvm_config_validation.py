@@ -8,7 +8,7 @@ import re
 import shlex
 import subprocess
 
-VERSION = '23.1.4'
+VERSION = '23.1.6'
 
 
 def require(condition, message):

@@ -36,15 +36,15 @@ def main():
         return rows
 
     native = query('darwin', 'OPSYS=Darwin', 'EMBERBSD_DARWIN_TOOL_PHASE=full')
-    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb13'
-    assert 'llvm-project-23.1.4.src/libunwind' in shlex.split(native['EXTRACT_ELEMENTS'])
+    assert native['PKGNAME'] == 'compiler-rt-23.1.6'
+    assert 'llvm-project-23.1.6.src/libunwind' in shlex.split(native['EXTRACT_ELEMENTS'])
     assert native['PATCHDIR'] == str(args.pkgsrc / 'lang/compiler-rt/patches')
-    assert native['PATCH_WRKSRC'].endswith('/llvm-project-23.1.4.src')
+    assert native['PATCH_WRKSRC'].endswith('/llvm-project-23.1.6.src')
     assert native['PATCH_STRIP'] == '-p1' and native['PKG_FAIL_REASON'] == ''
     patch_args = shlex.split(native['PATCH_ARGS'])
     assert patch_args[0:2] == ['-d', native['PATCH_WRKSRC']], patch_args
     assert {'--forward', '--quiet', '-E', '-p1'} <= set(patch_args), patch_args
-    member_name = 'llvm-project-23.1.4.src/compiler-rt/lib/builtins/comparetf2.c'
+    member_name = 'llvm-project-23.1.6.src/compiler-rt/lib/builtins/comparetf2.c'
     with tarfile.open(args.distfile, 'r:xz') as archive:
         member = archive.extractfile(member_name)
         assert member is not None, member_name

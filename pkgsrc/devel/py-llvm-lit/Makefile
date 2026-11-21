@@ -2,7 +2,6 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME= ${PYPKGPREFIX}-llvm-lit-${LLVM_VERSION}
-PKGREVISION= 1
 # The launchers have no Python ABI suffix. Install one provider.
 CONFLICTS+= py[0-9]*-llvm-lit-[0-9]*
 CATEGORIES= devel python
@@ -13,7 +12,7 @@ LICENSE= apache-2.0
 
 WRKSRC= ${WRKDIR}/${DISTNAME}/llvm/utils/lit
 EXTRACT_ELEMENTS= ${DISTNAME}/llvm/utils/lit
-WHEEL_NAME= lit-23.1.4.dev0
+WHEEL_NAME= lit-${LLVM_VERSION}.dev0
 PYTHON_VERSIONS_ACCEPTED= 315
 USE_LANGUAGES= # none
 USE_PYTEST= no

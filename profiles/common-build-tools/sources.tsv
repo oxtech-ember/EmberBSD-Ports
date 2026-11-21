@@ -41,7 +41,7 @@ sqlite-autoconf-3540100.tar.gz	926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdad
 sqlite-src-3540100.zip	387e7f6cad4797b17848c07d453dc6606917bb356a6cfe5a3abafd38c240c71b	https://sqlite.org/2026/sqlite-src-3540100.zip
 sqlite-doc-3540100.zip	e9f634ac28a4c7b48f5c389e4b08c039654ec1487512092b330ccfcfdc0816e0	https://sqlite.org/2026/sqlite-doc-3540100.zip
 pci.ids-bc2920f3fc38e42d0aecc8ce4b17d1ed034dbd70.tar.gz	78b062cdc25ca7dca9953a510dc582d1697fa71e76d2a7aa839ad571f849e098	https://github.com/pciutils/pciids/archive/bc2920f3fc38e42d0aecc8ce4b17d1ed034dbd70.tar.gz
-llvm-project-23.1.4.src.tar.xz	819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2	https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.4/llvm-project-23.1.4.src.tar.xz
+llvm-project-23.1.6.src.tar.xz	d3b86ab29cfb4445a6652e5c2642ccc75e04e38084dde3701d323320f35a31da	https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.6/llvm-project-23.1.6.src.tar.xz
 LLVM-23.1.4-macOS-ARM64.tar.xz	5d3179db39adeca5b17a34d82708fe976bc60e055b05fe557878fb3fb64d39ef	https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.4/LLVM-23.1.4-macOS-ARM64.tar.xz
 bmake-20240909.tar.gz	d4e019e26c64cc8ffcf1cae9bb04fbb13da8fa6f41fb30fd26e221f655d4e84d	https://distfiles.macports.org/bmake/bmake-20240909.tar.gz
 bmake-20260912.tar.gz	b6bd32964cbe451be2838822c9d200b7c7e76a2a5947c03feb71dc6bd72988bd	https://www.crufty.net/ftp/pub/sjg/bmake-20260912.tar.gz

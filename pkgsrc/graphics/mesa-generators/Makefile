@@ -30,9 +30,9 @@ SUBST_CLASSES+= python
 SUBST_STAGE.python= pre-configure
 SUBST_FILES.python= meson.build
 SUBST_SED.python= -e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
-BUILDLINK_API_DEPENDS.clang+= clang>=23.1.4<23.1.5
+BUILDLINK_API_DEPENDS.clang+= clang>=23.1.6<23.1.7
 .include "../../lang/clang/buildlink3.mk"
-BUILDLINK_API_DEPENDS.llvm+= llvm>=23.1.4<23.1.5
+BUILDLINK_API_DEPENDS.llvm+= llvm>=23.1.6<23.1.7
 .include "../../lang/llvm/buildlink3.mk"
 BUILDLINK_API_DEPENDS.spirv-headers+= spirv-headers>=1.4.363.0
 BUILDLINK_DEPMETHOD.spirv-headers= build

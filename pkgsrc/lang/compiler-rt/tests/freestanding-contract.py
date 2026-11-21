@@ -21,7 +21,7 @@ argparse.ArgumentParser(description=__doc__).parse_args(arguments)
 from emberbsd_sdk import host_prefix, native_checks
 from emberbsd_sdk.errors import ProcessOwnershipError, SDKError
 
-prepared = dict(llvm_version='23.1.4', source={'archive': 'shared-llvm'}, recipe={'files': {'patch': 'shared'}})
+prepared = dict(llvm_version='23.1.6', source={'archive': 'shared-llvm'}, recipe={'files': {'patch': 'shared'}})
 
 
 def refused(action, message):
@@ -41,14 +41,14 @@ with tempfile.TemporaryDirectory() as temporary:
         path = source / 'compiler-rt' / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(relative)
-    native = SimpleNamespace(compiler={'version': '23.1.4'}, path='/selected/bin',
+    native = SimpleNamespace(compiler={'version': '23.1.6'}, path='/selected/bin',
         tool=lambda role: sys.executable if role == 'python' else '/selected/bin/' + role)
     cases = (('wasm32-wasip1', 'WASI', 'wasm-ld', 'wasm32-unknown-wasip1'),
              ('riscv32-unknown-elf', 'Generic', 'elf-ld', 'riscv32-unknown-unknown-elf'))
     with patch.object(owner, 'verify_source', return_value=prepared), \
          patch.object(host_prefix, 'load_host_prefix', return_value=native) as load, \
          patch.object(native_checks, 'check_environment', side_effect=lambda *a, **k: k['environment']), \
-         patch.object(owner.process, 'capture', return_value=SimpleNamespace(stdout=b'23.1.4\n')):
+         patch.object(owner.process, 'capture', return_value=SimpleNamespace(stdout=b'23.1.6\n')):
         for target, system, linker, directory in cases:
             args = SimpleNamespace(source=str(source), git=None, host_prefix='/selected', jobs=3,
                 work=str(root / (target + '-work')), stage=str(root / (target + '-stage')))

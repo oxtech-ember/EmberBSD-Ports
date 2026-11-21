@@ -2,8 +2,6 @@
 # Compose packages from the common compiler-rt full-stage producer.
 .include "../../lang/llvm/version.mk"
 PKGNAME= ${EMBER_LLVM_CXX_COMPONENT}${EMBER_LLVM_CXX_DEVEL:D-devel}-${LLVM_VERSION}
-LLVM_CXX_RUNTIME_REVISION= 3
-PKGREVISION= ${LLVM_CXX_RUNTIME_REVISION}
 CATEGORIES= lang devel
 COMMENT= LLVM ${EMBER_LLVM_CXX_COMPONENT} target runtime
 LICENSE= apache-2.0
@@ -39,18 +37,18 @@ _LLVM_CXX_SOURCE_ARGS= --sysroot ${EMBER_LLVM_CXX_SYSROOT:Q}
 .endif
 _LLVM_CXX_ARGS= ${_LLVM_CXX_SOURCE_ARGS} --pkgsrc-root ${PKGSRCDIR:Q} --target ${_LLVM_CXX_TARGET:Q} --component ${EMBER_LLVM_CXX_COMPONENT:Q} --role ${_LLVM_CXX_ROLE:Q}
 .if ${EMBER_LLVM_CXX_COMPONENT} == "libcxxabi"
-DEPENDS+= libunwind>=${LLVM_VERSION}nb${LLVM_CXX_RUNTIME_REVISION}:../../lang/libunwind
+DEPENDS+= libunwind>=${LLVM_VERSION}:../../lang/libunwind
 .elif ${EMBER_LLVM_CXX_COMPONENT} == "libcxx"
-DEPENDS+= libcxxabi>=${LLVM_VERSION}nb${LLVM_CXX_RUNTIME_REVISION}:../../lang/libcxxabi
-DEPENDS+= libunwind>=${LLVM_VERSION}nb${LLVM_CXX_RUNTIME_REVISION}:../../lang/libunwind
+DEPENDS+= libcxxabi>=${LLVM_VERSION}:../../lang/libcxxabi
+DEPENDS+= libunwind>=${LLVM_VERSION}:../../lang/libunwind
 .endif
 .if defined(EMBER_LLVM_CXX_DEVEL)
-DEPENDS+= ${EMBER_LLVM_CXX_COMPONENT}>=${LLVM_VERSION}nb${PKGREVISION}:../../lang/${EMBER_LLVM_CXX_COMPONENT}
+DEPENDS+= ${EMBER_LLVM_CXX_COMPONENT}>=${LLVM_VERSION}:../../lang/${EMBER_LLVM_CXX_COMPONENT}
 .if ${EMBER_LLVM_CXX_COMPONENT} == "libcxx"
-DEPENDS+= libcxxabi-devel>=${LLVM_VERSION}nb${LLVM_CXX_RUNTIME_REVISION}:../../lang/libcxxabi-devel
-DEPENDS+= libunwind-devel>=${LLVM_VERSION}nb${LLVM_CXX_RUNTIME_REVISION}:../../lang/libunwind-devel
+DEPENDS+= libcxxabi-devel>=${LLVM_VERSION}:../../lang/libcxxabi-devel
+DEPENDS+= libunwind-devel>=${LLVM_VERSION}:../../lang/libunwind-devel
 .elif ${EMBER_LLVM_CXX_COMPONENT} == "libcxxabi"
-DEPENDS+= libunwind-devel>=${LLVM_VERSION}nb${LLVM_CXX_RUNTIME_REVISION}:../../lang/libunwind-devel
+DEPENDS+= libunwind-devel>=${LLVM_VERSION}:../../lang/libunwind-devel
 .endif
 .endif
 GENERATE_PLIST+= ${_LLVM_CXX_CMD} plist ${_LLVM_CXX_ARGS};

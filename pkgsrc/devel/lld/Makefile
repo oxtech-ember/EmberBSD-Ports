@@ -6,7 +6,6 @@
 EXTRACT_ELEMENTS+= ${DISTNAME}/libunwind/include
 
 PKGNAME=	lld-${LLVM_VERSION}
-PKGREVISION=	6
 CATEGORIES=	devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -31,8 +30,8 @@ post-install:
 .include "../../devel/cmake/build.mk"
 .include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 7
-BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.4nb5
+PKGREVISION= 1
+BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.6nb1
 .endif
 BUILDLINK_API_DEPENDS.llvm+=	llvm-${LLVM_VERSION}{,nb*}
 # This consumer uses LLVM llvm_setup_rpath for installed targets.

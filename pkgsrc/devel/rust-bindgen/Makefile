@@ -35,7 +35,7 @@ DEPENDS+=	rust-bin>=1.100.0:../../lang/rust-bin
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
 PKGREVISION= 3
-DEPENDS+= clang>=23.1.4nb12:../../lang/clang
+DEPENDS+= clang>=23.1.6nb1:../../lang/clang
 .else
 DEPENDS+= clang>=23.1.4:../../lang/clang
 .endif

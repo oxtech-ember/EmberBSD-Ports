@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	lldb
 .if !defined(LLDB_BUILDLINK3_MK)
 LLDB_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.lldb+=	lldb>=23.1.4
+BUILDLINK_API_DEPENDS.lldb+=	lldb>=23.1.6
 BUILDLINK_PKGSRCDIR.lldb?=	../../devel/lldb
 
 .include "../../devel/zlib/buildlink3.mk"

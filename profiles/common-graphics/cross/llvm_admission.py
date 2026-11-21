@@ -125,7 +125,7 @@ def validate(real, target_build, sysroot, native_build, runtime=None, sealed_dar
             raise ValueError('target sysroot mismatch')
         if sysroot == target_build or receipt['library_proof']['staged_library'] != str(prefix / 'lib/libLLVM-23.so') or sdk.digest(prefix / 'lib/libLLVM-23.so') != receipt['staged_library_sha256']:
             raise ValueError('relocated target library differs from sealed proof')
-    if string(defs, 'LLVM_VERSION_STRING') != '23.1.4' or string(config, 'PACKAGE_VERSION') != '23.1.4':
+    if string(defs, 'LLVM_VERSION_STRING') != '23.1.6' or string(config, 'PACKAGE_VERSION') != '23.1.6':
         raise ValueError('target LLVM version mismatch')
     if string(variables, 'LLVM_OBJ_ROOT') != str(target_build) or cache_values.get('CMAKE_INSTALL_PREFIX') != '/usr/pkg':
         raise ValueError('target build or install prefix mismatch')
@@ -146,7 +146,7 @@ def validate(real, target_build, sysroot, native_build, runtime=None, sealed_dar
     reported_libraries = shlex.split(query('--link-shared', '--libfiles', 'core'))
     if len(reported_libraries) != 1 or Path(reported_libraries[0]).resolve(strict=True) != library:
         raise ValueError('helper shared LLVM library differs from installed target')
-    expected = {'--version': '23.1.4', '--prefix': str(prefix),
+    expected = {'--version': '23.1.6', '--prefix': str(prefix),
                 '--includedir': str(prefix / 'include'), '--libdir': str(prefix / 'lib'),
                 '--has-rtti': 'YES', '--assertion-mode': cache_values['LLVM_ENABLE_ASSERTIONS'],
                 '--shared-mode': 'shared'}

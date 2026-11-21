@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	compiler-rt
 .if !defined(COMPILER_RT_BUILDLINK3_MK)
 COMPILER_RT_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.compiler-rt+=	compiler-rt>=23.1.4
+BUILDLINK_API_DEPENDS.compiler-rt+=	compiler-rt>=23.1.6
 BUILDLINK_PKGSRCDIR.compiler-rt?=	../../lang/compiler-rt
 
 .include "../../lang/llvm/buildlink3.mk"

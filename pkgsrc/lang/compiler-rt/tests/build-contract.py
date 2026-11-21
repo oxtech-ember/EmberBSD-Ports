@@ -45,7 +45,7 @@ def main():
         definition = target_definition(target)
         for phase in ('builtins', 'bootstrap', 'full'):
             command = producer.cmake_arguments(Path('/source'), Path('/work'), Path('/stage'),
-                Path('/base'), native, compiler, definition, '23.1.4', phase)
+                Path('/base'), native, compiler, definition, '23.1.6', phase)
             assert command[0] == '/native/bin/cmake'
             options = dict(item[2:].split('=', 1) for item in command if item.startswith('-D'))
             assert options['LLVM_ENABLE_PER_TARGET_RUNTIME_DIR'] == 'OFF'
