@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	callaudiod-0.1.10
+DISTNAME=	callaudiod-0.1.99
 CATEGORIES=	audio
 MASTER_SITES=	https://gitlab.com/mobian1/callaudiod/-/archive/${PKGVERSION_NOREV}/
 EXTRACT_SUFX=	.tar.gz

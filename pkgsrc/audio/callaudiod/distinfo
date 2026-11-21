@@ -1,8 +1,8 @@
 $NetBSD$
 
-BLAKE2s (callaudiod-0.1.10.tar.gz) = 49f5e1cc709a5f0cd7b768cd0e0c93bf301c56699d92e292b0c3e879b03d8898
-SHA512 (callaudiod-0.1.10.tar.gz) = de58893941b01ef4982f7204dcc62b5cb4b4a6401adfc9083a50d087dbdce7a7989a4b7947fdf65433088cd781cef4224edc9b1a3c183296559bc8e6c3916b4e
-Size (callaudiod-0.1.10.tar.gz) = 31996 bytes
+BLAKE2s (callaudiod-0.1.99.tar.gz) = 2c7b44066ff4ab6ec8274a4daa10f905f14cc5e08c2ef337bc942d098ce140fa
+SHA512 (callaudiod-0.1.99.tar.gz) = 8243189cae4ea2d37f7773eaaf1f66b80357ca2803adcaed3eb57f57fce80c13e0667f1be7bac00256318f2cc2f790c388f1d56496d22f34377c4d6a0b43e5c0
+Size (callaudiod-0.1.99.tar.gz) = 32646 bytes
 SHA1 (patch-data_meson.build) = e43620e5dda568187e077b1178830eebe53d1f7b
 SHA1 (patch-meson.build) = 3a06cf619b23304085e0b36cbb1cea88faf90726
 SHA1 (patch-meson__options.txt) = 69485020b931e48e9198be77bdefc0e778eec75f
