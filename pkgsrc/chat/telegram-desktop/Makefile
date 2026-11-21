@@ -7,12 +7,6 @@ HOMEPAGE=	https://desktop.telegram.org/
 COMMENT=	Telegram Desktop messaging client
 LICENSE=	gnu-gpl-v3
 
-# Incomplete providers and system-library selection are documented in README.md.
-# Remove this only after the graph and packaged-only consumer checks pass.
-.if !defined(TELEGRAM_API_TEST) || ${TELEGRAM_API_TEST:tl} != "yes"
-BROKEN=		Telegram Desktop dependency integration is incomplete
-.endif
-
 # Keep the client and libfido2 on the same common OpenSSL provider.
 USE_BUILTIN.openssl= no
 USE_LANGUAGES=	c c++
@@ -67,15 +61,18 @@ CMAKE_CONFIGURE_ARGS+=	-DLINUX=ON
 
 # Credentials are configured externally; the upstream test identity is never
 # enabled implicitly and is unsuitable for deployed packages.
-.if defined(TELEGRAM_API_ID) && defined(TELEGRAM_API_HASH)
-CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_API_ID=${TELEGRAM_API_ID:Q}
-CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_API_HASH=${TELEGRAM_API_HASH:Q}
-.endif
-.if defined(TELEGRAM_API_TEST) && ${TELEGRAM_API_TEST} == "yes"
+.if ${TELEGRAM_API_TEST:Uno:tl} == "yes"
 CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_API_TEST=ON
 # Upstream test credentials are restricted to local configure/build diagnostics.
 pre-install pre-package:
 	${ERROR_MSG} "TELEGRAM_API_TEST is for local diagnostics only"; ${FALSE}
+.else
+# Remove the release block after the packaged dependency graph is verified.
+BROKEN=		Telegram Desktop dependency integration is incomplete
+.  if defined(TELEGRAM_API_ID) && defined(TELEGRAM_API_HASH)
+CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_API_ID=${TELEGRAM_API_ID:Q}
+CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_API_HASH=${TELEGRAM_API_HASH:Q}
+.  endif
 .endif
 
 INSTALLATION_DIRS+= share/licenses/telegram-desktop

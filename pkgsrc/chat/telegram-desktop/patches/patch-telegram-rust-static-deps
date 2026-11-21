@@ -2,7 +2,18 @@
 # Origin: EmberBSD.
 --- cmake/external/tdesktop_rust/CMakeLists.txt.orig
 +++ cmake/external/tdesktop_rust/CMakeLists.txt
-@@ -43,6 +43,16 @@
+@@ -11,7 +11,9 @@
+ # allocator, panic hook and backtrace machinery at run time.
+ 
+-if (DESKTOP_APP_USE_PACKAGED OR LINUX)
++if (DESKTOP_APP_USE_PACKAGED)
++    find_library(DESKTOP_APP_TDESKTOP_RUST_LIBRARY tdesktop_rust REQUIRED)
++elseif (LINUX)
+     find_library(DESKTOP_APP_TDESKTOP_RUST_LIBRARY tdesktop_rust)
+     if (NOT DESKTOP_APP_TDESKTOP_RUST_LIBRARY)
+         return()
+     endif()
+@@ -43,6 +45,16 @@
      external_tdesktop_rust_native
  )
  
