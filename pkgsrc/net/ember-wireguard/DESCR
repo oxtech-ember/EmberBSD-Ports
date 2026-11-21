@@ -1,0 +1,6 @@
+ember-wireguard is a Qt 6 manager for WireGuard tunnels through wg(8) and
+wireguard-go. It lists configs from PKG_SYSCONFDIR/wireguard,
+~/.config/ember-wireguard, and ~/.config/wireguard. The window follows the
+official WireGuard client layout (list, Active/Inactive, Activate/Deactivate,
+Import, Add Empty Tunnel, Edit, Delete, public key, transfer). A setuid helper
+brings tunnels up and down on NetBSD tun(4) interfaces.

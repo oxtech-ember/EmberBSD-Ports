@@ -1,0 +1,4 @@
+@comment $NetBSD$
+bin/ember-wireguard
+libexec/ember-wireguard-ctl
+share/applications/ember-wireguard.desktop
