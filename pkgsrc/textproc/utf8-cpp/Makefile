@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.19 2026/08/24 11:09:28 adam Exp $
 
-DISTNAME=	utf8-cpp-4.2.1
+DISTNAME=	utf8-cpp-5.0.0
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=nemtrif/}
 GITHUB_PROJECT=	utfcpp

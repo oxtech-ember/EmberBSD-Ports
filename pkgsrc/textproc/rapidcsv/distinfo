@@ -1,6 +1,6 @@
 $NetBSD$
 
-BLAKE2s (rapidcsv-9.07.tar.gz) = ce125078921021ba4ad70b91342443da69e0641ba842dc89969750083d204e32
-SHA512 (rapidcsv-9.07.tar.gz) = 5fb55ecac8d3f55e6a81ee60b1f72bad1bc6d4ac51b45abacc14b3974b7cc9dd6f015db8b234d112cac1d625db542c603fff17a33765aa91aa43b9567aef696b
-Size (rapidcsv-9.07.tar.gz) = 225438 bytes
+BLAKE2s (rapidcsv-9.09.tar.gz) = 26e9e1ab240ca2dededd44df295a7fb0289c08fd3bed90df1e0fd6df7cbb92d9
+SHA512 (rapidcsv-9.09.tar.gz) = 89b2b3f42864355f58759f17aca0594ae6ef78cc6cab23c1d8bb11823b6754b75e49484b12a1cfdea86a4183d468ba2084afdb1489c049bf99be4c895a13b0ee
+Size (rapidcsv-9.09.tar.gz) = 226728 bytes
 SHA1 (patch-CMakeLists.txt) = a0dd9699e5e752ce19cb7d1e05a4a3b5717174db

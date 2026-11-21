@@ -2,4 +2,5 @@
 ${PLIST.substrings}bin/substrings.pl
 include/hyphen.h
 lib/libhyphen.la
+lib/pkgconfig/hyphen.pc
 share/hyphen/hyph_en_US.dic

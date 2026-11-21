@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.14 2025/08/25 08:35:12 wiz Exp $
 
-DISTNAME=	hyphen-2.8.9
+DISTNAME=	hyphen-2.8.10
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=hunspell/}
 GITHUB_PROJECT=	hyphen
