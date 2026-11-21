@@ -134,6 +134,22 @@ The shared context records the selected pkg_info command and its implementation.
 Each edge carries the sorted pkgsrc patterns evaluated for that consumer.
 Provenance includes `host current package database`.
 
+### Compare completed provider packages
+
+Run `python3 scripts/compare-built-providers.py BEFORE.tgz AFTER.tgz` on
+two local source-build archives to identify which installed inputs changed.
+The comparison streams the archives without unpacking or running any files.
+It checks regular-file bytes, modes, ownership, symlinks, installation
+controls and the same provider interface used for retained objects. The
+supported case is a pkgsrc target shared-library package at a single prefix.
+An unknown format or installation hook leaves compatibility unqualified.
+
+`changed_files` distinguishes a change to a generator or a static archive
+from one confined to package administration data. A result of
+`same_provider_inputs` still requires the consumer's version constraints to
+match and the ordinary producer state to refer to the actual archive.
+Distributing archives uses the signed release path.
+
 The exporter asks bmake for expanded dependency variables and loaded makefiles.
 It requires native `-dg1` variable inventory output. It queries the listed
 `FILESDIR.*` variables with `-V` to resolve shared copied-source trees.
