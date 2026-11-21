@@ -1020,6 +1020,7 @@ elif phase == 'reuse':
     if mode == 'reuse-duplicate':
         print('libgi-probe.so.1\nlibgi-probe.so.1')
     if mode == 'reused':
+        print('successful SSH diagnostic', file=sys.stderr)
         print('libgi-probe.so.1')
 elif phase == 'query':
     if mode.startswith('execute-'):

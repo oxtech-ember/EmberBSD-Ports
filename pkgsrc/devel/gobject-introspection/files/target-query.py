@@ -282,7 +282,7 @@ def query(arguments):
             output = result.stdout + result.stderr
             (work / (name + '.log')).write_bytes(output)
             require(result.returncode == 0, f'{name} failed ({result.returncode}); see {work}')
-            return output
+            return result.stdout
 
         def mapdir(path):
             require(isinstance(path, str), 'library directories must be strings')
