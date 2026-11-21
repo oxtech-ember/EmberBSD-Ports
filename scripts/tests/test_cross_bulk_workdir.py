@@ -33,6 +33,7 @@ with tempfile.TemporaryDirectory() as temp:
            '}\n')
     resolved = dict(FIXTURE_RESOLVE='ok', FIXTURE_DEPENDS='full\texpat>=2.10.0\t../../textproc/expat',
                     FIXTURE_RDEPENDS='full\texpat>=2.10.0\texpat-2.10.0')
+    current_inputs = '3' * 64
     def run(identity, current, version):
         if identity is None:
             cookie.unlink(missing_ok=True)
@@ -40,12 +41,12 @@ with tempfile.TemporaryDirectory() as temp:
             cookie.write_text(identity + '\n')
         shell = root / 'case.sh'
         shell.write_text('#!/bin/sh\nhost_python="$1"; base=fixture; version="$2"; name="$3"\n'
-                         'run="$5"; PKGSRCDIR=/ports\n'
+                         'inputs_digest="$6"; run="$5"; PKGSRCDIR=/ports\n'
                          'retire() { mv "$1" "$1.retired"; }\n'
                          'cmp() { if [ "$FIXTURE_CMP" = error ]; then echo "cmp: simulated comparison error" >&2; return 2; fi; command cmp "$@"; }\n' + bmk + fn +
                          '\nprepare_wrkdir "$4" job t/fixture USE_CROSS_COMPILE=no\n')
         return subprocess.run(['/bin/sh', str(shell), sys.executable, version, current, str(work),
-                               str(rundir)], cwd=script.parent, capture_output=True, text=True,
+                               str(rundir), current_inputs], cwd=script.parent, capture_output=True, text=True,
                               env=dict(os.environ, **resolved))
     # The function resolves the classifier alongside $0.
     (root / 'cross-bulk-workdir.py').write_bytes(classifier.read_bytes())
@@ -57,6 +58,7 @@ with tempfile.TemporaryDirectory() as temp:
     assert run(None, 'fixture-1.0nb2', '1.0').returncode == 0
     obj.write_bytes(b'object')
     before = (obj.stat().st_ino, obj.stat().st_mtime_ns)
+    (work / '.cross-bulk-start-inputs').write_text('cross-bulk-inputs-v1 ' + current_inputs + '\n')
     assert run('fixture-1.0nb1', 'fixture-1.0nb1', '1.0').returncode == 0
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     # patch-cookie records applied paths, or is empty when no patches apply.
@@ -102,7 +104,7 @@ with tempfile.TemporaryDirectory() as temp:
                  for p in css.iterdir()}
     reused = classify('cxx-rust-cssparser-0.1.0nb4', directory=css,
                       package='cxx-rust-cssparser', upstream='0.1.0')
-    assert reused.returncode == 0 and reused.stdout.strip() == 'same', reused.stderr
+    assert reused.returncode != 0 and 'no matching build-input evidence' in reused.stderr
     outside = classify('cxx-rust-cssparser-0.1.0nb5', directory=css,
                        package='cxx-rust-cssparser', upstream='0.1.0')
     assert outside.returncode != 0 and 'revision changed' in outside.stderr
@@ -251,9 +253,12 @@ with tempfile.TemporaryDirectory() as temp:
     def finish_as(mode, value):
         return record_as(mode, value, 'finish_build_inputs')
     stored = store / '.cross-bulk-inputs'
-    assert record_as('write', digest).returncode == 0 and not store.exists()
     assert finish_as('write', digest).returncode == 0 and not store.exists()
-    store.mkdir()
+    assert record_as('write', digest).returncode == 0 and not stored.exists()
+    started = store / '.cross-bulk-start-inputs'
+    assert started.read_text() == 'cross-bulk-inputs-v1 ' + digest + '\n'
+    assert finish_as('same', digest).returncode == 0 and stored.exists() and not started.exists()
+    stored.unlink()
     assert finish_as('same', digest).returncode == 0 and not stored.exists()
     assert finish_as('write', digest).returncode == 0
     assert stored.read_text() == 'cross-bulk-inputs-v1 ' + digest + '\n'

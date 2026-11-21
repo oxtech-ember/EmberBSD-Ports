@@ -49,6 +49,8 @@ with tempfile.TemporaryDirectory() as tmp:
     r = check('preserve-and-stop', 'package-revision-changed', inputs='b' * 64)
     assert r['build_inputs_match'] is False
     check('same', 'package-identity-matches', current='demo-1.0nb1', inputs=digest)
+    check('incompatible', 'build-inputs-changed', current='demo-1.0nb1', inputs='b' * 64)
+    check('preserve-and-stop', 'unknown-build-inputs', current='demo-1.0nb1')
     check('incompatible', 'upstream-version-changed', current='demo-2.0', version='2.0', inputs=digest)
     for mode in ([], ['--explain']):
         invalid = subprocess.run([sys.executable, str(classifier), *mode, str(work), 'demo', '1.0', 'demo-1.0nb2', 'invalid'], capture_output=True, text=True)

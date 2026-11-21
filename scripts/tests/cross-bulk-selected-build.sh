@@ -24,9 +24,15 @@ printf 'print(2)\n' > "$out/sdk/scripts/resolve-jobs.py"
 for p in app dep fail; do : > "$out/tree/cat/$p/Makefile"; done
 : > "$out/tree/pkgtools/pkg_install/Makefile"
 mkdir -p "$out/tree/mk"
-cat > "$out/pkg_info" <<WRAP
+cat > "$out/pkg_info" <<'WRAP'
 #!/bin/sh
-exit 1
+db=$2
+shift 2
+case "$1" in
+    -e) [ -f "$db/$2/+CONTENTS" ] || exit 1; echo "$2" ;;
+    -q) case "$3" in /*) cat "$3" ;; *) cat "$db/$3/+CONTENTS" ;; esac ;;
+    *) exit 1 ;;
+esac
 WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
@@ -54,6 +60,8 @@ while [ "\$#" -gt 0 ]; do
         VARNAME=*) varname=\${1#VARNAME=}; shift ;;
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
         USE_CROSS_COMPILE=no) cross=yes; shift ;;
+        _DEPENDS_FILE=*) depfile=\${1#*=}; shift ;;
+        _RDEPENDS_FILE=*) resolved=\${1#*=}; shift ;;
         *=*) shift ;;
         *) target=\$1; shift ;;
     esac
@@ -106,12 +114,28 @@ case "\$target" in
                 *) echo ;;
             esac
         done ;;
+    *.rdepends|*.depends)
+        : > "\$depfile"
+        : > "\$resolved"
+        if [ "\$pkg" = app ]; then
+            printf 'full\tdep>=1\t../../cat/dep\n' > "\$depfile"
+            printf 'full\tdep>=1\tdep-1.0\n' > "\$resolved"
+        fi ;;
     clean|package|replace) echo "TARGET \$target" >> "$out/targets" ;;
     package-install)
         [ -d "$out/state/build.lock" ] || echo "\$pkg" >> "$out/missing-build-lock"
         echo "TARGET \$target" >> "$out/targets"
-        mkdir -p "$out/packages/All"
-        : > "$out/packages/All/\$pkg-1.0.tgz" ;;
+        work="$out/work/cat/\$pkg"
+        mkdir -p "\$work" "$out/packages/All" "$out/target-db/\$pkg-1.0"
+        for phase in extract configure build install package; do echo "\$pkg-1.0" > "\$work/.\${phase}_done"; done
+        : > "\$work/.rdepends"
+        printf '@name %s-1.0\n' "\$pkg" > "$out/packages/All/\$pkg-1.0.tgz"
+        if [ "\$pkg" = app ]; then
+            printf 'full\tdep>=1\tdep-1.0\n' > "\$work/.rdepends"
+            echo '@pkgdep dep>=1' >> "$out/packages/All/\$pkg-1.0.tgz"
+        fi
+        cp "$out/packages/All/\$pkg-1.0.tgz" "$out/target-db/\$pkg-1.0/+CONTENTS"
+        echo OPSYS=NetBSD > "$out/target-db/\$pkg-1.0/+BUILD_INFO" ;;
     *) echo "unknown target: \$target" >&2; exit 2 ;;
 esac
 WRAP

@@ -109,6 +109,17 @@ with tempfile.TemporaryDirectory() as temp:
     edit(recipe / 'Makefile', 'PKGREVISION=\t\\\n\t10\n', 'PKGREVISION=\t${DEMO_REVISION}\n')
     assert digest(root, conf, work, revision='5') == base
 
+    # Literal runtime patterns can change package metadata with the same
+    # compile inputs only when the recipe does not consume the pattern.
+    original = (recipe / 'Makefile').read_text()
+    literal = 'DEPENDS+=\tlibfoo>=1.0:../../devel/libfoo\n'
+    for observed in ('', 'post-configure:\n\t@echo ${DEPENDS} > generated.h\n'):
+        (recipe / 'Makefile').write_text(original + literal + observed)
+        lower = digest(root, conf, work)
+        edit(recipe / 'Makefile', 'libfoo>=1.0', 'libfoo>=1.1')
+        assert (digest(root, conf, work) == lower) == (not observed)
+    (recipe / 'Makefile').write_text(original)
+
     # Generated makevars in the work directory do not count.
     (work / '.extract_makevars.mk').write_text('PKGNAME_CACHED=demo-1.0nb5\n')
     assert digest(root, conf, work, revision='5', **{
@@ -257,5 +268,27 @@ with tempfile.TemporaryDirectory() as temp:
     result = subprocess.run([sys.executable, '-B', '-E', '-S', str(script), '--pkgsrc', str(root),
                              '--names', 'PKGPATH'], input='cat/demo\n', capture_output=True, text=True)
     assert result.returncode == 1 and result.stdout == '' and 'missing variable' in result.stderr
+# A single binary may implement several driver names. Content is read once,
+# while the driver name selects its own --version output.
+import builtins
+import importlib.util
+from unittest.mock import patch
+spec = importlib.util.spec_from_file_location('bulk_inputs', script)
+bulk_inputs = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(bulk_inputs)
+with tempfile.TemporaryDirectory() as directory:
+    root = Path(directory)
+    cc = root / 'cc'
+    cc.write_text('#!/bin/sh\necho "${0##*/}"\n')
+    cc.chmod(0o700)
+    cxx = root / 'cxx'
+    cxx.symlink_to(cc)
+    with patch.object(builtins, 'open', wraps=builtins.open) as opens:
+        ids = bulk_inputs.tool_identities({'CC': str(cc), 'CXX': str(cxx), 'CPP': str(cc)}, None, directory)
+    assert len([call for call in opens.call_args_list if call.args[:2] == (str(cc.resolve()), 'rb')]) == 1
+    assert ids['CC'][1] == ids['CXX'][1] and ids['CC'][2] != ids['CXX'][2]
+    assert ids['CC'] == ids['CPP']
+    assert bulk_inputs.replace_root('-I/a/pkgsrc/mk:/a/pkgsrc/bin', '/a/pkgsrc') == '-I@PKGSRCDIR@/mk:@PKGSRCDIR@/bin'
+    assert bulk_inputs.replace_root('/a/pkgsrc-other:/usr/a/pkgsrc', '/a/pkgsrc') == '/a/pkgsrc-other:/usr/a/pkgsrc'
 print('PASS: revision-only edits keep the build-input digest; source, patch, file, recipe, '
       'infrastructure, configuration, option, toolchain and revision-dependent changes change it')

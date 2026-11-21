@@ -6,7 +6,7 @@
 # installed, installs into one package database never overlap, a failure
 # blocks its dependents transitively, a skipped dependency blocks too,
 # MAKE_JOBS shares one SDK CPU budget over concurrent packages, a second run builds only the failure
-# again without hashing the done packages, a new PKGNAME or a missing
+# again while checking the done package archives, a new PKGNAME or a missing
 # package file builds a done package again, SIGTERM lets the running
 # packages finish but starts no new one, and
 # a package gets one build run (package-install) after show-vars and clean.
@@ -23,6 +23,7 @@ if grep -Eq 'nproc|sysctl -n hw\.ncpu|getconf _NPROCESSORS_ONLN' "$ports/scripts
     exit 1
 fi
 mkdir -p "$out/tree/t" "$out/packages/All" "$out/active" "$out/work" "$out/target-db" "$out/bin"
+host_python=${CROSS_BULK_TEST_PYTHON:-$(command -v python3)}
 real_shasum=$(command -v shasum)
 # mksh can report its sleep builtin. Resolve sleep with the original PATH,
 # before the tracing wrapper is installed, to avoid recursive exec.
@@ -43,8 +44,11 @@ exec $real_shasum "\$@"
 WRAP
 cat > "$out/bin/selected-python" <<WRAP
 #!/bin/sh
-echo "\$*" >> $out/selected-python-calls
-case "\$*" in *resolve-jobs.py*) ;; *) exit 2 ;; esac
+case "\$*" in
+    *resolve-jobs.py*) echo "\$*" >> $out/selected-python-calls ;;
+    *stage-local-configure-preserve.py*) exit 0 ;; # covered in the stage fixtures
+    *) exec "$host_python" "\$@" ;;
+esac
 while [ "\$#" -gt 0 ]; do
     case "\$1" in --jobs) echo "\$2"; exit 0 ;; esac
     shift
@@ -96,6 +100,16 @@ sleep 0.3
 rmdir $out/adding-\$db
 : > "\$2/\$3"
 WRAP
+mkdir -p "$out/registrations"
+cat > "$out/pkg_info" <<WRAP
+#!/bin/sh
+case "\$1" in
+    -e) [ -f "$out/registrations/\$2" ] && echo "\$2" ;;
+    -q) case "\$3" in /*) cat "\$3" ;; *) cat "$out/registrations/\$3" ;; esac ;;
+    *) exit 1 ;;
+esac
+WRAP
+chmod +x "$out/pkg_info"
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
@@ -107,6 +121,8 @@ while [ "\$#" -gt 0 ]; do
         -C) dir=\$2; shift 2 ;;
         VARNAME=*) varname=\${1#VARNAME=}; shift ;;
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
+        _DEPENDS_FILE=*) depends=\${1#*=}; shift ;;
+        _RDEPENDS_FILE=*) rdepends=\${1#*=}; shift ;;
         NATIVE_PKG_ADD_CMD=*) add=\${1#NATIVE_PKG_ADD_CMD=}; shift ;;
         MAKE_JOBS=*) jobs=\${1#MAKE_JOBS=}; shift ;;
         *=*) shift ;;
@@ -146,7 +162,7 @@ case "\$target" in
             EMBERBSD_HOST_PYTHON) echo $out/bin/selected-python ;;
             EMBERBSD_SDK_SOURCE) echo $out/sdk ;;
             PACKAGES) echo \$out/packages ;;
-            PKG_INFO) echo false ;;
+            PKG_INFO) echo \$out/pkg_info ;;
             NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
             *) echo ;;
         esac ;;
@@ -157,16 +173,36 @@ case "\$target" in
             echo \$out/sdk
         else
             version=\$(cat \$dir/version 2> /dev/null || echo 1.0)
-            echo "\$pkg-\$version"; echo "\$out/work/\$pkg"; cat \$dir/skip 2> /dev/null || echo
-            echo "\$pkg"; echo "\$version"; echo "\$out/packages/All/\$pkg-\$version.tgz"
+            for field in \$varnames; do
+                case "\$field" in
+                    PKGNAME) echo "\$pkg-\$version" ;;
+                    WRKDIR) echo "\$out/work/\$pkg" ;;
+                    WRKOBJDIR) echo "\$out/work" ;;
+                    PKG_SKIP_REASON) cat \$dir/skip 2> /dev/null || echo ;;
+                    PKGBASE) echo "\$pkg" ;;
+                    PKGVERSION_NOREV) echo "\$version" ;;
+                    PKGFILE) echo "\$out/packages/All/\$pkg-\$version.tgz" ;;
+                    .CURDIR) echo "\$dir" ;;
+                    .MAKE.MAKEFILES) echo "\$dir/Makefile" ;;
+                    *) echo ;;
+                esac
+            done
         fi ;;
-    clean) rm -f \$out/work/\$pkg.built ;;
+    clean) rm -rf \$out/work/\$pkg \$out/work/\$pkg.built ;;
+    *.rdepends|*.depends) : > "\$depends"; : > "\$rdepends" ;;
+    _package-clean|depends-clean) : ;;
     depends) ;;
     package) work ;;
     package-install)
         work
         \$add -K \$out/target-db \$pkg || exit 1
-        echo \$pkg > \$out/packages/All/\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0).tgz ;;
+        name=\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0)
+        echo "@name \$name" > \$out/packages/All/\$name.tgz
+        cp \$out/packages/All/\$name.tgz \$out/registrations/\$name
+        mkdir -p \$out/work/\$pkg
+        echo "\$name" > \$out/work/\$pkg/.extract_done
+        : > \$out/work/\$pkg/.depends
+        : > \$out/work/\$pkg/.rdepends ;;
     *) echo "UNKNOWN \$target" >> \$out/errors; exit 1 ;;
 esac
 WRAP
@@ -317,7 +353,8 @@ reject_budget_case()
     [ ! -e "$out/budget-state/run" ] && [ ! -e "$out/budget-state/build.lock" ] ||
         fail 'invalid CPU budget created scheduler state'
 }
-calls() { grep -c -- "-C $out/tree/t/$1 " "$out/calls" || :; }
+# Count actual package-work invocations independently of read-only input queries.
+calls() { awk -v dir="$out/tree/t/$1" 'index($0,"-C " dir " ") && $NF ~ /^(clean|package-install|package|replace)$/ {n++} END {print n+0}' "$out/calls"; }
 
 newstate
 : > "$out/calls"
@@ -330,7 +367,7 @@ grep -Fq "Package worker log: $out/state/logs/t_f.worker.log" "$out/bulk.log" ||
 grep -q 'selected SDK CPU capacity=6' "$out/bulk.log" || fail 'explicit CROSS_BULK_CPUS was not preserved'
 [ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py --jobs 6" ] || fail 'explicit CROSS_BULK_CPUS did not use the shared resolver'
 max=$(sort -n "$out/concurrency" | tail -n 1)
-[ "$(calls a)" = 3 ] || fail "package a ran bmake $(calls a) times, expected show-vars, clean, package-install"
+[ "$(calls a)" = 2 ] || fail "package a ran bmake $(calls a) times, expected clean and package-install"
 [ "$max" -ge 2 ] || fail "at most $max package built at a time"
 [ "$max" -le 3 ] || fail "$max packages at once, more than CROSS_BULK_JOBS=3"
 grep -q 'MAKE_JOBS=2 ' "$out/calls" || fail 'MAKE_JOBS did not share the 6 CPU budget over 3 workers'
@@ -361,13 +398,13 @@ grep -q 'CROSS_BULK_MAKE_JOBS must be a positive number: makeconf' "$out/sentine
 : > "$out/shasum-calls"
 bulk_expected_failure
 for pkg in a b c d j; do
-    [ "$(calls $pkg)" = 1 ] || fail "done package $pkg ran bmake $(calls $pkg) times"
+    [ "$(calls $pkg)" = 0 ] || fail "done package $pkg ran bmake $(calls $pkg) times"
 done
-[ "$(calls f)" = 3 ] || fail "failed package f ran bmake $(calls f) times, expected 3"
+[ "$(calls f)" = 1 ] || fail "failed package f ran $(calls f) build targets, expected one retry"
 [ "$(calls e)" = 0 ] || fail 'blocked package e ran bmake'
-if grep -Ev '^-a 256$' "$out/shasum-calls" > "$out/package-hash-calls"; then
-    fail "done package archives hashed again: $(cat "$out/package-hash-calls")"
-fi
+for pkg in a b c d j; do
+    grep -Fq "$out/packages/All/$pkg-1.0.tgz" "$out/shasum-calls" || fail "missed archive hash: $pkg"
+done
 
 # Without an explicit override, use the selected SDK jobs resolver.
 : > "$out/selected-python-calls"
@@ -378,16 +415,17 @@ bulk_auto_cpus || rc=$?
 grep -q 'selected SDK CPU capacity=10' "$out/bulk.log" || fail "SDK resolver result was not used: $(cat "$out/bulk.log")"
 
 # A done package whose PKGNAME changed, or whose package file is gone,
-# builds again; a changed package file of a done PKGNAME does not.
+# builds again; a changed archive for the recorded PKGNAME fails integrity.
 echo 1.1 > "$out/tree/t/a/version"
 rm "$out/packages/All/c-1.0.tgz"
 echo changed > "$out/packages/All/b-1.0.tgz"
 : > "$out/calls"
 bulk_expected_failure
-[ "$(calls a)" = 3 ] || fail "package a with a new PKGNAME ran bmake $(calls a) times, expected 3"
-[ "$(calls c)" = 3 ] || fail "package c without its file ran bmake $(calls c) times, expected 3"
-[ "$(calls b)" = 1 ] || fail "package b with a changed file ran bmake $(calls b) times, expected 1"
+[ "$(calls a)" = 2 ] || fail "package a with a new PKGNAME ran bmake $(calls a) times, expected 2"
+[ "$(calls c)" = 1 ] || fail "package c without its file ran bmake $(calls c) times, expected 1"
+[ "$(calls b)" = 0 ] || fail "package b with a changed file ran bmake $(calls b) times, expected 0"
 grep -q '^t/a a-1.1 ' "$out/state/done" || fail "no record of a-1.1: $(cat "$out/state/done")"
+grep -q '^t/b archive-integrity$' "$out/state/failed" || fail 'changed archive was trusted'
 rm "$out/tree/t/a/version"
 
 # A skipped prerequisite blocks its dependent even without a failed package.

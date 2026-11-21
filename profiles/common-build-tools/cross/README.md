@@ -925,9 +925,10 @@ explains source regeneration and target script conversion.
 
 ## Revision-only changes
 
-A bulk `build` keeps a `WRKDIR` whose phase cookies name the same package, and
-stops for a `WRKDIR` of the same upstream version with another package
-revision: the objects stay for an explicit recovery. Before a package builds,
+An ordinary bulk build checks the recorded recipe and resolved provider inputs
+before it reuses a compiled stage. With the same package name, a different
+recorded recipe digest restarts this package. Missing evidence preserves the
+stage for scoped recovery. Before a package builds,
 `scripts/cross-bulk-inputs.py` makes a digest of its build inputs. The digest
 includes the makefiles that the parse read, all files in the package
 directory, the `distinfo` file, the patch and file directories, local
@@ -941,13 +942,12 @@ families, and for `CC`, `CXX`, `CPP`, `FC`, `NATIVE_CC`, `LD`, `AS`, `AR`, `NM`,
 `MESA_PORT_REVISION`. A comment on that line or next to it is part of the
 digest. A revision assignment continued over several lines with `\` is kept
 whole, so each change of it compiles the package again.
-Only a successful build that compiled its objects from a clean or empty
-`WRKDIR` writes the digest to `WRKDIR/.cross-bulk-inputs`. A bulk retry in a
-kept `WRKDIR` and every explicit stage-local run (`package-install`,
-`patch-refresh`, `buildlink-refresh`) keep a record only when it is present
-and equals the current digest; they never create or replace one. A kept
-`WRKDIR` without a record, or with another digest, therefore stops at the
-next revision change until a clean build.
+A fresh stage records its input digest in `.cross-bulk-start-inputs` before
+package compilation so that an interrupted build can resume at the same
+inputs. A successful ordinary build promotes that evidence to
+`.cross-bulk-inputs`. A changed revision can reuse completed objects with equal
+inputs. Explicit stage-local recovery never creates a completion record.
+The shared LLVM, Qtbase and ICU stages also bind the expanded pair build fields.
 
 The revision and the package name may go into package metadata without a
 change to the digest: dependency patterns (`DEPENDS`, `TOOL_DEPENDS`,
@@ -967,18 +967,28 @@ _package-clean`) and runs the stage-local metadata path of `package-install`
 the stage and packaged under the new name. The log of the package names this.
 This applies to target and native packages. A changed digest, a `WRKDIR`
 without a record (a build before this change), or changed dependency metadata
-stops the package as before and keeps the objects. A shared LLVM, Qtbase or ICU
-stage has no record. `patch-refresh` and `buildlink-refresh` remove the
-record.
+stops the package as before and keeps the objects. `patch-refresh` and `buildlink-refresh` invalidate the stage records.
 
-Dependencies are checked apart from the digest. The kept `.depends` and
-`.rdepends` lists hold the dependency patterns. A pattern with an exact
-revision changes with that revision: for example, the `MesaLib` tool
-dependency `mesa-generators-${MESA_SOURCE_VERSION}nb${MESA_PORT_REVISION}`.
-Such a change stops the package as "dependency metadata changed", as before.
-Use `>=` patterns for dependencies whose ABI did not change, and change a
-dependency revision only for a changed payload, so that a revision does not
-cascade.
+pkgsrc supplies the dependency patterns in `.depends` and the installed names
+in `.rdepends`. Ordinary target builds also retain their registered provider
+inputs. A new version of the same provider can match when it declares a
+versioned target ELF library and the registered interface and actual files agree. This includes headers, static archives,
+ELF bytes and file modes, symlinks, generators and package metadata.
+A change to an installed `*-config` script matters even if the DSO and headers
+are identical. Native tools, unknown shapes and other dependency kinds keep
+their exact registered identities. An unchanged pattern with a compatible
+provider can refresh the retained stage's package metadata. A changed provider
+with insufficient evidence preserves the stage for explicit recovery.
+
+`STATE/done` retains the public package path, full name and SHA256. An
+ordinary source-build cache hit additionally requires the matching source and
+provider digests in `STATE/source-inputs`, a newly hashed archive, and current
+runtime requirements obtained from pkgsrc. The selected `pkg_info` checks
+those requirements against the archive and its installed registration. A
+legacy row without source evidence goes through normal package preparation.
+The SDK's authenticated binary selections use their own exact installed-name
+check. A selected ready binary consumes no compile slots. Among ready source
+nodes, ties in remaining downstream chain length follow the original order.
 
 The metadata path runs the install step of the package again. A Meson
 install (`ninja install`) rebuilds outputs that are older than their inputs.
@@ -991,8 +1001,11 @@ The digest does not include files outside the pkgsrc tree that a recipe does
 not name, or the libraries that a compiler loads. When such a change requires
 new objects, add a comment on the revision line or next to it in the
 recipe: the comment changes the digest. After a manual edit in a `WRKDIR`, remove its
-`.cross-bulk-inputs`. Binary package reuse from `PACKAGES` and the package
-catalog still compares the full package name.
+`.cross-bulk-inputs`, `.cross-bulk-start-inputs` and `.cross-bulk-providers`.
+The digest normalizes pkgsrc path components and keeps external tool and SDK
+paths that may affect the result. Hard-linked driver aliases share the binary
+read within a calculation. Their separate invocation names retain their own
+version answers.
 
 To see the decision for a kept `WRKDIR` without changing it, run:
 

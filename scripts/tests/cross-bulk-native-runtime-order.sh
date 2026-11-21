@@ -39,8 +39,8 @@ esac
 for f in "$db/$base"-[0-9]*; do
     [ -e "$f" ] || continue
     have=${f##*/}; have=${have#"$base"-}
-    [ -z "$want" ] && exit 0
-    [ "$(printf '%s\n%s\n' "$want" "$have" | sort -V | tail -n 1)" = "$have" ] && exit 0
+    [ -z "$want" ] && { echo "${f##*/}"; exit 0; }
+    [ "$(printf '%s\n%s\n' "$want" "$have" | sort -V | tail -n 1)" = "$have" ] && { echo "${f##*/}"; exit 0; }
 done
 exit 1
 WRAP

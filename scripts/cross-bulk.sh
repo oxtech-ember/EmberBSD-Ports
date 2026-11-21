@@ -55,9 +55,8 @@
 # the WRKDIR as before (CROSS_BULK_TRASH=no forces that).
 #
 # A built package is recorded in STATE/done with its PKGNAME and SHA256.
-# The build skips a package whose PKGPATH and PKGNAME have a record there
-# and whose package file exists; the file is not hashed again. A new
-# PKGNAME or a missing package file builds it again.
+# Source reuse additionally checks current inputs, archive bytes, package
+# requirements and the installed registration (source_archive_current).
 # Failures go to STATE/failed. Packages with a failed dependency go to
 # STATE/blocked. Logs are in STATE/logs.
 set -eu
@@ -382,13 +381,30 @@ native_info()
 . "$(dirname "$0")/native-package-current.sh"
 
 native_current()
-{
+(
     [ -n "$1" ] || return 1
     set -f
-    if native_current_query "$1" "$2" $native_pkg_info > /dev/null; then rc=0; else rc=$?; fi
-    set +f
-    return "$rc"
-}
+    matches=$(native_current_query "$1" "$2" $native_pkg_info) || return $?
+    nc_recipe=$2 nc_node=$3
+    set -- $matches
+    [ "$#" -eq 1 ] || return 1
+    candidate=$1
+    requirements=$state/native-requirements
+    if [ ! -f "$requirements" ]; then
+        # A pre-change order has no incoming constraints. An exact recipe
+        # identity remains usable; run order to qualify a newer host tool.
+        [ "$candidate" = "$nc_recipe" ]
+        return $?
+    fi
+    patterns=$(awk -v path="$nc_node" '$1 == path {print $2}' "$requirements") || return 2
+    [ -n "$patterns" ] || return 0
+    # Multiple versions or an unidentified successful match cannot bind an
+    # installed provider to this node. pkg_info -e prints the matched names.
+    for pattern in $patterns; do
+        accepted=$($native_pkg_info -e "$pattern") || return $?
+        printf '%s\n' "$accepted" | grep -Fxq -- "$candidate" || return 1
+    done
+)
 
 # Print the PKG_SKIP_REASON of a node on the first line, then its
 # dependency nodes, one per line. A dependency of a native node that the
@@ -433,7 +449,7 @@ node_deps()
     if [ -n "$suffix" ]; then
         base=$(printf '%s\n' "$vars" | sed -n 6p) || return 1
         name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
-        if native_current "$base" "$name"; then current=yes
+        if native_current "$base" "$name" "$dir$suffix"; then current=yes
         else case $? in 1) ;; *) return 2 ;; esac; fi
     fi
     # pkgsrc resolves each dependency directory from the package that declares
@@ -490,6 +506,8 @@ node_deps()
                 print resolve(pkgdir, rel) s, pattern
             }
         }') || return 1
+    printf '%s\n' "$deps" | awk '$1 ~ /@native$/ {print $1, $2}' > "$state/$key.patterns" || return 1
+    [ "$current" != yes ] || printf '%s\n' "$dir$suffix" > "$state/$key.short"
     # A dependency is soft only when every pattern that names it is satisfied.
     soft_rows=$(set -f
         while read -r dep pattern; do
@@ -570,6 +588,8 @@ order()
     : > "$state/seen"
     : > "$q/native-pending"
     : > "$q/crossfed"
+    : > "$q/native-requirements"
+    : > "$q/short"
     target_settings=
     order_phase=target
     query_index=0
@@ -631,6 +651,7 @@ order()
             state_lock_release_safe=yes
             [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
         fi
+        : > "$q/frontier-patterns"
         while read -r path key; do
             cat "$q/$key.err" >> "$state/logs/order.err" 2>/dev/null || :
             if [ ! -f "$q/$key.deps" ]; then
@@ -644,6 +665,8 @@ order()
                 continue
             fi
             cat "$q/$key.package" >> "$state/packages.new" || return 1
+            cat "$q/$key.patterns" >> "$q/frontier-patterns" || return 1
+            [ ! -f "$q/$key.short" ] || cat "$q/$key.short" >> "$q/short"
             echo "$path $path" >> "$state/edges.new"
             sed 1d "$q/$key.deps" | while read -r dep soft; do
                 [ -n "$dep" ] || continue
@@ -659,6 +682,18 @@ order()
                 [ ! -s "$q/$key.err" ] || tail -n 5 "$q/$key.err" | sed 's/^/    /' >&2
             done < "$q/failed"
             return 1
+        fi
+        # A later consumer may constrain an already visited native package.
+        # Reopen only previously elided nodes receiving a new requirement.
+        sort -u "$q/frontier-patterns" > "$q/frontier-patterns.sorted"
+        LC_ALL=C sort -u "$q/native-requirements" "$q/frontier-patterns.sorted" > "$q/merged"
+        awk 'FILENAME == ARGV[1] {old[$0]=1; next} FILENAME == ARGV[2] {short[$1]=1; next}
+             !($0 in old) && ($1 in short) {print $1}' "$q/native-requirements" "$q/short" "$q/merged" > "$q/reopen"
+        mv "$q/merged" "$q/native-requirements" || return 1
+        if [ -s "$q/reopen" ]; then
+            awk 'FILENAME == ARGV[1] {r[$1]=1; next} !($1 in r)' "$q/reopen" "$state/seen" > "$q/seen"
+            mv "$q/seen" "$state/seen" || return 1
+            cat "$q/reopen" >> "$state/next"
         fi
         sort -u "$state/next" > "$state/queue"
     done
@@ -685,7 +720,8 @@ order()
     mv "$state/skipped.new" "$state/skipped"
     mv "$state/edges.new" "$state/edges"
     mv "$state/order.new" "$state/order"
-    mv "$state/packages.new" "$state/packages"
+    sort -u "$state/packages.new" > "$q/packages.sorted" && mv "$q/packages.sorted" "$state/packages" && rm "$state/packages.new" || return 1
+    mv "$q/native-requirements" "$state/native-requirements" || return 1
     rm -f "$state/queue" "$state/next"
     rm -rf "$q"
     [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
@@ -985,7 +1021,7 @@ retire()
 
 # The build-input digest (scripts/cross-bulk-inputs.py) of package $1 with
 # bmake arguments $2..., in inputs_digest; empty when it cannot be computed
-# or when the package uses a shared stage in this run. A work directory
+# for the selected context. A shared stage binds the matched pair fields. A work directory
 # keeps the digest of the inputs it was built from in .cross-bulk-inputs:
 # a revision-only change (nbN) with the same digest repackages the kept
 # objects instead of compiling them (see prepare_wrkdir).
@@ -998,15 +1034,18 @@ build_inputs()
     shift
     inputs_digest=
     [ -n "${host_python:-}" ] && [ -x "$host_python" ] || return 0
+    bi_fields=$build_input_names
     if [ "${bi_role:-target}" = target ]; then
         shared_pair_for_path "$bi_path" || :
         if [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ]; then
-            return 0
+            # The shared stage is reusable only in the same evaluated pair context.
+            bi_fields=$(printf '%s\n' "$shared_fields $build_input_names" |
+                awk '{ for (i=1; i<=NF; i++) if ($i != ".CURDIR" && !seen[$i]++) printf "%s ", $i } END { print ".CURDIR" }')
         fi
     fi
-    bi_vars=$(pkg_vars "$bi_path" "$build_input_names" "$@" 2>> "$log") || return 0
+    bi_vars=$(pkg_vars "$bi_path" "$bi_fields" "$@" 2>> "$log") || return 0
     bi_digest=$(printf '%s\n' "$bi_vars" | "$host_python" -B -E -S "$(dirname "$0")/cross-bulk-inputs.py" \
-        --pkgsrc "$PKGSRCDIR" --wrkdir "$wrkdir" --names "$build_input_names" 2>> "$log") || return 0
+        --pkgsrc "$PKGSRCDIR" --wrkdir "$wrkdir" --names "$bi_fields" 2>> "$log") || return 0
     case "$bi_digest" in ''|*[!0123456789abcdef]*) return 0 ;; esac
     [ "${#bi_digest}" -eq 64 ] || return 0
     inputs_digest=$bi_digest
@@ -1015,15 +1054,20 @@ build_inputs()
 # Before a build, keep or drop the build-input record of WRKDIR $1 as
 # prepare_wrkdir (or a stage-local run) decided in inputs_record. A new
 # record (write) is made only by finish_build_inputs after the package was
-# made, so a failed build leaves no record and the WRKDIR is not created
-# early.
+# made. An interrupted fresh stage retains separate start-input evidence.
 record_build_inputs()
 {
     rbi_file=$1/.cross-bulk-inputs
     case "${inputs_record:-}" in
-    write) rm -f "$rbi_file" ;;
+    write)
+        rm -f "$rbi_file"
+        if [ -n "$inputs_digest" ]; then
+            mkdir -p "$1" && printf 'cross-bulk-inputs-v1 %s\n' "$inputs_digest" > "$1/.cross-bulk-start-inputs.tmp" &&
+                mv "$1/.cross-bulk-start-inputs.tmp" "$1/.cross-bulk-start-inputs" || return 1
+        fi ;;
     same)
         # Objects built from other inputs make the record unknown.
+        if [ "${stage_local:-no}" = yes ]; then rm -f "$1/.cross-bulk-start-inputs"; fi
         if [ -z "$inputs_digest" ] || [ ! -f "$rbi_file" ] ||
             [ "$(cat "$rbi_file" 2>/dev/null)" != "cross-bulk-inputs-v1 $inputs_digest" ]; then
             rm -f "$rbi_file"
@@ -1045,11 +1089,14 @@ record_build_inputs()
 finish_build_inputs()
 {
     fbi_file=$1/.cross-bulk-inputs
-    [ "${inputs_record:-}" = write ] || return 0
+    if [ "${inputs_record:-}" != write ]; then
+        [ "${inputs_record:-}" = same ] && [ -n "$inputs_digest" ] &&
+            [ "$(cat "$1/.cross-bulk-start-inputs" 2>/dev/null)" = "cross-bulk-inputs-v1 $inputs_digest" ] || return 0
+    fi
     [ -n "$inputs_digest" ] && [ -d "$1" ] && [ ! -L "$1" ] || return 0
     if printf 'cross-bulk-inputs-v1 %s\n' "$inputs_digest" > "$fbi_file.tmp" &&
         mv "$fbi_file.tmp" "$fbi_file"; then
-        :
+        rm -f "$1/.cross-bulk-start-inputs"
     else
         rm -f "$fbi_file.tmp" "$fbi_file"
     fi
@@ -1077,8 +1124,8 @@ prepare_wrkdir()
             case $? in
             0)
                 clean=
-                if [ "$work_identity" = metadata ]; then
-                    # Only nbN changed and the recorded build inputs of the
+                if [ "$work_identity" = metadata ] || [ "${compatible_provider_change:-no}" = yes ]; then
+                    # Only package metadata changed and the recorded build inputs of the
                     # kept objects are the current ones: repackage them.
                     prepare_wrkdir_metadata=yes
                     inputs_record=keep
@@ -1165,6 +1212,22 @@ work_dependencies_current()
             ;;
         esac
     done
+    compatible_provider_change=no
+    if [ "$wdc_files" = 'depends rdepends' ] && [ -s "$wdc_work/.rdepends" ] &&
+        [ "${require_provider_inputs:-no}" = yes ] && [ ! -f "$wdc_work/.cross-bulk-providers" ] &&
+        [ "${stage_local:-no}" != yes ]; then
+        echo "$wdc_path: kept stage has no evidence for its resolved provider files" >&2
+        wdc_status=1
+    fi
+    if [ "$wdc_files" = 'depends rdepends' ] && [ -f "$wdc_work/.cross-bulk-providers" ] && [ "${stage_local:-no}" != yes ]; then
+        wdc_now=$(provider_inputs "$wdc_check.rdepends") || return 2
+        if [ "$wdc_now" != "$(cat "$wdc_work/.cross-bulk-providers")" ]; then
+            wdc_status=1
+        elif [ "$wdc_status" = 1 ]; then
+            compatible_provider_change=yes
+            wdc_status=0
+        fi
+    fi
     rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
     return "$wdc_status"
 }
@@ -1404,6 +1467,7 @@ stage_verify_locked()
 build_native()
 {
     vars_context=${build_vars_context:+$build_vars_context|native}
+    provider_role=native
     nnode=$1 key=$2 path=${1%@native}
     set -f
     set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
@@ -1450,7 +1514,7 @@ build_native()
         fi
     fi
     if [ "${stage_local:-no}" != yes ]; then
-        if native_current "$base" "$name"; then
+        if native_current "$base" "$name" "$nnode"; then
             result "$key" "done $nnode"
             return 0
         else
@@ -1478,9 +1542,9 @@ build_native()
         stage_local_metadata_changed=yes
     fi
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
-        record_build_inputs "$wrkdir" &&
         { [ "${stage_local_metadata_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" depends-clean _package-clean < /dev/null >> "$log" 2>&1; } &&
         stage_configure_preserve "$path" "$wrkdir" "$@" _AUTOMATIC=yes >> "$log" 2>&1 &&
+        record_build_inputs "$wrkdir" &&
         if [ "${package_only:-no}" = yes ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1
         elif [ "$install" = replace ]; then
@@ -1786,7 +1850,13 @@ shared_pair_restore_producer()
     producer_version=$(printf '%s\n' "$producer_vars" | sed -n 4p)
     [ "$producer_work" = "$(cat "$shared_dir/wrkdir")" ] || return 0
     [ -f "$packages/$producer_name.tgz" ] || return 0
-    awk -v p="$shared_producer" -v n="$producer_name" '$1 == p && $2 == n { ok=1; exit } END { exit !ok }' "$state/done" || return 0
+    producer_key=$(echo "$shared_producer" | tr / _)
+    [ -f "$run/$producer_key.verified-source" ] || return 0
+    read -r _ _ _ producer_providers < "$state/source-inputs/$producer_key" || return 0
+    [ -n "$producer_providers" ] && [ "$producer_providers" = "$(cat "$producer_work/.cross-bulk-providers" 2>/dev/null)" ] || return 0
+    wrkdir=$producer_work
+    build_inputs "$shared_producer"
+    [ -n "$inputs_digest" ] && [ "$(cat "$wrkdir/.cross-bulk-inputs" 2>/dev/null)" = "cross-bulk-inputs-v1 $inputs_digest" ] || return 0
     producer_build=$producer_work/.build_done
     [ ! -L "$producer_build" ] && [ -f "$producer_build" ] || return 0
     [ "$(cat "$producer_build")" = "$producer_name" ] || return 0
@@ -1852,9 +1922,122 @@ shared_pair_reset_stage()
     fi
 }
 
+# Resolve into the run directory so a pre-existing pkgsrc cookie cannot
+# silently supply yesterday's dependency list. A resolver failure gives
+# no evidence for reuse; the ordinary build retains its own diagnostics.
+resolve_source_providers()
+{
+    rs_file=$1
+    rm -f "$rs_file.depends" "$rs_file.rdepends"
+    bmk -C "$PKGSRCDIR/$path" "_DEPENDS_FILE=$rs_file.depends" "_RDEPENDS_FILE=$rs_file.rdepends" \
+        "$rs_file.rdepends" < /dev/null >> "$log" 2>&1
+}
+
+start_source_providers()
+{
+    before_providers=
+    [ "${stage_local:-no}" != yes ] && [ -n "$inputs_digest" ] || return 0
+    if [ "$inputs_record" = write ]; then
+        rm -f "$wrkdir/.cross-bulk-providers" || return 1
+        rs_file=$run/$key.before
+        resolve_source_providers "$rs_file" || return 0
+        before_providers=$(provider_inputs "$rs_file.rdepends") || { before_providers=; return 0; }
+        # New objects can resume after interruption only with this evidence.
+        printf '%s\n' "$before_providers" > "$wrkdir/.cross-bulk-providers.tmp" &&
+            mv "$wrkdir/.cross-bulk-providers.tmp" "$wrkdir/.cross-bulk-providers" || return 1
+    elif [ -f "$wrkdir/.cross-bulk-providers" ]; then
+        before_providers=$(cat "$wrkdir/.cross-bulk-providers") || return 1
+    fi
+}
+
+archive_metadata_matches()
+(
+    set -f
+    "$host_python" -B -E -S "$(dirname "$0")/cross-bulk-archive.py" "$package_file" "$name" "$1" \
+        $target_pkg_info >> "$log" 2>&1
+)
+
+# Authenticate the ordinary local source-build fast path independently of
+# an SDK selection. Keep STATE/done's public three-column format. A receipt
+# is only written for objects produced by known inputs and owned pkgsrc's
+# actual dependency resolution. Old rows enter normal preparation once.
+source_archive_current()
+{
+    [ -f "$package_file" ] || return 1
+    sac_record=$state/source-inputs/$key
+    [ -f "$sac_record" ] && read -r sac_name sac_archive sac_recipe sac_deps < "$sac_record" || return 1
+    [ "$sac_name" = "$name" ] || return 1
+    awk -v p="$path" -v n="$name" -v h="$sac_archive" '
+        $1 == p { ok = ($2 == n && $3 == h) } END { exit !ok }' "$state/done" || return 1
+    sac_actual=$(shasum -a 256 "$package_file") || return 1
+    if [ "${sac_actual%% *}" != "$sac_archive" ]; then
+        echo "$path: archive differs from the recorded SHA256: $package_file" >> "$log"
+        return 2
+    fi
+    [ -n "$inputs_digest" ] && [ "$sac_recipe" = "$inputs_digest" ] || return 1
+    set -f
+    $target_pkg_info -e "$name" > /dev/null || { set +f; return 1; }
+    set +f
+    sac_check=$run/$key.current
+    resolve_source_providers "$sac_check" || return 1
+    sac_actual=$(provider_inputs "$sac_check.rdepends") || return 1
+    [ "$sac_actual" = "$sac_deps" ] || return 1
+    archive_metadata_matches "$sac_check.rdepends" || return 1
+}
+
+provider_inputs()
+{
+    set -- "$1" "$target_database" "$native_database" --cache "$run/provider-cache"
+    [ "${provider_role:-target}" != native ] || set -- "$@" --native
+    "$host_python" -B -E -S "$(dirname "$0")/cross_bulk_provider.py" "$@"
+}
+
+record_source_archive()
+{
+    [ -n "$inputs_digest" ] && [ -f "$wrkdir/.rdepends" ] &&
+        [ "$(cat "$wrkdir/.cross-bulk-inputs" 2>/dev/null)" = "cross-bulk-inputs-v1 $inputs_digest" ] || return 0
+    [ -n "${before_providers:-}" ] || return 0
+    rsa_deps=$(provider_inputs "$wrkdir/.rdepends") || return 1
+    if [ "$before_providers" != "$rsa_deps" ]; then
+        rm -f "$wrkdir/.cross-bulk-inputs"
+        echo "$path: resolved provider inputs changed during the build" >> "$log"
+        return 1
+    fi
+    # Record only the ordinary installed result that the next pass can validate.
+    archive_metadata_matches "$wrkdir/.rdepends" || return 1
+    mkdir -p "$state/source-inputs" &&
+        printf '%s %s %s %s\n' "$name" "$package_sha" "$inputs_digest" "$rsa_deps" > "$state/source-inputs/$key.tmp" &&
+        mv "$state/source-inputs/$key.tmp" "$state/source-inputs/$key"
+}
+
+# A signed SDK selection is checked at the ready frontier, after all its
+# providers finished. Such a node does not reserve CPU slots. The same
+# predicate handles builds initiated without the scheduler.
+selected_binary_installed()
+{
+    [ -n "${CROSS_BULK_BINARY_INSTALLED:-}" ] || return 1
+    awk -v p="$1" -v n="$2" '$1 == p && $2 == n { found=1 } END { exit !found }' "$CROSS_BULK_BINARY_INSTALLED" || return 1
+    set -f
+    $target_pkg_info -e "$2" > /dev/null
+}
+
+ready_binary()
+(
+    rb_path=$1
+    case "$rb_path" in *@native) return 1 ;; esac
+    awk -v p="$rb_path" '$1 == p {found=1} END {exit !found}' "$CROSS_BULK_BINARY_INSTALLED" || return 1
+    vars_context=${build_vars_context:+$build_vars_context|target}
+    rb_vars=$(pkg_vars "$rb_path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR') || return 1
+    rb_work=$(printf '%s\n' "$rb_vars" | sed -n 2p)
+    rb_skip=$(printf '%s\n' "$rb_vars" | sed -n 3p)
+    [ -z "$rb_skip" ] && stage_verify_locked "$rb_work" || return 1
+    selected_binary_installed "$rb_path" "$(printf '%s\n' "$rb_vars" | sed -n 1p)"
+)
+
 build_one()
 {
     vars_context=${build_vars_context:+$build_vars_context|target}
+    provider_role=target
     path=$1
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
@@ -1913,21 +2096,21 @@ build_one()
     fi
     # The SDK supplies only authenticated catalog selections. Recheck the
     # exact name in pkgdb; ordinary source builds retain their existing policy.
-    if [ "${stage_local:-no}" != yes ] && [ -n "${CROSS_BULK_BINARY_INSTALLED:-}" ] &&
-        awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1 } END { exit !f }' "$CROSS_BULK_BINARY_INSTALLED"; then
-        set -f
-        if $target_pkg_info -e "$name" > /dev/null 2>&1; then
-            set +f
-            result "$key" "done $path"
-            return 0
-        fi
-        set +f
-    fi
-    if [ "${stage_local:-no}" != yes ] && [ -f "$package_file" ] &&
-        awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1; exit } END { exit !f }' "$state/done"; then
-        shared_pair_retire_producer "$path"
+    if [ "${stage_local:-no}" != yes ] && (selected_binary_installed "$path" "$name"); then
         result "$key" "done $path"
         return 0
+    fi
+    if [ "${stage_local:-no}" != yes ]; then
+        build_inputs "$path"
+        if (source_archive_current); then
+            : > "$run/$key.verified-source"
+            shared_pair_retire_producer "$path"
+            result "$key" "done $path"
+            return 0
+        elif [ "$?" = 2 ]; then
+            result "$key" "failed $path archive-integrity"
+            return 0
+        fi
     fi
     [ "${stage_local:-no}" = yes ] || : > "$log"
     if [ "${stage_local:-no}" != yes ] && ! shared_pair_restore_producer "$path"; then
@@ -1937,10 +2120,11 @@ build_one()
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
-        build_inputs "$path"
+        require_provider_inputs=yes
         prepare_wrkdir "$wrkdir" "$job.$key" "$path" || { result "$key" "failed $path ${prepare_wrkdir_error:-incompatible-workdir}"; return 0; }
     fi
-    if [ "$prepare_wrkdir_metadata" = yes ]; then
+    if [ "$prepare_wrkdir_metadata" = yes ] || { [ "${stage_local:-no}" != yes ] && [ -f "$package_file" ] &&
+        [ -z "$clean" ] && [ "$inputs_record" != write ]; }; then
         # The same stage-local metadata path as an explicit package-install.
         echo "$path: only the package revision changed and the recorded build inputs match; repackaging $name from the kept WRKDIR without compiling" >> "$log"
         if ! bmk -C "$PKGSRCDIR/$path" depends-clean _package-clean < /dev/null >> "$log" 2>&1; then
@@ -1967,8 +2151,8 @@ build_one()
     fi
     set +f
     { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
-        record_build_inputs "$wrkdir" &&
         stage_configure_preserve_target "$path" "$wrkdir" >> "$log" 2>&1 &&
+        record_build_inputs "$wrkdir" && start_source_providers &&
         target_install "$path" $install >> "$log" 2>&1 &&
         { [ -z "$replace" ] || if [ "${stage_local:-no}" = yes ]; then
             target_install "$path" replace >> "$log" 2>&1
@@ -1997,7 +2181,10 @@ build_one()
             result "$key" "failed $path package-hash"
             return 0
         fi
-        [ "${stage_local:-no}" = yes ] || finish_build_inputs "$wrkdir"
+        if [ "${stage_local:-no}" != yes ]; then
+            finish_build_inputs "$wrkdir"
+            record_source_archive || { result "$key" "failed $path source-input-record"; return 0; }
+        fi
         shared_pair_producer_succeeded "$path"
         if ! shared_pair_ready "$path"; then
             [ "${stage_local:-no}" = yes ] || clean_success
@@ -2108,7 +2295,7 @@ package_install_one()
     if [ "$mode" = buildlink-refresh ]; then
         : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
         # Changed links leave the recorded build inputs unknown.
-        rm -f "$CROSS_BULK_LOCKED_WORK/.cross-bulk-inputs"
+        rm -f "$CROSS_BULK_LOCKED_WORK/.cross-bulk-inputs" "$CROSS_BULK_LOCKED_WORK/.cross-bulk-start-inputs" "$CROSS_BULK_LOCKED_WORK/.cross-bulk-providers"
         : "${CROSS_BULK_BUILDLINK_PROVIDER:?Select a buildlink provider}"
         set -- --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
             --expected-work "$CROSS_BULK_LOCKED_WORK" --provider "$CROSS_BULK_BUILDLINK_PROVIDER"
@@ -2126,7 +2313,7 @@ package_install_one()
     if [ "$mode" = patch-refresh ]; then
         : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
         # Refreshed sources leave the recorded build inputs unknown.
-        rm -f "$CROSS_BULK_LOCKED_WORK/.cross-bulk-inputs"
+        rm -f "$CROSS_BULK_LOCKED_WORK/.cross-bulk-inputs" "$CROSS_BULK_LOCKED_WORK/.cross-bulk-start-inputs" "$CROSS_BULK_LOCKED_WORK/.cross-bulk-providers"
         set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
             --expected-work "$CROSS_BULK_LOCKED_WORK"
         if [ "$role" = native ]; then
@@ -2276,6 +2463,24 @@ package_install_one()
     [ "$stop" = 0 ] || return 143
 }
 
+# Rank ready nodes by the length of their longest remaining downstream
+# chain. The original topological order breaks ties. This only changes
+# dispatch priority; ready() still checks every dependency and failure.
+dispatch_order()
+{
+    awk 'FILENAME == ARGV[1] { if ($1 != $2) children[$1] = children[$1] " " $2; next }
+         { node[++n] = $1 }
+         END {
+             for (i=n; i>0; i--) {
+                 p=node[i]; k=split(children[p], deps, " ")
+                 for (j=1; j<=k; j++) if (deps[j] != "" && depth[deps[j]] + 1 > depth[p])
+                     depth[p] = depth[deps[j]] + 1
+                 print depth[p]+0, i, p
+             }
+         }' "$state/edges" "$state/order" | LC_ALL=C sort -k1,1nr -k2,2n | awk '{print $3}'
+}
+
+
 # Print "R PATH" for up to $1 packages whose dependencies are all done and
 # "B PATH DEP" for packages with a failed, blocked or skipped dependency.
 ready()
@@ -2298,7 +2503,7 @@ ready()
                 if (bad != "") { print "B", p, bad; st[p] = "blocked"; continue }
                 if (!wait && started < max) { print "R", p; started++; st[p] = "running" }
             }
-        }' "$run/status" "$state/edges" "$state/order"
+        }' "$run/status" "$state/edges" "$run/dispatch-order"
 }
 
 build()
@@ -2370,6 +2575,8 @@ build()
             vars_cache=
         fi
     fi
+    target_database=$(var pkgtools/pkg_install _PKG_DBDIR) || return 1
+    native_database=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" USE_CROSS_COMPILE=no show-var VARNAME=_HOST_PKG_DBDIR) || return 1
     shared_pairs_configure
     trash_init
     deleter_pid=
@@ -2399,6 +2606,7 @@ build()
         echo "Default MAKE_JOBS shares the $cpus CPU budget across ready packages"
     fi
     [ -z "$link_args" ] || echo "Heavy links through $CROSS_BULK_LINK_LAUNCHER"
+    dispatch_order > "$run/dispatch-order" || return 1
     stop=0
     trap 'stop=1' TERM INT HUP
     running=0
@@ -2465,6 +2673,18 @@ build()
         elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ] && [ "$replacing" = 0 ] && [ "$waiting" = 0 ]; then
             changed=0
             ready $((workers - running)) > "$run/ready"
+            if [ -n "${CROSS_BULK_BINARY_INSTALLED:-}" ]; then
+                # Recompute the ready frontier after satisfying verified nodes,
+                # before dividing MAKE_JOBS among remaining source builds.
+                binary_progress=no
+                while read -r kind path dep; do
+                    if [ "$kind" = R ] && ready_binary "$path"; then
+                        echo "$path done" >> "$run/status"
+                        binary_progress=yes
+                    fi
+                done < "$run/ready"
+                if [ "$binary_progress" = yes ]; then changed=1; continue; fi
+            fi
             ready_left=$(awk '$1 == "R" { n++ } END { print n + 0 }' "$run/ready")
             while read -r kind path dep; do
                 if [ "$kind" = B ]; then
@@ -2503,8 +2723,8 @@ build()
                         make_jobs=$worker_make_jobs
                         node=$path
                         reported=
+                        trap '[ -n "$reported" ] || result "$budget_key" "failed $node build"' EXIT
                         build_one "$node"
-                        [ -n "$reported" ] || result "$(echo "$node" | tr / _)" "failed $node build"
                     ) < /dev/null > "$worker_log" 2>&1 &
                     poll_delay=0.05
                 fi

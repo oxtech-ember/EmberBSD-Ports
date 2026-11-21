@@ -233,7 +233,10 @@ def revision_sensitive(lines, recipe_files, names, mk_text):
     return False
 
 
-def normalized(text, names):
+LITERAL_RUNTIME_DEP = re.compile(r'^(\s*DEPENDS\s*\+?=\s*)([A-Za-z0-9_+.-]+(?:[<>=]+[A-Za-z0-9_.+-]+)+|[A-Za-z0-9_+.-]+-[0-9][A-Za-z0-9_.+-]*)(:\.\./\.\./[A-Za-z0-9_+.-]+/[A-Za-z0-9_+.-]+)(\s*)$')
+
+
+def normalized(text, names, independent_depends=False):
     """The text with the bare number of each revision assignment replaced.
 
     Only an integer value on a single-line assignment to a name in names is
@@ -241,6 +244,10 @@ def normalized(text, names):
     so that a comment that names a rebuild reason changes the digest."""
     kept = []
     for line in logical_lines(text):
+        if independent_depends:
+            dependency = LITERAL_RUNTIME_DEP.fullmatch(line)
+            if dependency:
+                line = dependency[1] + '@PKGDEP@' + dependency[3] + dependency[4]
         match = REVISION_NUMBER.match(line)
         if match and match.group(2) in names and '\n' not in line:
             line = match.group(1) + '@REVISION@' + match.group(4)
@@ -256,6 +263,14 @@ def inside(path, root):
         return False
 
 
+def replace_root(value, *roots):
+    """Normalize real pkgsrc path components, including compiler search flags."""
+    for root in sorted(set(roots), key=len, reverse=True):
+        boundary = r"(^|(?<=[=:\s,'\"])|(?<=-I)|(?<=-L)|(?<=-B))"
+        value = re.sub(boundary + re.escape(root) + r"(?=/|$|[\s:,'\"])", TOKEN, value)
+    return value
+
+
 def tool_identities(values, work, root):
     """The identity of each compiler that the build uses: its resolved path,
     the SHA256 of the program and its --version answer. A rebuilt or
@@ -266,6 +281,8 @@ def tool_identities(values, work, root):
     if values.get('EMBERBSD_CROSS_TOOLS'):
         directories.append(os.path.join(values['EMBERBSD_CROSS_TOOLS'], 'bin'))
     tools = {}
+    binary_digests = {}
+    versions = {}
     for name in TOOL_VARIABLES:
         words = values.get(name, '').split()
         if not words:
@@ -276,16 +293,29 @@ def tool_identities(values, work, root):
             tools[name] = ['missing', program]
             continue
         real = os.path.realpath(found)
-        digest = hashlib.sha256()
-        with open(real, 'rb') as stream:
-            for block in iter(lambda: stream.read(1 << 20), b''):
-                digest.update(block)
-        try:
-            answer = subprocess.run([found, '--version'], stdin=subprocess.DEVNULL, capture_output=True,
-                                    timeout=60).stdout.decode('utf-8', 'replace')
-        except (OSError, subprocess.SubprocessError):
-            answer = ''
-        tools[name] = [real.replace(root, TOKEN), digest.hexdigest(), answer.replace(root, TOKEN)]
+        before = os.stat(found)
+        identity = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns)
+        if identity not in binary_digests:
+            digest = hashlib.sha256()
+            with open(real, 'rb') as stream:
+                for block in iter(lambda: stream.read(1 << 20), b''):
+                    digest.update(block)
+            binary_digests[identity] = digest.hexdigest()
+        # A multicall compiler can report different versions when invoked
+        # via another driver name. Only identical invocations share answers.
+        invocation = (found, identity)
+        if invocation not in versions:
+            try:
+                result = subprocess.run([found, '--version'], stdin=subprocess.DEVNULL, capture_output=True,
+                                        timeout=60)
+                versions[invocation] = result.stdout.decode('utf-8', 'replace')
+            except (OSError, subprocess.SubprocessError):
+                versions[invocation] = ''
+        after = os.stat(found)
+        if identity != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+            raise InputError('compiler changed during input inspection: ' + found)
+        tools[name] = [replace_root(real, root), binary_digests[identity],
+                       replace_root(versions[invocation], root)]
     return tools
 
 
@@ -358,6 +388,12 @@ def digest_inputs(pkgsrc, wrkdir, values):
     mk_text = '\n'.join(texts[name] for name in infrastructure)
     recipe_files = [name for name in texts if name not in infrastructure]
     sensitive = revision_sensitive(lines, recipe_files, names, mk_text)
+    # A plain, literal runtime requirement is independently checked by
+    # pkgsrc's resolver and against the archive. Keep its full spelling if
+    # any recipe code reads DEPENDS (including commands and .export).
+    independent_depends = not any(
+        re.search(r'\bDEPENDS\b', line) and not LITERAL_RUNTIME_DEP.fullmatch(line)
+        for filename in recipe_files for line in logical_lines(texts[filename]))
     # When the revision reaches the build, the helpers stay in the text and
     # the package name is part of the digest.
     stripped = names if not sensitive else {'PKGREVISION'}
@@ -369,7 +405,7 @@ def digest_inputs(pkgsrc, wrkdir, values):
             records.append([key, 'missing'])
             continue
         if name in texts:
-            data = normalized(texts[name], stripped).encode('utf-8', 'surrogateescape')
+            data = normalized(texts[name], stripped, independent_depends and name in recipe_files).encode('utf-8', 'surrogateescape')
         else:
             data = path.read_bytes()
         records.append([key, hashlib.sha256(data).hexdigest()])
@@ -383,7 +419,7 @@ def digest_inputs(pkgsrc, wrkdir, values):
                              if not (work is not None and entry and inside(Path(entry).resolve(), work)))
         # The given root may name the resolved one through a symbolic link
         # (/var and /private/var on macOS).
-        variables[name] = value.replace(root, TOKEN).replace(given, TOKEN)
+        variables[name] = replace_root(value, root, given)
     document = {'schema': SCHEMA, 'files': records, 'variables': variables,
                 'revision_variables': sorted(stripped),
                 'tools': tool_identities(values, work, root)}

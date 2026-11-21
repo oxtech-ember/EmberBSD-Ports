@@ -19,8 +19,8 @@ case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 for p in t/a s/sqlite3 c/clang m/m4 d/tclsh e/cmake; do mkdir -p "$out/tree/$p"; done
 mkdir -p "$out/packages/All" "$out/work/sqlite3/native" "$out/native-db" "$out/vars" "$out/sdk/scripts"
-printf "sqlite3-3.54.1nb1\n" > "$out/work/sqlite3/native/.extract_done"
-printf object > "$out/work/sqlite3/native/kept.o"
+ln -s "${CROSS_BULK_TEST_SDK_SOURCE:?set selected SDK source}/src" "$out/sdk/src"
+rmdir "$out/work/sqlite3/native"
 printf "print(1)\n" > "$out/sdk/scripts/resolve-jobs.py"
 : > "$out/native-db/sqlite3-3.54.1"
 : > "$out/native-db/clang-23.1.4nb11"
@@ -42,14 +42,15 @@ cat > "$out/pkg_info" <<'WRAP'
 #!/bin/sh
 db=$2 pattern=$4
 case "$pattern" in
+    clang-23.1.4nb9) [ -f "$db/$pattern" ] || exit 1; echo "$pattern"; exit 0 ;;
     *'>='*) base=${pattern%%>=*} want=${pattern#*>=} ;;
     *) base=$pattern want= ;;
 esac
 for f in "$db/$base"-[0-9]*; do
     [ -e "$f" ] || continue
     have=${f##*/}; have=${have#"$base"-}
-    [ -z "$want" ] && exit 0
-    [ "$(printf '%s\n%s\n' "$want" "$have" | sort -V | tail -n 1)" = "$have" ] && exit 0
+    [ -z "$want" ] && { echo "${f##*/}"; exit 0; }
+    [ "$(printf '%s\n%s\n' "$want" "$have" | sort -V | tail -n 1)" = "$have" ] && { echo "${f##*/}"; exit 0; }
 done
 exit 1
 WRAP
@@ -73,6 +74,8 @@ value() {
     case "\$1" in
         PKGBASE) sed 's/-[0-9][^-]*\$//' \$out/vars/\$pkg.\$mode.PKGNAME ;;
         WRKDIR) echo \$out/work/\$pkg/\$mode ;;
+        WRKOBJDIR) echo \$out/work ;;
+        PKGFILE) echo \$out/packages/All/\$(cat \$out/vars/\$pkg.\$mode.PKGNAME).tgz ;;
         PKGVERSION_NOREV) sed -E 's/^.*-([0-9][^n]*)(nb[0-9]+)?$/\1/' \$out/vars/\$pkg.\$mode.PKGNAME ;;
         EMBERBSD_HOST_PYTHON) echo "${TEST_PYTHON:?}" ;;
         EMBERBSD_SDK_SOURCE) echo "\$out/sdk" ;;
@@ -125,5 +128,10 @@ grep -q '/s/sqlite3 .* replace' "$out/calls" || fail 'sqlite3 was not replaced w
 [ -e "$out/native-db/clang-23.1.4nb11" ] || fail 'the newer native clang was replaced'
 ! grep -Eq '/(c/clang|m/m4) .* (install|replace)' "$out/calls" || fail 'a current native node was built'
 grep -q '^s/sqlite3@native ' "$out/state/done" || fail "s/sqlite3@native not done: $(cat "$out/state/done")"
-[ -f "$out/work/sqlite3/native/kept.o" ] || fail "retry discarded compatible object"
-echo 'PASS: native version selection and compatible retry'
+# A second consumer adds a stricter incoming requirement after the loose
+# root. Its installed newer clang must no longer elide clang's build tools.
+v a target TOOL_DEPENDS 'clang>=23.1.4nb9:../../c/clang tclsh>=1:../../d/tclsh'
+v tclsh native DEPENDS 'clang-23.1.4nb9:../../c/clang'
+bulk order "$out/list" "$out/state" > "$out/exact-order.log" 2>&1 || fail "$(cat "$out/exact-order.log")"
+grep -qx 'e/cmake@native c/clang@native' "$out/state/edges" || fail 'late exact constraint did not reopen clang'
+echo 'PASS: native selection preserves satisfied tools and reopens late exact dependencies'

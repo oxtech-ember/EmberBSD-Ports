@@ -35,9 +35,14 @@ setup()
     : > "$case_out/tree/pkgtools/pkg_install/Makefile"
     # This fixture tests stage handoff, not the separately tested metadata guard.
     printf '%s\n' 'import sys' 'sys.exit(0)' > "$case_out/tree/mk/package/repackage-metadata-check.py"
+    mkdir -p "$case_out/db"
     cat > "$case_out/pkg_info" <<'WRAP'
 #!/bin/sh
-exit 1
+case "$1" in
+    -e) [ -f "$FAKE_OUT/db/$2" ] && echo "$2" ;;
+    -q) case "$3" in /*) cat "$3" ;; *) cat "$FAKE_OUT/db/$3" ;; esac ;;
+    *) exit 1 ;;
+esac
 WRAP
     cat > "$case_out/pkg_add" <<'WRAP'
 #!/bin/sh
@@ -57,6 +62,8 @@ while [ "$#" -gt 0 ]; do
         VARNAME=*) varname=${1#VARNAME=}; shift ;;
         VARNAMES=*) varnames=${1#VARNAMES=}; shift ;;
         PACKAGES=*) packages=${1#PACKAGES=}; shift ;;
+        _DEPENDS_FILE=*) depends=${1#*=}; shift ;;
+        _RDEPENDS_FILE=*) rdepends=${1#*=}; shift ;;
         WRKDIR=*) work_override=${1#WRKDIR=}; shift ;;
         EMBERBSD_LLVM_SHARED_STAGE=*|EMBERBSD_QTBASE_SHARED_STAGE=*|EMBERBSD_ICU_SHARED_STAGE=*) shared=${1#*=}; shift ;;
         *=*) shift ;;
@@ -114,6 +121,8 @@ case "$target" in
                 *) echo shared ;;
             esac
         done ;;
+    *.rdepends|*.depends) : > "$depends"; : > "$rdepends" ;;
+    depends-clean) rm -f "$work/.depends" "$work/.rdepends" ;;
     clean)
         echo "clean:$pkg" >> "$out/calls"
         rm -rf "$work" ;;
@@ -150,7 +159,13 @@ case "$target" in
         if [ "$dir" = "$out/tree/$consumer" ] && [ "${FAKE_DEVEL_FAIL:-no}" = yes ]; then exit 1; fi
         mkdir -p "$work" "$packages/All"
         : > "$work/built"
-        [ "$target" = stage-install ] || : > "$packages/All/$name.tgz" ;;
+        if [ "$target" != stage-install ]; then
+            for phase in extract configure build; do echo "$name" > "$work/.${phase}_done"; done
+            : > "$work/.depends"
+            : > "$work/.rdepends"
+            echo "@name $name" > "$packages/All/$name.tgz"
+            [ "$target" != package-install ] || cp "$packages/All/$name.tgz" "$out/db/$name"
+        fi ;;
     *) echo "unknown target $target" >&2; exit 2 ;;
 esac
 WRAP
@@ -179,9 +194,6 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 success=$out/success
 setup "$success"
-mkdir -p "$success/work/$producer_dir/.${pair}-shared-full-stage"
-: > "$success/work/$producer_dir/.${pair}-shared-full-stage/stale"
-printf '%s\n' "$producer_name" > "$success/work/$producer_dir/.extract_done"
 run_build "$success" || fail "matching inputs: $(cat "$success/build.log")"
 grep -q "^package-install:$producer_dir:shared$" "$success/calls" || fail 'producer did not receive shared-stage path'
 grep -q "^package-install:$consumer_dir:shared$" "$success/calls" || fail 'consumer did not consume producer shared stage'
@@ -224,16 +236,26 @@ setup "$cached"
 : > "$cached/packages/All/$producer_name.tgz"
 printf '%s\n' "$producer $producer_name cached" > "$cached/state/done"
 FAKE_MISMATCH=no FAKE_DEVEL_FAIL=no run_build "$cached" || fail "cached runtime fallback: $(cat "$cached/build.log")"
-if grep -q ':shared$' "$cached/calls"; then fail 'cached runtime without current-run stage was reused'; fi
-grep -q "^package-install:$consumer_dir$" "$cached/calls" || fail 'cached producer consumer did not fall back to its regular build'
+grep -q "^package-install:$producer_dir:shared$" "$cached/calls" || fail 'legacy row skipped the ordinary producer'
+grep -q "^package-install:$consumer_dir:shared$" "$cached/calls" || fail 'consumer missed freshly rebuilt producer'
+
+# Create prior evidence by completing the ordinary two-package flow under
+# both stage locks. Keep the devel archive absent to exercise its handoff.
+retained_producer()
+{
+    CLEAN_SUCCESS=no run_build "$1" || fail "ordinary build: $(cat "$1/build.log")"
+    [ -s "$1/state/source-inputs/$(echo "$producer" | tr / _)" ] || fail 'no recorded producer proof'
+    rm "$1/packages/All/$consumer_name.tgz"
+    rm -r "$1/work/$producer_dir/.${pair}-shared-full-stage" "$1/work/$consumer_dir"
+    : > "$1/calls"
+}
 
 # A completed producer from an earlier run keeps compatible objects, but its
 # old run-scoped handoff is gone. Restore only the full install stage.
 for stage_kind in missing stale; do
 cached_build=$out/cached-runtime-with-build-$stage_kind
 setup "$cached_build"
-: > "$cached_build/packages/All/$producer_name.tgz"
-printf '%s\n' "$producer $producer_name cached" > "$cached_build/state/done"
+retained_producer "$cached_build"
 mkdir -p "$cached_build/work/$producer_dir/objects"
 # An earlier extraction/configure revision may legitimately feed a newer
 # incrementally rebuilt package; only the completed build must be current.
@@ -266,8 +288,7 @@ done
 # Never follow a stage symlink while recovering a prior producer.
 cached_link=$out/cached-runtime-stage-symlink
 setup "$cached_link"
-: > "$cached_link/packages/All/$producer_name.tgz"
-printf '%s\n' "$producer $producer_name cached" > "$cached_link/state/done"
+retained_producer "$cached_link"
 mkdir -p "$cached_link/work/$producer_dir" "$cached_link/outside"
 printf '%s\n' "$producer_name" > "$cached_link/work/$producer_dir/.build_done"
 printf 'untouched\n' > "$cached_link/outside/sentinel"
@@ -282,8 +303,7 @@ if grep -q "^compile:$consumer_dir$" "$cached_link/calls"; then fail 'symlink fa
 # A mismatched build cookie is not evidence of the current producer build.
 cached_stale=$out/cached-runtime-stale-build
 setup "$cached_stale"
-: > "$cached_stale/packages/All/$producer_name.tgz"
-printf '%s\n' "$producer $producer_name cached" > "$cached_stale/state/done"
+retained_producer "$cached_stale"
 mkdir -p "$cached_stale/work/$producer_dir/objects"
 printf 'other-package-1\n' > "$cached_stale/work/$producer_dir/.build_done"
 printf 'retained object\n' > "$cached_stale/work/$producer_dir/objects/compiled.o"

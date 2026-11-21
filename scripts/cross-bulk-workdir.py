@@ -4,7 +4,7 @@
 """Classify an existing pkgsrc work directory without modifying it.
 
 Arguments: DIRECTORY PKGBASE VERSION PKGNAME [BUILD_INPUTS]. Prints
-fresh (no work directory content), same (the same package identity),
+fresh (no work directory content), same (matching package identity and recorded inputs),
 incompatible (another upstream version) or metadata. metadata means that
 only the package revision (nbN) changed and that BUILD_INPUTS, the
 scripts/cross-bulk-inputs.py digest of the current recipe, equals the
@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 RECORD = '.cross-bulk-inputs'
+START = '.cross-bulk-start-inputs'
 SCHEMA = 'cross-bulk-inputs-v1'
 
 args = sys.argv[1:]
@@ -40,7 +41,7 @@ report = {'schema': 'ports-workdir-explanation-v1', 'read_only': True,
           'requested_package': current, 'requested_upstream_version': version,
           'recorded_package': None, 'phase_cookie': None,
           'build_inputs_supplied': bool(inputs), 'build_inputs_recorded': None,
-          'build_inputs_match': None, 'dependency_checks': 'not-performed'}
+          'build_inputs_started': None, 'build_inputs_match': None, 'dependency_checks': 'not-performed'}
 
 
 # How a bulk build handles WRKDIR/RECORD after each decision (prepare_wrkdir
@@ -68,8 +69,8 @@ def fail(message, reason='package-revision-changed'):
            'or use scoped metadata package-install; clean only if incompatible')
 
 
-def recorded():
-    path = root / RECORD
+def recorded(filename):
+    path = root / filename
     if path.is_symlink() or not path.is_file():
         return ''
     try:
@@ -83,16 +84,18 @@ if inputs and not re.fullmatch(r'[0-9a-f]{64}', inputs):
     sys.exit('cross-bulk: invalid build-input digest')
 if root.is_symlink() or not root.is_dir():
     fail('not a real directory', 'invalid-directory')
-if not any(path.name != RECORD for path in root.iterdir()):
+if not any(path.name not in (START, RECORD, '.cross-bulk-providers') for path in root.iterdir()):
     finish('fresh', 'empty-directory', 'no retained build state', 'continue the ordinary build')
 cookie = root / '.extract_done'
 if cookie.is_symlink() or not cookie.is_file():
     fail('missing extract identity', 'missing-extract-identity')
 old = cookie.read_text(encoding='utf-8').strip()
 report.update(recorded_package=old, phase_cookie='.extract_done')
-stored_inputs = recorded()
-report.update(build_inputs_recorded=bool(stored_inputs),
-              build_inputs_match=(stored_inputs == inputs) if stored_inputs and inputs else None)
+stored_inputs = recorded(RECORD)
+started_inputs = recorded(START)
+known_inputs = stored_inputs or started_inputs
+report.update(build_inputs_recorded=bool(stored_inputs), build_inputs_started=bool(started_inputs),
+              build_inputs_match=(known_inputs == inputs) if known_inputs and inputs else None)
 pattern = re.compile(re.escape(base) + r'-([0-9][A-Za-z0-9._+~-]*?)(?:nb[0-9]+)?\Z')
 a, b = pattern.fullmatch(old), pattern.fullmatch(current)
 if not a or not b or b.group(1) != version:
@@ -129,5 +132,10 @@ else:
         else:
             detail = 'build inputs changed since this work directory was built'
         fail('revision changed (' + detail + ')')
+    if inputs and (stored_inputs or started_inputs) and inputs != (stored_inputs or started_inputs):
+        finish('incompatible', 'build-inputs-changed', 'same identity, different recorded build inputs',
+               'ordinary build restarts this package from the changed inputs')
+    if not inputs or not (stored_inputs or started_inputs):
+        fail('no matching build-input evidence for this package identity', 'unknown-build-inputs')
     finish('same', 'package-identity-matches', 'latest recorded package identity matches',
            'continue dependency and normal phase checks; identity alone does not prove compatible inputs')
