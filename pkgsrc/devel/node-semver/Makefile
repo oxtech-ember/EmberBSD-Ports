@@ -1,7 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream semver module.
-DISTNAME= semver-7.8.5
-PKGNAME= node-semver-7.8.5
-PKGREVISION= 1
+DISTNAME= semver-7.8.6
+PKGNAME= node-semver-7.8.6
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/semver/-/
 EXTRACT_SUFX= .tgz

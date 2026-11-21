@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (node-baseline-browser-mapping/baseline-browser-mapping-2.11.35.tgz) = fed316f73818bc2f47a5b512124885a5803bcc549e2a494b85be436aa88bd10d
-SHA512 (node-baseline-browser-mapping/baseline-browser-mapping-2.11.35.tgz) = 18d93c297e76087a9e34a1a4f3eeed66741a6ffda4d6dfc182b5073ca35d8a3ce9121175b1a3d064754a6fa9b9968480c41dfd832ad3630df841ff42437bb5a9
-Size (node-baseline-browser-mapping/baseline-browser-mapping-2.11.35.tgz) = 41941 bytes
+BLAKE2s (node-baseline-browser-mapping/baseline-browser-mapping-2.11.39.tgz) = 735d18bc3345bcd11e55b9af4bc9509f327fc9402f56694fce881fd4ec934e12
+SHA512 (node-baseline-browser-mapping/baseline-browser-mapping-2.11.39.tgz) = 43d6ee39886bda082b119a4898809e7194c91c209df325e4454a2416550443cba20faa0ff361785b88d69e138765857ec25beb0b9d55ed6cb450bc968e29795a
+Size (node-baseline-browser-mapping/baseline-browser-mapping-2.11.39.tgz) = 42121 bytes
