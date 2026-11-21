@@ -1,4 +1,5 @@
 $NetBSD$
 
-SHA256 (libkexiv2-26.08.2.tar.xz) = a0492337374ae19d9fa73a605451ba10536cfbf53108af7e9bf77defbe7bcd00
+BLAKE2s (libkexiv2-26.08.2.tar.xz) = 901a4c966798804cccc55851fed823c704bfe30d8536cad18b248568cece349f
+SHA512 (libkexiv2-26.08.2.tar.xz) = 3a5dad34f663f6ba5d9c7c15ffbdd0c7dc3572838d3d005afc62023f443643e476f33365fbf626ae598162dbeb5dfe7500c3860328340e0c4f533fd2ee3a715a
 Size (libkexiv2-26.08.2.tar.xz) = 50616 bytes

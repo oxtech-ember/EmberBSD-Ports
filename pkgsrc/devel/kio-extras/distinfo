@@ -1,5 +1,6 @@
 $NetBSD: distinfo,v 1.10 2026/09/06 11:02:44 markd Exp $
 
-SHA256 (kio-extras-26.08.2.tar.xz) = b5fc98552eea1f9279fb1f03c7e3ffb36a46ffddd0bf0bba9868331d8c461e6e
+BLAKE2s (kio-extras-26.08.2.tar.xz) = c77a6bbf36462dfb595b775f925fdba9e220a5e108ea066ce708aba7080825ae
+SHA512 (kio-extras-26.08.2.tar.xz) = 038702539fcd13f7d55525949c2e000304e21cb38d5d021525bf660a82f84902a2f1520b50838bfa34351afb8f0e470d923d44a83d3504e215c3bec2cd57804d
 Size (kio-extras-26.08.2.tar.xz) = 5629672 bytes
 SHA1 (patch-info_kde-info2html.conf) = cad6874771fc5862b2bde6e3f2d49f9dcaf48924
