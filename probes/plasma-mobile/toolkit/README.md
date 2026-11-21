@@ -80,7 +80,7 @@ native KPackage tooling and the non-GLVND EGL provider are checked separately.
 locker and KCMs. ConsoleKit's real session launcher passes CM5 regressions;
 complete desktop, ordinary-user login and device ownership remain pending.
 [KWin 6.8 on CM5](cross/cm5-kwin.md) selects OpenGL ES/V3D on a virtual output.
-Desktop 6.8.0 and Workspace 6.8.0nb3 were cross-packaged and installed for the earlier CM5 check. Plasma 6.8.2 is the current source selection and still requires target package acceptance.
+Desktop 6.8.0 and Workspace 6.8.0nb3 were cross-packaged and installed for the earlier CM5 check. The recipes select Plasma 6.8.3. LayerShellQt built and packaged for AArch64. Desktop and Workspace still require target package acceptance for this release.
 The shell selects desktop OpenGL/V3D. Its current pixel test fails after GPU buffer allocation errors.
 The earlier KWin 6.7.5 acceptance covered two Qt Quick client pixel lifecycles.
 HDMI presentation and the complete Plasma session remain unaccepted.

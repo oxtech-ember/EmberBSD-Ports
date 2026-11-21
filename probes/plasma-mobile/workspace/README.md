@@ -44,7 +44,7 @@ The pkgsrc Makefile marks the full workspace package broken because it needs
 ## Dependencies and private build
 
 The recorded probe used the existing Qt 6.11.1 and KDE Frameworks 6.26.0
-installation with a common Plasma 6.7.5 source build. Do not install a second
+installation with a common Plasma 6.8.3 source build. Do not install a second
 Qt/KF stack. The common Plasma
 prefix must provide libplasma, KWayland, Plasma Activities, libkscreen,
 LayerShellQt, KScreenLocker and KNightTime 6.8.3, plus Plasma Wayland Protocols
@@ -164,7 +164,7 @@ addresses, and uses separate private D-Bus sessions. It sets `C.UTF-8` and
 `XDG_CURRENT_DESKTOP=KDE`, enables immediate symbol resolution, and requires
 exactly one resolved system `libstdc++.so.9`. Each native command has an
 external 30-second timeout with a two-second termination grace period.
-The verifier requires the exact `plasmashell 6.7.5` version line and both
+The verifier requires the exact `plasmashell 6.8.3` version line and both
 positive QML success messages. It rejects the `qmlRegisterType requires absolute
 URLs` warning and clears inherited Qt logging overrides so diagnostics remain
 visible. Each run retains its own logs under the printed `runtime-probe.*/logs`
