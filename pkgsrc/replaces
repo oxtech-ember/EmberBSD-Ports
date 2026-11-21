@@ -633,3 +633,5 @@ x11/lxqt-runner
 x11/lxqt-session
 x11/qterminal
 x11/qtxdg-tools
+x11/luit
+x11/xterm
