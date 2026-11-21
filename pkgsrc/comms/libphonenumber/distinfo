@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (libphonenumber-8.13.55.tar.gz) = 655857b055f36c18a34e23545440b6cf59c4f4f0084f9adca524176cd105c13a
-SHA512 (libphonenumber-8.13.55.tar.gz) = 8cc5be5aaaf832288ac011131b41026a44dba702b96a4dbdafcd55e43c870130a089e96187fa4fb8df75e5065185a2eb9af25ece4a7d5b1fcc459b875dceb662
-Size (libphonenumber-8.13.55.tar.gz) = 13005278 bytes
+BLAKE2s (libphonenumber-9.0.44.tar.gz) = 8c106e47235bf8eb418024a7acc152c7f306133df0fd27779644324e35285b06
+SHA512 (libphonenumber-9.0.44.tar.gz) = dd7b527cb4cb5ecbb6c9d373ebab6c969a6aab1ee2a47f4bcfec5054a0b2a1df3a904a7f4c8ebdb940441be2e465ad39f6344ea2efb2d35bdcc7b53960fc4294
+Size (libphonenumber-9.0.44.tar.gz) = 13040166 bytes

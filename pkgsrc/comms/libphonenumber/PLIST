@@ -36,5 +36,5 @@ lib/cmake/libphonenumber/libphonenumber-config.cmake
 lib/cmake/libphonenumber/libphonenumber-targets-noconfig.cmake
 lib/cmake/libphonenumber/libphonenumber-targets.cmake
 lib/libphonenumber.so
-lib/libphonenumber.so.8
-lib/libphonenumber.so.8.13
+lib/libphonenumber.so.9
+lib/libphonenumber.so.9.0

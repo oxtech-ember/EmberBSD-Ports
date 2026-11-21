@@ -6,6 +6,7 @@ BUILDLINK_TREE+=	libphonenumber
 LIBPHONENUMBER_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.libphonenumber+=	libphonenumber>=8.13.55
+BUILDLINK_ABI_DEPENDS.libphonenumber+=	libphonenumber>=9.0.44
 BUILDLINK_PKGSRCDIR.libphonenumber?=	../../comms/libphonenumber
 
 # The library is built with std::mutex. Public headers require the same

@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	libphonenumber-8.13.55
+DISTNAME=	libphonenumber-9.0.44
 CATEGORIES=	comms
 MASTER_SITES=	https://codeload.github.com/google/libphonenumber/tar.gz/refs/tags/v${PKGVERSION_NOREV}/
 DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
@@ -16,6 +16,8 @@ WRKSRC=		${WRKDIR}/${DISTNAME}/cpp
 
 USE_LANGUAGES=	c c++
 USE_CXX_FEATURES+=	c++17
+# Logging macros in protobuf and Abseil expand __FILE__ in the build tree.
+CXXFLAGS+=	-fmacro-prefix-map=${WRKDIR}=.
 USE_TOOLS+=	pkg-config
 
 # Use the metadata shipped in the source tree. The host protoc generates
@@ -28,7 +30,8 @@ CMAKE_CONFIGURE_ARGS+=	-DUSE_BOOST:BOOL=OFF
 CMAKE_CONFIGURE_ARGS+=	-DUSE_STDMUTEX:BOOL=ON
 CMAKE_CONFIGURE_ARGS+=	-DUSE_RE2:BOOL=OFF
 # The sysroot protoc is a NetBSD binary. The metadata compiler must run here.
-CMAKE_CONFIGURE_ARGS+=	-DPROTOC_BIN:FILEPATH=/Volumes/DATA/EmberBSD/sdk-native/llvm/bin/protoc
+TOOL_DEPENDS+=	protobuf>=36.2:../../devel/protobuf
+CMAKE_CONFIGURE_ARGS+=	-DPROTOC_BIN:FILEPATH=${TOOLBASE}/bin/protoc
 
 .include "../../devel/abseil/buildlink3.mk"
 .include "../../devel/protobuf/buildlink3.mk"
