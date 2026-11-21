@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.5 2026/09/02 19:04:50 wiz Exp $
 
-DISTNAME=	labwc-0.20.2
-PKGREVISION=	2
+DISTNAME=	labwc-0.20.3
 CATEGORIES=	wayland
 MASTER_SITES=	${MASTER_SITE_GITHUB:=labwc/}
 

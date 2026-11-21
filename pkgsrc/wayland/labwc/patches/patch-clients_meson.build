@@ -1,0 +1,26 @@
+$NetBSD$
+
+Link the NetBSD labnag client with the libraries that provide signal file
+descriptors and POSIX shared memory.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- clients/meson.build.orig
++++ clients/meson.build
+@@ -31,11 +31,16 @@
+     )
+   endforeach
+ 
+-  if host_machine.system() in ['freebsd', 'openbsd']
++  if host_machine.system() in ['freebsd', 'netbsd', 'openbsd']
+     # For signalfd()
+     epoll_dep = dependency('epoll-shim')
+   else
+     epoll_dep = []
++  endif
++
++  if host_machine.system() == 'netbsd'
++    # shm_open() and shm_unlink() are provided by librt on NetBSD.
++    epoll_dep = [epoll_dep, cc.find_library('rt')]
+   endif
+ 
+   executable(
