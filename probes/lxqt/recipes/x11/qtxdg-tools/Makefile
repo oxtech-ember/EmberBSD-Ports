@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.31 2026/09/02 19:05:32 wiz Exp $
+# $NetBSD: Makefile,v 1.36 2026/11/15 02:04:52 gutteridge Exp $
 
-PKGREVISION= 2
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	qtxdg-tools-4.4.0
+DISTNAME=	qtxdg-tools-4.5.0
 CATEGORIES=	x11
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -17,11 +16,12 @@ USE_TOOLS+=	pkg-config
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
 .else
-TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+BUILDLINK_API_DEPENDS.libqtxdg+=	libqtxdg>=4.5.0
 .include "../../x11/libqtxdg/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"

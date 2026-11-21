@@ -58,7 +58,7 @@ def main():
     makeconf = args.makeconf.resolve(strict=True)
 
     cross = query(args.bmake, recipe, makeconf, "yes", args.wayland_host)
-    if cross["PKGNAME"] != "lxqt-panel-2.4.1nb3":
+    if cross["PKGNAME"] != "lxqt-panel-2.5.1":
         raise RuntimeError("Wrong cross package identity: " + cross["PKGNAME"])
     if cross["PKG_FAIL_REASON"]:
         raise RuntimeError("Cross host-tool prerequisites failed: " + cross["PKG_FAIL_REASON"])
@@ -92,7 +92,7 @@ def main():
         raise RuntimeError("Cross build does not select the matching native Qt Wayland scanner")
 
     native = query(args.bmake, recipe, makeconf, "no", args.wayland_host)
-    for dependency in ("lxqt-build-tools>=2.4.0", "qt6-qttools-"):
+    for dependency in ("lxqt-build-tools>=2.5.0", "qt6-qttools-"):
         if dependency not in native["TOOL_DEPENDS"]:
             raise RuntimeError("Native build lost its upstream tool dependency: " + dependency)
     if (

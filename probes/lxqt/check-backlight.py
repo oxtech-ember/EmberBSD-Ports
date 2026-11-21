@@ -11,7 +11,7 @@ import subprocess
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", type=Path, help="original or patched liblxqt 2.4.0")
+    parser.add_argument("source", type=Path, help="original or patched liblxqt 2.5.0")
     parser.add_argument("output", type=Path)
     parser.add_argument("--cc", default="cc", help="native compiler with ASan/UBSan")
     parser.add_argument("--baseline", action="store_true", help="expect the original defects")

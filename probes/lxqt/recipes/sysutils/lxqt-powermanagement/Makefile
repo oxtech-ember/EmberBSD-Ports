@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.51 2026/09/02 19:04:32 wiz Exp $
+# $NetBSD: Makefile,v 1.56 2026/11/15 02:21:53 gutteridge Exp $
 
-PKGREVISION= 3
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	lxqt-powermanagement-2.4.0
+DISTNAME=	lxqt-powermanagement-2.5.0
 CATEGORIES=	sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -25,7 +24,7 @@ CONF_FILES+=	${AUTOSTART_CONF}/lxqt-powermanagement.desktop \
 .include "../../meta-pkgs/lxqt/host-modules.mk"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
 .else
-TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
@@ -34,6 +33,7 @@ TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 # build, it's a hard dependency.
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"
+BUILDLINK_API_DEPENDS.liblxqt+=	liblxqt>=2.5.0
 .include "../../x11/liblxqt/buildlink3.mk"
 .include "../../devel/kf6-kidletime/buildlink3.mk"
 .include "../../sysutils/upower/buildlink3.mk"

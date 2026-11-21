@@ -10,7 +10,7 @@ import subprocess
 import tarfile
 
 
-SOURCE_SHA256 = "8c36b572613ccb0e35d39e87c044ac07e115c2de85bbdb646ffe4533af788a45"
+SOURCE_SHA256 = "451b891d5adb946bd785e34f785dff3efc0487f92effb927f9294efee1704d22"
 TARGET_PLUGINS = "/usr/pkg/qt6/plugins"
 
 
@@ -38,7 +38,7 @@ def main():
     parser.add_argument("--work", type=Path, required=True)
     args = parser.parse_args()
     if hashlib.sha256(args.archive.read_bytes()).hexdigest() != SOURCE_SHA256:
-        parser.error("The original lxqt-qtplugin 2.4.0 archive differs")
+        parser.error("The original lxqt-qtplugin 2.5.0 archive differs")
     if args.work.exists():
         parser.error("The work directory must not exist")
     module = args.host_tools / "share/cmake/lxqt2-build-tools/modules/LXQtQueryQt.cmake"
@@ -49,7 +49,7 @@ def main():
     args.work.mkdir(parents=True)
     with tarfile.open(args.archive) as archive:
         archive.extractall(args.work, filter="data")
-    root = args.work / "lxqt-qtplugin-2.4.0"
+    root = args.work / "lxqt-qtplugin-2.5.0"
     original = (root / "src/CMakeLists.txt").read_text()
     patch = run([str(args.patch), "--batch", "--fuzz=0", "-p0", "-i",
                  str(Path(__file__).resolve().parent / "recipes/x11/lxqt-qtplugin/patches/patch-src_CMakeLists.txt")], root)

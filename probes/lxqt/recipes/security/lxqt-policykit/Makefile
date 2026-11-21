@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.47 2026/09/02 19:04:18 wiz Exp $
+# $NetBSD: Makefile,v 1.52 2026/11/15 02:19:23 gutteridge Exp $
 
-PKGREVISION= 3
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	lxqt-policykit-2.4.0
+DISTNAME=	lxqt-policykit-2.5.0
 CATEGORIES=	security
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -24,10 +23,11 @@ CONF_FILES+=	${AUTOSTART_CONF}/lxqt-policykit-agent.desktop \
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
 .else
-TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
+BUILDLINK_API_DEPENDS.liblxqt+=	liblxqt>=2.5.0
 .include "../../x11/liblxqt/buildlink3.mk"
 .include "../../security/polkit-qt6/buildlink3.mk"
 .include "../../devel/cmake/build.mk"

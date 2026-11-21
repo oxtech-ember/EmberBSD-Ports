@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.50 2026/09/02 19:05:18 wiz Exp $
+# $NetBSD: Makefile,v 1.55 2026/11/15 02:27:02 gutteridge Exp $
 
-PKGREVISION= 3
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	lxqt-globalkeys-2.4.0
+DISTNAME=	lxqt-globalkeys-2.5.0
 CATEGORIES=	x11
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -24,11 +23,12 @@ CONF_FILES+=	${AUTOSTART_CONF}/lxqt-globalkeyshortcuts.desktop \
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
 .else
-TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+BUILDLINK_API_DEPENDS.liblxqt+=	liblxqt>=2.5.0
 .include "../../x11/liblxqt/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"

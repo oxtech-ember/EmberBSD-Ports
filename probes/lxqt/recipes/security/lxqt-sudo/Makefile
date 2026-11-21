@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.48 2026/09/02 19:04:18 wiz Exp $
+# $NetBSD: Makefile,v 1.53 2026/11/15 02:20:35 gutteridge Exp $
 
-PKGREVISION= 2
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	lxqt-sudo-2.4.0
+DISTNAME=	lxqt-sudo-2.5.0
 CATEGORIES=	security
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -20,11 +19,12 @@ CMAKE_CONFIGURE_ARGS+=	-DMSK_INSTALL_INCLUDES=/include
 .include "../../meta-pkgs/lxqt/host-modules.mk"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
 .else
-TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+BUILDLINK_API_DEPENDS.liblxqt+=	liblxqt>=2.5.0
 .include "../../x11/liblxqt/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"

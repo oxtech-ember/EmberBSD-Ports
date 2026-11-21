@@ -13,8 +13,8 @@ import tempfile
 from pathlib import Path
 
 
-SOURCE_MEMBER = "lxqt-wayland-session-0.4.1/lxqt-qdbus.in"
-SHORTCUTS_MEMBER = "lxqt-wayland-session-0.4.1/configurations/labwc/rc.xml"
+SOURCE_MEMBER = "lxqt-wayland-session-0.5.0/lxqt-qdbus.in"
+SHORTCUTS_MEMBER = "lxqt-wayland-session-0.5.0/configurations/labwc/rc.xml"
 DEFAULT_SHORTCUTS = {
     "W-Return": "qterminal",
     "W-f": "featherpad",

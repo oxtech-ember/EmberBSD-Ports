@@ -29,15 +29,15 @@ def main():
     p.add_argument('--patch-tool', required=True)
     p.add_argument('--liblxqt-source', type=Path, required=True)
     a = p.parse_args()
-    pin = 'd77f378ece0bfc7195f1964e88f55919729c3b0a55a858d7155ffaacc57bba44'
+    pin = 'a9b65cb5ebe0ab9461f01d5810d9ccbd6ca849b60623a149113921b520c66e3f'
     assert hashlib.sha256(a.archive.read_bytes()).hexdigest() == pin
     assert not a.output.exists()
     a.output.mkdir(parents=True)
     with tarfile.open(a.archive) as tf:
-        original = tf.extractfile('lxqt-session-2.4.0/config/session.conf').read().decode()
-        leave = tf.extractfile('lxqt-session-2.4.0/lxqt-leave/main.cpp').read().decode()
-        desktop = tf.extractfile('lxqt-session-2.4.0/autostart/lxqt-xscreensaver-autostart.desktop.in').read().decode()
-        autostart = tf.extractfile('lxqt-session-2.4.0/autostart/CMakeLists.txt').read().decode()
+        original = tf.extractfile('lxqt-session-2.5.0/config/session.conf').read().decode()
+        leave = tf.extractfile('lxqt-session-2.5.0/lxqt-leave/main.cpp').read().decode()
+        desktop = tf.extractfile('lxqt-session-2.5.0/autostart/lxqt-xscreensaver-autostart.desktop.in').read().decode()
+        autostart = tf.extractfile('lxqt-session-2.5.0/autostart/CMakeLists.txt').read().decode()
     source = a.output/'source/config/session.conf'
     source.parent.mkdir(parents=True)
     source.write_text(original)
@@ -88,7 +88,7 @@ def main():
     saver = a.liblxqt_source/'lxqtscreensaver.cpp'
     text = saver.read_text()
     assert 'platformName() == QStringLiteral("wayland")' in text
-    assert 'sessionSettings.value(QL1SV("lock_command_wayland"), lockCommand)' in text
+    assert 'sessionSettings.value("lock_command_wayland"_L1, lockCommand)' in text
     assert 'QProcess::splitCommand(d->lock_command)' in text
     assert 'd->m_lockProcess->start(program, args, QIODevice::ReadWrite)' in text
     result = {'archive_sha256': pin, 'patch_command': cmd,

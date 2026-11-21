@@ -1,14 +1,11 @@
-# LXQt 2.4 on the common Qt6 profile
+# LXQt 2.5 on the common Qt6 profile
 
-The target is [LXQt 2.4.0](https://lxqt-project.org/release/2026/04/20/release-lxqt-2-4-0/),
-released on 20 April 2026. The pinned pkgsrc already supplies this release,
-including panel 2.4.1, PCManFM-Qt 2.4.1 and Wayland session 0.4.1.
-This probe retains one common GCC16, Qt 6.12 and KDE Frameworks 6.31 stack.
+The recipes select LXQt 2.5, including panel, configuration and volume control 2.5.1. The release uses Qt 6.10 or later. The earlier runtime checks below record their tested package versions. [LXQt release announcement](https://lxqt-project.org/release/2026/11/05/release-lxqt-2-5-0/)
 
 ## Source and package ownership
 
 The recipes under `recipes/` derive from pkgsrc
-`fff4deb639a1a640476203c80f752fb77b6cb14b`. Original RCS identifiers,
+quarterly with the LXQt package updates from `3ed5f6e0de78e6b7202abf4a5aa6d2ac36568f3e`. Original RCS identifiers,
 licenses, source checksums, manifests and portability patches are retained.
 The local adaptation separates native generators from target libraries.
 It retains the target plugin paths and fixes the backlight helper defects
@@ -20,8 +17,7 @@ entry refuses execution. `export_lxqt(root, destination, selection=selection,
 runner=runner, scratch=scratch)` reuses the canonical callable inside an exact
 controller. It checks that every overlay file is tracked by the selected Git.
 It copies the overlay and records the source inventory. The caller owns work,
-child drainage and scratch cleanup. A verified common source-data composition
-alone does not include this tracked overlay or the Plasma toolkit probe.
+child drainage and scratch cleanup. The common source export includes the LXQt packages and selects its ordinary X11 metapackage defaults. The probe supplies the Wayland session policy in its metapackage options.
 Include the common cross, graphics and media configuration in that order.
 Use the shared EmberBSD sysroot and GCC16 toolchain.
 Build ordinary packages with `bmake package`.
@@ -35,7 +31,7 @@ Prepare these modules from the verified original archive:
 
 ```sh
 python3 probes/lxqt/build-host-tools.py \
-    /absolute/distfiles/lxqt-build-tools-2.4.0.tar.xz \
+    /absolute/distfiles/lxqt-build-tools-2.5.0.tar.xz \
     /absolute/common-host-qt /absolute/new-lxqt-host-work \
     --cmake /absolute/cmake --ninja /absolute/ninja
 ```

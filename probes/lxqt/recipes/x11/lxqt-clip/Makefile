@@ -1,0 +1,39 @@
+# $NetBSD: Makefile,v 1.3 2026/11/15 02:56:19 gutteridge Exp $
+
+.include "../../meta-pkgs/lxqt/Makefile.common"
+
+DISTNAME=	lxqt-clip-2.5.0
+PKGREVISION=	1
+CATEGORIES=	x11
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://github.com/lxqt/lxqt-clip/
+COMMENT=	Clipboard history applet
+LICENSE=	gnu-gpl-v2
+
+USE_TOOLS+=		pkg-config perl
+
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_PREFIX=${PREFIX}
+
+AUTOSTART_CONF=		share/examples/autostart
+CONF_FILES+=		${AUTOSTART_CONF}/lxqt-clip-autostart.desktop \
+					${PKG_SYSCONFDIR}/autostart/lxqt-clip-autostart.desktop
+PKG_SYSCONFSUBDIR=	xdg
+MAKE_DIRS+=		${PKG_SYSCONFDIR}/autostart
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.include "../../meta-pkgs/lxqt/host-tools.mk"
+.else
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
+.endif
+
+.include "../../devel/cmake/build.mk"
+.include "../../graphics/hicolor-icon-theme/buildlink3.mk"
+BUILDLINK_API_DEPENDS.liblxqt+=	liblxqt>=2.5.0
+.include "../../x11/liblxqt/buildlink3.mk"
+.include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../x11/kf6-kguiaddons/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

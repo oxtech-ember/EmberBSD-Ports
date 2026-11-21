@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.59 2026/09/07 00:14:15 gutteridge Exp $
+# $NetBSD: Makefile,v 1.64 2026/11/15 02:22:41 gutteridge Exp $
 
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	pcmanfm-qt-2.4.1
-PKGREVISION=	3
+DISTNAME=	pcmanfm-qt-2.5.0
 CATEGORIES=	sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -30,7 +29,7 @@ CONF_FILES+=		${SETTINGS_CONF}/settings.conf \
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
 .else
-TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 

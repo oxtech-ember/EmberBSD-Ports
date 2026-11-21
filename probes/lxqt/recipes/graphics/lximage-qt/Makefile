@@ -1,9 +1,8 @@
-# $NetBSD: Makefile,v 1.53 2026/09/02 19:02:47 wiz Exp $
+# $NetBSD: Makefile,v 1.58 2026/11/15 02:17:50 gutteridge Exp $
 
-PKGREVISION= 2
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
-DISTNAME=	lximage-qt-2.4.0
+DISTNAME=	lximage-qt-2.5.0
 CATEGORIES=	graphics
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -18,7 +17,7 @@ USE_TOOLS+=	pkg-config perl
 .include "../../meta-pkgs/lxqt/host-modules.mk"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
 .else
-TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	lxqt-build-tools>=2.5.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
