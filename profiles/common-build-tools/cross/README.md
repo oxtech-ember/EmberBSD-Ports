@@ -21,6 +21,11 @@ GCC 16.2 remains an explicit profile choice documented in GCC-specific
 sections below and in the [GCC cross compiler guide](../../development-toolchain/cross/README.md).
 The retained NetBSD 11 ABI and target triplet identify compatibility,
 not an upstream OS build. Follow the [sysroot provenance rules](sysroot.md).
+The binary profile builds `misc/py-installer` with POSIX entry-point scripts.
+For a source-built EmberBSD system that also generates Windows entry points,
+set `PKG_OPTIONS.py-installer=windows-launchers` in the make configuration.
+The native package and the generic pkgsrc recipe include all launcher templates.
+
 The compiler and build tools execute on macOS; installed packages are tested
 on EmberBSD. Python, Meson and Ninja are among the
 [accepted target packages](validation.md). LLVM23 core also passes

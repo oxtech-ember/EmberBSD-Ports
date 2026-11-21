@@ -4,3 +4,4 @@ BLAKE2s (installer-1.1.0.tar.gz) = 51ff0039274ebe3b343ec950428fb91be8c3b555aea61
 SHA512 (installer-1.1.0.tar.gz) = 0dab0a9d01c1bf7e001b1a41b8380a56ec6df22db6916e919bcb3063adfe3fdbbabae7fc4000915b93c704d5251d976beecdf2cc026eb9d18b6e798d9bbe0979
 Size (installer-1.1.0.tar.gz) = 481257 bytes
 SHA1 (patch-src_installer_____main____.py) = 199b5c03e6d7c649b11cd711d051bf92ed5a7ca8
+SHA1 (patch-src_installer_scripts.py) = 29f0290ef84a10b4f380ad66e2e88eecfecc0efb

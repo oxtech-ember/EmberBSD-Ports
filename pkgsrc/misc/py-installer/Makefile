@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.7 2026/05/12 07:57:36 adam Exp $
 
 DISTNAME=	installer-1.1.0
+PKGREVISION=	1
 PKGNAME=	${PYPKGPREFIX}-${DISTNAME}
 CATEGORIES=	misc python
 MASTER_SITES=	${MASTER_SITE_PYPI:=i/installer/}
@@ -16,17 +17,29 @@ TEST_DEPENDS+=	${PYPKGPREFIX}-test-xdist-[0-9]*:../../devel/py-test-xdist
 
 USE_LANGUAGES=	# none
 
+PKG_OPTIONS_VAR=	PKG_OPTIONS.py-installer
+PKG_SUPPORTED_OPTIONS=	windows-launchers
+PKG_SUGGESTED_OPTIONS=	windows-launchers
+.include "../../mk/bsd.options.mk"
+
+PLIST_VARS+=	windows-launchers
+.if !empty(PKG_OPTIONS:Mwindows-launchers)
+PLIST.windows-launchers=	yes
+.endif
+
 INSTALL_ENV+=	PYTHONPATH=${WRKSRC}/src
 TEST_ENV+=	PYTHONPATH=${WRKSRC}/src
 
-do-install:
-	cd ${WRKSRC} && ${SETENV} ${INSTALL_ENV} ${PYTHONBIN} -m installer --destdir ${DESTDIR} --prefix ${PREFIX} dist/*.whl
+# Keep pkgsrc patch backups out of the wheel and its RECORD.
+pre-build:
+	${RM} -f ${WRKSRC}/src/installer/*.orig
+.if empty(PKG_OPTIONS:Mwindows-launchers)
+	${RM} -f ${WRKSRC}/src/installer/_scripts/*.exe
+.endif
 
-# XXX Hack -- the patch phase leaves .orig files around which Python
-# dutifully picks up and installs because it doesn't use any explicit
-# lists of files or any patterns to exclude *.orig.
-post-install:
-	${RM} -f ${DESTDIR}${PREFIX}/${PYSITELIB}/installer/*.orig
+do-install:
+	cd ${WRKSRC} && ${SETENV} ${INSTALL_ENV} ${TOOL_PYTHONBIN} -m installer \
+	    --destdir ${DESTDIR} --prefix ${PREFIX} --executable ${PYTHONBIN:Q} ${WHEELFILE}
 
 do-test:
 	cd ${WRKSRC} && ${SETENV} ${TEST_ENV} pytest-${PYVERSSUFFIX} tests
