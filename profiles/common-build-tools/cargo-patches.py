@@ -41,7 +41,7 @@ def checked_file(root, relative):
     return target
 
 
-def apply(vendor, registry_dir, patch_tool, prefix):
+def apply(vendor, registry_dir, patch_tool, prefix, crates=()):
     vendor = vendor.resolve(strict=True)
     registry_dir = registry_dir.resolve(strict=True)
     prefix = prefix.resolve(strict=True)
@@ -49,7 +49,11 @@ def apply(vendor, registry_dir, patch_tool, prefix):
     if not patch_tool.is_relative_to(prefix) or not patch_tool.is_file():
         raise ValueError('patch tool must resolve inside selected host prefix')
     registry = json.loads((registry_dir / 'registry.json').read_text())
-    for name, spec in sorted(registry.items()):
+    for name in crates:
+        if name not in registry or not (vendor / name).is_dir():
+            raise ValueError('selected crate is missing from registry or vendor: ' + name)
+    for name in sorted(crates or registry):
+        spec = registry[name]
         if not re.fullmatch(r'[a-zA-Z0-9_-]+-[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', name):
             raise ValueError('invalid exact crate identifier: ' + name)
         root = vendor / name
@@ -161,8 +165,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('vendor', 'registry', 'patch', 'prefix'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--crate', action='append', default=[], help='patch only this exact vendored crate (repeatable)')
     args = parser.parse_args()
-    apply(args.vendor, args.registry, args.patch, args.prefix)
+    apply(args.vendor, args.registry, args.patch, args.prefix, args.crate)
 
 
 if __name__ == '__main__':

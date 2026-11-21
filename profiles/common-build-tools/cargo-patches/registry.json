@@ -682,6 +682,28 @@
     },
     "patch": "uniffi_macros-0.32.2.patch"
   },
+  "wgpu-30.0.1": {
+    "files": {
+      "build.rs": {
+        "after": "0d62851701d5230e110c94ae74c17112f857ce12cbab46aede0aa0d140de9c88",
+        "before": "18681e37762d3a8e36e04df1b6228a16e93f8b5946f1e1886839c5cab1b034f0"
+      }
+    },
+    "patch": "wgpu-30.0.1-netbsd-gles.patch"
+  },
+  "wgpu-core-30.0.1": {
+    "files": {
+      "Cargo.toml": {
+        "after": "92b23e754b530a209b5cff8287ef821dacd7ba40c2ffd1b2bbbae5c2fd5a4fe6",
+        "before": "06c74b9cbe9c068faa052df17b4adb32f441eab530d88128e9a0bfa49082bb54"
+      },
+      "build.rs": {
+        "after": "857c2cb1e3780820e1a6f8446cbff66bddb82fa9e4b2d09063f9aa465aecd2df",
+        "before": "f3d39c06752630257f6bf5efe76a61e54b32b354704f7c16c76c8e2128fa6b34"
+      }
+    },
+    "patch": "wgpu-core-30.0.1-netbsd-gles.patch"
+  },
   "windows-core-0.62.2": {
     "files": {
       "Cargo.toml": {
@@ -717,6 +739,15 @@
       }
     },
     "patch": "windows-sys-0.61.2.patch"
+  },
+  "x11rb-0.13.2": {
+    "files": {
+      "src/xcb_ffi/raw_ffi/ffi.rs": {
+        "after": "f03eb21aea1f96665c166f5b68860102956248dec657b0958abf3c0b3aca0758",
+        "before": "ec52cc2bc120c1afedafbf32da1c16f79ec85e3e63f3e40e2eab01dc5de47241"
+      }
+    },
+    "patch": "x11rb-0.13.2-ports-libxcb.patch"
   },
   "zerocopy-derive-0.8.63": {
     "files": {

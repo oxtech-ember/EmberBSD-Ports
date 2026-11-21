@@ -1,0 +1,22 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -212,7 +212,7 @@
+ version = "30.0.0"
+ optional = true
+ 
+-[target.'cfg(any(windows, target_os = "linux", target_os = "android", target_os = "freebsd"))'.dependencies.wgpu-core-deps-windows-linux-android]
++[target.'cfg(any(windows, target_os = "linux", target_os = "android", target_os = "freebsd", target_os = "netbsd"))'.dependencies.wgpu-core-deps-windows-linux-android]
+ version = "30.0.0"
+ optional = true
+ 
+--- a/build.rs
++++ b/build.rs
+@@ -11,7 +11,7 @@
+         dx12: { all(target_os = "windows", feature = "dx12") },
+         webgl: { all(target_arch = "wasm32", not(target_os = "emscripten"), feature = "webgl") },
+         gles: { any(
+-            all(windows_linux_android, feature = "gles"), // Regular GLES
++            all(any(windows_linux_android, target_os = "netbsd"), feature = "gles"), // Regular GLES
+             all(webgl), // WebGL
+             all(target_os = "emscripten", feature = "gles"), // Emscripten GLES
+             all(target_vendor = "apple", feature = "angle") // ANGLE on Apple

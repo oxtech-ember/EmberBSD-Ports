@@ -28,6 +28,19 @@ with tempfile.TemporaryDirectory(prefix='cargo-patch-test-') as tmp:
     manifest = {'example-1.2.3': {'patch': 'example.patch', 'files': {'src/lib.rs': {'before': h('old\n'), 'after': h('new\n')}}}}
     (registry/'registry.json').write_text(json.dumps(manifest))
     def run(): module.apply(vendor, registry, a.patch, a.prefix)
+    original = json.loads((registry / 'registry.json').read_text())
+    # The upstream app's unchanged lockfile must not opt in to other migrations.
+    other = vendor / 'other-2.0.0'
+    other.mkdir()
+    (registry / 'registry.json').write_text(json.dumps({**original, other.name: {}}))
+    module.apply(vendor, registry, a.patch, a.prefix, crates=[root.name])
+    try:
+        module.apply(vendor, registry, a.patch, a.prefix, crates=['absent-1.2.3'])
+    except ValueError as error:
+        assert 'selected crate is missing' in str(error)
+    else:
+        raise AssertionError('unregistered explicit crate accepted')
+    (registry / 'registry.json').write_text(json.dumps(original))
     run(); run()
     assert (root/'src/lib.rs').read_text() == 'new\n'
     check = json.loads((root/'.cargo-checksum.json').read_text())

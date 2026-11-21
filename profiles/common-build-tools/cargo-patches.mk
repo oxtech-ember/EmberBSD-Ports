@@ -4,6 +4,7 @@
 .if !defined(EMBERBSD_CARGO_PATCHES_MK)
 EMBERBSD_CARGO_PATCHES_MK:=
 EMBER_CARGO_PATCH_SET?= no
+EMBER_CARGO_PATCH_CRATES?=
 EMBER_CARGO_PATCH_TOOL?= ${EMBER_CARGO_PREFIX}/bin/gpatch
 .if ${EMBER_CARGO_PATCH_SET:tl} == "yes" && !defined(EMBER_CARGO_PATCH_TOOL_DEPENDS_OFF)
 TOOL_DEPENDS+=	patch>=2.8.1:../../devel/patch
@@ -16,6 +17,6 @@ ember-cargo-patches:
 .if ${EMBER_CARGO_PATCH_SET:tl} == "yes"
 	${RUN} ${TOOL_PYTHONBIN} -B -I -S ${_EMBER_CARGO_PATCH_HELPER:Q} \
 	    --vendor ${CARGO_VENDOR_DIR:Q} --registry ${_EMBER_CARGO_PATCH_REGISTRY:Q} \
-	    --prefix ${EMBER_CARGO_PREFIX:Q} --patch ${EMBER_CARGO_PATCH_TOOL:Q}
+	    --prefix ${EMBER_CARGO_PREFIX:Q} --patch ${EMBER_CARGO_PATCH_TOOL:Q} ${EMBER_CARGO_PATCH_CRATES:@crate@--crate ${crate:Q}@}
 .endif
 .endif

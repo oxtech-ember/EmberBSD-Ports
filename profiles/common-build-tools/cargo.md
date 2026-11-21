@@ -88,6 +88,10 @@ conditional is evaluated when the include is read. This reuses the helper withou
 host/target tool configuration. The adapter orders that hook before its own
 configuration.
 
+A recipe can set `EMBER_CARGO_PATCH_CRATES` to an explicit list of crate names with versions
+when its upstream lockfile needs only selected patches. Each named crate must occur in both
+the registry and the prepared vendor tree. An empty list keeps the full patch set.
+
 The recipe still owns its Cargo.lock, exact crate list and checksums. Update
 those together with any direct dependency constraints; the patch set does not
 by itself upgrade a lockfile or establish macro compatibility. Run

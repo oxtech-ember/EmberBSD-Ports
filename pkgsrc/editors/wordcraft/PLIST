@@ -1,0 +1,23 @@
+@comment $NetBSD$
+bin/wordcraft
+bin/wordcraft-cli
+share/applications/ai.storyteller.wordcraft.desktop
+share/icons/hicolor/128x128/apps/ai.storyteller.wordcraft.png
+share/icons/hicolor/16x16/apps/ai.storyteller.wordcraft.png
+share/icons/hicolor/24x24/apps/ai.storyteller.wordcraft.png
+share/icons/hicolor/256x256/apps/ai.storyteller.wordcraft.png
+share/icons/hicolor/32x32/apps/ai.storyteller.wordcraft.png
+share/icons/hicolor/48x48/apps/ai.storyteller.wordcraft.png
+share/icons/hicolor/512x512/apps/ai.storyteller.wordcraft.png
+share/icons/hicolor/64x64/apps/ai.storyteller.wordcraft.png
+share/icons/hicolor/scalable/apps/ai.storyteller.wordcraft.svg
+share/licenses/wordcraft/ATTRIBUTION.md
+share/licenses/wordcraft/LICENSE-APACHE
+share/licenses/wordcraft/LICENSE-MIT
+share/licenses/wordcraft/NOTICE
+share/licenses/wordcraft/OFL-Inter.txt
+share/licenses/wordcraft/OFL-JetBrainsMono.txt
+share/licenses/wordcraft/OFL-SourceSans3.txt
+share/licenses/wordcraft/OFL-SourceSerif4.txt
+share/metainfo/ai.storyteller.wordcraft.metainfo.xml
+share/mime/packages/ai.storyteller.wordcraft.xml
