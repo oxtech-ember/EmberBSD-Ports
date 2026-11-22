@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
   void* library = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
   require(library != nullptr, dlerror());
   auto version = symbol<decltype(&mi_version)>(library, "mi_version");
-  require(version() == 30600, "unexpected mimalloc version");
+  require(version() == MI_MALLOC_VERSION, "unexpected mimalloc version");
   allocate = symbol<decltype(allocate)>(library, "mi_malloc");
   aligned = symbol<decltype(aligned)>(library, "mi_malloc_aligned");
   release = symbol<decltype(release)>(library, "mi_free");

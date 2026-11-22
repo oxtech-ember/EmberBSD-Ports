@@ -4,6 +4,8 @@ PKG_OPTIONS_VAR=		PKG_OPTIONS.mimalloc
 PKG_SUPPORTED_OPTIONS=	malloc-override dynamic-tls generic-arch
 # Preserve the existing package behavior, including pinned mold's allocator.
 PKG_SUGGESTED_OPTIONS=	malloc-override
+# NetBSD packages must run on the baseline CPU for their target ABI.
+PKG_SUGGESTED_OPTIONS.NetBSD+=	generic-arch
 
 .include "../../mk/bsd.options.mk"
 

@@ -37,8 +37,8 @@ def main():
     assert link.count(object_name) == 1 and 'libmimalloc.a' in link
     assert (build / 'libmimalloc.a').is_file()
     patched = (source / 'test/test-pprof.c').read_text()
-    needle = 'static MI_TEST_NOINLINE void* alloc_site_##N('
-    assert patched.count(needle) == 1, 'expected the canonical distinct-frame patch'
+    needle = 'static mi_test_noinline void* alloc_site_##N('
+    assert patched.count(needle) == 1, 'expected the upstream distinct-frame annotation'
     baseline = patched.replace(needle, 'static void* alloc_site_##N(')
     work.mkdir(parents=True, exist_ok=False)
     assert patched.count('int created = 0;') == 1

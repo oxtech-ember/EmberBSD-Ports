@@ -15,6 +15,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ('pkgsrc','bmake','makeconf','shell','patch','distdir'):
         parser.add_argument('--'+name,type=Path,required=True)
+    parser.add_argument('--installed-sdk', action='store_true',
+                        help='use the configured native SDK instead of its bootstrap makeconf')
     args=parser.parse_args()
     recipe=Path(__file__).resolve().parents[1]
     ports=recipe.parents[2]
@@ -40,11 +42,16 @@ def main():
         shutil.copytree(recipe,view/'devel/mimalloc')
         shutil.copytree(args.pkgsrc/'devel/mold',view/'devel/mold')
         patch=ports/'profiles/common-build-tools/patches/pkgsrc-mimalloc-consumers.patch'
-        result=subprocess.run([str(args.patch),'-f','-N','-F0','-p1','-i',str(patch)],cwd=view,text=True,capture_output=True)
-        assert result.returncode==0,(result.stdout,result.stderr)
+        patch_args = [str(args.patch), '-f', '-F0', '-p1', '-i', str(patch)]
+        applied = subprocess.run([*patch_args, '-C', '-R'], cwd=view, text=True, capture_output=True)
+        if applied.returncode:
+            result = subprocess.run([*patch_args, '-N'], cwd=view, text=True, capture_output=True)
+            assert result.returncode == 0, (result.stdout, result.stderr)
         base=[str(args.bmake),'-m',str(args.bmake.parent.parent/'share/mk'),'SHELL='+str(args.shell),
-              'MAKECONF='+str(args.makeconf),'EMBERBSD_DARWIN_BOOTSTRAP=yes','DISTDIR='+str(args.distdir),
+              'MAKECONF='+str(args.makeconf),'DISTDIR='+str(args.distdir),
               'WRKOBJDIR='+str(root/'objects')]
+        if not args.installed_sdk:
+            base.append('EMBERBSD_DARWIN_BOOTSTRAP=yes')
         count=0
         def run(package,*extra,success=True,native=True):
             nonlocal count
@@ -56,7 +63,8 @@ def main():
             assert (result.returncode==0)==success,(package,extra,result.stdout,result.stderr)
             count+=1
             return result.stdout+result.stderr
-        for options,expected in (('',('ON','DEFAULT','DEFAULT')),('-malloc-override dynamic-tls generic-arch',('OFF','LOCAL_DYNAMIC','OFF'))):
+        baseline = 'OFF' if run('mimalloc', '-V', '${OPSYS}').strip() == 'NetBSD' else 'DEFAULT'
+        for options,expected in (('',('ON','DEFAULT',baseline)),('-malloc-override dynamic-tls generic-arch',('OFF','LOCAL_DYNAMIC','OFF'))):
             extra=[] if not options else ['PKG_OPTIONS.mimalloc='+options]
             flags=run('mimalloc',*extra,'-V','${CMAKE_CONFIGURE_ARGS}')
             for key,value in zip(('OVERRIDE','TLS_MODEL','OPT_ARCH'),expected):
@@ -69,11 +77,15 @@ def main():
         assert 'selected rustc must be an absolute executable' in output,output
         cross_makeconf=root/'cross.mk.conf'
         cross_makeconf.write_text('LOCALBASE='+str(args.bmake.parent.parent)+'\nPKGSRC_COMPILER=clang\nPYTHON_VERSION_DEFAULT=315\n')
-        output=run('mimalloc','MAKECONF='+str(cross_makeconf),'USE_CROSS_COMPILE=yes',
+        cross=['MAKECONF='+str(cross_makeconf),'USE_CROSS_COMPILE=yes',
                    'CROSS_OPSYS=NetBSD','CROSS_OS_VERSION=11.0','CROSS_MACHINE_ARCH=x86_64',
                    'CROSS_OPSYS_VERSION=110000','CROSS_LOWER_OPSYS=netbsd','CROSS_LOWER_OPSYS_VERSUFFIX=',
                    'CROSS_LOWER_VARIANT_VERSION=','CROSS_LOWER_VENDOR=','CROSS_LOWER_OS_VARIANT=',
-                   'CROSS_OBJECT_FMT=ELF','do-test',success=False,native=False)
+                   'CROSS_OBJECT_FMT=ELF']
+        for selection, mode in (([], 'OFF'), (['PKG_OPTIONS.mimalloc=-generic-arch'], 'DEFAULT')):
+            flags = run('mimalloc', *cross, *selection, '-V', '${CMAKE_CONFIGURE_ARGS}', native=False)
+            assert '-DMI_OPT_ARCH=' + mode in flags, flags
+        output = run('mimalloc', *cross, 'do-test', success=False, native=False)
         assert 'do not execute target binaries on the build host' in output,output
         descriptions=run('mimalloc','show-options')
         for description in ('dlopen-compatible local dynamic TLS','generic CPU baseline','process malloc/free entry points'):

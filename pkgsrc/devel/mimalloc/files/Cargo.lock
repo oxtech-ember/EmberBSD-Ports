@@ -20,17 +20,25 @@ checksum = "3e0f1c7c3a72c66fd80abe965175f7523475c0489a87d3ff9d6e8c87d87a9d2d"
 
 [[package]]
 name = "mimalloc"
-version = "3.6.0"
+version = "3.7.0"
 dependencies = [
  "mimalloc-sys",
+ "rustversion",
 ]
 
 [[package]]
 name = "mimalloc-sys"
-version = "3.6.0"
+version = "3.7.0"
 dependencies = [
  "cc",
+ "rustversion",
 ]
+
+[[package]]
+name = "rustversion"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "shlex"
