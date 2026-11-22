@@ -8,7 +8,7 @@
  CATEGORIES=	archivers
  # does not provide uncompressed tarball, needed due to bootstrapping
  #MASTER_SITES=	${MASTER_SITE_GNU:=gzip/}
-@@ -20,5 +21,17 @@
+@@ -20,5 +21,21 @@
  MAKE_FLAGS+=	manlinks=so
  INFO_FILES=	yes
  CHECK_PERMS=	no	# can't depend on checkperms; its distfile is gzipped
@@ -21,6 +21,10 @@
 +.endif
 +.if ${EMBERBSD_GZIP_DEFER_INFO} == "yes"
 +.undef INFO_FILES
++# INFO_FILES also selects the install directory in gnu-configure.mk.
++CONFIGURE_ARGS+= --infodir=${GNU_CONFIGURE_INFODIR:Q}
++# Automake calls install-info directly, independently of pkgsrc's hooks.
++INSTALL_ENV+= AM_UPDATE_INFO_DIR=no
 +.elif ${EMBERBSD_GZIP_DEFER_INFO} != "no"
 +.error "EMBERBSD_GZIP_DEFER_INFO must be yes or no"
 +.endif

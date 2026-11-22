@@ -102,6 +102,9 @@ GNU gzip has an explicit bootstrap Info phase. `EMBERBSD_GZIP_DEFER_INFO=yes`
 keeps `gzip.info` while omitting registration hooks and their dependency on
 `pkg_install-info`; it defaults to `yes` for the initial Darwin bootstrap and
 `no` elsewhere. The explicit `yes` override is an intermediate bootstrap mode.
+That phase retains pkgsrc's configured Info directory and sets Automake's
+`AM_UPDATE_INFO_DIR=no` during installation. It installs the manual without
+creating an untracked Info index or invoking a host `install-info` program.
 After the provider is installed, select `EMBERBSD_GZIP_DEFER_INFO=no` for the
 full package. When changing this phase in an existing work directory, invalidate
 only generated install scripts in `.pkginstall` and their `.pkgdb` copies, then
@@ -110,8 +113,10 @@ does not run the build phase's `pkginstall` target. Keep the original compiler
 configuration and compiled objects. Verify the regenerated dependency and Info
 hooks before publishing that full package.
 `tests/gzip-info-phase.py` checks both defaults, the explicit full phase and
-Info registration/removal with the selected provider. Package installation and
-removal are checked separately with the resulting archive.
+Info registration/removal with the selected provider. Pass `--gzip-build` with
+a configured gzip tree to check its real Info installation target and retained
+file bytes. Package installation and removal are checked separately with the
+resulting archive.
 
 GNU make resolves a selected pkgsrc `mksh` or `pdksh` beside its own canonical
 executable before processing `-C`. Moving the native prefix, invoking the GNU
