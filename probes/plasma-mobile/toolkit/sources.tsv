@@ -146,7 +146,7 @@ net/samba4	samba-4.24.7.tar.gz	45b7747a47452eff2b2159a44cc63eb43690d339fd1069088
 print/poppler	poppler-26.11.0.tar.xz	41c32680160addf5a8dd7a830e4869c01e9f6bee1abb91e44fabd1ba9d7828fb	https://poppler.freedesktop.org/poppler-26.11.0.tar.xz
 textproc/catdoc	catdoc-0.95.tar.gz	514a84180352b6bf367c1d2499819dfa82b60d8c45777432fa643a5ed7d80796	http://ftp.wagner.pp.ru/pub/catdoc/catdoc-0.95.tar.gz
 x11/plasma6-kactivitymanagerd	kactivitymanagerd-6.8.3.tar.xz	ace8726d6a3f95769dd3c8614d4c0a432ce756bd60ab12584b2d13280db471f1	https://download.kde.org/stable/plasma/6.8.3/kactivitymanagerd-6.8.3.tar.xz
-wayland/xwayland	xwayland-24.1.14.tar.xz	4eb6b98d678299a4b96138d886345b294130695760345ef84596225a8224078a	https://xorg.freedesktop.org/archive/individual/xserver/xwayland-24.1.14.tar.xz
+wayland/xwayland	xwayland-24.1.15.tar.xz	7311b4bcda22cfc19cb99680eb1c35cfc1ea885981310639f0429fe2948c122e	https://xorg.freedesktop.org/archive/individual/xserver/xwayland-24.1.15.tar.xz
 x11/libei	libei-1.6.0.tar.bz2	5ed6078fa63afd554cc04b1001675615da0ed8fe23b80492ab63403140b5a830	https://gitlab.freedesktop.org/libinput/libei/-/archive/1.6.0/libei-1.6.0.tar.bz2
 x11/libei	munit-fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz	d0c8bf80b9804d4df5301bd428702352fe7e14f84f22027c3a2c084a0d9f69a7	https://github.com/nemequ/munit/archive/fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz
 devel/basu	basu-0.2.1.tar.gz	43b327073d1ac7bc6cbc0d3dfff729348fc970dfff0551ad40e366332e990204	https://git.sr.ht/~emersion/basu/archive/v0.2.1.tar.gz

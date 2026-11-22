@@ -1,8 +1,8 @@
 $NetBSD: distinfo,v 1.5 2026/07/08 07:41:45 wiz Exp $
 
-BLAKE2s (xwayland-24.1.14.tar.xz) = be2c0eda9e09a797e38a88eb96cac6a37e2240e8f69034158f2192e7d68dfea8
-SHA512 (xwayland-24.1.14.tar.xz) = 0c09214bf5478697430db3f403ba6fc5b669faab4428a902ce9e148ea5dae630798da03f2977ab937486a07224fa2e73d146e3f51fff8abe00d2dd78d5a05bf1
-Size (xwayland-24.1.14.tar.xz) = 1307896 bytes
+BLAKE2s (xwayland-24.1.15.tar.xz) = 908629baadcf2db2581f70f12a9384dbf29c9aa99634dabfee9461f99758ed7e
+SHA512 (xwayland-24.1.15.tar.xz) = 15f1d64e1a1f8fb8469f4cea90c696eba19739e29c44edeb44c0052565158e6c5ea51dab6969412257a96f8769e77fd83a369835e00477a52e6ac3745457ac91
+Size (xwayland-24.1.15.tar.xz) = 1307812 bytes
 SHA1 (patch-hw_xwayland_xwayland-input.c) = 7710f1b8eff917a078de31f82c39a7c7a77f5018
 SHA1 (patch-hw_xwayland_xwayland-shm.c) = dbc8025f8f3a1cbdbd466b18493170944635193d
 SHA1 (patch-include_meson.build) = d435c06c65f19f731878daad650e5d534d044d83
