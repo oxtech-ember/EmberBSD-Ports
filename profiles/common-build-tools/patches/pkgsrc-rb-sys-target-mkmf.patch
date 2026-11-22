@@ -1,5 +1,5 @@
-RubyGems can execute an extension builder on a different Ruby platform.
-Read the isolated rbconfig selected by mkmf when it is available.
+Use the Ruby configuration selected by mkmf for Rust extensions. A running
+interpreter builds native extensions even when Ruby itself was cross-built.
 
 --- a/devel/ruby-rb_sys/Makefile
 +++ b/devel/ruby-rb_sys/Makefile
@@ -7,17 +7,18 @@ Read the isolated rbconfig selected by mkmf when it is available.
  # $NetBSD: Makefile,v 1.5 2026/09/06 14:55:12 taca Exp $
  
  DISTNAME=	rb_sys-0.9.130
-+PKGREVISION=	1
++PKGREVISION=	2
  CATEGORIES=	devel
  
  MAINTAINER=	pkgsrc-users@NetBSD.org
 --- a/devel/ruby-rb_sys/distinfo
 +++ b/devel/ruby-rb_sys/distinfo
-@@ -3,3 +3,4 @@
+@@ -3,3 +3,5 @@
  BLAKE2s (rb_sys-0.9.130.gem) = 746d70eca6ebdcbf3348458a1e8ca555d5af405a578f81d0afe6926084003099
  SHA512 (rb_sys-0.9.130.gem) = 32518074f1f9b6709820aa2f818ceceef9f8630d2962ec7b1e6896337ee15afd4d5713d88ba0f7d57a88a7c3fc4965b8c92cd20ab80dcdf7a910782f97a15ec1
  Size (rb_sys-0.9.130.gem) = 32768 bytes
 +SHA1 (patch-lib_rb__sys_mkmf.rb) = 72439fab74a76ef15346fc97fc5dc0599e271f72
++SHA1 (patch-lib_rb__sys_mkmf_config.rb) = 32e06eb73fc76282d1eea2b9f1b89f2c43dffb21
 --- /dev/null
 +++ b/devel/ruby-rb_sys/patches/patch-lib_rb__sys_mkmf.rb
 @@ -0,0 +1,18 @@
@@ -39,3 +40,24 @@ Read the isolated rbconfig selected by mkmf when it is available.
 +   # Helper class for creating Rust Makefiles
 +   module Mkmf
 +     # Helper for building Rust extensions by creating a Ruby compatible makefile
+--- /dev/null
++++ b/devel/ruby-rb_sys/patches/patch-lib_rb__sys_mkmf_config.rb
+@@ -0,0 +1,18 @@
++$NetBSD$
++
++Use the running Ruby mode when mkmf builds for the interpreter itself.
++
++--- lib/rb_sys/mkmf/config.rb.orig
+++++ lib/rb_sys/mkmf/config.rb
++@@ -42,6 +42,11 @@
++ 
++       # @api private
++       def cross_compiling?
+++        # A Ruby built by a cross compiler can run extensions natively.
+++        if RbConfig.equal?(::RbConfig) && defined?(::CROSS_COMPILING)
+++          return !!::CROSS_COMPILING
+++        end
+++
++         RbConfig::CONFIG["CROSS_COMPILING"] == "yes"
++       end
++ 
