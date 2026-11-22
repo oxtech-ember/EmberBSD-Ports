@@ -1,0 +1,74 @@
+Update the shared PNG renderer and QR-code producer used by Redmine.
+
+--- a/graphics/ruby-chunky_png/Makefile
++++ b/graphics/ruby-chunky_png/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.19 2023/01/09 06:39:48 taca Exp $
+ 
+-DISTNAME=	chunky_png-1.3.15
++DISTNAME=	chunky_png-1.4.0
+ CATEGORIES=	graphics
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+--- a/graphics/ruby-chunky_png/distinfo
++++ b/graphics/ruby-chunky_png/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.21 2023/01/09 06:39:48 taca Exp $
+ 
+-BLAKE2s (chunky_png-1.3.15.gem) = 43502521f916d508713884738b8000bf2ee689cebeaa580fc8d2212fe1285cd6
+-SHA512 (chunky_png-1.3.15.gem) = a53d3ba7b5d879a2f1dc3bccf20c4ba99fd35fa8224b21a4652904de9554ec4776b81186b8b75f5f77c6c1a63543ff1ace91c1723b76c1c4c7155bbc2a819239
+-Size (chunky_png-1.3.15.gem) = 363008 bytes
++BLAKE2s (chunky_png-1.4.0.gem) = 53831e69f7c569e69e68164301a0837cad9e36f7ee1e2c7dbc8d7a93613b3e87
++SHA512 (chunky_png-1.4.0.gem) = 1276ba527723af973ca00535baab0dd3be8185cfaa77efb28c3b1ef1e949312710a616ca55711923875e54cb9c92b38de71062d2ba68b2314c7b9ce7a9b50b11
++Size (chunky_png-1.4.0.gem) = 363008 bytes
+--- a/textproc/ruby-rqrcode/Makefile
++++ b/textproc/ruby-rqrcode/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.6 2026/01/18 14:10:50 taca Exp $
+ 
+-DISTNAME=	rqrcode-3.1.1
++DISTNAME=	rqrcode-3.2.0
+ CATEGORIES=	textproc
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+--- a/textproc/ruby-rqrcode/PLIST
++++ b/textproc/ruby-rqrcode/PLIST
+@@ -1,21 +1,8 @@
+ @comment $NetBSD: PLIST,v 1.3 2025/05/18 03:57:33 taca Exp $
+ ${GEM_HOME}/cache/${GEM_NAME}.gem
+-${GEM_LIBDIR}/.github/FUNDING.yml
+-${GEM_LIBDIR}/.github/workflows/ruby.yml
+-${GEM_LIBDIR}/.gitignore
+-${GEM_LIBDIR}/.rspec
+-${GEM_LIBDIR}/.standard.yml
+ ${GEM_LIBDIR}/CHANGELOG.md
+-${GEM_LIBDIR}/Gemfile
+-${GEM_LIBDIR}/Gemfile.lock
+ ${GEM_LIBDIR}/LICENSE.txt
+ ${GEM_LIBDIR}/README.md
+-${GEM_LIBDIR}/Rakefile
+-${GEM_LIBDIR}/_config.yml
+-${GEM_LIBDIR}/bin/console
+-${GEM_LIBDIR}/images/ansi-screen-shot.png
+-${GEM_LIBDIR}/images/github-qrcode.png
+-${GEM_LIBDIR}/images/github-qrcode.svg
+ ${GEM_LIBDIR}/lib/rqrcode.rb
+ ${GEM_LIBDIR}/lib/rqrcode/export.rb
+ ${GEM_LIBDIR}/lib/rqrcode/export/ansi.rb
+@@ -25,5 +12,4 @@
+ ${GEM_LIBDIR}/lib/rqrcode/qrcode.rb
+ ${GEM_LIBDIR}/lib/rqrcode/qrcode/qrcode.rb
+ ${GEM_LIBDIR}/lib/rqrcode/version.rb
+-${GEM_LIBDIR}/rqrcode.gemspec
+ ${GEM_HOME}/specifications/${GEM_NAME}.gemspec
+--- a/textproc/ruby-rqrcode/distinfo
++++ b/textproc/ruby-rqrcode/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.8 2026/01/18 14:10:50 taca Exp $
+ 
+-BLAKE2s (rqrcode-3.1.1.gem) = 18d32fdfbad34d78fa33c2b7161985a1e53c9d74ca5b49e3c5595a0544ad0641
+-SHA512 (rqrcode-3.1.1.gem) = a5f2836d2bcd5a80fb03a0029717eb9b036c92a286f1b57355ce30d7fbf6fc5dfe1b04647d43c8bb10dacd50fbfb6b9e7dbe1c805c606291a6014427697398f5
+-Size (rqrcode-3.1.1.gem) = 106496 bytes
++BLAKE2s (rqrcode-3.2.0.gem) = c331b77aca83433d75b99037402633b7b8920241e37127b681c13966acdf83b9
++SHA512 (rqrcode-3.2.0.gem) = 597eebcb5e8be429e82c1962594f9e2841239763d74c5dbe00f2d25129b55764e6e6066c21f416fbe70365211e9afb1d56508368e6163d2fe3441984e308a160
++Size (rqrcode-3.2.0.gem) = 15360 bytes
