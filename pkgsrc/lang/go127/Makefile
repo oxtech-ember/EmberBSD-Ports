@@ -20,6 +20,23 @@ USE_TOOLS+=	bash perl pax
 .include "build-env.mk"
 .include "../../mk/bsd.prefs.mk"
 
+# The complete upstream distribution also carries binary fixtures and race
+# objects for other operating systems. The NetBSD/arm64 binary channel
+# selects a target distribution. Enable go-full-distribution to retain every input.
+PKG_OPTIONS_VAR=       PKG_OPTIONS.go127
+PKG_SUPPORTED_OPTIONS= go-full-distribution
+PKG_SUGGESTED_OPTIONS= go-full-distribution
+.include "../../mk/bsd.options.mk"
+
+PLIST_VARS+=           full_go_data
+.if !empty(PKG_OPTIONS:Mgo-full-distribution)
+PLIST.full_go_data=    yes
+.elif ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=           1
+.else
+PKG_FAIL_REASON+=      "The target-only Go distribution requires NetBSD/aarch64"
+.endif
+
 # Reuse an installed native go127. Otherwise build with lang/go-bin, the
 # official binary release of the same version for the build host. Never
 # select an older compiler chain.
@@ -136,6 +153,11 @@ do-install:
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 	cd ${DESTDIR}${PREFIX}/go${GOVERSSUFFIX} && \
 	${RM} -rf pkg/tool/${NATIVE_GO_PLATFORM}
+.endif
+.if empty(PKG_OPTIONS:Mgo-full-distribution)
+	cd ${DESTDIR}${PREFIX}/go${GOVERSSUFFIX}/src && \
+	    ${RM} -rf debug/dwarf/testdata debug/elf/testdata debug/pe/testdata runtime/pprof/testdata && \
+	    ${FIND} crypto/internal/boring/syso runtime/race -type f -name '*.syso' -exec ${RM} -f {} +
 .endif
 .for cmd in go gofmt
 .  if ${USE_CROSS_COMPILE:tl} == "yes"

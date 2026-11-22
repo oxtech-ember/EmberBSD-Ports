@@ -11,6 +11,19 @@ The source SHA256 is
 Go retains its upstream BSD license. The recipe changes and regression are
 local, AI-assisted EmberBSD work; they have not been submitted upstream.
 
+## NetBSD/AArch64 binary distribution
+
+The common AArch64 cross profile selects `-go-full-distribution`. Its Go
+compiler supports native development and ordinary Go cross-compilation.
+The distribution omits the upstream binary test corpora for `debug/dwarf`,
+`debug/elf`, `debug/pe` and `runtime/pprof`, and the prebuilt objects for
+Linux BoringCrypto and the race detector on other platforms. Upstream Go
+supports the NetBSD race detector on amd64.
+
+Set `PKG_OPTIONS.go127=go-full-distribution` to build the complete upstream
+test and cross-race data from the same verified source. This is the default
+outside the common AArch64 cross profile.
+
 ## Native bootstrap and compiler selection
 
 Pass `GOROOT_BOOTSTRAP=/absolute/native-go-tree` to the ordinary pkgsrc build.
