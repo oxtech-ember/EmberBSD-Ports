@@ -142,3 +142,14 @@ against the target Ruby configuration and stage generated executables.
 +  abort "Ruby extension destination is a symlink: #{entry}" if File.symlink?(target)
 +  FileUtils.install(source, target, preserve: true)
 +end
+--- a/mk/tools/replace.mk
++++ b/mk/tools/replace.mk
+@@ -560,6 +560,8 @@
+ TOOLS_DEPENDS.gem?=		${RUBY_BASE}>=${RUBY_VERSION}:${RUBY_SRCDIR}
+ TOOLS_CREATE+=			gem
+ TOOLS_PATH.gem=			${TOOLBASE}/bin/gem${RUBY_SUFFIX}
++# The relocated gem launcher resolves its interpreter next to its command path.
++TOOLS_SCRIPT.gem=		${TOOLS_PATH.gem:Q} "$$@"
+ .  endif
+ .endif
+ 
