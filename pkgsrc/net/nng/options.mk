@@ -1,5 +1,4 @@
 # $NetBSD: options.mk,v 1.3 2024/08/25 06:19:07 wiz Exp $
-# The formatter runs on the build host in native and cross builds.
 
 PKG_OPTIONS_VAR= PKG_OPTIONS.nng
 PKG_SUPPORTED_OPTIONS= doc static
@@ -9,31 +8,21 @@ PKG_SUGGESTED_OPTIONS+= doc
 
 PLIST_VARS+= doc shared static
 
+# The release workflow publishes the rendered v2.1 reference in gh-pages.
 .if !empty(PKG_OPTIONS:Mdoc)
-CMAKE_CONFIGURE_ARGS+= -DNNG_ENABLE_DOC:BOOL=ON
+NNG_DOCS_REV= 8935ae95671151abc53e4ae81e330789b639781c
+NNG_DOCS_DISTFILE= nng-docs-${NNG_DOCS_REV}.tar.gz
+DISTFILES= ${DEFAULT_DISTFILES} ${NNG_DOCS_DISTFILE}
+SITES.${NNG_DOCS_DISTFILE}= -https://codeload.github.com/nanomsg/nng/tar.gz/${NNG_DOCS_REV}
+EXTRACT_ONLY= ${DEFAULT_DISTFILES}
+TOOL_DEPENDS+= lowdown>=3.2.1:../../textproc/lowdown
+.include "../../lang/python/tool.mk"
+USE_TOOLS+= bsdtar pax
+INSTALLATION_DIRS+= share/doc/nng
 PLIST.doc= yes
-.  if defined(EMBERBSD_BUILD_ASCIIDOCTOR)
-.    if empty(EMBERBSD_BUILD_ASCIIDOCTOR:M/*) || !exists(${EMBERBSD_BUILD_ASCIIDOCTOR})
-PKG_FAIL_REASON+= "EMBERBSD_BUILD_ASCIIDOCTOR must name an existing absolute host executable"
-.    else
-_EMBERBSD_ASCIIDOCTOR_VERSION!= if test -x ${EMBERBSD_BUILD_ASCIIDOCTOR:Q} && \
-    ember_asciidoctor_banner=$$(${EMBERBSD_BUILD_ASCIIDOCTOR:Q} --version); then \
-    printf '%s\n' "$$ember_asciidoctor_banner" | \
-    ${AWK} '/^Asciidoctor [0-9]/ { print $$2; exit }'; fi
-_EMBERBSD_ASCIIDOCTOR_SUPPORTED!= ${PKG_ADMIN} pmatch 'asciidoctor>=2.0.26<3' \
-    asciidoctor-${_EMBERBSD_ASCIIDOCTOR_VERSION:Q} && echo yes || echo no
-.      if ${_EMBERBSD_ASCIIDOCTOR_SUPPORTED} != "yes"
-PKG_FAIL_REASON+= "EMBERBSD_BUILD_ASCIIDOCTOR must successfully report Asciidoctor >=2.0.26 and <3"
-.      endif
-.    endif
-CMAKE_CONFIGURE_ARGS+= -DASCIIDOCTOR:FILEPATH=${EMBERBSD_BUILD_ASCIIDOCTOR}
-.  else
-.include "../../lang/ruby/rubyversion.mk"
-TOOL_DEPENDS+= ${RUBY_PKGPREFIX}-asciidoctor>=2.0.26<3:../../textproc/ruby-asciidoctor
-CMAKE_CONFIGURE_ARGS+= -DASCIIDOCTOR:FILEPATH=${TOOLBASE}/bin/asciidoctor${RUBY_VER}
-.  endif
-.else
-CMAKE_CONFIGURE_ARGS+= -DNNG_ENABLE_DOC:BOOL=OFF
+
+post-extract:
+	${TOOLS_PATH.bsdtar} -xzf ${_DISTDIR:Q}/${NNG_DOCS_DISTFILE} -C ${WRKDIR:Q} nng-${NNG_DOCS_REV}/ref/v2.1
 .endif
 
 .if !empty(PKG_OPTIONS:Mstatic)

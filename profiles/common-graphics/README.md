@@ -106,10 +106,9 @@ all four image tools. Ordinary GCC16 native/AArch64 packages pass package checks
 Native upstream, installed-library and 14 CLI memory/image checks pass.
 Target execution and TIFF integration remain pending.
 
-The [NNG 1.12.3 provider](cross/nng.md) retains the shared IPC API, protocol
-features, `nngcat` and default manual/HTML documentation. It uses the same
-reviewed lifecycle repairs as the KiCad source checkpoint. Installed target
-IPC and complete KiCad execution remain separate acceptance gates.
+The KiCad IPC server uses NNG 2.1.0 with explicit initialization and socket
+shutdown. The port installs nngcat and the offline reference, including manual
+pages for functions, types and protocols. [NNG package](cross/nng.md)
 
 The [ngspice 47 package pair](cross/ngspice.md) provides the CLI and shared
 SPICE API for KiCad, with common XSPICE modules and normal pkgsrc dependencies.

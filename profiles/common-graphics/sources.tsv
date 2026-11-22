@@ -59,7 +59,8 @@ textproc/rapidjson	rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7
 x11/pixman	pixman-0.46.4.tar.xz	a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239	https://xorg.freedesktop.org/archive/individual/lib/pixman-0.46.4.tar.xz
 x11/tk	tk9.1.0-src.tar.gz	772ce7a97c07c2db4c957c93af7ab4dff4bd3037772836b6afbcd0974023b3d6	https://downloads.sourceforge.net/project/tcl/Tcl/9.1.0/tk9.1.0-src.tar.gz
 security/mit-krb5	krb5-1.22.2.tar.gz	3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13	https://web.mit.edu/kerberos/dist/krb5/1.22/krb5-1.22.2.tar.gz
-net/nng	nng-1.12.3.tar.gz	036a925790034efdeef8a6803f3e4402c3ab509383326f8bc2f15ecee75a2fa2	https://github.com/nanomsg/nng/archive/refs/tags/v1.12.3.tar.gz
+net/nng	nng-2.1.0.tar.gz	e2fdcdf126b530e331b4727812b710629cdb5d90d230ce8f080e2eb520299d8d	https://github.com/nanomsg/nng/archive/refs/tags/v2.1.0.tar.gz
+net/nng	nng-docs-8935ae95671151abc53e4ae81e330789b639781c.tar.gz	00c458bb3e184de5b5c88a8391af08eeb4e2a5d9eb48f145cd8c139a0de67e1b	https://codeload.github.com/nanomsg/nng/tar.gz/8935ae95671151abc53e4ae81e330789b639781c
 cad/occt	OCCT-8.0.1.tar.gz	6297cc55a1720523a437c54d07dc16b9da8c5f5ab5800da3c6ebded568d53c18	https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V8.0.1.tar.gz
 cad/kicad-footprints	kicad-footprints-10.0.7.tar.bz2	a6f873e91fd3a2200e737821bdb30cecfd48b4dccfc1f41145d5cd8127996193	https://gitlab.com/kicad/libraries/kicad-footprints/-/archive/10.0.7/kicad-footprints-10.0.7.tar.bz2
 cad/kicad-packages3d	kicad-packages3D-10.0.7.tar.bz2	4edc10394c3a9ab98a82f8be78c4d8f8f1126e49bad99f9682a79cdb47957d2e	https://gitlab.com/kicad/libraries/kicad-packages3D/-/archive/10.0.7/kicad-packages3D-10.0.7.tar.bz2

@@ -10,8 +10,6 @@
 #include <unistd.h>
 
 #include <nng/nng.h>
-#include <nng/protocol/reqrep0/rep.h>
-#include <nng/protocol/reqrep0/req.h>
 
 static unsigned int passed;
 
@@ -31,17 +29,17 @@ expect_status(const char *operation, int actual, int expected)
 static int
 receive_bytes(nng_socket socket, const void *expected, size_t expected_size)
 {
-	void *data = NULL;
-	size_t size = 0;
+	nng_msg *msg = NULL;
 	int error, equal;
 
-	error = nng_recv(socket, &data, &size, NNG_FLAG_ALLOC);
+	error = nng_recvmsg(socket, &msg, 0);
 	if (error != 0) {
 		fprintf(stderr, "receive: %s\n", nng_strerror(error));
 		return 0;
 	}
-	equal = size == expected_size && memcmp(data, expected, size) == 0;
-	nng_free(data, size);
+	equal = nng_msg_len(msg) == expected_size &&
+	    memcmp(nng_msg_body(msg), expected, expected_size) == 0;
+	nng_msg_free(msg);
 	if (!equal) {
 		fprintf(stderr, "receive: message bytes or length differ\n");
 		return 0;
@@ -53,13 +51,12 @@ receive_bytes(nng_socket socket, const void *expected, size_t expected_size)
 static int
 receive_timeout(nng_socket socket)
 {
-	void *data = NULL;
-	size_t size = 0;
+	nng_msg *msg = NULL;
 	int error;
 
-	error = nng_recv(socket, &data, &size, NNG_FLAG_ALLOC);
+	error = nng_recvmsg(socket, &msg, 0);
 	if (error == 0)
-		nng_free(data, size);
+		nng_msg_free(msg);
 	return expect_status("receive timeout", error, NNG_ETIMEDOUT);
 }
 
@@ -94,8 +91,10 @@ main(void)
 
 	/* Keep the hard bound active through socket and library teardown. */
 	alarm(10);
-	if (strcmp(nng_version(), "1.12.3") != 0) {
-		fprintf(stderr, "expected NNG 1.12.3, got %s\n", nng_version());
+	if (!expect_status("initialize NNG", nng_init(NULL), 0))
+		return EXIT_FAILURE;
+	if (strcmp(nng_version(), "2.1.0") != 0) {
+		fprintf(stderr, "expected NNG 2.1.0, got %s\n", nng_version());
 		goto out;
 	}
 	if (getcwd(cwd, sizeof(cwd)) == NULL) {
@@ -157,9 +156,9 @@ main(void)
 	result = EXIT_SUCCESS;
 
 out:
-	if (client_open && !expect_status("close REQ0", nng_close(client), 0))
+	if (client_open && !expect_status("close REQ0", nng_socket_close(client), 0))
 		result = EXIT_FAILURE;
-	if (server_open && !expect_status("close REP0", nng_close(server), 0))
+	if (server_open && !expect_status("close REP0", nng_socket_close(server), 0))
 		result = EXIT_FAILURE;
 	nng_fini();
 	if (directory_created) {

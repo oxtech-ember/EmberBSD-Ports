@@ -1,5 +1,7 @@
 # KiCad request-server lifecycle regression
 
+For the current KiCad 10.0.8 and NNG 2.1.0 package check, see the [NNG IPC tests](../../../nng/README.md).
+
 This check compiles the actual KiCad 10.0.7 `KINNG_REQUEST_SERVER` source and
 its unchanged header. It compares pinned upstream with
 [`kinng-lifecycle.patch`](../../patches/kinng-lifecycle.patch).

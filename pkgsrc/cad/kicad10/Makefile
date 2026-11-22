@@ -2,7 +2,7 @@
 
 V=		10.0.8
 DISTNAME=	kicad-${V}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	cad
 MASTER_SITES=	${MASTER_SITE_GITLAB:=kicad/code/}
 GITLAB_PROJECT=	kicad
@@ -140,7 +140,7 @@ BUILDLINK_API_DEPENDS.wxGTK32+=	wxGTK32>=3.2.12nb20
 # needs 64-bit CAS for std::atomic<size_t>
 .include "../../mk/atomic64.mk"
 .if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	4
+PKGREVISION=	5
 .endif
 
 .include "../../mk/bsd.pkg.mk"
