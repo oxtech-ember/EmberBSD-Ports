@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (sanitize-7.0.1.gem) = 846fdd955f6870db3cdd2caf392d6325dda87adc453bfca62e5c94b5e563f662
-SHA512 (sanitize-7.0.1.gem) = 96cdaf48dab199aee1dc00ccc1b366d52cd0498ab330b145d9d1d42613016beb878c3faab9115a7f790a0a0a8e907e683caf512a6613e4e3f71b0e96e5df0645
-Size (sanitize-7.0.1.gem) = 37888 bytes
+BLAKE2s (sanitize-7.0.2.gem) = 82a3cef3871f2e598190ac9d80a60fb3ff162388b75a24fe115ed5dcd1df23ce
+SHA512 (sanitize-7.0.2.gem) = 362413e20d8cc789fb5ba5e4c33e55f8681b4aaad5b8f29cbd0d3cc61a82b22357de9e9b9915c4312c4dc219234dc88ff2cb0416bc05d915004df809b1d91cfc
+Size (sanitize-7.0.2.gem) = 39936 bytes
