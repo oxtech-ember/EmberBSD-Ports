@@ -1,0 +1,54 @@
+# Origin: EmberBSD contributors (AI-assisted).
+name: Linux x86_64 native package bootstrap
+
+on:
+  push:
+    branches: [codex/linux-native-qt-generators]
+    paths:
+      - '.github/workflows/linux-native-bootstrap.yml'
+      - 'profiles/common-build-tools/bootstrap/linux-native-packages.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          submodules: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: oxtech-ember/EmberBSD-SDK
+          ref: acb763c6e0da45721121e05d971478432674737b
+          path: sdk
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.15'
+      - name: Select distribution LLVM seed and host ABI
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang llvm lld libc++-dev libc++abi-dev bison file build-essential
+          python -c 'import ctypes, ssl, zlib, lzma, bz2'
+          df -h "$RUNNER_TEMP"
+      - name: Export the pinned source tree
+        run: |
+          python -B scripts/pkgsrc-shared-export.py "$RUNNER_TEMP/native/export" \
+            --sdk-source "$GITHUB_WORKSPACE/sdk" --git /usr/bin/git --patch /usr/bin/patch
+      - name: Bootstrap native pkgsrc and start the tool closure
+        run: profiles/common-build-tools/bootstrap/linux-native-packages.sh "$RUNNER_TEMP/native" "$(llvm-config --prefix)"
+      - name: Save built packages and bootstrap logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: linux-x86_64-native
+          path: |
+            ${{ runner.temp }}/native/packages/All/*.tgz
+            ${{ runner.temp }}/native/export/pkgsrc-export.json
+            ${{ runner.temp }}/native/logs/
+          if-no-files-found: warn
