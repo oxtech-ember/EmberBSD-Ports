@@ -1,0 +1,35 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+Check the installed target modules used by the AD DC commands in cross
+builds. Native builds and selftest keep using their running interpreter.
+
+--- python/wscript.orig
++++ python/wscript
+@@ -17,9 +17,21 @@
+ 
+ def find_third_party_module(conf, module, package, required=True):
+     conf.COMPOUND_START("Checking for system installation of Python module %s" % module)
+-    try:
+-        __import__(module)
+-    except ImportError:
++    target_site = os.environ.get('SAMBA_TARGET_PYTHON_SITE')
++    if conf.env.CROSS_COMPILE and module in ad_dc_pkgs:
++        if not target_site:
++            conf.COMPOUND_END(False)
++            raise Errors.WafError('Set SAMBA_TARGET_PYTHON_SITE for target AD DC modules')
++        # These pure-Python packages are imported by the installed AD tools.
++        found = os.path.isfile(os.path.join(target_site, module, '__init__.py'))
++    else:
++        try:
++            __import__(module)
++        except ImportError:
++            found = False
++        else:
++            found = True
++    if not found:
+         conf.COMPOUND_END(False)
+         if not required:
+             return False

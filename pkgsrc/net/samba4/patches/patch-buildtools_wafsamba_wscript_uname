@@ -1,0 +1,25 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+Select the build target OS release for the multi-channel diagnostic.
+
+--- buildtools/wafsamba/wscript.orig
++++ buildtools/wafsamba/wscript
+@@ -396,7 +396,14 @@
+ 
+     conf.env.GIT_LOCAL_CHANGES = Options.options.GIT_LOCAL_CHANGES
+ 
+-    conf.CHECK_UNAME()
++    # Cross packages report the selected operating system release in smbd.
++    # The executing kernel may have a different release from the sysroot.
++    target_release = os.environ.get('SAMBA_TARGET_OS_RELEASE')
++    if conf.env.CROSS_COMPILE and target_release:
++        conf.CHECK_UNAME(fields=('sysname',))
++        conf.DEFINE('SYSTEM_UNAME_RELEASE', target_release, quote=True)
++    else:
++        conf.CHECK_UNAME()
+ 
+     # see if we can compile and run a simple C program
+     conf.CHECK_CODE('printf("hello world")',

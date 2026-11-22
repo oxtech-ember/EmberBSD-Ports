@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). No target, SSH connection or download is used.
-"""talloc and tdb cross builds replay stored Waf answers by default.
+"""Samba and its libraries replay stored Waf cross answers by default.
 
 The default mode (EMBERBSD_WAF_ANSWERS_MODE=replay) configures with
 --cross-answers only: no --cross-execute, no target, no query configuration.
@@ -25,7 +25,7 @@ import types
 import unittest
 
 ARGS = None
-RECIPES = ('devel/talloc', 'databases/tdb')
+RECIPES = ('devel/talloc', 'databases/tdb', 'devel/tevent', 'net/samba4')
 TOOL = 'devel/talloc/files/waf_answers.py'
 ANSWERS = ('Checking simple C program: "NetBSD"\n'
            'rpath library support: OK\n'

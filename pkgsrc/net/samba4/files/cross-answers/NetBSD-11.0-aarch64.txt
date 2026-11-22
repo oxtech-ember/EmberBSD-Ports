@@ -1,0 +1,32 @@
+# EmberBSD Waf cross answers 1
+# platform: NetBSD-11.0-aarch64
+# recipe: net/samba4
+# package: samba-4.25.1
+# answers-sha256: 43b2c30ede666d10fe4919e32d46f36b27afc97ba1ff3c58c3834114dc1e0e8a
+Checking uname sysname type: "NetBSD"
+rpath library support: OK
+Checking getconf LFS_CFLAGS: NO
+Checking for large file support without additional flags: OK
+Checking correct behavior of strtoll: NO
+Checking for working strptime: OK
+Checking for C99 vsnprintf: "1"
+Checking for HAVE_SHARED_MMAP: OK
+Checking for HAVE_INCOHERENT_MMAP: NO
+Checking for HAVE_SECURE_MKSTEMP: OK
+Checking for gnutls fips mode support: NO
+Checking value of NSIG: "64"
+Checking value of _NSIG: "64"
+Checking value of SIGRTMAX: "63"
+Checking value of SIGRTMIN: "33"
+Checking for a 64-bit host to support lmdb: OK
+Checking errno of iconv for illegal multibyte sequence: OK
+Checking if can we convert from CP850 to UCS-2LE: OK
+Checking if can we convert from UTF-8 to UCS-2LE: OK
+Checking whether setreuid is available: "OK"
+Checking whether fcntl locking is available: OK
+Checking for the maximum value of the 'time_t' type: OK
+Checking whether the realpath function allows a NULL argument: OK
+Checking for ftruncate extend: OK
+Checking for readlink breakage: NO
+getcwd takes a NULL argument: OK
+checking for clnt_create(): OK

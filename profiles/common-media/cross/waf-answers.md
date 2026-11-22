@@ -1,6 +1,7 @@
-# Stored Waf cross answers (talloc, tdb)
+# Stored Waf cross answers for Samba and its libraries
 
-Samba's Waf build (`devel/talloc`, `databases/tdb`) compiles small feature
+The Samba family (`devel/talloc`, `databases/tdb`, `devel/tevent` and
+`net/samba4`) compiles small feature
 probes during configure and runs them. A cross build cannot run them, so
 Waf takes the results from a cross answers file instead
 (`--cross-answers`). The recipes keep one answers file per target platform:
@@ -8,6 +9,8 @@ Waf takes the results from a cross answers file instead
 ```
 pkgsrc/devel/talloc/files/cross-answers/NetBSD-11.0-aarch64.txt
 pkgsrc/databases/tdb/files/cross-answers/NetBSD-11.0-aarch64.txt
+pkgsrc/devel/tevent/files/cross-answers/NetBSD-11.0-aarch64.txt
+pkgsrc/net/samba4/files/cross-answers/NetBSD-11.0-aarch64.txt
 ```
 
 The shared fragment
@@ -48,6 +51,10 @@ Replay refuses a file for another platform, recipe or package version
 (`PKGNAME_NOREV`, so `PKGREVISION` bumps keep the answers), a body that
 differs from its checksum and a file that is not normalized. A new source
 release needs a new capture.
+
+The cross build records the system name returned by the target. Samba takes
+the release shown by `smbd` from the selected target’s `CROSS_OS_VERSION`.
+The capture omits the machine and kernel build strings.
 
 ## Capturing
 

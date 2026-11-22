@@ -1,12 +1,7 @@
-# STATUS: does not complete yet. talloc 2.5.0 waf cross-execute leaves
-# the shared GI query failure marker during configure (aborted walks in the
-# cache with empty stages). Diagnosis in the 2026-10-13 session log; the
-# marker abort path needs the executor's abort reason surfaced first.
-
 # $NetBSD: Makefile,v 1.223 2026/09/10 08:25:39 adam Exp $
 
 # XXX: Fails to build when mit-krb5 is installed.
-DISTNAME=	samba-4.24.7
+DISTNAME=	samba-4.25.1
 CATEGORIES=	net
 MASTER_SITES=	https://download.samba.org/pub/samba/stable/
 
@@ -21,9 +16,8 @@ SUPERSEDES+=	ldb-[0-9]*
 TOOL_DEPENDS+=	libxslt>=0:../../textproc/libxslt
 TOOL_DEPENDS+=	docbook-xml>=0:../../textproc/docbook-xml
 TOOL_DEPENDS+=	docbook-xsl>=1.79.2:../../textproc/docbook-xsl
-# pidl (the Samba IDL compiler, a developer tool) stays unusable: the
-# cross host cannot build the perl module packages p5-JSON and
-# p5-Parse-Yapp. libsmbclient and the KIO worker need neither.
+TOOL_DEPENDS+=	p5-Parse-Yapp>=1.05:../../devel/p5-Parse-Yapp
+CONFIGURE_ENV+=	YAPP=${TOOLBASE}/lib/perl5/vendor_perl/bin/yapp
 DEPENDS+=	${PYPKGPREFIX}-dns>=0:../../net/py-dns
 DEPENDS+=	${PYPKGPREFIX}-iso8601>=0:../../time/py-iso8601
 DEPENDS+=	${PYPKGPREFIX}-markdown>=0:../../textproc/py-markdown
@@ -31,6 +25,13 @@ DEPENDS+=	${PYPKGPREFIX}-markdown>=0:../../textproc/py-markdown
 BUILD_DEFS+=		VARBASE
 
 .include "../../mk/bsd.prefs.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.include "../../devel/talloc/waf-cross.mk"
+CONFIGURE_ENV+= SAMBA_TARGET_OS_RELEASE=${CROSS_OS_VERSION:Q}
+CONFIGURE_ENV+= SAMBA_TARGET_PYTHON_SITE=${CROSS_DESTDIR}${LOCALBASE}/${PYSITELIB}
+CONFIGURE_ARGS+=	--bundled-libraries=!talloc,!pytalloc-util,!tdb,!pytdb,!tevent,!pytevent
+.endif
 
 SMB_LIB?=		${PREFIX}/lib
 
@@ -106,7 +107,7 @@ CONFIGURE_ARGS+=	--without-gpgme
 CONFIGURE_ARGS+=	--without-regedit
 
 PY_PATCHPLIST=		yes
-MAKE_FLAGS+=		WAF_BINARY=${PYTHONBIN}\ ${WRKSRC}/buildtools/bin/waf
+MAKE_FLAGS+=		WAF_BINARY=${TOOL_PYTHONBIN}\ ${WRKSRC}/buildtools/bin/waf
 
 # for winbind option build.
 .if "${OPSYS}" != "Darwin" && "${OPSYS}" != "SunOS"
@@ -159,8 +160,8 @@ SUBST_FILES.docbook+=	librpc/tools/*.xml
 SUBST_FILES.docbook+=	*/*/man/*.xml
 SUBST_FILES.docbook+=	*/*/*/man/*.xml
 SUBST_STAGE.docbook=	pre-configure
-SUBST_SED.docbook=	-e 's,http://www.oasis-open.org/docbook/xml,${PREFIX}/share/xml/docbook,g'
-SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${PREFIX}/share/xsl/docbook,g'
+SUBST_SED.docbook=	-e 's,http://www.oasis-open.org/docbook/xml,${TOOLBASE}/share/xml/docbook,g'
+SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${TOOLBASE}/share/xsl/docbook,g'
 
 SUBST_CLASSES+=		paths
 SUBST_MESSAGE.paths=	Fixing paths.
@@ -204,7 +205,7 @@ REPLACE_PERL+=		source3/script/*.pl
 REPLACE_PERL+=		source4/script/*.pl
 REPLACE_PERL+=		source4/scripting/bin/nsupdate-gss
 REPLACE_PERL+=		third_party/nss_wrapper/nss_wrapper.pl
-REPLACE_PYTHON+=	buildtools/bin/waf
+REPLACE_TOOL_PYTHON+=	buildtools/bin/waf
 REPLACE_PYTHON+=	source3/script/samba-log-parser
 REPLACE_PYTHON+=	source4/setup/wscript_build
 REPLACE_PYTHON+=	source4/scripting/bin/*
@@ -215,13 +216,15 @@ REPLACE_PYTHON+=	source4/scripting/bin/*
 .include "../../archivers/libarchive/buildlink3.mk"
 .include "../../converters/libiconv/buildlink3.mk"
 .include "../../databases/lmdb/buildlink3.mk"
+BUILDLINK_API_DEPENDS.tdb+=	tdb>=1.4.15
 .include "../../databases/tdb/buildlink3.mk"
 .include "../../devel/cmocka/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"
 .include "../../devel/popt/buildlink3.mk"
 .include "../../devel/readline/buildlink3.mk"
-BUILDLINK_API_DEPENDS.talloc+=	talloc>=2.4.0
+BUILDLINK_API_DEPENDS.talloc+=	talloc>=2.5.0
 .include "../../devel/talloc/buildlink3.mk"
+BUILDLINK_API_DEPENDS.tevent+=	tevent>=0.17.2
 .include "../../devel/tevent/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../lang/python/application.mk"
