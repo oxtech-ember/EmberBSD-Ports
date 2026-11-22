@@ -6,7 +6,7 @@
  	ELF)								\
 +		${TEST} -x ${TOOLS_PATH.readelf:Q}"" || { ${ECHO} "metadata requires selected readelf" >&2; exit 1; }; \
  		libs=`${AWK} '/\/lib.*\.so(\.[0-9]+)*$$/ { print "${DESTDIR}${PREFIX}/" $$0 } END { exit 0 }' ${_PLIST_NOKEYWORDS}`; \
- 		if ${TEST} -n "$$bins" -o -n "$$libs"; then		\
+ 		if ${TEST} ${USE_CROSS_COMPILE:Uno:tl:Q} = yes || ${TEST} -n "$$bins" -o -n "$$libs"; then		\
  			if ${TEST} ${USE_CROSS_COMPILE:Uno:tl:Q} = yes; then \
 @@ -109,7 +110,8 @@
  			${CHECK_SHLIBS_SKIP:U:@p@${DESTDIR}${PREFIX}/${p}) continue ;;@}	\

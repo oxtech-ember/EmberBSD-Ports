@@ -400,16 +400,17 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 @@ -78,7 +78,30 @@
  	ELF)								\
  		libs=`${AWK} '/\/lib.*\.so(\.[0-9]+)*$$/ { print "${DESTDIR}${PREFIX}/" $$0 } END { exit 0 }' ${_PLIST_NOKEYWORDS}`; \
- 		if ${TEST} -n "$$bins" -o -n "$$libs"; then		\
+-		if ${TEST} -n "$$bins" -o -n "$$libs"; then		\
++		if ${TEST} ${USE_CROSS_COMPILE:Uno:tl:Q} = yes || ${TEST} -n "$$bins" -o -n "$$libs"; then		\
 +			if ${TEST} ${USE_CROSS_COMPILE:Uno:tl:Q} = yes; then \
 +				: > ${WRKDIR}/.elf-requires; \
-+				for elf in $$bins $$libs; do \
-+					file=$${elf#${DESTDIR}${PREFIX}/}; \
++				${AWK} '/(^|\/)(bin|sbin|libexec)\// || /\.so(\.[0-9]+)*$$/' ${_PLIST_NOKEYWORDS} | \
++				while IFS= read -r file; do \
 +					case "$$file" in \
 +					${CHECK_SHLIBS_SKIP:@p@${p}) continue ;;@} \
 +					*) ;; \
 +					esac; \
-+					${ECHO} "$$elf"; \
++					printf '%s\n' "${DESTDIR}${PREFIX}/$$file"; \
 +				done | \
 +				${PKGSRC_SETENV} REQUIRES_FILE=${WRKDIR}/.elf-requires \
 +				    PLATFORM_RPATH=${_OPSYS_SYSTEM_RPATH:Q} \

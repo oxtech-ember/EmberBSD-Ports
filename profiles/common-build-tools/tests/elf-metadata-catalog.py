@@ -81,6 +81,12 @@ alias.unlink() # C is a separate package; A's alias is in the target root.
 (stage/'usr/pkg/bin').mkdir(parents=True, exist_ok=True)
 shutil.copyfile(stage/'usr/pkg/lib/electron44/third-consumer.so', stage/'usr/pkg/bin/third')
 c = build('bin/third\n')
+# A dlopened module has imports even when the package exports no library.
+plugin = 'lib/electron44/reader module.so'
+shutil.copyfile(stage/'usr/pkg/lib/electron44/third-consumer.so', stage/'usr/pkg'/plugin)
+plain_module = build(plugin + '\n')
+assert plain_module == {'REQUIRES': ['/usr/pkg/lib/alias-provider/libdiagnostic.so.1']}, plain_module
+
 assert a_stable['REQUIRES'] == ['/usr/pkg/lib/external/libdiagnostic.so.1'], a_stable
 assert a_physical['REQUIRES'] == ['/usr/pkg/lib/external/libdiagnostic.so.1.2'], a_physical
 assert c['REQUIRES'] == ['/usr/pkg/lib/alias-provider/libdiagnostic.so.1'], c
@@ -91,10 +97,10 @@ entries = {'C': {'name':'consumer-1', 'node':{'dependencies':['A']}, 'record':c}
            'A': {'name':'alias-1', 'node':{'dependencies':['B']}, 'record':a_stable},
            'B': {'name':'provider-2', 'node':{'dependencies':[]}, 'record':{'PROVIDES':[
                '/usr/pkg/lib/external/libdiagnostic.so.1', '/usr/pkg/lib/external/libdiagnostic.so.1.3']}}}
-_check_runtime(None, entries, 'target', set(entries))
+_check_runtime(None, entries, 'target', set(entries), set(entries))
 entries['A']['record'] = a_physical
 try:
-    _check_runtime(None, entries, 'target', set(entries))
+    _check_runtime(None, entries, 'target', set(entries), set(entries))
 except SDKError as exc:
     assert 'libdiagnostic.so.1.2' in str(exc), exc
 else:
