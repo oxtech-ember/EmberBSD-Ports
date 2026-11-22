@@ -3,3 +3,4 @@ sbin/mozilla-rootcerts
 share/doc/mozilla-rootcerts/gnupg2
 share/mozilla-rootcerts/cacert.pem
 share/mozilla-rootcerts/certdata.txt
+share/mozilla-rootcerts/retired-tls-sha256

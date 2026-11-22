@@ -1,0 +1,6 @@
+# SHA-256 of DER certificates from earlier Mozilla TLS PEM exports.
+# Keep entries for roots that no longer have an NSS certificate object.
+# Buypass Class 2 Root CA
+9a114025197c5bb95d94e63d55cd43790847b646b23cdf11ada4a00eff15fb48
+# Buypass Class 3 Root CA
+edf7ebbca27a2a384d387b7d4010c666e2edb4843e4c29b4ae1d5b9332e6b24d

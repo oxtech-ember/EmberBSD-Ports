@@ -8,7 +8,7 @@
  
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +# Use the selected host generator with the target package certificate data.
-+BUILD_DEPENDS+=	mozilla-rootcerts>=1.1.20261113:../../security/mozilla-rootcerts
++BUILD_DEPENDS+=	mozilla-rootcerts>=1.1.20261113nb1:../../security/mozilla-rootcerts
 +SCRIPT=		${TOOLBASE}/sbin/mozilla-rootcerts
 +_CERT_SCRIPT_ENV=	${SETENV} SSLDIR=${PLACE:Q}/openssl \
 +			DATADIR=${CROSS_DESTDIR:Q}${LOCALBASE:Q}/share/mozilla-rootcerts

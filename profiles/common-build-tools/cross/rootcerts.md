@@ -107,6 +107,27 @@ is removed and its absence is checked. The compiler SDK is unchanged.
 This is script environment-API acceptance on a minimal guest. Default full-base
 command presence and normal package activation/removal remain separate gates.
 
+## TLS trust in plain PEM
+
+The exporter joins the NSS certificate and trust objects by issuer and serial
+number. It selects explicit TLS server trust anchors. A CA with a server
+distrust-after constraint is omitted from both PEM bundles and the OpenSSL
+hash directory. Plain PEM cannot express the end-entity issuance cutoff.
+Older, otherwise valid chains to an omitted CA can also fail validation.
+The package retains every certificate and its original policy in certdata.txt.
+
+Run `extract` and `rehash` in an existing manually managed directory to
+refresh its generated files. The exporter retains local certificates from
+an existing regular `ca-certificates.crt` and explicit OpenSSL trust
+attributes on a retained CA. The hash index also supports local PEM links.
+The installed retired-tls-sha256 file identifies previously exported roots
+that no longer appear in certdata.txt. When updating NSS, compare the
+previous releases with the new dataset and retain their removed DER
+fingerprints in this file. This lets a bundle-only store distinguish a
+retired Mozilla root from a local CA.
+Keep local CA files separate from package-owned files during a package
+upgrade.
+
 ## Native SDK trust store
 
 The native Darwin foundation uses Clang by default, with GCC selected explicitly.

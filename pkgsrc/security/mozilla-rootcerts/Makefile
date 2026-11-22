@@ -4,6 +4,7 @@
 # and bump its version when updating this package.
 
 DISTNAME=	mozilla-rootcerts-1.1.${CERTDATA_DATE}
+PKGREVISION=	1
 CATEGORIES=	security
 MASTER_SITES=	-https://raw.githubusercontent.com/nss-dev/nss/${CERTDATA_COMMIT}/lib/ckfw/builtins/certdata.txt
 EXTRACT_SUFX=	# empty
@@ -66,6 +67,7 @@ do-install:
 	${INSTALL_SCRIPT} ${WRKSRC}/${CERT_SCRIPT} \
 		${DESTDIR}${PREFIX}/sbin/mozilla-rootcerts
 	${INSTALL_DATA} ${WRKSRC}/certdata.txt ${DESTDIR}${DATADIR}/certdata.txt
+	${INSTALL_DATA} ${FILESDIR}/retired-tls-sha256 ${DESTDIR}${DATADIR}/retired-tls-sha256
 	${INSTALL_DATA} ${WRKSRC}/cacert.pem ${DESTDIR}${DATADIR}/cacert.pem
 	${INSTALL_DATA} files/gnupg2 ${DESTDIR}${PREFIX}/share/doc/${PKGBASE}
 
