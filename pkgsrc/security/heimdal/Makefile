@@ -19,7 +19,7 @@ CONFLICTS+=	gss-[0-9]*
 CONFLICTS+=	kth-krb4-[0-9]*
 
 USE_LIBTOOL=		yes
-USE_TOOLS+=		bison flex:run perl pkg-config
+USE_TOOLS+=		bison perl pkg-config
 PKGCONFIG_OVERRIDE+=	tools/heimdal-gssapi.pc.in
 MAKE_ENV+=		INSTALL_CATPAGES=no
 
@@ -102,6 +102,7 @@ CONFIGURE_ENV.SunOS+=	ac_cv_header_vis_h=no
 
 PLIST_VARS+=		glob vis afskauth native_tools
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+USE_TOOLS+=		flex
 # security/heimdal-tools installs only the native code generators into the
 # tool prefix; they are not a build-host path setting.  The full native
 # Heimdal would conflict with MIT Kerberos that other native tools pull in.
@@ -114,6 +115,7 @@ PKG_FAIL_REASON+= Select\ the\ native\ Heimdal\ cross-tools\ directory
 .  endif
 CONFIGURE_ARGS+= --with-cross-tools=${_EMBERBSD_HEIMDAL_TOOLS_DIR:Q}
 .else
+USE_TOOLS+=		flex:run
 PLIST.native_tools= yes
 post-install:
 	${LIBTOOL} --mode=install ${INSTALL_PROGRAM} ${WRKSRC}/lib/com_err/compile_et ${DESTDIR}${PREFIX}/libexec/heimdal/compile_et
