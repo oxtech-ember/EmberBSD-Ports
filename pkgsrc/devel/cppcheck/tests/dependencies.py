@@ -23,8 +23,8 @@ for name in ('archives', 'patch', 'work'):
 a = parser.parse_args(arguments)
 a.work.mkdir()
 inputs = (
-    ('devel/simplecpp', 'simplecpp-1.9.1.tar.gz', 'simplecpp-1.9.1',
-     'd26e36a8a6462d1655e03d67a95f5cd0228bffb1873c9349b971093494a0df59'),
+    ('devel/simplecpp', 'simplecpp-1.10.2.tar.gz', 'simplecpp-1.10.2',
+     '709fed69c459d8405b472dbfe8e7118e1767c7d6970aef49fdb05392e599c24a'),
     ('devel/picojson', 'picojson-1.3.0.20210117-111c9be5188f7350c2eac9ddaedd8cca3d7bf394.tar.gz',
      'picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394',
      '671f89832a17e9e71398f80c0a326afa2ebe81f4c26d5a9992e1fcd0888ae151'),
@@ -79,21 +79,20 @@ for package, files in before.items():
         if package == 'devel/simplecpp' and name == 'simplecpp.h':
             actual = actual.replace(b'#include "simplecpp-abi.h"\n\n', b'')
         assert actual == data, (package, name)
-for name in ('simplecpp.cpp', 'simplecpp.h'):
-    actual = (simple / name).read_bytes().replace(b'#include "simplecpp-abi.h"\n\n', b'')
-    assert actual == (cpp / 'externals/simplecpp' / name).read_bytes(), name
 assert (pico / 'picojson.h').read_bytes() == (cpp / 'externals/picojson/picojson.h').read_bytes()
 assert (pico / 'picojson.h').read_bytes() == (zone / 'dep/jwt-cpp/include/picojson/picojson.h').read_bytes()
 
 
 def check_consumers():
     top = (cpp / 'CMakeLists.txt').read_text()
-    assert 'find_package(simplecpp 1.9.1 EXACT CONFIG REQUIRED)' in top
+    assert 'find_package(simplecpp 1.10.2 EXACT CONFIG REQUIRED)' in top
     assert 'find_package(picojson 1.3.0.20210117 CONFIG REQUIRED)' in top
     for provider in ('simplecpp', 'picojson'):
         assert f'add_subdirectory(externals/{provider})' not in top
         assert f'add_library({provider} ALIAS {provider}::{provider})' in top
         assert f'devel/{provider}/buildlink3.mk' in (ROOT / 'pkgsrc/devel/cppcheck/Makefile').read_text()
+    preprocessor = (cpp / 'lib/preprocessor.cpp').read_text()
+    assert preprocessor.count('case simplecpp::Output::PORTABILITY_STRINGIFY:') == 2
     core = (cpp / 'lib/CMakeLists.txt').read_text()
     assert 'target_link_libraries(cppcheck-core PRIVATE tinyxml2 picojson ${PCRE_LIBRARY} PUBLIC simplecpp)' in core
     assert 'add_definitions(-D_GLIBCXX_DEBUG)' in (cpp / 'cmake/compilerDefinitions.cmake').read_text()
@@ -122,7 +121,7 @@ for old in (ROOT / 'upstream/pkgsrc/security/zoneminder').rglob('*'):
         assert expected == (ROOT / 'pkgsrc/security/zoneminder' / relative).read_bytes(), relative
 simple_cmake = (simple / 'CMakeLists.txt').read_text()
 for text in ('add_library(simplecpp_lib simplecpp.cpp)', 'EXPORT_NAME simplecpp',
-             'SOVERSION 1.9', 'target_compile_features(simplecpp_lib PUBLIC cxx_std_11)',
+             'SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"', 'target_compile_features(simplecpp_lib PUBLIC cxx_std_11)',
              'SIMPLECPP_EXPORT INTERFACE SIMPLECPP_IMPORT',
              'target_link_libraries(testrunner PRIVATE simplecpp::simplecpp)',
              'add_test(NAME testrunner COMMAND testrunner)', 'COMPATIBILITY ExactVersion'):
@@ -153,7 +152,7 @@ finally:
     fault_file.write_bytes(original)
 check_consumers()
 (a.work / 'result.json').write_text(json.dumps({
-    'sources': records, 'source_identity': 'implementation bytes match; SimpleCpp header adds the installed ABI guard',
+    'sources': records, 'source_identity': 'SimpleCpp matches its separate upstream source except for the installed ABI guard; PicoJSON matches both consumers',
     'negative_control': 'reintroduced bundled SimpleCpp rejected',
     'simplecpp_abi': abi_result,
     'scope': 'source and package interfaces only; no compiler or executable tests'}, indent=2) + '\n')

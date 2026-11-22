@@ -1,6 +1,5 @@
 # Origin: EmberBSD contributors (AI-assisted).
-DISTNAME= simplecpp-1.9.1
-PKGREVISION= 1
+DISTNAME= simplecpp-1.10.2
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=cppcheck-opensource/}
 GITHUB_PROJECT= simplecpp

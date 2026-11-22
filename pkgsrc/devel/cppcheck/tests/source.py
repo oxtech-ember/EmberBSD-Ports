@@ -67,7 +67,7 @@ for symbol in ('PCRE2_CODE_UNIT_WIDTH 8', 'pcre2_compile', 'pcre2_match_data_cre
     assert symbol in regex, symbol
 assert '#include <pcre.h>' not in regex and '#define PCRE2_STATIC' not in regex
 top = (s / 'CMakeLists.txt').read_text()
-assert 'find_package(simplecpp 1.9.1 EXACT CONFIG REQUIRED)' in top
+assert 'find_package(simplecpp 1.10.2 EXACT CONFIG REQUIRED)' in top
 assert 'find_package(picojson 1.3.0.20210117 CONFIG REQUIRED)' in top
 assert 'add_subdirectory(externals/simplecpp)' not in top
 assert 'add_subdirectory(externals/picojson)' not in top

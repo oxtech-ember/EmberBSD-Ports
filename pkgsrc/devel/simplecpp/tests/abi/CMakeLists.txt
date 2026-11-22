@@ -1,7 +1,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 cmake_minimum_required(VERSION 3.22)
 project(simplecpp_abi_test LANGUAGES CXX)
-find_package(simplecpp 1.9.1 EXACT CONFIG REQUIRED)
+find_package(simplecpp 1.10.2 EXACT CONFIG REQUIRED)
 
 # These tests compile and link target programs. They never execute target code.
 set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)

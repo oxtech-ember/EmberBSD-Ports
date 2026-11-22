@@ -20,9 +20,9 @@ TinyXML2 and Boost headers come from the common Ports owners.
 The finder selects the installed `boost_headers` CMake config directly.
 It needs no Boost libraries package or second copy of Boost headers.
 SimpleCpp and PicoJSON come from their common Ports owners.
-Their implementations match the bundled sources. SimpleCpp adds an installed ABI guard to its header.
+Cppcheck uses the SimpleCpp 1.10 preprocessor and handles its stringify portability notices alongside the other preprocessor warnings. The common PicoJSON header matches the bundled source.
 CMake requires both providers and has no bundled fallback.
-The SimpleCpp 1.9.1 config requires the exact release to avoid unverified C++ ABI changes.
+The SimpleCpp 1.10.2 config requires the exact release to avoid unverified C++ ABI changes.
 Its public target selects the checked libstdc++ ABI for the library and consumers.
 `cppcheck-core` propagates that target requirement to its own dependents.
 `CPPCHK_GLIBCXX_DEBUG` remains enabled; no Debug diagnostics are disabled.
@@ -66,7 +66,7 @@ The check evaluates default, Qt6 and legacy Qt5 options without configuration or
 It rejects missing generator paths and checks native XML tools under `TOOLBASE`.
 It also checks both provider recipes and the ZoneMinder dependency edge.
 Run `tests/dependencies.py` with `--sdk-source`, `--archives`, `--patch` and a new `--work` directory.
-That gate checks four source archives, all carried patches and exact provider-source identity.
+That gate checks four source archives, all carried patches, the upstream provider sources and their consumer imports.
 Its negative control rejects reintroduction of a bundled SimpleCpp CMake target.
 
 ## Clang AST file locations

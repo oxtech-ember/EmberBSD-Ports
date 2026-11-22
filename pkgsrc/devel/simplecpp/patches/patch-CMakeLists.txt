@@ -8,11 +8,11 @@ Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
 @@ -1,5 +1,5 @@
  cmake_minimum_required (VERSION 3.10)
 -project (simplecpp LANGUAGES CXX)
-+project (simplecpp VERSION 1.9.1 LANGUAGES CXX)
++project (simplecpp VERSION 1.10.2 LANGUAGES CXX)
  
  set(CMAKE_CXX_STANDARD 11 CACHE STRING "C++ standard to use")
  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-@@ -104,10 +104,29 @@
+@@ -114,11 +114,30 @@
      endif()
  endif()
  
@@ -20,6 +20,7 @@ Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
 -
 -add_executable(simplecpp $<TARGET_OBJECTS:simplecpp_obj> main.cpp)
 -add_executable(testrunner $<TARGET_OBJECTS:simplecpp_obj> test.cpp)
+-foreach(target simplecpp_obj simplecpp testrunner)
 +include(GNUInstallDirs)
 +include(CMakePackageConfigHelpers)
 +add_library(simplecpp_lib simplecpp.cpp)
@@ -31,7 +32,7 @@ Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
 +endif()
 +configure_file(simplecpp-abi.h.in simplecpp-abi.h @ONLY)
 +set_target_properties(simplecpp_lib PROPERTIES OUTPUT_NAME simplecpp
-+    EXPORT_NAME simplecpp VERSION ${PROJECT_VERSION} SOVERSION 1.9)
++    EXPORT_NAME simplecpp VERSION ${PROJECT_VERSION} SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 +target_include_directories(simplecpp_lib PUBLIC
 +    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 +    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
@@ -43,13 +44,18 @@ Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
 +target_link_libraries(simplecpp PRIVATE simplecpp::simplecpp)
 +add_executable(testrunner test.cpp)
 +target_link_libraries(testrunner PRIVATE simplecpp::simplecpp)
- target_compile_definitions(testrunner
-     PRIVATE
-         SIMPLECPP_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
-@@ -115,3 +134,22 @@
++foreach(target simplecpp_lib simplecpp testrunner)
+     if (SIMPLECPP_COMPILE_OPTIONS)
+         target_compile_options(${target} PRIVATE ${SIMPLECPP_COMPILE_OPTIONS})
+     endif()
+@@ -133,3 +152,26 @@
  
  enable_testing()
  add_test(NAME testrunner COMMAND testrunner)
++if(APPLE)
++    set_tests_properties(testrunner PROPERTIES
++        ENVIRONMENT "DYLD_LIBRARY_PATH=$<TARGET_FILE_DIR:simplecpp_lib>")
++endif()
 +
 +install(TARGETS simplecpp RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 +install(TARGETS simplecpp_lib EXPORT simplecpp-targets

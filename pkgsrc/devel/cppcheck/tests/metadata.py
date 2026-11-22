@@ -33,7 +33,7 @@ for name, option in (('default', ''), ('qt6', 'qt6'), ('legacy-qt5', 'qt5')):
     lines = result.value.decode().splitlines()
     assert len(lines) == len(fields), (name, lines)
     values = dict(zip(fields, lines))
-    assert values['PKGNAME'] == 'cppcheck-2.22.0nb2', values
+    assert values['PKGNAME'] == 'cppcheck-2.22.0nb9', values
     assert not values['PKG_FAIL_REASON'], values['PKG_FAIL_REASON']
     selected = values['PKG_OPTIONS'].split()
     assert ('qt6' in selected) == bool(option) and 'qt5' not in selected, values
@@ -55,14 +55,14 @@ for name, option in (('default', ''), ('qt6', 'qt6'), ('legacy-qt5', 'qt5')):
     assert args['LIBXML2_XMLLINT_EXECUTABLE'] == values['TOOLBASE'] + '/bin/xmllint', args
     assert args['XSLTPROC'] == values['TOOLBASE'] + '/bin/xsltproc', args
     assert 'pygments' in values['DEPENDS'] and 'z3' not in values['DEPENDS'], values
-    assert 'simplecpp>=1.9.1nb1' in values['DEPENDS'], values
+    assert 'simplecpp>=1.10.2' in values['DEPENDS'], values
     assert 'picojson>=1.3.0.20210117' in values['BUILD_DEPENDS'], values
     assert values['BUILD_TARGET'].split() == ['all', 'man'] and values['TEST_TARGET'] == 'test', values
     records.append({'name': name, 'argv': argv, 'values': values})
 # Provider and transitive-consumer metadata come from the same exported tree.
 provider_fields = ('PKGNAME', 'CMAKE_CONFIGURE_ARGS', 'BUILD_DEPENDS', 'DEPENDS',
                    'TEST_TARGET', 'PKG_FAIL_REASON', 'DISTFILES', 'WRKSRC')
-for package, expected in (('devel/simplecpp', 'simplecpp-1.9.1nb1'),
+for package, expected in (('devel/simplecpp', 'simplecpp-1.10.2'),
                           ('devel/picojson', 'picojson-1.3.0.20210117'),
                           ('security/zoneminder', 'zoneminder-1.38.4nb3')):
     name = package.replace('/', '-')

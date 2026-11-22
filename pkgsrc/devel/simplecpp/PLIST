@@ -7,6 +7,6 @@ lib/cmake/simplecpp/simplecpp-config.cmake
 lib/cmake/simplecpp/simplecpp-targets-noconfig.cmake
 lib/cmake/simplecpp/simplecpp-targets.cmake
 lib/libsimplecpp.so
-lib/libsimplecpp.so.1.9
-lib/libsimplecpp.so.1.9.1
+lib/libsimplecpp.so.1.10
+lib/libsimplecpp.so.1.10.2
 share/licenses/simplecpp/LICENSE
