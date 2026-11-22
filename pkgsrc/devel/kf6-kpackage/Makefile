@@ -10,6 +10,8 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PKGREVISION=	1
+# CMake removes this build-tree path when it installs kpackagetool6.
+BUILDLINK_PASSTHRU_RPATHDIRS+=	${WRKSRC}/${CMAKE_BUILD_DIR}/bin
 CMAKE_CONFIGURE_ARGS+=	-DKDE_SKIP_RPATH_SETTINGS=ON
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH="@loader_path/../lib;@loader_path/../qt6/lib"
 .endif
