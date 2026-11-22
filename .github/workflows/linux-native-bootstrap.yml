@@ -38,6 +38,7 @@ jobs:
           df -h "$RUNNER_TEMP"
       - name: Export the pinned source tree
         run: |
+          mkdir -p "$RUNNER_TEMP/native"
           python -B scripts/pkgsrc-shared-export.py "$RUNNER_TEMP/native/export" \
             --sdk-source "$GITHUB_WORKSPACE/sdk" --git /usr/bin/git --patch /usr/bin/patch
       - name: Bootstrap native pkgsrc and start the tool closure
