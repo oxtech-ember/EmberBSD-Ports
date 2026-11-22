@@ -6,11 +6,11 @@ desktop can run on EmberBSD. Strategy: only current upstream releases;
 every NetBSD adaptation lives in recipe patches here and is offered
 upstream once it builds.
 
-The Dock and libadwaita builds use the common `devel/appstream` and
-`textproc/libxmlb` recipes from the exported Ports tree. Set
-`PKG_OPTIONS.appstream= -qt -stemming` for the smaller Pantheon build.
-Plasma Discover selects the default Qt binding. The default search uses
-Snowball stemming.
+The Dock uses the shared `devel/libadwaita` and `devel/appstream`
+recipes. Libadwaita 1.10 reads application metadata through
+`devel/ministream`. AppStream uses `textproc/libxmlb`.
+Set `PKG_OPTIONS.appstream= -qt -stemming` for the smaller Pantheon
+build. Plasma Discover uses the default Qt binding and Snowball stemming.
 
 ## Version pairing
 

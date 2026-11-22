@@ -25,7 +25,7 @@ MESON_ARGS+=	-Dworkspace-switcher=true
 .include "../../textproc/libxmlb/buildlink3.mk"
 .include "../../x11/gtk4/buildlink3.mk"
 .include "../../x11/granite/buildlink3.mk"
-.include "../../x11/libadwaita/buildlink3.mk"
+.include "../../devel/libadwaita/buildlink3.mk"
 .include "../../devel/appstream/buildlink3.mk"
 .include "../../x11/libX11/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
