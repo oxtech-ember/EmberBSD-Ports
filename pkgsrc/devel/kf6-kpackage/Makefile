@@ -30,3 +30,11 @@ USE_TOOLS+=	msgmerge
 .include "../../devel/qt6-qttools/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
+
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# The installed CMake targets already search this prefix relative to the image.
+# Keep library link directories and all other linker options from buildlink.
+.for _dir in lib qt6/lib qt6/plugins
+LDFLAGS:=	${LDFLAGS:N${COMPILER_RPATH_FLAG}${PREFIX}/${_dir}}
+.endfor
+.endif
