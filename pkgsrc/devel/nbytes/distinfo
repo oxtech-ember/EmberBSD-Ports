@@ -1,7 +1,7 @@
 $NetBSD$
 
-BLAKE2s (nbytes-0.1.4.tar.gz) = 4092aa73d209466c1b20c5671982967139b33428dcecf5abc42519b14fe2de49
-SHA512 (nbytes-0.1.4.tar.gz) = 4dcac44d3d21cb12ff344def1416e2c5fb7a8471e620c3c2be1449c40b44bcab6d7139b960393956d5691aa30dc7d4761eee892835183aa8a192d34921a798d5
-Size (nbytes-0.1.4.tar.gz) = 15439 bytes
+BLAKE2s (nbytes-0.1.5.tar.gz) = ba8e3a5a48753ecb3c6ac24ba40e713ce1e3c127f2b0a6d17ec81a340abb9023
+SHA512 (nbytes-0.1.5.tar.gz) = 64cad07792da8d9a4a24c61950b3bd4120b3ed874056afdc10b1c8c495c431843b07883cbe5d54c2f9ddbfa26c326e32b2756a4a5b04ffab6469c2cb7242b67b
+Size (nbytes-0.1.5.tar.gz) = 15957 bytes
 SHA1 (patch-CMakeLists.txt) = 85664500790092326305d8c217a881c1e2bf5d25
 SHA1 (patch-tests_CMakeLists.txt) = c6aa8a6abfe1fabd2cd15226b24e1c9f7c43c7f4
