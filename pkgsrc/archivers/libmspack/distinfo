@@ -1,6 +1,5 @@
 $NetBSD$
 
-BLAKE2s (libmspack-0.11alpha.tar.gz) = fc3b984e669642c7a5ec837b011f287151f4b461d82c228463cef046585e5bb0
-SHA512 (libmspack-0.11alpha.tar.gz) = 40c487e5b4e2f63a6cada26d29db51f605e8c29525a1cb088566d02cf2b1cc9dba263f80e2101d7f8e9d69cf7684a15bcaf791fb4891ad013a56afc7256dfa62
-Size (libmspack-0.11alpha.tar.gz) = 509478 bytes
-SHA1 (patch-mspack_kwajd.c) = 8678e059758a6bb118d79ac5994f144a91563978
+BLAKE2s (libmspack-0.12alpha.tar.gz) = f318947494b41ea82cfdea7abd98f2548b5e43e699cb522972a3621fcff00419
+SHA512 (libmspack-0.12alpha.tar.gz) = 43fc35acc2b7fa26509618a23cebeeb4605522f1f331b8af3064c5de183509495dac4968ac8c42aec0ea31f6c7d00610cdb1ae81aadf4a4dceb6efbeac1901f8
+Size (libmspack-0.12alpha.tar.gz) = 520615 bytes

@@ -6,12 +6,7 @@ see [LICENSE](LICENSE). The 15-byte `f00.kwj` fixture comes from libmspack
 0.11alpha `test/test_files/kwajd`. Its original LGPL license is retained in
 [COPYING.LIB](COPYING.LIB). The byte array records that origin.
 
-The common [libmspack recipe](../../pkgsrc/archivers/libmspack) adapts upstream
-[4d868504114346aa767d435fbb89a8b76603493f](https://github.com/kyz/libmspack/commit/4d868504114346aa767d435fbb89a8b76603493f).
-The stable source archive has SHA256
-`70dd1fb2f0aecc36791b71a1e1840e62173079eadaa081192d1c323a0eeea21b`.
-The fix initializes the header filename and extra-data pointers before an
-incomplete read or invalid signature can enter cleanup.
+The [libmspack recipe](../../pkgsrc/archivers/libmspack) uses the upstream 0.12alpha archive, which includes the cleanup fix. The 0.11alpha package tested below carried the upstream change as a Ports patch.
 
 ## Run the regression
 
