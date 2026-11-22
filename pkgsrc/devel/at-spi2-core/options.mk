@@ -67,10 +67,6 @@ BUILDLINK_DEPMETHOD.gobject-introspection=	build
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
-# The native scanner canonicalizes sysroot paths; keep header lookup inside
-# this consumer's declared buildlink tree.
-_EMBERBSD_GI_REAL_SYSROOT!= cd ${CROSS_DESTDIR:Q} && pwd -P
-BUILDLINK_TRANSFORM+= I:${_EMBERBSD_GI_REAL_SYSROOT}${PREFIX}:${BUILDLINK_DIR}
 
 MESON_BINARIES+= g-ir-scanner g-ir-compiler
 MESON_BINARY.g-ir-scanner= ${TOOLBASE}/bin/g-ir-scanner

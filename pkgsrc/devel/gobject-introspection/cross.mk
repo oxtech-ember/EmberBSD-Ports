@@ -17,6 +17,14 @@ PKG_FAIL_REASON+= "The GI cross recipe supports only aarch64 and x86_64"
     "${EMBERBSD_CROSS_TARGET:U${_EMBER_GI_TARGET:U}}" != "${_EMBER_GI_TARGET:U}"
 PKG_FAIL_REASON+= "GI requires matching NetBSD 11 target, architecture and GNU provider metadata"
 .endif
+# The native scanner canonicalizes the target include paths it passes to CPP.
+# Keep declared passthrough roots ahead of the general buildlink include rule.
+.if !empty(CROSS_DESTDIR) && "${CROSS_DESTDIR:tA}" != "${CROSS_DESTDIR}"
+.for _gi_dir in ${BUILDLINK_PASSTHRU_DIRS:M${CROSS_DESTDIR}${PREFIX}/*:O:u:Or}
+BUILDLINK_TRANSFORM+= I:${_gi_dir:S,^${CROSS_DESTDIR},${CROSS_DESTDIR:tA},}:${_gi_dir}
+.endfor
+BUILDLINK_TRANSFORM+= I:${CROSS_DESTDIR:tA}${PREFIX}:${BUILDLINK_DIR}
+.endif
 # Keep the published GI selector compatible with the common Python provider.
 .if defined(EMBERBSD_GI_PYTHON)
 .if defined(EMBERBSD_CROSS_BUILD_PYTHON) && "${EMBERBSD_CROSS_BUILD_PYTHON}" != "${EMBERBSD_GI_PYTHON}"

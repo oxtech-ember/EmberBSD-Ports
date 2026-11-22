@@ -14,8 +14,6 @@ BUILD_DEPENDS+= glib2-introspection>=2.90.1nb1:../../devel/glib2-introspection
 EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
 MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
-_EMBERBSD_GI_REAL_SYSROOT!= cd ${CROSS_DESTDIR:Q} && pwd -P
-BUILDLINK_TRANSFORM+= I:${_EMBERBSD_GI_REAL_SYSROOT}${PREFIX}:${BUILDLINK_DIR}
 MESON_BINARIES+= g-ir-scanner g-ir-compiler gdbus-codegen vapigen vala
 MESON_BINARY.g-ir-scanner= ${TOOLBASE}/bin/g-ir-scanner
 MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
