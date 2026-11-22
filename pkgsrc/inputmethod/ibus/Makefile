@@ -63,7 +63,7 @@ LDFLAGS_FOR_BUILD+=	-Wl,-rpath,${TOOLBASE:Q}/lib
 CONFIGURE_ENV+=	CPPFLAGS_FOR_BUILD=${CPPFLAGS_FOR_BUILD:Q}
 CONFIGURE_ENV+=	LDFLAGS_FOR_BUILD=${LDFLAGS_FOR_BUILD:Q}
 MAKE_ENV+=	LIBTOOL_FOR_BUILD=${TOOLBASE:Q}/bin/libtool
-.for generator in GDBUS_CODEGEN GLIB_COMPILE_RESOURCES GLIB_COMPILE_SCHEMAS GLIB_GENMARSHAL GLIB_MKENUMS
+.for generator in GDBUS_CODEGEN GLIB_COMPILE_RESOURCES GLIB_GENMARSHAL GLIB_MKENUMS
 MAKE_FLAGS+=	${generator}=${TOOLBASE:Q}/bin/${generator:tl:S/_/-/g}
 .endfor
 # The runtime records the target path. Only the host generator prepends the sysroot.
@@ -140,6 +140,10 @@ pre-build:
 	(cd ${WRKSRC} && ${MAKE_PROGRAM} -C portal maintainer-clean-generic)
 
 .include "../../devel/glib2/schemas.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# IBus validates each schema during the build with --strict --dry-run.
+MAKE_FLAGS+=	GLIB_COMPILE_SCHEMAS=${TOOLBASE:Q}/bin/glib-compile-schemas
+.endif
 .include "../../devel/dconf/database.mk"
 .include "../../devel/dconf/buildlink3.mk"
 .include "../../devel/gettext-tools/msgfmt-desktop.mk"
