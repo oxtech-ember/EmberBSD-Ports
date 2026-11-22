@@ -463,7 +463,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  _TOOLS_USE_PKGSRC.msgfmt?=	no
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -140,10 +140,73 @@
+@@ -140,10 +140,78 @@
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
  .endfor
 +# A cross target Perl is the lang/perl5 package. It builds from the config.sh
@@ -511,6 +511,11 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +        !empty(_TOOLS_USE_PKGSRC.install-info:M[yY][eE][sS])
 +EMBER_CROSS_RUN_OK=	yes
 +.    endif
++# NetBSD base installs /bin/sh. Development sysroots may omit this program.
++# The build shell still comes from the selected native tools prefix.
++.    if ${_t_} == "sh:run" && ${OPSYS} == "NetBSD"
++EMBER_CROSS_RUN_OK=	yes
++.    endif
 +# The target Bash runtime is distinct from the Bash used by host generators.
 +# The run dependency installs the target Bash package before the build, and
 +# bulk builds order the shells/bash package first.
@@ -538,7 +543,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:test}
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TEST_DEPENDS
-@@ -535,6 +598,12 @@
+@@ -535,6 +603,12 @@
  TOOLS_DEPENDS.install-info?=	pkg_install-info-[0-9]*:../../pkgtools/pkg_install-info
  TOOLS_CREATE+=			install-info
  TOOLS_PATH.install-info=	${TOOLBASE}/bin/pkg_install-info
@@ -551,7 +556,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .  endif
  .endif
  #
-@@ -978,6 +1046,12 @@
+@@ -978,6 +1051,12 @@
  TOOLS_DEPENDS.${_t_}?=		perl>=${PERL5_REQD}:../../lang/perl5
  TOOLS_CREATE+=			${_t_}
  TOOLS_PATH.${_t_}=		${TOOLBASE}/bin/${_t_}

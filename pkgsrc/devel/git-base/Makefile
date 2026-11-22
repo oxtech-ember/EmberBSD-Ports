@@ -85,6 +85,11 @@ post-patch:
 .include "../../mk/bsd.prefs.mk"
 
 .if ${USE_CROSS_COMPILE:tl} == "yes"
+.  if ${OPSYS} == "NetBSD"
+# Git records this quoted C string in its executable. Script generators use
+# the native SDK shell, and the standard cross tool map fixes their shebangs.
+MAKE_FLAGS+=		SHELL_PATH_CQ=\"/bin/sh\"
+.  endif
 # Needed to skip calling out to curl-config, which we can't do when
 # cross-compiling.  XXX Consider teaching curl's buildlink3.mk to set
 # BUILDLINK_LIBS.curl=-lcurl so we can use it here.
