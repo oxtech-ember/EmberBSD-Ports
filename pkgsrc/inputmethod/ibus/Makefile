@@ -63,6 +63,9 @@ LDFLAGS_FOR_BUILD+=	-Wl,-rpath,${TOOLBASE:Q}/lib
 CONFIGURE_ENV+=	CPPFLAGS_FOR_BUILD=${CPPFLAGS_FOR_BUILD:Q}
 CONFIGURE_ENV+=	LDFLAGS_FOR_BUILD=${LDFLAGS_FOR_BUILD:Q}
 MAKE_ENV+=	LIBTOOL_FOR_BUILD=${TOOLBASE:Q}/bin/libtool
+.for generator in GDBUS_CODEGEN GLIB_COMPILE_RESOURCES GLIB_COMPILE_SCHEMAS GLIB_GENMARSHAL GLIB_MKENUMS
+MAKE_FLAGS+=	${generator}=${TOOLBASE:Q}/bin/${generator:tl:S/_/-/g}
+.endfor
 # The runtime records the target path. Only the host generator prepends the sysroot.
 CONFIGURE_ENV+=	IBUS_BUILD_SYSROOT=${CROSS_DESTDIR:Q}
 MAKE_ENV+=	IBUS_BUILD_SYSROOT=${CROSS_DESTDIR:Q}
@@ -110,6 +113,10 @@ PLIST_VARS+=		wayland
 .include "../../devel/wayland/platform.mk"
 .if ${PLATFORM_SUPPORTS_WAYLAND} == "yes"
 CONFIGURE_ARGS+=	--enable-wayland
+.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+TOOL_DEPENDS+=	wayland-[0-9]*:../../devel/wayland
+MAKE_FLAGS+=	wayland_scanner=${TOOLBASE:Q}/bin/wayland-scanner
+.  endif
 PLIST.wayland=		yes
 .  if !empty(PKG_OPTIONS:Mgtk3)
 PLIST.gtk3wayland=	yes
