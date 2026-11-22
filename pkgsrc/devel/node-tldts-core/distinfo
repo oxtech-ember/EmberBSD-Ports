@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (node-tldts-core/tldts-core-7.4.20.tgz) = c441f6560bca4d8574dec1a4ac42526ffb92fb725d68901d2cf5c57d5158d3de
-SHA512 (node-tldts-core/tldts-core-7.4.20.tgz) = 0badf44d65d909998bab41766d6e10ab09da6b1090fecbe902abc9c270b826f804339a218419c6b04cd32d239770dfb18f3fa411a1d2e6ea16230da4967a9dd0
-Size (node-tldts-core/tldts-core-7.4.20.tgz) = 83690 bytes
+BLAKE2s (node-tldts-core/tldts-core-7.5.5.tgz) = 9ef634acc79520e925c9b3467118d5caa3f6691de6a1efeb82315d50c0f737ac
+SHA512 (node-tldts-core/tldts-core-7.5.5.tgz) = ac4273ffc709158fdb745df9e20975e32c5abdbac86ef33e15c6e461543a09208c41325d5055089b7f534d64a218fbdca5087bfc5eaa1eb0f74a4c30760b430b
+Size (node-tldts-core/tldts-core-7.5.5.tgz) = 92810 bytes

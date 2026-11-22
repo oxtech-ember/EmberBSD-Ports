@@ -1,6 +1,6 @@
 # Origin: EmberBSD contributors (AI-assisted); shared upstream JavaScript module.
-DISTNAME= tldts-core-7.4.20
-PKGNAME= node-tldts-core-7.4.20
+DISTNAME= tldts-core-7.5.5
+PKGNAME= node-tldts-core-7.5.5
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/tldts-core/-/
 EXTRACT_SUFX= .tgz
