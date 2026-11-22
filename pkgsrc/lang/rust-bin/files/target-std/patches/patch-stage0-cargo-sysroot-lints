@@ -1,0 +1,45 @@
+Origin: EmberBSD contributors (AI-assisted).
+
+Cargo 1.100 diagnoses dependencies unused by this particular stage0 target.
+Keep the upstream sysroot and target selections and scope the lint to the
+three manifests whose dependencies intentionally span targets or artifacts.
+
+--- a/library/std/Cargo.toml
++++ b/library/std/Cargo.toml
+@@ -11,6 +11,10 @@
+ 
+ [lib]
+ crate-type = ["dylib", "rlib"]
++
++# Keep both panic runtime crates available to the compiler.
++[lints.cargo]
++unused_dependencies = "allow"
+ 
+ [dependencies]
+ alloc = { path = "../alloc", public = true }
+--- a/library/std_detect/Cargo.toml
++++ b/library/std_detect/Cargo.toml
+@@ -15,6 +15,10 @@
+ is-it-maintained-open-issues = { repository = "rust-lang/stdarch" }
+ maintenance = { status = "experimental" }
+ 
++# The CPU detection backend uses libc only on some targets.
++[lints.cargo]
++unused_dependencies = "allow"
++
+ [dependencies]
+ core = { version = "1.0.0", package = 'rustc-std-workspace-core' }
+ alloc = { version = "1.0.0", package = 'rustc-std-workspace-alloc' }
+--- a/library/sysroot/Cargo.toml
++++ b/library/sysroot/Cargo.toml
+@@ -12,6 +12,10 @@
+ doc = false
+ 
+ # this is a dummy crate to ensure that all required crates appear in the sysroot
++# This crate collects artifacts for the distribution without importing them.
++[lints.cargo]
++unused_dependencies = "allow"
++
+ [dependencies]
+ proc_macro = { path = "../proc_macro", public = true }
+ profiler_builtins = { path = "../profiler_builtins", optional = true }
