@@ -1,0 +1,63 @@
+Update the shared Rails HTML sanitizers to their current compatible releases.
+
+--- a/www/ruby-loofah/Makefile
++++ b/www/ruby-loofah/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.28 2026/07/21 14:12:19 taca Exp $
+ 
+-DISTNAME=	loofah-2.25.2
++DISTNAME=	loofah-2.25.3
+ CATEGORIES=	www
+ 
+ MAINTAINER=	minskim@NetBSD.org
+@@ -8,7 +8,7 @@
+ COMMENT=	HTML sanitizer for Rails applications
+ LICENSE=	mit
+ 
+-DEPENDS+=	${RUBY_PKGPREFIX}-nokogiri>=1.12.0:../../textproc/ruby-nokogiri
++DEPENDS+=	${RUBY_PKGPREFIX}-nokogiri>=1.19.5:../../textproc/ruby-nokogiri
+ DEPENDS+=	${RUBY_PKGPREFIX}-crass>=1.0.2<1.1:../../www/ruby-crass
+ 
+ USE_LANGUAGES=	# none
+--- a/www/ruby-loofah/distinfo
++++ b/www/ruby-loofah/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.30 2026/07/21 14:12:19 taca Exp $
+ 
+-BLAKE2s (loofah-2.25.2.gem) = bff2f5e2029869f6a0f2d2dc2bba3d1108194b953b2e08fe724c5166eccb8c92
+-SHA512 (loofah-2.25.2.gem) = 7c5fe099c01266eadcb48f79837fa645c04c6c1a6d334c93f207f2a8a5e8878b256eee07e5476adfc3f849e202237a51f5d5d0a91a1bd2b65b8dadbc26616209
+-Size (loofah-2.25.2.gem) = 36864 bytes
++BLAKE2s (loofah-2.25.3.gem) = f255e263b858475161f4461c628e78ba07899b0c9a0460d6c9fa885bff829f45
++SHA512 (loofah-2.25.3.gem) = 856731b5ddd1d32994209b0bf973b37fbb19ba29bc320b5434949b8d39c8006475f06166c0552d275103fa33a58d014b4926fedfa15f2e158c3369da2b89d008
++Size (loofah-2.25.3.gem) = 38912 bytes
+--- a/www/ruby-rails-html-sanitizer/Makefile
++++ b/www/ruby-rails-html-sanitizer/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.12 2026/08/12 05:22:49 taca Exp $
+ 
+-DISTNAME=	rails-html-sanitizer-1.7.1
++DISTNAME=	rails-html-sanitizer-1.7.2
+ CATEGORIES=	www
+ 
+ MAINTAINER=	minskim@NetBSD.org
+@@ -8,7 +8,8 @@
+ COMMENT=	HTML sanitizer for Rails applications
+ LICENSE=	mit
+ 
+-DEPENDS+=	${RUBY_PKGPREFIX}-loofah>=2.25.2<3:../../www/ruby-loofah
++DEPENDS+=	${RUBY_PKGPREFIX}-loofah>=2.25.3<3:../../www/ruby-loofah
++DEPENDS+=	${RUBY_PKGPREFIX}-nokogiri>=1.19.5:../../textproc/ruby-nokogiri
+ 
+ USE_LANGUAGES=	# empty
+ 
+--- a/www/ruby-rails-html-sanitizer/distinfo
++++ b/www/ruby-rails-html-sanitizer/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.14 2026/08/12 05:22:49 taca Exp $
+ 
+-BLAKE2s (rails-html-sanitizer-1.7.1.gem) = 887216d67ff1ff05b9eadf7d1d57e6997ca682624c9d145c4c1d46b8ba0811f0
+-SHA512 (rails-html-sanitizer-1.7.1.gem) = 75031b179c1287e7adc38b57ffc2448642e8cf5bd3988143a5baf879f2ce7171d7b11590929f84cc5a88b852466e33ddc7d1a421aca147dd22df5ef29d63a626
+-Size (rails-html-sanitizer-1.7.1.gem) = 15360 bytes
++BLAKE2s (rails-html-sanitizer-1.7.2.gem) = f1f8d21dec1bb1c48a8145429e256df25a853bb4affa28aeeece3ffbe27f23f4
++SHA512 (rails-html-sanitizer-1.7.2.gem) = 7ba518daf07bde5c0ee82e5d876cfd2160355511cdd546ec33ef190789ee45ad7290fbd33a26df66585b11fa4457341171d68a6a6ce72314e29e49b63865a676
++Size (rails-html-sanitizer-1.7.2.gem) = 15872 bytes
