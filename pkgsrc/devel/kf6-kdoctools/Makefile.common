@@ -20,4 +20,7 @@ PATCHDIR=	${EMBERBSD_KDOCTOOLS_PKGDIR}/patches
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 CMAKE_CONFIGURE_ARGS+=	-DRELOCATABLE_DOCBOOK_FILES=ON
 CMAKE_CONFIGURE_ARGS+=	-DKDE_SKIP_RPATH_SETTINGS=ON
+# meinproc runs from the build tree to generate its own manuals.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_RPATH="${BUILDLINK_DIR}/lib;${BUILDLINK_DIR}/qt6/lib"
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH="@loader_path/../lib;@loader_path/../qt6/lib"
 .endif

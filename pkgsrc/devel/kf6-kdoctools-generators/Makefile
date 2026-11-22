@@ -7,8 +7,6 @@ COMMENT=	Native KDocTools generators for cross-built KDE documentation
 
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-# The Darwin wrapper already adds the final prefix RPATH during linking.
-CMAKE_CONFIGURE_ARGS+= -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
 .if ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
