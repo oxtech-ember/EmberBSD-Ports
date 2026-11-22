@@ -18,17 +18,18 @@ cat > "$work/Makefile" <<'MAKE'
 all:
 	@if test -n '${PKG_FAIL_REASON:U}'; then \
 	    printf '%s\n' '${PKG_FAIL_REASON:U}'; exit 1; fi
-	@test '${LLVM_VERSION}' = 23.1.4
-	@test '${DISTNAME}' = llvm-project-23.1.4.src
+	@test '${LLVM_VERSION}' = 23.1.6
+	@test '${DISTNAME}' = llvm-project-23.1.6.src
 MAKE
 for path in lang/llvm lang/llvm-devel lang/clang devel/lld devel/py-llvm-lit \
-    lang/compiler-rt lang/mlir lang/flang lang/flang-rt; do
+    devel/lldb lang/compiler-rt lang/mlir lang/flang lang/flang-rt \
+    lang/libcxx lang/libcxx-devel lang/libcxxabi lang/libcxxabi-devel \
+    lang/libunwind lang/libunwind-devel lang/wasi-compiler-rt lang/wasi-libc \
+    lang/riscv32-elf-compiler-rt lang/llvm-libc-source lang/clang-python-bindings; do
     (cd "$work" && "$make" PKGPATH="$path")
     echo "PASS: selected $path"
 done
-for path in devel/lldb devel/polly lang/clang-tools-extra \
-    lang/libclc lang/libcxx lang/libcxxabi lang/libunwind \
-    lang/wasi-compiler-rt lang/wasi-libcxx parallel/openmp; do
+for path in devel/polly lang/clang-tools-extra lang/libclc lang/wasi-libcxx parallel/openmp; do
     if (cd "$work" && "$make" PKGPATH="$path") > "$work/${path##*/}.log" 2>&1; then
         echo "FAIL: unprepared family accepted: $path" >&2; exit 1
     fi

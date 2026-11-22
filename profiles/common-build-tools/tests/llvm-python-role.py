@@ -27,7 +27,7 @@ for name in os.listdir(pkgsrc + '/lang'):
         (tree / 'lang' / name).symlink_to(Path(pkgsrc) / 'lang' / name)
 for name in ('llvm', 'llvm-devel'):
     shutil.copytree(profile / '../../pkgsrc/lang' / name, tree / 'lang' / name)
-variables = 'PKGNAME OPSYS WRKDIR CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV PYTHON_FOR_BUILD_ONLY PYTHONBIN TOOL_PYTHONBIN REPLACE_PYTHON REPLACE.python.new DEPENDS CONFLICTS BUILD_DEPENDS TOOL_DEPENDS BUILDLINK_DEPMETHOD.py-llvm-lit'.split()
+variables = 'PKGNAME OPSYS EMBERBSD_NATIVE_CXX_ABI_NAMESPACE WRKDIR CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV PYTHON_FOR_BUILD_ONLY PYTHONBIN TOOL_PYTHONBIN REPLACE_PYTHON REPLACE.python.new DEPENDS CONFLICTS BUILD_DEPENDS TOOL_DEPENDS BUILDLINK_DEPMETHOD.py-llvm-lit'.split()
 rows = []
 for package, cross in [('llvm', 'yes'), ('llvm-devel', 'yes'), ('llvm', 'no')]:
     command = [bmake, '-C', str(tree / 'lang' / package), '_PKGSRC_BARRIER=yes', '_MAKEVARS_MK=defined', 'USE_CROSS_COMPILE=' + cross, 'WRKDIR=' + str(work / 'common')]
@@ -40,18 +40,18 @@ for package, cross in [('llvm', 'yes'), ('llvm-devel', 'yes'), ('llvm', 'no')]:
 runtime, sdk, native = rows
 for field in ('CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'CMAKE_CONFIGURE_ARGS', 'CONFIGURE_ENV'):
     assert runtime[field] == sdk[field], 'Cross inputs differ: ' + field
-assert [r['PKGNAME'] for r in (runtime, sdk)] == ['llvm-23.1.4nb6', 'llvm-devel-23.1.4nb8']
-native_revision = 9 if native['OPSYS'] == 'NetBSD' else 8
-assert native['PKGNAME'] == f'llvm-23.1.4nb{native_revision}'
-assert 'llvm-23.1.4nb6:' in sdk['DEPENDS'] and 'llvm<23.1.4nb4' in sdk['CONFLICTS']
+assert [r['PKGNAME'] for r in (runtime, sdk)] == ['llvm-23.1.6', 'llvm-devel-23.1.6']
+native_revision = 'nb1' if native['OPSYS'] == 'Darwin' and native['EMBERBSD_NATIVE_CXX_ABI_NAMESPACE'] == '__ember1' else ''
+assert native['PKGNAME'] == f'llvm-23.1.6{native_revision}'
+assert 'llvm-23.1.6:' in sdk['DEPENDS'] and 'llvm<23.1.4nb4' in sdk['CONFLICTS']
 assert all(r['PYTHON_FOR_BUILD_ONLY'] == 'tool' and re.search(r'python[0-9]+>=', r['TOOL_DEPENDS']) and r['BUILDLINK_DEPMETHOD.py-llvm-lit'] == 'build' for r in (runtime, sdk))
 assert not re.search(r'python[0-9]+|llvm-lit', runtime['DEPENDS'])
-assert re.search(r'python[0-9]+>=', sdk['DEPENDS']) and 'llvm-lit-23.1.4' in sdk['DEPENDS']
+assert re.search(r'python[0-9]+>=', sdk['DEPENDS']) and 'llvm-lit-23.1.6' in sdk['DEPENDS']
 assert runtime['PYTHONBIN'] == sdk['PYTHONBIN'] and sdk['PYTHONBIN'].startswith('/usr/pkg/bin/python') and runtime['REPLACE_PYTHON'] == sdk['REPLACE_PYTHON']
 # The native build selects a Python interpreter for CMake and installed
 # scripts. LLVM does not link Python's C API, so incidental include search
 # flags do not establish the recipe's Python role.
-assert native['PYTHON_FOR_BUILD_ONLY'] == 'no' and 'llvm-lit-23.1.4' in native['DEPENDS']
+assert native['PYTHON_FOR_BUILD_ONLY'] == 'no' and 'llvm-lit-23.1.6' in native['DEPENDS']
 assert native['BUILDLINK_DEPMETHOD.py-llvm-lit'] == 'full'
 native_python = native['PYTHONBIN']
 assert native_python == native['TOOL_PYTHONBIN'] == native['REPLACE.python.new']

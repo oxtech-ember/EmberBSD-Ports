@@ -15,8 +15,8 @@ for name in ('clang', 'lldb', 'liblldb', 'sysroot'):
 a = p.parse_args()
 with tempfile.TemporaryDirectory(prefix='lldb-plugin-discovery-') as td:
     root = Path(td); lib = root / 'lib'; lib.mkdir(); home = root / 'home'; home.mkdir()
-    shutil.copy2(a.liblldb, lib / 'liblldb.23.1.4.dylib')
-    (lib / 'liblldb.23.1.dylib').symlink_to('liblldb.23.1.4.dylib')
+    shutil.copy2(a.liblldb, lib / 'liblldb.23.1.6.dylib')
+    (lib / 'liblldb.23.1.dylib').symlink_to('liblldb.23.1.6.dylib')
     marker = root / 'loaded'
     source = root / 'plugin.c'
     source.write_text('''#include <stdio.h>\n#include <stdlib.h>\n#include <stdbool.h>\nbool INIT(void) { const char *p=getenv("LLDB_TEST_MARKER"); FILE *f=fopen(p,"a"); if (!f) return false; fputs(LABEL "\\n",f); fclose(f); return true; }\n''')

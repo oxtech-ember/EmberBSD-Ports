@@ -4,8 +4,8 @@ NetBSD cross builds for AArch64 and amd64 produce two ordinary source packages:
 
 | Package | Payload |
 | --- | --- |
-| `llvm-23.1.4nb6` | Shared libLLVM, libLTO and libRemarks, their aliases and the upstream license notice. |
-| `llvm-devel-23.1.4nb8` | Target tools, headers, static archives, CMake exports, test support and host llvm-config metadata. Requires the exact runtime package. |
+| `llvm-23.1.6` | Shared libLLVM, libLTO and libRemarks, their aliases and the upstream license notice. |
+| `llvm-devel-23.1.6` | Target tools, headers, static archives, CMake exports, test support and host llvm-config metadata. Requires the exact runtime package. |
 
 The runtime keeps the original name for dependency and vulnerability matching.
 The SDK requires the matching runtime revision listed above. Its direct
@@ -16,7 +16,7 @@ The SDK retains explicit Python/lit runtime dependencies and conflicts with
 that earlier package. Native LLVM keeps its complete manifest
 and package identity. The separate SDK requires a NetBSD cross build.
 
-Both recipes use the same LLVM 23.1.4 archive, patches and source component.
+Both recipes use the same LLVM 23.1.6 archive, patches and source component.
 With the default `CROSS_BULK_SHARED_BUILD=yes`, cross-bulk retains the runtime
 producer's full installation stage and reuses it for the devel package when
 both roles have matching compilation inputs. This compiles LLVM once and

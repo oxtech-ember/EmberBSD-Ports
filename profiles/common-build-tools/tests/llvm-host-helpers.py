@@ -60,7 +60,7 @@ ninja = executable(work / 'ninja', f'''import pathlib,sys
 if '--version' in sys.argv: print('ninja fixture'); sys.exit(0)
 root=pathlib.Path(sys.argv[sys.argv.index('-C')+1]); (root/'bin').mkdir()
 for name in sys.argv[sys.argv.index('-j')+2:]:
-    p=root/'bin'/name; p.write_text('#!{sys.executable}\\nprint("LLVM version 23.1.4")\\n'); p.chmod(0o755)
+    p=root/'bin'/name; p.write_text('#!{sys.executable}\\nprint("LLVM version 23.1.6")\\n'); p.chmod(0o755)
 (root/'lib/cmake/llvm').mkdir(parents=True)
 (root/'lib/cmake/llvm/LLVMConfig.cmake').write_text('fixture')
 ''')
@@ -99,7 +99,7 @@ assert '-DPython3_EXECUTABLE=' + sys.executable in flags
 assert set(json.loads((work / 'llvm/outputs.json').read_text())) == {'llvm-tblgen', 'llvm-min-tblgen', 'llvm-config'}
 assert not (work / 'llvm/inputs.json').exists(), 'Native tools must not require a provenance report'
 # The real config has a bare version output, unlike the other generator tools.
-executable(work / 'llvm/native/bin/llvm-config', "print('23.1.4')\n")
+executable(work / 'llvm/native/bin/llvm-config', "print('23.1.6')\n")
 native_tools['llvm-config'] = str(work / 'llvm/native/bin/llvm-config')
 native_tools['llvm-tblgen'] = str(work / 'llvm/native/bin/llvm-tblgen')
 llvm_host.native('clang', [str(archive), str(work / 'llvm/native'), str(work / 'clang'), cmake, ninja])

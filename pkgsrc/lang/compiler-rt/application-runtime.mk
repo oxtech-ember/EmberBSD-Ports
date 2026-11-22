@@ -12,9 +12,14 @@ EMBER_LLVM_CXX_SYSROOT= ${_EMBER_TARGET_RUNTIME_ROOT}
 .else
 .error Unsupported target C++ runtime source
 .endif
-DEPENDS+= libcxx>=${_EMBER_TARGET_RUNTIME_VERSION}nb2:../../lang/libcxx
-DEPENDS+= libcxxabi>=${_EMBER_TARGET_RUNTIME_VERSION}nb2:../../lang/libcxxabi
-DEPENDS+= libunwind>=${_EMBER_TARGET_RUNTIME_VERSION}nb2:../../lang/libunwind
-BUILD_DEPENDS+= libcxx-devel>=${_EMBER_TARGET_RUNTIME_VERSION}nb2:../../lang/libcxx-devel
-BUILD_DEPENDS+= libcxxabi-devel>=${_EMBER_TARGET_RUNTIME_VERSION}nb2:../../lang/libcxxabi-devel
-BUILD_DEPENDS+= libunwind-devel>=${_EMBER_TARGET_RUNTIME_VERSION}nb2:../../lang/libunwind-devel
+# The previous runtime first provided the complete split packages at nb2.
+_EMBER_TARGET_RUNTIME_MIN= ${_EMBER_TARGET_RUNTIME_VERSION}
+.if ${_EMBER_TARGET_RUNTIME_VERSION} == "23.1.4"
+_EMBER_TARGET_RUNTIME_MIN:= ${_EMBER_TARGET_RUNTIME_VERSION}nb2
+.endif
+DEPENDS+= libcxx>=${_EMBER_TARGET_RUNTIME_MIN}:../../lang/libcxx
+DEPENDS+= libcxxabi>=${_EMBER_TARGET_RUNTIME_MIN}:../../lang/libcxxabi
+DEPENDS+= libunwind>=${_EMBER_TARGET_RUNTIME_MIN}:../../lang/libunwind
+BUILD_DEPENDS+= libcxx-devel>=${_EMBER_TARGET_RUNTIME_MIN}:../../lang/libcxx-devel
+BUILD_DEPENDS+= libcxxabi-devel>=${_EMBER_TARGET_RUNTIME_MIN}:../../lang/libcxxabi-devel
+BUILD_DEPENDS+= libunwind-devel>=${_EMBER_TARGET_RUNTIME_MIN}:../../lang/libunwind-devel

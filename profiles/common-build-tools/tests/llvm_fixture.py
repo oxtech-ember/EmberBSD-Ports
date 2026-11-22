@@ -25,7 +25,7 @@ def write_json(path, value):
     Path(path).write_text(json.dumps(value, indent=2) + '\n')
 
 
-def fixture(work, sdk_source, cmake, source=None, build=None, recipe=None, sdk_recipe=None, wrapper=True, include_empty=True, arch="aarch64", runtime_pkgname="llvm-23.1.4nb1"):
+def fixture(work, sdk_source, cmake, source=None, build=None, recipe=None, sdk_recipe=None, wrapper=True, include_empty=True, arch="aarch64", runtime_pkgname="llvm-23.1.6"):
     work = Path(work)
     source = Path(source or work / 'source')
     build = Path(build or source / 'build')
@@ -93,7 +93,7 @@ finally:
     (package / '+BUILD_INFO').write_text('OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=' + arch + '\nOBJECT_FMT=ELF\n')
     archive = work / (runtime_pkgname + '.tgz')
     subprocess.run(['/usr/bin/tar', '-czf', str(archive), '-C', str(package), '+CONTENTS', '+BUILD_INFO'], check=True)
-    value = dict(schema=2, version='23.1.4', target=dict(opsys='NetBSD', version='11.0', arch=arch, triple={'aarch64': 'aarch64--netbsd', 'x86_64': 'x86_64--netbsd'}[arch]),
+    value = dict(schema=2, version='23.1.6', target=dict(opsys='NetBSD', version='11.0', arch=arch, triple={'aarch64': 'aarch64--netbsd', 'x86_64': 'x86_64--netbsd'}[arch]),
         source=str(source), build=str(build), recipe=str(recipe), sdk_recipe=str(sdk_recipe), install_strip=True,
         flags={'CXXFLAGS': '-O2', 'CMAKE_CONFIGURE_ARGS': '-DCMAKE_SYSTEM_NAME=NetBSD'}, cmake=selected_cmake,
         python=os.path.realpath(sys.executable), sdk_source=sdk_source, tar='/usr/bin/tar', manifests=lists,

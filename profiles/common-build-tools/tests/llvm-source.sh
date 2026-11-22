@@ -10,11 +10,11 @@ work=$(CDPATH= cd -- "$2" && pwd)
 case "$work:$distfiles" in *[!a-zA-Z0-9_./:-]*) echo 'Use safe absolute paths.' >&2; exit 2 ;; esac
 profile=$root/profiles/common-build-tools
 recipe_dir() { echo "$root/pkgsrc/$1"; }
-archive=llvm-project-23.1.4.src.tar.xz
-source=llvm-project-23.1.4.src
+archive=llvm-project-23.1.6.src.tar.xz
+source=llvm-project-23.1.6.src
 verifier=$root/upstream/pkgsrc/mk/checksum/checksum.awk
 [ "$(shasum -a 256 "$distfiles/$archive" | awk '{print $1}')" = \
-    819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2 ]
+    d3b86ab29cfb4445a6652e5c2642ccc75e04e38084dde3701d323320f35a31da ]
 # Use the selected SDK checksum producer. Do not replace it with host OpenSSL.
 : "${DIGEST:?Set the selected SDK digest executable}"
 case "$DIGEST" in /*) ;; *) echo 'DIGEST must be absolute.' >&2; exit 2 ;; esac

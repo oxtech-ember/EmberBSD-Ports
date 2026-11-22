@@ -26,7 +26,7 @@ for expected in 'CMAKE_SYSTEM_NAME:STRING=NetBSD' 'LLVM_HOST_TRIPLE:STRING=aarch
     'LLVM_DEFAULT_TARGET_TRIPLE:STRING=aarch64--netbsd' \
     'LLVM_ENABLE_RTTI=ON' 'LLVM_BUILD_LLVM_DYLIB=ON' 'LLVM_LINK_LLVM_DYLIB=ON' \
     'LLVM_INSTALL_TOOLCHAIN_ONLY=OFF' 'LLVM_INCLUDE_TESTS=ON' 'LLVM_INSTALL_GTEST=ON' \
-    'llvm-project-23.1.4.src/libc' 'AArch64;AMDGPU;ARM' 'ARC;CSKY;DirectX;M68k;Xtensa'; do
+    'llvm-project-23.1.6.src/libc' 'AArch64;AMDGPU;ARM' 'ARC;CSKY;DirectX;M68k;Xtensa'; do
     grep -Fq "$expected" "$work/selected.txt"
 done
 mkdir "$work/invalid"
@@ -39,7 +39,7 @@ for tool in llvm-tblgen llvm-min-tblgen llvm-config; do
         case "$invalid" in
         missing) ;;
         old) printf '#!/bin/sh\necho "LLVM version 21.1.8"\n' > "$work/invalid/$tool"; chmod +x "$work/invalid/$tool" ;;
-        failed) printf '#!/bin/sh\necho "LLVM version 23.1.4"\nexit 1\n' > "$work/invalid/$tool" ;;
+        failed) printf '#!/bin/sh\necho "LLVM version 23.1.6"\nexit 1\n' > "$work/invalid/$tool" ;;
         esac
         "$bmake" -C "$pkgsrc/lang/llvm" MAKECONF="$conf" \
             EMBERBSD_LLVM_NATIVE_TOOLS="$work/invalid" \

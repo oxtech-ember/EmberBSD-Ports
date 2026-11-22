@@ -16,7 +16,7 @@ import sys
 import tempfile
 
 sys.dont_write_bytecode = True
-VERSION = '23.1.4'
+VERSION = '23.1.6'
 DEFAULT = Path(__file__).resolve().parents[3] / 'pkgsrc/lang/llvm/files/cross-llvm-config.py'
 
 

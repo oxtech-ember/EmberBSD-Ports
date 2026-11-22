@@ -19,7 +19,7 @@ if not work.is_absolute() or work.exists():
     sys.exit('new absolute work directory required')
 work.mkdir()
 reuse = module('reuse-package-stage')
-value = fixture(work, sdk_source, cmake, runtime_pkgname='llvm-23.1.4nb17')
+value = fixture(work, sdk_source, cmake, runtime_pkgname='llvm-23.1.6nb17')
 config, receipt = work / 'inputs.json', work / 'receipt.json'
 write_json(config, value)
 reference = work / 'reference'

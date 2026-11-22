@@ -20,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sdk-source', required=True)
     parser.add_argument('--host-prefix', required=True, help='native Ports prefix with LLVM')
-    parser.add_argument('--archive', required=True, help='llvm-project-23.1.4.src.tar.xz')
+    parser.add_argument('--archive', required=True, help='LLVM monorepo source archive')
     args = parser.parse_args()
     sys.argv[1:] = ['--sdk-source', args.sdk_source]
     import llvm_host

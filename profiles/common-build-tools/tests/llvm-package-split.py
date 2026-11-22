@@ -90,9 +90,9 @@ def plist(label, package, *mode):
 
 runtime = plist('runtime', 'llvm', *cross)
 assert sorted(runtime) == sorted(['include/llvm/Support/LICENSE.TXT', 'lib/libLLVM.so.23.1', 'lib/libLLVM-23.so', 'lib/libLLVM.so', 'lib/libLTO.so.23.1', 'lib/libLTO.so', 'lib/libRemarks.so.23.1', 'lib/libRemarks.so'])
-assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb6'
+assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.6'
 sdk = plist('devel', 'llvm-devel', *cross)
-assert run('devel-name', 'llvm-devel', *cross, '-v', 'PKGNAME').strip() == 'llvm-devel-23.1.4nb8'
+assert run('devel-name', 'llvm-devel', *cross, '-v', 'PKGNAME').strip() == 'llvm-devel-23.1.6'
 assert all(p in sdk for p in ('bin/llvm-config', 'bin/llvm-tblgen', 'include/llvm/IR/Module.h', 'lib/cmake/llvm/LLVMConfig.cmake', 'lib/libLLVMCore.a',
                      'lib/cmake/llvm/emberbsd/BuildVariables.inc',
                      'lib/cmake/llvm/emberbsd/LibraryDependencies.inc',
@@ -109,7 +109,7 @@ native_args = ['USE_CROSS_COMPILE=no', 'PKGSRC_COMPILER=gcc', 'CC=' + HOST_CC, '
 native = plist('native', 'llvm', *native_args)
 assert 'bin/llvm-config' in native and 'include/llvm/IR/Module.h' in native
 reasons = run('devel-metadata', 'llvm-devel', *cross, '-v', 'PKG_FAIL_REASON', '-v', 'DEPENDS', '-v', 'CONFLICTS', '-v', 'DISTINFO_FILE', '-v', 'PATCHDIR').splitlines()
-assert not reasons[0] and 'llvm-23.1.4nb6:' in reasons[1] and 'llvm<23.1.4nb4' in reasons[2] and \
+assert not reasons[0] and 'llvm-23.1.6:' in reasons[1] and 'llvm<23.1.4nb4' in reasons[2] and \
        str(owner / 'distinfo') in reasons[3] and str(owner / 'patches') in reasons[4]
 consumer = tree / 'devel/llvm-split-consumer'
 consumer.mkdir()
@@ -117,34 +117,34 @@ consumer.mkdir()
 output = run('buildlink', '../devel/llvm-split-consumer', *cross, '-v', 'BUILD_DEPENDS', '-v', 'DEPENDS',
              '-v', 'BUILDLINK_API_DEPENDS.llvm-devel', '-v', 'BUILDLINK_ABI_DEPENDS.llvm-devel',
              '-v', 'BUILDLINK_API_DEPENDS.llvm', '-v', 'BUILDLINK_ABI_DEPENDS.llvm').splitlines()
-assert 'llvm-devel>=23.1.4nb5:' in output[0] and 'llvm-devel' not in output[1] and \
-       'llvm>=23.1.4nb2:' in output[1]
-assert 'llvm-devel>=23.1.4nb5' in output[2] and 'llvm-devel>=23.1.4nb5' in output[3]
-assert 'llvm>=23.1.4nb2' in output[4] and 'llvm>=23.1.4nb2' in output[5]
+assert 'llvm-devel>=23.1.6:' in output[0] and 'llvm-devel' not in output[1] and \
+       'llvm>=23.1.6:' in output[1]
+assert 'llvm-devel>=23.1.6' in output[2] and 'llvm-devel>=23.1.6' in output[3]
+assert 'llvm>=23.1.6' in output[4] and 'llvm>=23.1.6' in output[5]
 fields = run('runtime-dependencies', 'llvm', *cross, '-v', 'DEPENDS', '-v', 'BUILD_DEPENDS', '-v', 'TOOL_DEPENDS', '-v', 'CMAKE_CONFIGURE_ARGS', '-v', 'PKG_FAIL_REASON', '-v', 'USE_BUILTIN.zlib').splitlines()
 assert not re.search(r'llvm-devel|llvm-lit|python[0-9]', fields[0])
 assert all(name + '>=' in fields[0] for name in ('zstd', 'libxml2'))
 assert 'zlib>=' in fields[0] or fields[5] == 'yes'
-assert 'llvm-lit>=23.1.4nb1:' in fields[1] and re.search(r'python[0-9]+>=', fields[2])
-assert 'llvm-23.1.4{,nb*}:../../lang/llvm' in fields[2] and 'llvm-devel' not in fields[2]
+assert 'llvm-lit>=23.1.6:' in fields[1] and re.search(r'python[0-9]+>=', fields[2])
+assert 'llvm-23.1.6{,nb*}:../../lang/llvm' in fields[2] and 'llvm-devel' not in fields[2]
 for flag in ('LLVM_BUILD_LLVM_DYLIB=ON', 'LLVM_LINK_LLVM_DYLIB=ON', 'LLVM_ENABLE_RTTI=ON', 'BUILD_SHARED_LIBS=OFF', 'LLVM_INSTALL_TOOLCHAIN_ONLY=OFF', 'LLVM_INCLUDE_TESTS=ON', 'LLVM_INSTALL_GTEST=ON'):
     assert flag in fields[3], flag
 backends = 'AArch64 AMDGPU ARM AVR BPF Hexagon Lanai LoongArch Mips MSP430 NVPTX PowerPC RISCV Sparc SPIRV SystemZ VE WebAssembly X86 XCore ARC CSKY DirectX M68k Xtensa'.split()
 assert all(re.search(r'(?:[=;\"]|^)' + name + r'(?:[;\"]|$)', fields[3]) for name in backends)
 assert not fields[4]
 metadata = run('sdk-dependencies', 'llvm-devel', *cross, '-v', 'DEPENDS', '-v', 'WRKSRC', '-v', 'EXTRACT_ELEMENTS', '-v', 'TOOL_DEPENDS').splitlines()
-assert 'llvm-lit-23.1.4' in metadata[0] and re.search(r'python[0-9]+>=', metadata[3])
+assert 'llvm-lit-23.1.6' in metadata[0] and re.search(r'python[0-9]+>=', metadata[3])
 assert metadata[1].endswith('/llvm') and '/llvm ' in metadata[2] and '/llvm-devel' not in metadata[2]
-assert 'llvm-23.1.4{,nb*}:../../lang/llvm' in metadata[3]
+assert 'llvm-23.1.6{,nb*}:../../lang/llvm' in metadata[3]
 # These are framework metadata queries only. No target compile is requested.
 arm = [arg for arg in cross if not arg.startswith('CROSS_MACHINE_ARCH=')] + ['CROSS_MACHINE_ARCH=aarch64']
 assert sorted(plist('runtime-arm', 'llvm', *arm)) == sorted(runtime)
 for i, bad in enumerate(('LLVM_PACKAGE_PART=devel', 'PKGREVISION=1', 'CROSS_MACHINE_ARCH=i386')):
     reasons = run('bad-contract-' + str(i), 'llvm', *[arg for arg in cross if not arg.startswith(bad.split('=')[0] + '=')], bad, '-v', 'PKG_FAIL_REASON')
     assert reasons.strip(), bad
-native_opsys, native_name = run('native-name', 'llvm', *native_args, '-v', 'OPSYS', '-v', 'PKGNAME').splitlines()
-native_revision = 9 if native_opsys == 'NetBSD' else 8
-assert native_name == f'llvm-23.1.4nb{native_revision}'
+native_opsys, native_abi, native_name = run('native-name', 'llvm', *native_args, '-v', 'OPSYS', '-v', 'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE', '-v', 'PKGNAME').splitlines()
+native_revision = 'nb1' if native_opsys == 'Darwin' and native_abi == '__ember1' else ''
+assert native_name == f'llvm-23.1.6{native_revision}'
 assert run('native-sdk-refused', 'llvm-devel', *native_args, '-v', 'PKG_FAIL_REASON').strip()
 original = work / 'full-stage'
 prefix = original / 'usr/pkg'

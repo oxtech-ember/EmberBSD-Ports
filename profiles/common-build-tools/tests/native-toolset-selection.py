@@ -27,8 +27,8 @@ assert callable(actual_native_api.load_host_prefix)
 
 # Keep the optional environment compatible with other shared query callers.
 with mock.patch('emberbsd_sdk.process.capture',
-                return_value=types.SimpleNamespace(stdout=b'23.1.4\n')) as capture:
-    assert llvm_host.query(['/selected/tool'], env={'PATH': '/selected'}) == '23.1.4'
+                return_value=types.SimpleNamespace(stdout=b'23.1.6\n')) as capture:
+    assert llvm_host.query(['/selected/tool'], env={'PATH': '/selected'}) == '23.1.6'
     capture.assert_called_once_with(['/selected/tool'], env={'PATH': '/selected'})
     llvm_host.query(['/other/caller'])
     capture.assert_called_with(['/other/caller'], env=None)
@@ -97,7 +97,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
              mock.patch.object(llvm_host.sys, 'executable', controller_python if wrong_python else selection.tool('python')), \
              mock.patch.object(llvm_host, 'SOURCE_SHA', hashlib.sha256(archive.read_bytes()).hexdigest()), \
              mock.patch.object(llvm_host, 'extract_source'), \
-             mock.patch.object(llvm_host, 'query', return_value='LLVM version 23.1.4') as query, \
+             mock.patch.object(llvm_host, 'query', return_value='LLVM version 23.1.6') as query, \
              mock.patch.object(llvm_host, 'log_run') as producer:
             error = None
             try:
@@ -147,7 +147,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
              mock.patch.object(llvm_host.sys, 'executable', selection.tool('python')), \
              mock.patch.object(llvm_host, 'SOURCE_SHA', hashlib.sha256(archive.read_bytes()).hexdigest()), \
              mock.patch.object(llvm_host, 'extract_source'), \
-             mock.patch.object(llvm_host, 'query', return_value='23.1.4') as query, \
+             mock.patch.object(llvm_host, 'query', return_value='23.1.6') as query, \
              mock.patch.object(llvm_host, 'log_run', side_effect=producer):
             llvm_host.native('llvm', command(work))
         call = api.load_host_prefix.call_args
@@ -168,7 +168,9 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
             mock.call([str(work / 'native/bin' / name), '--version'], env=runs[0][1])
             for name in ('llvm-tblgen', 'llvm-min-tblgen', 'llvm-config')]
         for _, env in runs:
-            assert env['PATH'] == str(root / 'selected-sdk')
+            assert env['PATH'].split(os.pathsep) == [str(work / 'tools/bin'), str(root / 'selected-sdk')]
+            assert (work / 'tools/bin/sh').resolve() == Path(selection.tool('sh')).resolve()
+            assert env['CC_FOR_BUILD'] == selection.tool('cc')
             assert env['SHELL'] == selection.tool('sh')
             assert env['PKG_CONFIG'] == selection.tool('pkg-config')
             assert all(name not in env for name in ('CFLAGS', 'CXXFLAGS', 'PKG_CONFIG_SYSROOT_DIR'))
@@ -180,7 +182,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
              mock.patch.object(llvm_host.sys, 'executable', selection.tool('python')), \
              mock.patch.object(llvm_host, 'SOURCE_SHA', hashlib.sha256(archive.read_bytes()).hexdigest()), \
              mock.patch.object(llvm_host, 'extract_source'), \
-             mock.patch.object(llvm_host, 'query', return_value='23.1.4') as query, \
+             mock.patch.object(llvm_host, 'query', return_value='23.1.6') as query, \
              mock.patch.object(llvm_host, 'log_run', side_effect=producer):
             arguments = command(work)
             arguments.insert(1, llvm)
@@ -194,7 +196,9 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
             mock.call([selection.tool('llvm-config'), '--version'], env=runs[0][1]),
             mock.call([str(work / 'native/bin/clang-tblgen'), '--version'], env=runs[0][1])]
         for _, env in runs:
-            assert env['PATH'] == selection.path
+            assert env['PATH'].split(os.pathsep) == [str(work / 'tools/bin'), selection.path]
+            assert (work / 'tools/bin/sh').resolve() == Path(selection.tool('sh')).resolve()
+            assert env['CC_FOR_BUILD'] == selection.tool('cc')
             assert env['SHELL'] == selection.tool('sh')
             assert env['PKG_CONFIG'] == selection.tool('pkg-config')
             assert all(name not in env for name in ('CFLAGS', 'CXXFLAGS', 'PKG_CONFIG_SYSROOT_DIR'))

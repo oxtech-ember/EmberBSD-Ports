@@ -12,7 +12,7 @@ recipe = (root / 'pkgsrc/lang/compiler-rt/runtime-package.mk').read_text()
 recipe = '\n'.join(line for line in recipe.splitlines() if not line.startswith('.include '))
 with tempfile.TemporaryDirectory() as tmp:
     makefile = pathlib.Path(tmp) / 'Makefile'
-    makefile.write_text('LLVM_VERSION=23.1.4\n' + recipe + '\n')
+    makefile.write_text('LLVM_VERSION=23.1.6\n' + recipe + '\n')
     for component in ('libunwind', 'libcxxabi', 'libcxx'):
         for devel in (False, True):
             args = [bmake, '-f', str(makefile), f'EMBER_LLVM_CXX_COMPONENT={component}',
@@ -21,29 +21,34 @@ with tempfile.TemporaryDirectory() as tmp:
             if devel:
                 args.insert(4, 'EMBER_LLVM_CXX_DEVEL=yes')
             revision, dependencies = subprocess.check_output(args, text=True).splitlines()
-            assert revision == '2', (component, devel, revision)
+            assert revision == '', (component, devel, revision)
             if component != 'libunwind':
-                assert 'libunwind>=23.1.4nb2:' in dependencies, dependencies
+                assert 'libunwind>=23.1.6:' in dependencies, dependencies
             if devel:
-                assert f'{component}>=23.1.4nb2:' in dependencies, dependencies
+                assert f'{component}>=23.1.6:' in dependencies, dependencies
                 if component != 'libunwind':
-                    assert 'libunwind-devel>=23.1.4nb2:' in dependencies, dependencies
+                    assert 'libunwind-devel>=23.1.6:' in dependencies, dependencies
             if component == 'libcxx':
-                assert 'libcxxabi>=23.1.4nb2:' in dependencies, dependencies
+                assert 'libcxxabi>=23.1.6:' in dependencies, dependencies
                 if devel:
-                    assert 'libcxxabi-devel>=23.1.4nb2:' in dependencies, dependencies
+                    assert 'libcxxabi-devel>=23.1.6:' in dependencies, dependencies
     for component in ('libunwind', 'libcxxabi', 'libcxx'):
         for suffix in ('', '-devel'):
-            pattern = f'{component}{suffix}>=23.1.4nb2'
-            for revision, expected in ((1, 1), (2, 0)):
+            pattern = f'{component}{suffix}>=23.1.6'
+            for version, expected in (('23.1.4nb2', 1), ('23.1.6', 0)):
                 actual = subprocess.run([pkg_admin, 'pmatch', pattern,
-                                         f'{component}{suffix}-23.1.4nb{revision}'],
+                                         f'{component}{suffix}-{version}'],
                                         stdout=subprocess.DEVNULL).returncode
-                assert actual == expected, (pattern, revision, actual)
-        buildlink = (root / f'pkgsrc/lang/{component}/buildlink3.mk').read_text()
-        assert f'{component}-devel>=23.1.4nb2' in buildlink
-    application = (root / 'pkgsrc/lang/compiler-rt/application-runtime.mk').read_text()
-    for component in ('libunwind', 'libcxxabi', 'libcxx'):
-        for suffix in ('', '-devel'):
-            assert f'{component}{suffix}>=${{_EMBER_TARGET_RUNTIME_VERSION}}nb2:' in application
+                assert actual == expected, (pattern, version, actual)
+        buildlink = (root / f'pkgsrc/lang/{component}-devel/buildlink3.mk').read_text()
+        assert f'{component}-devel>=23.1.6' in buildlink
+    application = root / 'pkgsrc/lang/compiler-rt/application-runtime.mk'
+    for version, minimum in (('23.1.4', '23.1.4nb2'), ('23.1.6', '23.1.6')):
+        dependencies = subprocess.check_output(
+            [bmake, '-f', str(application), '_EMBER_TARGET_RUNTIME_KIND=sysroot',
+             '_EMBER_TARGET_RUNTIME_VERSION=' + version, '-V', '${DEPENDS}', '-V', '${BUILD_DEPENDS}'],
+            text=True)
+        for component in ('libunwind', 'libcxxabi', 'libcxx'):
+            for suffix in ('', '-devel'):
+                assert f'{component}{suffix}>={minimum}:' in dependencies
 print('PASS: six runtime packages, dependency closure, buildlinks and version matching')

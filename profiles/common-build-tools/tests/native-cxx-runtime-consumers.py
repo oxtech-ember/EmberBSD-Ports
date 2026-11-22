@@ -28,6 +28,6 @@ for recipe in ('devel/abseil', 'textproc/icu'):
     replacement = query([verified, 'USE_CROSS_COMPILE=no', 'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE=__ember1'], 'DEPENDS')
     cross = query([verified, 'USE_CROSS_COMPILE=yes', 'EMBERBSD_NATIVE_CXX_ABI_NAMESPACE=__ember1'], 'DEPENDS')
     assert 'libcxx>=' not in platform, (recipe, platform)
-    assert 'libcxx>=23.1.4nb1:../../lang/libcxx' in replacement, (recipe, replacement)
-    assert 'libcxx>=23.1.4nb1:../../lang/libcxx' not in cross, (recipe, cross)
+    assert 'libcxx>=23.1.6:../../lang/libcxx' in replacement, (recipe, replacement)
+    assert 'libcxx>=23.1.6:../../lang/libcxx' not in cross, (recipe, cross)
     print(recipe + ': PASS platform binding, replacement runtime and cross metadata')

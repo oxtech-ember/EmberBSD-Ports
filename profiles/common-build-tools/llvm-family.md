@@ -1,35 +1,15 @@
 # LLVM 23 common family
 
-This profile prepares matching LLVM 23.1.4, Clang, LLD and upstream
-Python315 lit for the common Mesa26/TinyGo dependency closure.
-It extends [the common profile](README.md), based on pkgsrc
-`fff4deb639a1a640476203c80f752fb77b6cb14b`.
-## Current 23.1.4 source update
+The common profile uses LLVM, Clang, LLD and lit 23.1.6 for Mesa and TinyGo.
+The nine distinfo records identify the same 179,172,364-byte upstream archive.
+Its SHA256 is `d3b86ab29cfb4445a6652e5c2642ccc75e04e38084dde3701d323320f35a31da`.
+Upstream lit reports `23.1.6dev` and produces a `23.1.6.dev0` wheel.
+[sources.tsv](sources.tsv) records the archive URL and the separate historical
+macOS binary pin. [LLVM 23.1.6 release](https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.6)
 
-The [official stable 23.1.4 release](https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.4)
-was published on 2026-10-20. All five package roles share its source version.
-The four distinfo records use the verified 179,272,572-byte monorepo archive.
-Its SHA256 is `819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2`.
-The nine LLVM patches and one Clang patch apply with zero fuzz. One LLVM
-patch makes Mach-O linked-image rewriting fail safely when an expanded load
-command would overlap file-backed section data. Packages that choose long
-install IDs should set the final ID while linking or reserve header space.
-The DWP repair remains applied once. All normal and experimental backends,
-platform rules, options and runtime/SDK partitions remain unchanged.
-
-Active Clang, lit, Mesa, metadata helpers and native generator consumers select
-23.1.4. Upstream lit reports `23.1.4dev`; its wheel name is `lit-23.1.4.dev0`.
-The pinned llvm-config source and the five Darwin MC/Mach-O interface sources
-are unchanged from 23.1.3. This is source compatibility evidence.
-It does not establish native tool execution or a new GCC16 producer.
-The historical macOS binary pin remains in `sources.tsv`; the new pin is separate.
-No 23.1.4 binary archive was downloaded for this source update.
-
-The current source gate requires an explicit SDK `DIGEST` executable.
-It compares unaffected Python, Meson and GCC exports through the production
-export graph from HEAD. It does not maintain a second GCC patch list.
-LLVM 23.1.4 full builds, package checks, installed runtime and downstream
-consumer acceptance remain pending. The receipts below retain their original versions.
+The source checks use the SDK digest tool, apply the package patches and compare
+the Python, Mesa tooling and GCC inputs through the production export. The
+NetBSD worker-pool patch and the DWP repair apply to the 23.1.6 sources.
 
 ## Previous runtime acceptance
 
@@ -40,7 +20,7 @@ passes installed llvmpipe rendering and all 39 target invocations.
 Earlier [CM5 and Zero 3W API checks](cross/llvm-api-tests.md) and the
 [DWP matrix](cross/llvm-dwp-tests.md) retain their recorded versions and scope.
 Full Clang/LLD staging passed; installed Clang/LLD, TinyGo and renewed Qt
-acceptance remain separate. These results do not accept LLVM 23.1.4.
+acceptance remain separate. Those receipts cover LLVM 23.1.3.
 
 ## One family and development payload
 
@@ -78,8 +58,8 @@ default; recipes carry no GCC_REQD) and common Python.
 Native cache, RTTI, dependency and ELF evidence remains required.
 
 NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).
-The execution-only image receives `llvm-23.1.4nb6`; the build-host target sysroot
-also needs `llvm-devel-23.1.4nb8`. Native LLVM remains a full package.
+The execution-only image receives `llvm-23.1.6`; the build-host target sysroot
+also needs `llvm-devel-23.1.6`. Native LLVM remains a full package.
 ## Inherited patch decisions
 
 NetBSD RCS identifiers, authorship and licenses are preserved. These recipes,
@@ -164,7 +144,7 @@ disable native defaults. Projects retain -nostdinc++, -nostdlib, -nodefaultlibs,
 The new py-llvm-lit recipe uses upstream lit's module/setup.py and lit.py launcher,
 common Python315 and ordinary wheel machinery. LLVM no longer installs a
 source/build-tree-dependent stub. Build-tree lit remains for upstream tests.
-Upstream reports 23.1.4dev; expected wheel metadata is 23.1.4.dev0, not silently
+Upstream reports 23.1.6dev; expected wheel metadata is 23.1.6.dev0, not silently
 relabeled. Wheel payload, shebang and PLIST checks await native staging.
 
 ```sh
@@ -184,7 +164,7 @@ The generated-header gate is independently usable with the verified pristine tre
 
 ```sh
 sh profiles/common-build-tools/tests/llvm-generated-headers.sh \
-    /absolute/llvm-project-23.1.4.src \
+    /absolute/llvm-project-23.1.6.src \
     pkgsrc /absolute/new-header-check
 ```
 
@@ -202,10 +182,10 @@ See [native evidence](native-evidence.md) for its original tool versions and sco
 llvm-lit.sh stages actual upstream modules in a private Python315 environment,
 renames the source tree away and runs upstream shell-format PASS/XFAIL/FAIL without
 PYTHONPATH. FAIL must return 1. A missing or older interpreter is an error.
-LLVM 23.1.4 requires Python >=3.8 for its tests. Its lit package metadata has
+LLVM 23.1.6 requires Python >=3.8 for its tests. Its lit package metadata has
 no upper Python bound, and its resource-limit fixture handles Python 3.15.
 The earlier source passed this bounded launcher contract on host Python 3.15.0.
-The 23.1.4 launcher check requires the matching common Python315 producer.
+The 23.1.6 launcher check requires the matching common Python315 producer.
 This does not establish target wheel installation or the full LLVM test suite.
 
 `llvm-lit-selection.py` queries the complete recipe with real BSD make:

@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 RECIPES = ('lang/clang', 'devel/lld')
-VERSION = '23.1.4'
+VERSION = '23.1.6'
 
 
 def make(cross, pkgpath, *arguments):
@@ -62,7 +62,7 @@ work = pathlib.Path(sys.argv[2])
 work.mkdir(parents=True)
 tool = work / 'helper/bin/llvm-config'
 tool.parent.mkdir(parents=True)
-tool.write_text('#!/bin/sh\\necho ' + '23.1.4' + '\\n')
+tool.write_text('#!/bin/sh\\necho ' + '23.1.6' + '\\n')
 tool.chmod(0o755)
 ''')
 
