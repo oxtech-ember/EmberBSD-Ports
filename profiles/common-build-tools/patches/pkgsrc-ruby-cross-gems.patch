@@ -64,20 +64,21 @@ against the target Ruby configuration and stage generated executables.
  	${RUN} cd ${WRKSRC} && rm -f ${GEM_NAME}.gem
  	${RUN} cd ${WRKSRC} && find . -name ${GEM_NAME}.gem -print | \
  	while read file; do \
-@@ -302,6 +302,12 @@
+@@ -302,6 +302,13 @@
  _RUBYGEM_OPTIONS+=	--install-dir ${PREFIX}/${GEM_HOME}
  _RUBYGEM_OPTIONS+=	${RUBYGEM_INSTALL_ROOT_OPTION}
  _RUBYGEM_OPTIONS+=	--ignore-dependencies
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-+_RUBYGEM_OPTIONS+=	--target-rbconfig ${CROSS_DESTDIR:Q}${PREFIX:Q}/${RUBY_ARCHLIB}/rbconfig.rb
++_RUBYGEM_OPTIONS+=	--target-rbconfig ${PKGSRCDIR:Q}/lang/ruby/cross-rbconfig.rb
 +# RubyGems prepends --install-root for the gems and uses --bindir verbatim.
 +_RUBYGEM_OPTIONS+=	--bindir ${RUBYGEM_INSTALL_ROOT:Q}${PREFIX:Q}/bin
 +_RUBYGEM_INSTALL_ENV=	GEMRC=${WRKDIR:Q}/gem-target.yml
++_RUBYGEM_INSTALL_ENV+=	PKGSRC_RUBY_TARGET_RBCONFIG=${CROSS_DESTDIR:Q}${PREFIX:Q}/${RUBY_ARCHLIB}/rbconfig.rb
 +.endif
  _RUBYGEM_OPTIONS+=	--local ${WRKSRC}/${GEM_NAME}.gem
  .if !empty(RUBYGEM_VERBOSE:M[Yy][Ee][Ss])
  _RUBYGEM_OPTIONS+=	-V
-@@ -324,8 +330,18 @@
+@@ -324,8 +331,18 @@
  .PHONY: _gem-build-install-root
  _gem-build-install-root:
  	@${STEP_MSG} "Installing gem into installation root"
@@ -161,3 +162,12 @@ against the target Ruby configuration and stage generated executables.
  .  endif
  .endif
  
+--- /dev/null
++++ b/lang/ruby/cross-rbconfig.rb
+@@ -0,0 +1,6 @@
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD contributors (AI-assisted).
++# RubyGems and mkmf load the target config in a module on the build host.
++# Use mkmf's compile-time probes inside that module.
++CROSS_COMPILING = true
++Kernel.load ENV.fetch("PKGSRC_RUBY_TARGET_RBCONFIG"), Module.nesting.first
