@@ -23,6 +23,7 @@ mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/demo/patches" "$out/tre
     "$out/packages/All" "$out/packages-native/All" "$out/native-db" "$out/target-db" \
     "$out/state/logs" "$out/sdk/scripts"
 ln -s "$CROSS_BULK_TEST_SDK_SOURCE/src" "$out/sdk/src"
+ln -s "$CROSS_BULK_TEST_SDK_SOURCE/scripts/prefix-lock.py" "$out/sdk/scripts/prefix-lock.py"
 printf 'print(2)\n' > "$out/sdk/scripts/resolve-jobs.py"
 : > "$out/mk.conf"
 : > "$out/tree/pkgtools/pkg_install/Makefile"

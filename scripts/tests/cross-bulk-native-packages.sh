@@ -22,15 +22,22 @@ cat > "$out/pkg_add" <<WRAP
 #!/bin/sh
 : > "\$2/\$3-1.0"
 WRAP
+# pkg_info -K DB -e PATTERN prints the installed native name, as pkgsrc does.
+cat > "$out/pkg_info" <<WRAP
+#!/bin/sh
+[ -f "$out/native-db/x-1.0" ] || exit 1
+echo x-1.0
+WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
 echo "\$*" >> \$out/calls
-dir= target= varname= add= mode=target packages=\$out/packages
+dir= target= varname= varnames= add= mode=target packages=\$out/packages
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
         -C) dir=\$2; shift 2 ;;
         VARNAME=*) varname=\${1#VARNAME=}; shift ;;
+        VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
         NATIVE_PKG_ADD_CMD=*) add=\${1#NATIVE_PKG_ADD_CMD=}; shift ;;
         USE_CROSS_COMPILE=no) mode=native; shift ;;
         PACKAGES=*) packages=\${1#PACKAGES=}; shift ;;
@@ -44,16 +51,22 @@ case "\$target" in
         case "\$varname" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
             PACKAGES) echo \$out/packages ;;
-            PKG_INFO) echo "test -f \$out/native-db/x-1.0 #" ;;
+            PKG_INFO) echo "\$out/pkg_info -K \$out/native-db" ;;
             NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
             *) echo ;;
         esac ;;
     show-vars)
-        if [ \$mode = native ]; then
-            echo "\$pkg-1.0"; echo "\$out/work/\$pkg/work"; echo; echo "\$pkg"
-        else
-            echo "\$pkg-1.0"; echo "\$out/work/\$pkg/work.target"; echo
-        fi ;;
+        work=\$out/work/\$pkg/work
+        [ \$mode = native ] || work=\$work.target
+        for v in \$varnames; do
+            case "\$v" in
+                PKGNAME) echo "\$pkg-1.0" ;;
+                WRKDIR) echo "\$work" ;;
+                PKGBASE) echo "\$pkg" ;;
+                PKGFILE) echo "\$packages/All/\$pkg-1.0.tgz" ;;
+                *) echo ;;
+            esac
+        done ;;
     clean) ;;
     package-install|install)
         mkdir -p \$packages/All
@@ -62,7 +75,7 @@ case "\$target" in
     *) echo "bmake: don't know how to make \$target. Stop"; exit 2 ;;
 esac
 WRAP
-chmod +x "$out/bmake" "$out/pkg_add"
+chmod +x "$out/bmake" "$out/pkg_add" "$out/pkg_info"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 mkdir "$out/state"
 printf '%s\n' 't/x t/x' 't/x@native t/x@native' > "$out/state/edges"

@@ -18,6 +18,7 @@ mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/app" \
     "$out/tree/cat/dep" "$out/tree/cat/fail" "$out/packages/All" \
     "$out/native-db" "$out/target-db" "$out/state/logs" "$out/sdk/scripts"
 ln -s "$CROSS_BULK_TEST_SDK_SOURCE/src" "$out/sdk/src"
+ln -s "$CROSS_BULK_TEST_SDK_SOURCE/scripts/prefix-lock.py" "$out/sdk/scripts/prefix-lock.py"
 # Use real stage locking and process supervision. Only CPU capacity is fixed.
 printf 'print(2)\n' > "$out/sdk/scripts/resolve-jobs.py"
 : > "$out/mk.conf"
@@ -309,9 +310,13 @@ build_existing_order || fail "ordinary legacy rebuild: $(cat "$out/legacy.log")"
     fail 'ordinary rebuild did not establish provider and archive evidence'
 grep -Fqx 'TARGET package-install' "$out/targets" || fail 'ordinary rebuild did not compile/package'
 : > "$out/targets"
-# Ordinary nodes also run with shared staging explicitly disabled.
-(CROSS_BULK_SHARED_BUILD=no build_existing_order) || fail "post-migration reuse: $(cat "$out/legacy.log")"
+# Ordinary nodes also run with shared staging explicitly disabled. A reused
+# done package keeps its WRKDIR, also when successful builds clean theirs.
+: > "$legacy_app/kept"
+(CROSS_BULK_SHARED_BUILD=no CROSS_BULK_CLEAN_SUCCESS=yes build_existing_order) ||
+    fail "post-migration reuse: $(cat "$out/legacy.log")"
 [ ! -s "$out/targets" ] || fail 'post-migration run repeated package work'
+[ -f "$legacy_app/kept" ] || fail 'cleanup removed the WRKDIR of a reused package'
 
 # The kept phase cache can still name the old provider after selection changed.
 # Both the completed archive and the retained objects must use a fresh resolver.

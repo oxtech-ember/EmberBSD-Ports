@@ -44,6 +44,9 @@ with tempfile.TemporaryDirectory() as tmp:
         "printf '%s\\n' 'Configuration files:' ' Makefile' "
         "'Configuration headers:' ' config.h' 'Configuration commands:'\n")
 
+    # bmake can name WRKDIR through a symbolic link (/tmp on macOS).
+    via = root / 'via'
+    via.symlink_to(root)
     fake = root / 'bmake'
     fake.write_text('#!' + sys.executable + '\n' + '''import pathlib,sys
 args=sys.argv[1:];work=pathlib.Path(''' + repr(str(work)) + ''');source=work/'src';live=work/'.tools';cookie=work/'.tools_done'
@@ -56,7 +59,7 @@ if '-V' in args:
   if 'gmake' in selected:groups.append('gmake|'+scratch+'/bin/gmake|make')
   if 'bmake' in selected:groups.append('bmake|'+scratch+'/bin/bmake|make')
   print(' '.join(groups))
- else:print((work/'use-tools').read_text().strip()+'\\n'+str(work)+'\\n'+str(cookie))
+ else:print((work/'use-tools').read_text().strip()+'\\n'+''' + repr(str(via / 'work')) + '''+'\\n'+''' + repr(str(via / 'work' / '.tools_done')) + ''')
  sys.exit()
 if 'show-vars' in args:
  print(str(work)+'\\n'+str(source)+'\\n'+''' + repr(str(a.shell)) + '''+'\\n'+str(work/'.configure_done')+'\\nyes\\n'+str(source));sys.exit()

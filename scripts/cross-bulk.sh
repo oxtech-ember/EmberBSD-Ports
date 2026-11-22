@@ -2699,7 +2699,16 @@ build()
         mkdir -p "$vars_cache"
         gnu_stat=no
         ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes
-        build_env_identity=$(environment_identity) || build_env_identity=
+        # The supervised stage adds its own control variables and shell level.
+        # It uses the identity of the build that started it, as deps mode does.
+        if [ "$stage_supervised" = yes ] && [ -n "${CROSS_BULK_BUILD_ENV_IDENTITY:-}" ]; then
+            build_env_identity=$CROSS_BULK_BUILD_ENV_IDENTITY
+        else
+            unset CROSS_BULK_BUILD_ENV_IDENTITY
+            build_env_identity=$(environment_identity) || build_env_identity=
+            CROSS_BULK_BUILD_ENV_IDENTITY=$build_env_identity
+            export CROSS_BULK_BUILD_ENV_IDENTITY
+        fi
         if [ -n "$build_env_identity" ]; then
             build_vars_context="build|$BMAKE|$MAKECONF|$PKGSRCDIR|$native|$build_env_identity"
             vars_context=$build_vars_context

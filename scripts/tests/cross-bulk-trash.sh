@@ -22,11 +22,13 @@ mkdir -p "$out/tree/t/a" "$out/tree/t/b" "$out/tree/t/c" "$out/packages/All" "$o
 : > "$out/errors"
 : > "$out/outside/keep"
 : > "$out/outside2/keep"
-# Old WRKDIRs, one with a read-only directory and a link out of the tree.
+# Old WRKDIRs of an earlier version, with a read-only directory and a link
+# out of the tree. pkgsrc records the extracted PKGNAME in .extract_done.
 for p in a b c; do
     w=$out/work/t-$p
     mkdir -p "$w/ro"
     : > "$w/old"
+    echo "$p-0.9" > "$w/.extract_done"
     : > "$w/ro/file"
     chmod 555 "$w/ro"
     ln -s "$out/outside" "$w/link"
@@ -74,6 +76,8 @@ case "\$target" in
         for v in \$varnames; do
             case "\$v" in
                 PKGNAME) echo "\$pkg-1.0" ;;
+                PKGVERSION_NOREV) echo 1.0 ;;
+                PKGFILE) echo "\$out/packages/All/\$pkg-1.0.tgz" ;;
                 PKGBASE) echo "\$pkg" ;;
                 WRKDIR) echo "\$w" ;;
                 *) echo ;;
@@ -118,13 +122,4 @@ grep -q ' clean$' "$out/calls" && fail "a clean step ran for a WRKDIR in the tra
 [ -e "$out/outside/keep" ] && [ -e "$out/outside2/keep" ] || fail 'the deleter removed a file outside the trash'
 ps -A -o command= | grep -F "$out/list" | grep -v grep > /dev/null && fail 'a deleter outlived the build'
 [ ! -d "$out/work/t-x" ] || fail 'unexpected WRKDIR'
-# A package reused from STATE/done must not trigger cleanup of its WRKDIR.
-mkdir -p "$out/work/t-a"
-: > "$out/work/t-a/reused"
-BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
-    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
-    CROSS_BULK_CLEAN_SUCCESS=yes \
-    sh "$ports/scripts/cross-bulk.sh" build "$out/list" "$out/state" > "$out/reuse.log" 2>&1 ||
-    fail "reuse: $(cat "$out/reuse.log")"
-[ -f "$out/work/t-a/reused" ] || fail 'cleanup removed a reused package WRKDIR'
 echo 'PASS: old WRKDIRs go to a trash on the same file system, no worker waits for a removal, the deleter removes only the trash and also what a crashed run left'

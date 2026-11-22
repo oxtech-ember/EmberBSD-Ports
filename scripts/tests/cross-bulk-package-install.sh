@@ -14,6 +14,7 @@ mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/demo" "$out/work/demo" 
 host_python=${CROSS_BULK_TEST_PYTHON:-$(command -v python3)}
 : "${CROSS_BULK_TEST_SDK_SOURCE:?Set CROSS_BULK_TEST_SDK_SOURCE to the selected SDK source}"
 ln -s "$CROSS_BULK_TEST_SDK_SOURCE/src" "$out/sdk/src"
+ln -s "$CROSS_BULK_TEST_SDK_SOURCE/scripts/prefix-lock.py" "$out/sdk/scripts/prefix-lock.py"
 CROSS_BULK_TEST_HOST_PYTHON=$host_python
 CROSS_BULK_TEST_SDK_SOURCE=$out/sdk
 export CROSS_BULK_TEST_HOST_PYTHON CROSS_BULK_TEST_SDK_SOURCE

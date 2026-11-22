@@ -20,6 +20,7 @@ ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 for p in t/a s/sqlite3 c/clang m/m4 d/tclsh e/cmake; do mkdir -p "$out/tree/$p"; done
 mkdir -p "$out/packages/All" "$out/work/sqlite3/native" "$out/native-db" "$out/vars" "$out/sdk/scripts"
 ln -s "${CROSS_BULK_TEST_SDK_SOURCE:?set selected SDK source}/src" "$out/sdk/src"
+ln -s "$CROSS_BULK_TEST_SDK_SOURCE/scripts/prefix-lock.py" "$out/sdk/scripts/prefix-lock.py"
 rmdir "$out/work/sqlite3/native"
 printf "print(1)\n" > "$out/sdk/scripts/resolve-jobs.py"
 : > "$out/native-db/sqlite3-3.54.1"

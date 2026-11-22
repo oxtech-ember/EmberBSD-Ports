@@ -57,7 +57,8 @@ WRAP
 # checks older and newer versions).
 cat > "$out/pkg_info" <<WRAP
 #!/bin/sh
-[ "\$1" = -K ] && [ "\$3" = -e ] && [ -e "\$2/\${4%%>=*}" ]
+# pkg_info -e prints each installed name that matches the pattern.
+[ "\$1" = -K ] && [ "\$3" = -e ] && [ -e "\$2/\${4%%>=*}" ] && echo "\${4%%>=*}"
 WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
@@ -118,6 +119,7 @@ case "\$target" in
                 PKGNAME) echo "\$pkg-1.0" ;;
                 PKGBASE) echo "\$pkg" ;;
                 WRKDIR) echo "\$out/work/\$kind-\$pkg" ;;
+                PKGFILE) echo "\$out/packages/All/\$pkg-1.0.tgz" ;;
                 DEPENDS) list deps t ;;
                 BUILD_DEPENDS) list builddeps t ;;
                 TOOL_DEPENDS) list tools n ;;

@@ -46,15 +46,17 @@ case "$pattern" in
             have=${installed##*/}
             have=${have#"$base"-}
             if [ "$(printf '%s\n%s\n' "$want" "$have" | sort -V | tail -n 1)" = "$have" ]; then
+                echo "${installed##*/}"
                 exit 0
             fi
             found=0
         done
         exit 1 ;;
 esac
-[ -e "$db/$pattern" ] && exit 0
+# pkg_info -e prints each installed name that matches the pattern.
+[ -e "$db/$pattern" ] && { echo "$pattern"; exit 0; }
 for installed in "$db/$pattern"-[0-9]*; do
-    [ -e "$installed" ] && exit 0
+    [ -e "$installed" ] && { echo "${installed##*/}"; exit 0; }
 done
 exit 1
 WRAP

@@ -33,11 +33,12 @@ cat > "$out/bmake" <<WRAP
 out=$out
 self=\$0
 echo "\$*" >> \$out/calls
-dir= target= varname= add= dtarget=reinstall
+dir= target= varname= varnames= add= dtarget=reinstall
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
         -C) dir=\$2; shift 2 ;;
         VARNAME=*) varname=\${1#VARNAME=}; shift ;;
+        VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
         NATIVE_PKG_ADD_CMD=*) add=\${1#NATIVE_PKG_ADD_CMD=}; shift ;;
         DEPENDS_TARGET=*) dtarget=\${1#DEPENDS_TARGET=}; shift ;;
         *=*) shift ;;
@@ -75,7 +76,15 @@ case "\$target" in
             NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
             *) echo ;;
         esac ;;
-    show-vars) echo "\$pkg-1.0"; echo "\$out/work/\$pkg"; echo ;;
+    show-vars)
+        for v in \$varnames; do
+            case "\$v" in
+                PKGNAME) echo "\$pkg-1.0" ;;
+                WRKDIR) echo "\$out/work/\$pkg" ;;
+                PKGFILE) echo "\$out/packages/All/\$pkg-1.0.tgz" ;;
+                *) echo ;;
+            esac
+        done ;;
     clean) ;;
     package-install)
         depends || exit 1

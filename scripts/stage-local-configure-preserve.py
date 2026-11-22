@@ -81,7 +81,8 @@ def refresh_tools(a, paths, jsonio, command, work):
     use, selected_work, cookie_name = values
     require(Path(selected_work).resolve(strict=True) == work, 'selected tools work differs from lock')
     cookie = Path(cookie_name)
-    require(cookie.parent == work and cookie.name == '.tools_done', 'invalid tools cookie')
+    # WRKDIR can name the work directory through a symbolic link (/tmp on macOS).
+    require(cookie.parent.resolve() == work and cookie.name == '.tools_done', 'invalid tools cookie')
     if not os.path.lexists(cookie) and not os.path.lexists(marker):
         return
     if os.path.lexists(cookie):

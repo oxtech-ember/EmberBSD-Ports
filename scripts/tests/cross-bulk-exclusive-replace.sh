@@ -69,6 +69,7 @@ value() {
     case "\$1" in
         PKGBASE) sed 's/-[0-9][^-]*\$//' \$out/vars/\$pkg.\$mode.PKGNAME ;;
         WRKDIR) echo \$out/work/\$pkg/\$mode ;;
+        PKGFILE) echo \$out/packages/All/\$(cat \$out/vars/\$pkg.\$mode.PKGNAME).tgz ;;
         *) cat \$out/vars/\$pkg.\$mode.\$1 2> /dev/null || echo ;;
     esac
 }

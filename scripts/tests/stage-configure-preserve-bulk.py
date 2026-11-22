@@ -49,6 +49,11 @@ pkg_vars() { printf '%s\\n' test-1.0 "$work" '' test 1.0 "$state/test.tgz" "$sta
 stage_verify_locked() { [ "$1" = "$work" ]; }
 native_current() { return 1; }
 shared_pair_restore_producer() { return 0; }
+# The stage context of a shared pair is checked in cross-bulk-llvm-shared-stage.sh.
+target_stage_context() { return 0; }
+# Build-input records and provider checks have their own fixtures.
+record_build_inputs() { return 0; }
+start_source_providers() { return 0; }
 shared_pair_for_path() { shared_pair=; }
 prepare_wrkdir() {
     printf '%s\\n' prepare >> "$trace"

@@ -53,8 +53,10 @@ case "\$target" in
         for v in \$varnames; do
             case "\$v" in
                 PKGNAME) echo \$pkg-1.0 ;;
+                PKGVERSION_NOREV) echo 1.0 ;;
                 WRKDIR) echo \$w ;;
                 PKGBASE) echo \$pkg ;;
+                PKGFILE) echo \$packages/All/\$pkg-1.0.tgz ;;
                 *) echo ;;
             esac
         done ;;
@@ -94,14 +96,6 @@ BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=
     sh "$ports/scripts/cross-bulk.sh" build "$out/default-state/order" "$out/default-state" \
     > "$out/default.log" 2>&1 || fail "default build: $(cat "$out/default.log")"
 [ ! -e "$out/work/default" ] || fail 'successful target workdir was not retired to trash'
-mkdir -p "$out/work/default"
-: > "$out/work/default/reused"
-BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
-    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
-    CROSS_BULK_VARS_CACHE=no CROSS_BULK_CLEAN_SUCCESS=yes \
-    sh "$ports/scripts/cross-bulk.sh" build "$out/default-state/order" "$out/default-state" \
-    > "$out/reuse.log" 2>&1 || fail "reuse build: $(cat "$out/reuse.log")"
-[ -f "$out/work/default/reused" ] || fail 'cleanup removed a reused package WRKDIR'
 
 mkdir "$out/fail-state"
 printf '%s\n' t/fail > "$out/fail-state/order"

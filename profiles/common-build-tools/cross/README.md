@@ -724,7 +724,10 @@ dependency classes, transitive native tools, installed native leaves,
 cycles, and package scheduling with a recording bmake.
 `scripts/tests/cross-bulk-order-unreadable.sh NEW_OUTPUT` checks refusal and
 state preservation on an unreadable dependency.
-`CROSS_BULK_TEST_SDK_SOURCE=SDK scripts/tests/cross-bulk-parallel.sh NEW_OUTPUT` checks scheduling and
+The `scripts/tests/cross-bulk-*.sh` fixtures need the SDK Python and source in
+`CROSS_BULK_TEST_HOST_PYTHON` and `CROSS_BULK_TEST_SDK_SOURCE`; some also read
+`TEST_PYTHON` and `TEST_SHELL`. Without them a fixture stops at its first build.
+`scripts/tests/cross-bulk-parallel.sh NEW_OUTPUT` checks scheduling and
 database-install serialization on a small graph.
 Removing an old work directory is not on a package's path either: before a
 package builds, the build renames its old `WRKDIR` into
