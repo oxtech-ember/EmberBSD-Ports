@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream Oxc AST type definitions.
-DISTNAME= types-0.156.0
-PKGNAME= node-oxc-project-types-0.156.0
+DISTNAME= types-0.159.0
+PKGNAME= node-oxc-project-types-0.159.0
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@oxc-project/types/-/
 EXTRACT_SUFX= .tgz

@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (undici-types-8.12.3.tgz) = 8b6b3650d9d5a0e171ad924b492e0a6cc8250387621b1eeba19ca60f147aa69c
-SHA512 (undici-types-8.12.3.tgz) = 117138c9d2f74bbe9d15bdbb5058cd5591d3caffd32dd0138ff2947b6f69b5d720eaa5cbe3c276b59df5dba1399080a3e639fbf35391f979551f537a333f236c
-Size (undici-types-8.12.3.tgz) = 30837 bytes
+BLAKE2s (undici-types-8.13.1.tgz) = 2a35d3400955a303cfbf948a4ad99649ed5893b29364113fc39dfa4101c59abe
+SHA512 (undici-types-8.13.1.tgz) = c04b5faae3d57357bdba6661ef75d5c273dab95b86429db433fbbfe0436e58c46467c359c74badeaadc72cb74c51bf5ac0d971c4772c68656169ead9bbfd924b
+Size (undici-types-8.13.1.tgz) = 30890 bytes

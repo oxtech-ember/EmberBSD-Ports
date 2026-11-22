@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream Rolldown plugin utilities.
-DISTNAME= pluginutils-1.0.1
-PKGNAME= node-rolldown-pluginutils-1.0.1
+DISTNAME= pluginutils-1.1.1
+PKGNAME= node-rolldown-pluginutils-1.1.1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@rolldown/pluginutils/-/
 EXTRACT_SUFX= .tgz

@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream undici-types module.
-DISTNAME= undici-types-8.12.3
-PKGNAME= node-undici-types-8.12.3
+DISTNAME= undici-types-8.13.1
+PKGNAME= node-undici-types-8.13.1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/undici-types/-/
 EXTRACT_SUFX= .tgz
