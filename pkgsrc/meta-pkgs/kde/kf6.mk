@@ -178,7 +178,8 @@ BUILDLINK_API_DEPENDS.extra-cmake-modules+=	extra-cmake-modules>=${KF6VER}
 .include "../../devel/extra-cmake-modules/buildlink3.mk"
 TOOLS_DEPENDS.cmake= cmake>=3.0:../../devel/cmake
 
-CMAKE_CONFIGURE_ARGS+=	-DKF_IGNORE_PLATFORM_CHECK=true
+KF6_IGNORE_PLATFORM_CHECK?=	true
+CMAKE_CONFIGURE_ARGS+=	-DKF_IGNORE_PLATFORM_CHECK=${KF6_IGNORE_PLATFORM_CHECK}
 
 # ECM queries native qtpaths during a cross build. Those host installation
 # directories are not destinations in the target package.

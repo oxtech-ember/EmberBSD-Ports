@@ -1,25 +1,24 @@
 $NetBSD$
 
-NetBSD has no /dev/rfkill. The D-Bus binding still builds.
+Keep the complete Linux worker in its existing platform branch.
+Non-Linux builds retain the upstream Unknown state. This is not a native radio backend.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
 
 --- src/rfkill.cpp.orig
 +++ src/rfkill.cpp
-@@ -92,6 +92,7 @@
+@@ -50,7 +50,6 @@
+     quint8 soft;
+     quint8 hard;
+ };
+-#endif
  
- void RfkillThread::doSetSoftBlocked(quint8 blocked)
- {
-+#ifdef Q_OS_LINUX
-     int fd = ::open("/dev/rfkill", O_WRONLY | O_CLOEXEC);
-     if (fd == -1) {
-         qCWarning(BLUEZQT) << "Cannot open /dev/rfkill for writing!";
-@@ -110,6 +111,10 @@
-         qCWarning(BLUEZQT) << "Setting Rfkill soft block failed:" << errno;
+ RfkillThread::RfkillThread(QObject *parent)
+     : QThread(parent)
+@@ -111,6 +110,7 @@
      }
      ::close(fd);
-+#else
-+    Q_UNUSED(blocked);
-+    qCWarning(BLUEZQT) << "rfkill is not available on this platform";
-+#endif
  };
++#endif
  
  Rfkill::Rfkill(QObject *parent)
+     : QObject(parent)

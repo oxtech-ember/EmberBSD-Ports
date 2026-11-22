@@ -124,7 +124,7 @@ def main():
     assert revision == pins["pkgsrc_revision"], revision
     archive = args.bluezqt_archive.read_bytes()
     assert hashlib.sha256(archive).hexdigest() == pins["sources"][1]["sha256"]
-    bluezqt = owner / "recipes/comms/kf6-bluez-qt"
+    bluezqt = repository / "pkgsrc/net/kf6-bluez-qt"
     contexts = []
     linux_unchanged = []
     with tarfile.open(args.bluezqt_archive) as source:
@@ -138,8 +138,9 @@ def main():
                 assert linux_rfkill_projection(original) == linux_rfkill_projection(changed)
                 linux_unchanged.append(name)
             elif name == "src/a2dp-codecs.h":
-                projected = re.sub(r"#if defined\(__NetBSD__\).*?#endif\n",
-                                   "#include <endian.h>\n", changed, count=1, flags=re.DOTALL)
+                start = changed.index("#if defined(__NetBSD__)")
+                end = changed.index("#include <stdint.h>", start)
+                projected = changed[:start] + "#include <endian.h>\n" + changed[end:]
                 for before, after in [("BLUEZQT_BYTE_ORDER", "__BYTE_ORDER"),
                                       ("BLUEZQT_LITTLE_ENDIAN", "__LITTLE_ENDIAN"),
                                       ("BLUEZQT_BIG_ENDIAN", "__BIG_ENDIAN")]:
@@ -189,7 +190,7 @@ def main():
     toolchains = (webengine / "patches/patch-cmake_QtToolchainHelpers.cmake").read_text()
     assert '+    elseif(NETBSD)\n+        set(${result} "netbsd" PARENT_SCOPE)' in toolchains
     assert 'is_gcc CONDITION UNIX AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"' in toolchains
-    assert "-DKF_IGNORE_PLATFORM_CHECK=OFF" in (bluezqt / "Makefile").read_text()
+    assert "KF6_IGNORE_PLATFORM_CHECK=\tOFF" in (bluezqt / "Makefile").read_text()
     print(json.dumps({"status": "PASS", "scope": "source preparation only; no compilation",
                       "tracked_recipe_inputs": len(recipe_inputs),
                       "pkgsrc_revision": revision, "bluezqt_sha256": hashlib.sha256(archive).hexdigest(),

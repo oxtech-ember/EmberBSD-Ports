@@ -111,14 +111,10 @@ SPDX identifiers, and licenses are retained.
   Local libnm VPN-plugin preflight is omitted; ordinary QtDBus calls still
   return their real errors. The normal upstream build remains the default.
 
-- `bluez-qt-netbsd-endian.patch` selects NetBSD's real byte-order macros
-  for BlueZ's inherited A2DP codec bitfields. The Linux branch is unchanged.
-  A native C contract checks the exact four-byte SBC wire representation
-  with undefined preprocessor identifiers treated as errors.
-
-- `bluez-qt-rfkill-linux-only.patch` extends the existing Linux guards to
-  the new private rfkill worker class and its field. Non-Linux builds retain
-  upstream's Unknown rfkill state; no worker or simulated device is added.
+- The BluezQt source files used by this recorded 6.26.0 cohort match the
+  four patched files in 6.32.0 byte for byte. The probe applies the common
+  `pkgsrc/net/kf6-bluez-qt/patches` inputs and retains ECM platform checking.
+  Its C client checks the four-byte SBC representation on NetBSD.
 
 - `plasma-nm-provider-data-20251101.patch` updates two exact upstream test
   expectations for the pinned current database: sipgate also uses 26203,

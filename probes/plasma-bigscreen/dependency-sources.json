@@ -20,11 +20,11 @@
       "sha256": "6101c1aa00ff933d1b65ee5d167f76e8d71b9ac5b378b0111277723ebda7c163"
     },
     {
-      "recipe": "comms/kf6-bluez-qt",
-      "version": "6.31.0",
-      "url": "https://download.kde.org/stable/frameworks/6.31/bluez-qt-6.31.0.tar.xz",
-      "sha256": "22b25448c6b5372ee4fba15bb938e698a599cec0d69816ceb0405451c879c827",
-      "provenance": "Archive SHA256 checked against sources.tsv.",
+      "recipe": "net/kf6-bluez-qt",
+      "version": "6.32.0",
+      "url": "https://download.kde.org/stable/frameworks/6.32/bluez-qt-6.32.0.tar.xz",
+      "sha256": "53f9705366f1e142e921f3ec314d673d51341bd20d358c33ebe8fe4218d2cd6b",
+      "provenance": "Archive verified against the common Frameworks recipe and the Plasma toolkit source registry.",
       "boundary": "Complete D-Bus client source, QML and upstream tests remain enabled. A native org.bluez service and radio-state backend are not supplied."
     },
     {

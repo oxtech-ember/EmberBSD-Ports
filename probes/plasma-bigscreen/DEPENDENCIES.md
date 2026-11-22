@@ -56,16 +56,15 @@ target test acceptance remain separate from this source verification.
 
 ## BluezQt
 
-The 6.31.0 archive is SHA256-verified. Four source patches select NetBSD byte
-order, keep the Linux worker implementation and declaration inside the same
-platform guard, and describe NetBSD as a D-Bus client platform. The recipe
-keeps ECM platform validation enabled. It does not set an ignore-platform
-escape. QML support and all upstream tests stay enabled. The PLIST is derived
-from the exact source install declarations and remains a package candidate.
+The `net/kf6-bluez-qt` recipe supplies the client library and QML module
+from KDE Frameworks 6.32.0. Its source patches select the platform byte order
+and compile the radio-switch worker on Linux. ECM validates the supported
+NetBSD, Darwin and Linux configurations. Set `KF6_BUILD_TESTING=ON` to build
+the upstream tests. The archive matches the common Plasma toolkit registry.
 
 The source also selects macOS byte-order definitions for native memory checks.
 The explicit `macOS` metadata entry uses ECM's actual platform identifier.
-Native configuration passes with Qt 6.12.0, ECM 6.31.0, testing enabled and the
+An earlier native configuration passed with Qt 6.12.0, ECM 6.31.0, testing enabled and the
 platform check enabled. The subsequent build was interrupted. No native test
 invocation completed, and no complete native library or memory pass is accepted.
 `check-bluezqt-native.py` provides the full source, QML and upstream-test runner

@@ -70,7 +70,7 @@ def main():
     with tarfile.open(args.archive) as archive:
         archive.extractall(args.work, filter="data")
     source = args.work / "bluez-qt-6.32.0"
-    patches = Path(__file__).resolve().parent / "recipes/comms/kf6-bluez-qt/patches"
+    patches = Path(__file__).resolve().parents[2] / "pkgsrc/net/kf6-bluez-qt/patches"
     for patch in sorted(patches.iterdir()):
         run(patch.name, ["patch", "-f", "-F", "0", "-p0", "-i", patch], cwd=source)
     objects = args.work / "objects"

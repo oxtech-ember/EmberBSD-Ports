@@ -14,7 +14,7 @@ qt-cmake -S src/bluez-qt-6.26.0 -B build-bluezqt -G Ninja \
  -DCMAKE_SHARED_LINKER_FLAGS=-Wl,--no-fatal-warnings \
  -DCMAKE_MODULE_LINKER_FLAGS=-Wl,--no-fatal-warnings \
  -DKDE_INSTALL_USE_QT_SYS_PATHS=OFF -DBUILD_TESTING=ON \
- -DKF_IGNORE_PLATFORM_CHECK=ON > logs/bluezqt-configure.log 2>&1
+ -DKF_IGNORE_PLATFORM_CHECK=OFF > logs/bluezqt-configure.log 2>&1
 cmake --build build-bluezqt --parallel "${JOBS:-1}" \
  --target KF6BluezQt bluezqtextensionplugin \
  > logs/bluezqt-library-build.log 2>&1

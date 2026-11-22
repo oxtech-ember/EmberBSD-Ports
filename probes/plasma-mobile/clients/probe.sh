@@ -60,8 +60,11 @@ fetch plasma-nm-6.7.5.tar.xz \
 /bin/sh "$script_dir/build-mmqt.sh"
 /bin/sh "$script_dir/build-nmqt.sh"
 /bin/sh "$script_dir/build-qtkeychain.sh"
-(cd "$work/src/bluez-qt-6.26.0" && patch -p1 < "$script_dir/patches/bluez-qt-netbsd-endian.patch")
-(cd "$work/src/bluez-qt-6.26.0" && patch -p1 < "$script_dir/patches/bluez-qt-rfkill-linux-only.patch")
+# This pinned diagnostic cohort shares its four affected source files with
+# the current Frameworks release. Apply the common recipe's patches.
+for patchfile in "$script_dir"/../../../pkgsrc/net/kf6-bluez-qt/patches/patch-*; do
+    (cd "$work/src/bluez-qt-6.26.0" && patch -F 0 -p0 < "$patchfile")
+done
 /bin/sh "$script_dir/build-bluezqt.sh"
 (cd "$work/src/plasma-nm-6.7.5" && patch -p1 < "$script_dir/patches/plasma-nm-dbus-client-only.patch")
 (cd "$work/src/plasma-nm-6.7.5" && patch -p1 < "$script_dir/patches/plasma-nm-provider-data-20251101.patch")

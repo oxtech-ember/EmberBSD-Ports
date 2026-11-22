@@ -3,7 +3,7 @@
 [Plasma Bigscreen](https://plasma-bigscreen.org/get/) is released as part of
 KDE Plasma. The target is Plasma 6.8.3.
 The original archive SHA256 in `sources.tsv` matches KDE's `.sha256` response.
-The common target providers remain Qt 6.12, Frameworks 6.31 and GCC16.
+The common target providers remain Qt 6.12, Frameworks 6.32 and GCC16.
 
 The complete upstream source requires Qt WebEngineCore and WebEngineQuick,
 BluezQt and the KDE Connect QML module. These requirements remain enabled.
@@ -17,8 +17,8 @@ Their source checks pass. Ordinary GCC16 builds, packages and native
 Bluetooth service support remain pending. The WebEngine source release is
 versioned independently from the selected common Qt ABI.
 
-BluezQt 6.31.0 rejects `NetBSD` through ECM and its `metainfo.yaml` platform
-contract. Its client API requires a running BlueZ 5 D-Bus service. The Linux
+The common BluezQt 6.32.0 recipe declares NetBSD as a D-Bus client platform
+in its upstream ECM metadata. Its client API requires a running BlueZ 5 D-Bus service. The Linux
 rfkill implementation also uses `/dev/rfkill` and Linux event structures.
 A native Bluetooth service adapter and radio-state backend require separate
 work. Setting `KF_IGNORE_PLATFORM_CHECK` does not provide these contracts.
