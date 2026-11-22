@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	puppet-resource_api-2.0.1
+DISTNAME=	puppet-resource_api-2.1.0
 CATEGORIES=	sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org

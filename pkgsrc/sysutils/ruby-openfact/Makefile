@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	openfact-6.2.1
+DISTNAME=	openfact-6.2.3
 CATEGORIES=	sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org

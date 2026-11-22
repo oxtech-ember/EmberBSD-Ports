@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (puppet-resource_api-2.0.1.gem) = ee05200787b42c41da86d2e29abd18c84e0ed0a0f21521662651e8b716c08c89
-SHA512 (puppet-resource_api-2.0.1.gem) = b8fcb2117d047b3c76525d3a45cfc0013ab5a1315d884e891123abb014bccb3d06a304a18db299f4479ac292180635b77b733c64b415028ac6b3a3ae0a6f9715
-Size (puppet-resource_api-2.0.1.gem) = 101888 bytes
+BLAKE2s (puppet-resource_api-2.1.0.gem) = db7c108d0e4043d403046b4d40e2cc7894e1cd8dafffcc4c199eb5274a42f837
+SHA512 (puppet-resource_api-2.1.0.gem) = cf8a4bbb467be108aaa4df534ff38af608a598ccb8c58eef954619ea2be2b0dce2a99427cad4f092075a6e9fda30ef4f3f9c9390891e175be5a89a2a932dae5e
+Size (puppet-resource_api-2.1.0.gem) = 101888 bytes
