@@ -21,7 +21,7 @@ Fortran/cross recipe composition. The Makefile installation-directory hunk
 is applied to the current upstream rule.
 
 The archive's generated files come from Automake 1.18.1; regeneration uses the
-Ports Autoconf 2.73 and Automake 1.19. Verify the generated changes rather
+Ports Autoconf 2.73 and Automake 1.20. Verify the generated changes rather
 than independently editing generated shell code:
 
 ```sh
@@ -287,7 +287,7 @@ On NetBSD the FC and F77 tags then get an empty `wl`, and the pkgsrc NetBSD
 `-static`. It mirrors the upstream per-OS layout; adding NetBSD to the Linux
 branch would also change unrelated compilers.
 
-The installed Automake is 1.19, while the shipped generated patches were made
+The installed Automake is 1.20, while the shipped generated patches were made
 with Automake 1.18.1. The generated `configure` and `libltdl/configure`
 changes were therefore made as a delta: regenerate the unchanged and the
 changed `manual-*` trees with the same tools, and apply only that difference

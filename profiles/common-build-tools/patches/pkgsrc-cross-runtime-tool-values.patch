@@ -20,7 +20,7 @@
  .    endif
  .    endif
  .  endif
-@@ -1590,6 +1593,51 @@
+@@ -1590,6 +1593,60 @@
  # TOOLS_VALUE_GNU.<tool>, which defaults to the full command line of
  # the tool.
  #
@@ -46,6 +46,15 @@
 +EMBER_CROSS_TOOL_MAP+=	${TOOLS_PATH.${_t_}:U}=/usr/bin/${_t_}
 +EMBER_CROSS_TOOL_MAP+=	${TOOLS_DIR}/bin/${_t_}=/usr/bin/${_t_}
 +.    endfor
++.    for _t_ in gm4 autoconf
++.      if !empty(USE_TOOLS:M${_t_}\:run)
++EMBER_CROSS_TOOL_MAP+=	${TOOLS_PATH.${_t_}:U}=${CROSS_LOCALBASE}/bin/${_t_}
++EMBER_CROSS_TOOL_MAP+=	${TOOLS_DIR}/bin/${_t_}=${CROSS_LOCALBASE}/bin/${_t_}
++.      endif
++.    endfor
++.    if !empty(USE_TOOLS:Mgm4\:run)
++EMBER_CROSS_TOOL_MAP+=	${TOOLS_DIR}/bin/m4=${CROSS_LOCALBASE}/bin/gm4
++.    endif
 +post-install: ember-cross-tool-paths
 +.PHONY: ember-cross-tool-paths
 +ember-cross-tool-paths:

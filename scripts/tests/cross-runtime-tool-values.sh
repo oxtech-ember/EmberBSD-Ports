@@ -46,10 +46,12 @@ printf '#!/host/bin/perl -w\nprint "y";\n' > "$d/bin/flags"; chmod 755 "$d/bin/f
 printf '#!/host/bin/perlx\n' > "$d/bin/other"
 printf "%s\n" "  \$ENV{'SHELL'} = '/host/bin/mksh' if exists \$ENV{'DJDIR'};" > "$d/bin/automake"
 printf '%s\n' 'echo "$x" | /host/gnu/bin/ggrep -F y' 'SED=/w/.tools/bin/sed' > "$d/bin/config"
+printf 'M4=/host/bin/gm4\nAUTOCONF=/w/.tools/bin/autoconf\n' > "$d/bin/autotools"
 printf 'a\000/host/bin/mksh\n' > "$d/share/binary"
 "$bmake" -f "$scratch/map.mk" USE_CROSS_COMPILE=yes OPSYS=NetBSD NATIVE_OPSYS=Darwin \
-    RUN= FIND=find GREP=grep SED=sed CAT=cat RM=rm \
-    DESTDIR="$scratch/destdir" PREFIX=/usr/pkg TOOLS_DIR=/w/.tools \
+    RUN= FIND=find GREP=grep SED=sed CAT=cat RM=rm WRKDIR="$scratch" \
+    DESTDIR="$scratch/destdir" PREFIX=/usr/pkg TOOLS_DIR=/w/.tools CROSS_LOCALBASE=/usr/pkg \
+    USE_TOOLS="gm4:run autoconf:run" TOOLS_PATH.gm4=/host/bin/gm4 \
     CONFIG_SHELL=/host/bin/mksh TOOLS_PATH.sh=/host/bin/mksh \
     TOOLS_PATH.grep=/host/gnu/bin/ggrep TOOLS_PATH.sed=/host/bin/nbsed \
     ember-cross-tool-paths >/dev/null
@@ -61,6 +63,8 @@ printf 'a\000/host/bin/mksh\n' > "$d/share/binary"
     fail 'automake keeps the build-host configure shell'
 [ "$(sed -n 1p "$d/bin/config")" = 'echo "$x" | /usr/bin/grep -F y' ] || fail 'build-host grep kept'
 [ "$(sed -n 2p "$d/bin/config")" = 'SED=/usr/bin/sed' ] || fail 'tools directory path kept'
+[ "$(sed -n 1p "$d/bin/autotools")" = 'M4=/usr/pkg/bin/gm4' ] || fail 'host GNU m4 kept'
+[ "$(sed -n 2p "$d/bin/autotools")" = 'AUTOCONF=/usr/pkg/bin/autoconf' ] || fail 'host Autoconf kept'
 [ -x "$d/bin/flags" ] || fail 'the map dropped the file mode'
 [ "$(od -An -c "$d/share/binary" | tr -d ' \n')" = 'a\0/host/bin/mksh\n' ] || fail 'a binary file was rewritten'
 echo 'PASS: cross builds record target runtime tools, not build-host paths'

@@ -14,7 +14,7 @@ for path do
 done
 [ ! -e "$work" ] && [ ! -L "$work" ] || exit 2
 [ "$(autoconf --version | sed -n '1s/.* //p')" = 2.73 ]
-[ "$(automake --version | sed -n '1s/.* //p')" = 1.19 ]
+[ "$(automake --version | sed -n '1s/.* //p')" = 1.20 ]
 archive=$distfiles/libtool-2.6.2.tar.gz
 [ "$(shasum -a 256 "$archive" | awk '{print $1}')" = 24adb3aa9ae035c70faba344af57d73215eb89281045af6c7ccd307751f8b0bf ]
 mkdir -p "$work/original" "$work/packaged" "$work/unchanged" "$work/maintained"
