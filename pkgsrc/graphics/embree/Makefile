@@ -1,6 +1,6 @@
 # $NetBSD$
 # Origin: EmberBSD contributors (AI-assisted).
-DISTNAME= embree-4.4.1
+DISTNAME= embree-4.5.0
 CATEGORIES= graphics
 MASTER_SITES= ${MASTER_SITE_GITHUB:=RenderKit/}
 GITHUB_PROJECT= embree
@@ -26,7 +26,6 @@ PLIST.elf= yes
 .endif
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 1
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
