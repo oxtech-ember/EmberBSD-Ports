@@ -24,7 +24,7 @@ while getopts n flag; do
 	n)	doit=":" ;;
 	esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND - 1))"
 
 if [ $# -lt 1 ]; then
 	usage

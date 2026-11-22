@@ -172,7 +172,15 @@ SUBST_FILES.paths=	${WRKDIR}/adduser.sh ${WRKDIR}/deluser.sh
 SUBST_FILES.paths+=	third_party/heimdal_build/roken.h
 SUBST_STAGE.paths=	pre-configure
 SUBST_SED.paths+=	-e 's,@PERL@,${PERL5},g'
-SUBST_VARS.paths=	AWK CAT MKTEMP RM PWD_MKDB SH PERL PKG_SYSCONFBASE
+SUBST_VARS.paths=	PERL PKG_SYSCONFBASE
+.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# The installed account examples invoke utilities from the target base system.
+SUBST_SED.paths+=	-e 's,@SH@,/bin/sh,g' -e 's,@AWK@,/usr/bin/awk,g'
+SUBST_SED.paths+=	-e 's,@CAT@,/bin/cat,g' -e 's,@RM@,/bin/rm,g'
+SUBST_SED.paths+=	-e 's,@MKTEMP@,/usr/bin/mktemp,g' -e 's,@PWD_MKDB@,/usr/sbin/pwd_mkdb,g'
+.else
+SUBST_VARS.paths+=	AWK CAT MKTEMP RM PWD_MKDB SH
+.endif
 
 SUBST_CLASSES+=		logpath
 SUBST_MESSAGE.logpath=	Fixing log path.

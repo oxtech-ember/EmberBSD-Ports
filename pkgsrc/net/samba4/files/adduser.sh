@@ -47,7 +47,7 @@ while getopts c:d:g:nr:s: flag; do
 	s)	shell="${OPTARG}" ;;
 	esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND - 1))"
 
 if [ $# -lt 1 ]; then
 	usage
@@ -124,7 +124,7 @@ fi
 $catprog /etc/master.passwd >> $ptmp
 
 uid=`									\
-	$awkprog -v minuid=$minuid -v maxuid=maxuid '			\
+	$awkprog -v minuid="$minuid" -v maxuid="$maxuid" '			\
 		BEGIN { FS = ":" }					\
 		{ seen_uids[$3] = 1 }					\
 		END {							\
