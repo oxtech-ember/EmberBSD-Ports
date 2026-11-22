@@ -15,6 +15,15 @@ recipe identity.
 The OS native OpenSSH integration has additional NetBSD-specific requirements;
 this source producer alone does not establish OS compatibility or runtime support.
 
+The Darwin defaults patch may create only `darwin-defaults.c` and
+`darwin-defaults-gen.c`. Its `/dev/null` headers do not relax the SDK's checks
+for absolute paths or traversal. Check both creation scopes and that guard:
+
+```sh
+python3 scripts/source-inputs/openssh/test-kerberos-paths.py \
+  --sdk-source /absolute/EmberBSD-SDK --patch /absolute/patch
+```
+
 The LDAP public-key patch keeps its saved argument count only under
 `WITH_NETBSD_LPK`; the saved argument vector remains available for re-exec in
 both profiles. Check the real OS translation unit with the selected wrapper's

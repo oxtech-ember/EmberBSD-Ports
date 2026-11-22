@@ -150,6 +150,15 @@ def validate_kerberos_creation(delta):
             'unexpected openssh Kerberos patch creation')
 
 
+def validate_darwin_creation(delta):
+    headers = re.findall(rb'^(?:---|\+\+\+) ([^\t\n ]+)', delta, re.M)
+    creations = [headers[i:i + 2] for i in range(0, len(headers), 2)
+                 if b'/dev/null' in headers[i:i + 2]]
+    require(creations == [[b'/dev/null', b'darwin-defaults.c'],
+                          [b'/dev/null', b'darwin-defaults-gen.c']],
+            'unexpected openssh Darwin patch creation')
+
+
 def prepare(archive, output, patch, git, exported=None):
     require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
     output = Path(output)
@@ -181,11 +190,14 @@ def prepare(archive, output, patch, git, exported=None):
             require(digest(delta) == metadata['recipe']['patches/' + path.name], 'openssh patch changed')
             if path.name == 'patch-zz-netbsd-kerberos':
                 validate_kerberos_creation(delta)
+            if path.name == 'patch-zz-darwin-executable-defaults':
+                validate_darwin_creation(delta)
             sourceprep.apply_patch(patch, path, delta, root, 'openssh',
                 patch_args=('-p0', '-f', '-N', '-F0', '-V', 'none'),
                 backup_directory=tmp / ('patch-backups-' + str(index)),
                 allow_dev_null=path.name in ('patch-netbsd-blocklist',
-                    'patch-netbsd-ldap-pubkey', 'patch-zz-netbsd-kerberos'))
+                    'patch-netbsd-ldap-pubkey', 'patch-zz-netbsd-kerberos',
+                    'patch-zz-darwin-executable-defaults'))
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'openssh patch left a backup or reject')
         require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
