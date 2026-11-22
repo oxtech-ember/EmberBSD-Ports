@@ -35,8 +35,9 @@ The gate verifies the archive and pkgsrc patch checksums, applies source and
 manual series with zero fuzz and rejects repeated patch application. It
 regenerates the unchanged and the `manual-*` trees with the same tools and
 requires that the shipped `configure` and `libltdl/configure` deltas change
-exactly the lines that regeneration changes; `ltmain.sh` is compared byte for
-byte. This gate passed on macOS;
+exactly the lines that regeneration changes. For `ltmain.sh`, the test also
+applies the template hunk from the downstream Clang driver patch, regenerates
+the script and compares its bytes with the shipped script. This gate passed on macOS;
 it does not substitute for installed target execution.
 
 ## GCC driver-prefix transport

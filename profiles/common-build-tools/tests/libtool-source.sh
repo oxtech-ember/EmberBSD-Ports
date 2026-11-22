@@ -32,6 +32,12 @@ done
 for delta in "$recipe"/patches/manual-*; do
     patch -f -N -F 0 -p0 -d "$work/maintained" < "$delta"
 done
+# The downstream Clang patch ships the template and its generated script.
+# Regenerate from the template hunk to check the shipped script independently.
+awk '/^--- / { template = ($2 == "build-aux/ltmain.in.orig") }
+     template { print }' "$recipe/patches/patch-zz_ember_clang_link_flags" > "$work/clang-ltmain.patch"
+[ -s "$work/clang-ltmain.patch" ]
+patch -f -N -F 0 -p0 -d "$work/maintained" < "$work/clang-ltmain.patch"
 mkdir "$work/repeated"
 cp "$work/packaged/configure" "$work/repeated/configure"
 if patch -f -N -F 0 -p0 -d "$work/repeated" < "$recipe/patches/patch-configure" > "$work/repeated.log" 2>&1; then
