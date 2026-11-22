@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.72 2026/09/02 19:01:22 wiz Exp $
 
-DISTNAME=	at-spi2-core-2.62.1
-PKGREVISION=	4
+DISTNAME=	at-spi2-core-2.62.2
 CATEGORIES=	devel gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/at-spi2-core/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -55,8 +54,5 @@ PKGCONFIG_OVERRIDE_STAGE=	post-configure
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../lang/python/tool.mk"
 .include "../../lang/python/extension.mk"
-.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64" && !empty(PKG_OPTIONS:Mdbus)
-PKGREVISION=	5
-.endif
 
 .include "../../mk/bsd.pkg.mk"

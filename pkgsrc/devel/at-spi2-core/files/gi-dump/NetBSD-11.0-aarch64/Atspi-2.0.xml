@@ -1,7 +1,7 @@
 <!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-aarch64
 recipe: devel/at-spi2-core
-package: at-spi2-core-2.62.1
+package: at-spi2-core-2.62.2
 program: Atspi-2.0
 types-sha256: 682c2ea2581be0545e61b7874f49d2aab83250b80ccf18d1f1b75a6f388ae21b
 dump-sha256: 880420ecb01ed4c23510681d0c98aaa0b76e5031699a28bcc667267d8ed8590f
