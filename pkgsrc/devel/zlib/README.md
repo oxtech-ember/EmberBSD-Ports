@@ -1,36 +1,20 @@
-# zlib 1.3.2
+# zlib 1.4
 
-Use the current stable release listed at <https://zlib.net/> on 2026-10-18.
-Upstream released this version on 2026-02-17. The archive SHA256 is
-`d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3`.
-The common source manifest and pkgsrc `distinfo` verify the original archive.
+The recipe selects the November 4, 2026 upstream release. The SHA256 of
+`zlib-1.4.tar.xz` is `4f11c512053d7bab8d9e9b89bde3575add3e4c50a383b42ef6cb837035fc5a7c`.
+The source package and the library share this archive, patch series and release
+through `Makefile.common`. [Upstream release](https://zlib.net/)
 
-This recipe derives from pkgsrc
-`fff4deb639a1a640476203c80f752fb77b6cb14b`, `devel/zlib`.
-Keep its authorship, package metadata and upstream zlib license.
-The exporter replaces the vendored 1.3.1 sources with the verified release.
-The original pkgsrc Libtool Makefile retains `-version-info 1:2` and the
-existing NetBSD library naming. All fifteen library sources remain enabled,
-including the gzip file API. No replacement SONAME links are fabricated.
-The buildlink floor requires this repaired common provider.
+The recipe derives from NetBSD pkgsrc devel/zlib at
+`fff4deb639a1a640476203c80f752fb77b6cb14b`. Its Libtool Makefile keeps
+the NetBSD library identity `-version-info 1:2` and builds all gzip APIs.
+Upstream 1.4 initializes gzip writer seek state and allocates its input buffer
+before a deferred seek. The retained patches provide pkgsrc declarations,
+warning-clean configuration headers, the NetBSD kernel and standalone
+interfaces, and the embedded Windows standalone selector. The NetBSD LP32
+fallback offset type agrees with upstream's `long`.
 
-## Source adaptations
-
-| Patch | Reason |
-| --- | --- |
-| `gzguts.h` | Retain the original pkgsrc `<unistd.h>` declaration include. |
-| `gzlib.c` | Initialize `past` for writers, since seeking and position queries read it in both modes. |
-| `gzwrite.c` | Allocate the input buffer before a deferred seek writes zero bytes. A seek can precede the first `gzputc`. |
-| `zconf.h` | Test `HAVE_UNISTD_H` and `HAVE_STDARG_H` with `defined()` first. Consumers built with `-Werror=undef` accept the installed header. |
-
-The `gzlib.c`, `gzwrite.c` and `zconf.h` changes are AI-assisted EmberBSD fixes. They have not been
-submitted upstream. The first patch preserves the existing pkgsrc adaptation.
-The `zconf.h` change keeps the upstream selection: an undefined or zero name
-leaves `Z_HAVE_UNISTD_H` or `Z_HAVE_STDARG_H` unset. It changes no library
-object, so the buildlink floor stays at nb1. Run
-`CC=/absolute/cc sh tests/zlib-wundef.sh /absolute/distfiles /absolute/new-work`
-from `profiles/common-build-tools`; it fails with the unchanged header.
-No compression, gzip, append, seek or error behavior is disabled.
+## Earlier validation of 1.3.2
 
 `files/seek-writer.c` tests deferred writer seeks, position queries, zero
 fill, append, concatenated gzip members and invalid handles. Compile it with

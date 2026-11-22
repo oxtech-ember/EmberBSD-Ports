@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted). The installed zlib 1.3.2 header must
+# Origin: EmberBSD (AI-assisted). The installed zlib 1.4 header must
 # compile with -Werror=undef and keep its HAVE_* selection semantics.
 set -eu
 [ "$#" = 2 ] || { echo 'Usage: zlib-wundef.sh DISTFILES NEW_WORK' >&2; exit 2; }
@@ -10,8 +10,8 @@ distfiles=$(CDPATH= cd -- "$1" && pwd)
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
 mkdir "$work/src"
-tar -xJf "$distfiles/zlib-1.3.2.tar.xz" -C "$work/src" --strip-components=1 \
-    zlib-1.3.2/zconf.h zlib-1.3.2/zlib.h
+tar -xJf "$distfiles/zlib-1.4.tar.xz" -C "$work/src" --strip-components=1 \
+    zlib-1.4/zconf.h zlib-1.4/zlib.h
 cat > "$work/t.c" <<'EOT'
 #include "zlib.h"
 #if defined(EXPECT_UNISTD) != defined(Z_HAVE_UNISTD_H)
@@ -31,4 +31,4 @@ check -DHAVE_UNISTD_H=0 -DHAVE_STDARG_H=0
 check -DHAVE_UNISTD_H=1 -DEXPECT_UNISTD -DHAVE_STDARG_H=1 -DEXPECT_STDARG
 check -DHAVE_UNISTD_H -DEXPECT_UNISTD
 if patch -f -N -F 0 -s -d "$work/src" < "$root/pkgsrc/devel/zlib/patches/patch-zconf.h" > /dev/null 2>&1; then exit 1; fi
-echo 'PASS: zlib 1.3.2 header compiles with -Werror=undef; undefined and zero HAVE_* stay unset, nonzero values select Z_HAVE_*'
+echo 'PASS: zlib 1.4 header compiles with -Werror=undef; undefined and zero HAVE_* stay unset, nonzero values select Z_HAVE_*'

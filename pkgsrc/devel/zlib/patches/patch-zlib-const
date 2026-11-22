@@ -50,7 +50,7 @@ Origin: NetBSD; adaptation by EmberBSD contributors (AI-assisted).
      stream.zfree = (free_func)0;
 --- gzwrite.c.orig
 +++ gzwrite.c
-@@ -235,7 +235,11 @@
+@@ -242,7 +242,11 @@
              return 0;
  
          /* directly compress user buffer to file */

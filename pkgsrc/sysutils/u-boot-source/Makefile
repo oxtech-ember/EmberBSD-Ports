@@ -26,7 +26,7 @@ USE_TOOLS+= find
 NO_CONFIGURE= yes
 NO_BUILD= yes
 TOOL_DEPENDS+= dtc-libfdt-source-${DTC_VERSION}:../../sysutils/dtc-libfdt-source
-TOOL_DEPENDS+= zlib-source-${ZLIB_VERSION}nb${ZLIB_PATCH_REVISION}:../../devel/zlib-source
+TOOL_DEPENDS+= zlib-source-${ZLIB_VERSION}${ZLIB_PATCH_REVISION:S,^,nb,:Nnb0}:../../devel/zlib-source
 
 UBOOT_HOST_PREFIX?= ${EMBERBSD_HOST_PREFIX:U${TOOLBASE}}
 LIBFDT_SOURCE_DIR?= ${UBOOT_HOST_PREFIX}/share/dtc/libfdt

@@ -16,4 +16,4 @@ sentencepiece 92381f713e094a15a1ccff1ac4a5315a4c4b82a99ac1332d6ac53c9dc8e1bcf1 h
 protobuf 7e7eaf580ec77f1a392ff1ab1013c13d3b04a6716f002f697f67f3c1113f0530 https://codeload.github.com/protocolbuffers/protobuf/tar.gz/refs/tags/v36.2
 tensorflow ef3568bb4865d6c1b2564fb5689c19b6b9a5311572cd1f2ff9198636a8520921 https://codeload.github.com/tensorflow/tensorflow/tar.gz/refs/tags/v2.21.0
 fxdiv ec74d882a0a47cfd9c0f95bc4fae9901a4ade802a96a3b76e02671bb7340a4c5 https://codeload.github.com/Maratyszcza/FXdiv/tar.gz/63058eff77e11aa15bf531df5dd34395ec3017c8
-zlib bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16 https://zlib.net/fossils/zlib-1.3.2.tar.gz
+zlib 02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584 https://zlib.net/zlib-1.4.tar.gz

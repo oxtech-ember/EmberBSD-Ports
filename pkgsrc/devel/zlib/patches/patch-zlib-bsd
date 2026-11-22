@@ -1,7 +1,7 @@
 $NetBSD$
 
 Preserve the NetBSD libz.so.1 LP32 offset ABI and kernel/standalone
-compatibility while using the common zlib 1.3.2 source. The zero-address
+compatibility while using the common zlib source. The zero-address
 inflate behavior and kernel header adaptations come from NetBSD's zlib 1.3.1
 vendor integration. The original zlib notices and licenses remain in source.
 
@@ -73,16 +73,10 @@ Origin: NetBSD common/dist/zlib; adapted for zlib 1.3.2 by EmberBSD (AI-assisted
  #  endif
  #endif
  
-@@ -516,7 +532,14 @@
- #endif
+@@ -521,6 +537,9 @@
  
  #ifndef z_off_t
--#  define z_off_t long long
-+#  if defined(__NetBSD__)
-+#    define z_off_t long /* Preserve the libz.so.1 ABI on LP32. */
-+#  else
-+#    define z_off_t long long
-+#  endif
+ #  define z_off_t long
 +#endif
 +#if defined(__NetBSD__) && !defined(z_ptrdiff_t)
 +#  define z_ptrdiff_t long
@@ -91,7 +85,7 @@ Origin: NetBSD common/dist/zlib; adapted for zlib 1.3.2 by EmberBSD (AI-assisted
  #if !defined(_WIN32) && defined(Z_LARGE64)
 --- zlib.h.orig
 +++ zlib.h
-@@ -1845,7 +1845,9 @@
+@@ -1855,7 +1855,9 @@
     negative, the result has no meaning or utility.
  */
  
@@ -148,7 +142,7 @@ Origin: NetBSD common/dist/zlib; adapted for zlib 1.3.2 by EmberBSD (AI-assisted
  extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 --- inflate.c.orig
 +++ inflate.c
-@@ -491,9 +491,16 @@
+@@ -499,9 +499,16 @@
      static const unsigned short order[19] = /* permutation of code lengths */
          {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
  

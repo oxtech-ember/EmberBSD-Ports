@@ -48,16 +48,9 @@ Origin: NetBSD standalone compatibility; EmberBSD adaptation (AI-assisted).
  #      include <sys/stdarg.h>
  #    else
  #      include <stdarg.h>         /* for va_list */
-@@ -532,13 +532,13 @@
- #endif
- 
+@@ -538,7 +538,7 @@
  #ifndef z_off_t
--#  if defined(__NetBSD__)
-+#  if defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)
- #    define z_off_t long /* Preserve the libz.so.1 ABI on LP32. */
- #  else
- #    define z_off_t long long
- #  endif
+ #  define z_off_t long
  #endif
 -#if defined(__NetBSD__) && !defined(z_ptrdiff_t)
 +#if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && !defined(z_ptrdiff_t)
@@ -66,7 +59,7 @@ Origin: NetBSD standalone compatibility; EmberBSD adaptation (AI-assisted).
  
 --- zlib.h.orig
 +++ zlib.h
-@@ -1845,7 +1845,7 @@
+@@ -1855,7 +1855,7 @@
     negative, the result has no meaning or utility.
  */
  
@@ -97,7 +90,7 @@ Origin: NetBSD standalone compatibility; EmberBSD adaptation (AI-assisted).
  #  else
 --- inflate.c.orig
 +++ inflate.c
-@@ -491,7 +491,7 @@
+@@ -499,7 +499,7 @@
      static const unsigned short order[19] = /* permutation of code lengths */
          {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
  

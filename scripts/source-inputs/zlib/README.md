@@ -7,7 +7,7 @@ the OS owns ABI and platform integration. A prepared source is not a built libra
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/zlib/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
-  --archive "$DISTFILES/zlib-1.3.2.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
+  --archive "$DISTFILES/zlib-1.4.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
   --pkgsrc-export "$EXPORT" --export-patch /usr/bin/patch \
   --output "$WORK/zlib"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/zlib/source.py \

@@ -52,7 +52,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
  
 --- inflate.c.orig
 +++ inflate.c
-@@ -533,12 +533,12 @@
+@@ -541,19 +541,19 @@
              if (
  #endif
                  ((BITS(8) << 8) + (hold >> 8)) % 31) {
@@ -67,16 +67,15 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -547,7 +547,7 @@
-             if (state->wbits == 0)
-                 state->wbits = len;
-             if (len > 15 || len > state->wbits) {
+             DROPBITS(4);
+             len = BITS(4) + 8;
+             if (len > 15 || (state->wbits != 0 && len > state->wbits)) {
 -                strm->msg = (z_const char *)"invalid window size";
 +                strm->msg = Z_MSG_CAST("invalid window size");
                  state->mode = BAD;
                  break;
              }
-@@ -563,12 +563,12 @@
+@@ -571,12 +571,12 @@
              NEEDBITS(16);
              state->flags = (int)(hold);
              if ((state->flags & 0xff) != Z_DEFLATED) {
@@ -91,7 +90,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -684,7 +684,7 @@
+@@ -692,7 +692,7 @@
              if (state->flags & 0x0200) {
                  NEEDBITS(16);
                  if ((state->wrap & 4) && hold != (state->check & 0xffff)) {
@@ -100,7 +99,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                      state->mode = BAD;
                      break;
                  }
-@@ -746,7 +746,7 @@
+@@ -755,7 +755,7 @@
                  state->mode = TABLE;
                  break;
              default:
@@ -109,7 +108,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
              }
              DROPBITS(2);
-@@ -755,7 +755,7 @@
+@@ -764,7 +764,7 @@
              BYTEBITS();                         /* go to byte boundary */
              NEEDBITS(32);
              if ((hold & 0xffff) != ((hold >> 16) ^ 0xffff)) {
@@ -118,7 +117,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -796,8 +796,7 @@
+@@ -805,8 +805,7 @@
              DROPBITS(4);
  #ifndef PKZIP_BUG_WORKAROUND
              if (state->nlen > 286 || state->ndist > 30) {
@@ -128,7 +127,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -820,7 +819,7 @@
+@@ -829,7 +828,7 @@
              ret = inflate_table(CODES, state->lens, 19, &(state->next),
                                  &(state->lenbits), state->work);
              if (ret) {
@@ -137,7 +136,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -844,8 +843,7 @@
+@@ -853,8 +852,7 @@
                          NEEDBITS(here.bits + 2);
                          DROPBITS(here.bits);
                          if (state->have == 0) {
@@ -147,7 +146,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                              state->mode = BAD;
                              break;
                          }
-@@ -868,8 +866,7 @@
+@@ -877,8 +875,7 @@
                          DROPBITS(7);
                      }
                      if (state->have + copy > state->nlen + state->ndist) {
@@ -157,7 +156,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                          state->mode = BAD;
                          break;
                      }
-@@ -883,8 +880,7 @@
+@@ -892,8 +889,7 @@
  
              /* check for end-of-block code (better have one) */
              if (state->lens[256] == 0) {
@@ -167,7 +166,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -898,7 +894,7 @@
+@@ -907,7 +903,7 @@
              ret = inflate_table(LENS, state->lens, state->nlen, &(state->next),
                                  &(state->lenbits), state->work);
              if (ret) {
@@ -176,7 +175,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -907,7 +903,7 @@
+@@ -916,7 +912,7 @@
              ret = inflate_table(DISTS, state->lens + state->nlen, state->ndist,
                              &(state->next), &(state->distbits), state->work);
              if (ret) {
@@ -185,7 +184,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -961,7 +957,7 @@
+@@ -970,7 +966,7 @@
                  break;
              }
              if (here.op & 64) {
@@ -194,7 +193,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -999,7 +995,7 @@
+@@ -1008,7 +1004,7 @@
              DROPBITS(here.bits);
              state->back += here.bits;
              if (here.op & 64) {
@@ -203,7 +202,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -1016,7 +1012,7 @@
+@@ -1025,7 +1021,7 @@
              }
  #ifdef INFLATE_STRICT
              if (state->offset > state->dmax) {
@@ -212,7 +211,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -1031,8 +1027,7 @@
+@@ -1040,8 +1036,7 @@
                  copy = state->offset - copy;
                  if (copy > state->whave) {
                      if (state->sane) {
@@ -222,7 +221,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                          state->mode = BAD;
                          break;
                      }
-@@ -1091,7 +1086,7 @@
+@@ -1100,7 +1095,7 @@
                       state->flags ? hold :
  #endif
                       ZSWAP32(hold)) != state->check) {
@@ -231,7 +230,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                      state->mode = BAD;
                      break;
                  }
-@@ -1105,7 +1100,7 @@
+@@ -1114,7 +1109,7 @@
              if (state->wrap && state->flags) {
                  NEEDBITS(32);
                  if ((state->wrap & 4) && hold != (state->total & 0xffffffff)) {
@@ -367,7 +366,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -470,7 +466,7 @@
+@@ -468,7 +464,7 @@
  
              /* invalid code */
              if (here.op & 64) {
@@ -376,7 +375,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -502,7 +498,7 @@
+@@ -500,7 +496,7 @@
              }
              DROPBITS(here.bits);
              if (here.op & 64) {
@@ -385,7 +384,7 @@ Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
                  state->mode = BAD;
                  break;
              }
-@@ -517,7 +513,7 @@
+@@ -515,7 +511,7 @@
              }
              if (state->offset > state->wsize - (state->whave < state->wsize ?
                                                  left : 0)) {
