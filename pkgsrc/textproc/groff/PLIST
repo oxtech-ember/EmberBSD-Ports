@@ -176,6 +176,7 @@ share/doc/${PKGNAME}/examples/chem/morphine.chem
 share/doc/${PKGNAME}/examples/chem/penicillin.chem
 share/doc/${PKGNAME}/examples/chem/reserpine.chem
 share/doc/${PKGNAME}/examples/gnu.eps
+share/doc/${PKGNAME}/examples/gnu.png
 share/doc/${PKGNAME}/examples/grnexmpl.g
 share/doc/${PKGNAME}/examples/grnexmpl.me
 share/doc/${PKGNAME}/examples/grnexmpl.ps
@@ -234,6 +235,7 @@ share/doc/${PKGNAME}/examples/mom/typesetting.pdf
 share/doc/${PKGNAME}/examples/webpage.ms
 share/doc/${PKGNAME}/examples/webpage.ps
 share/doc/${PKGNAME}/groff-man-pages.utf8.txt
+share/doc/${PKGNAME}/groff-pdf-features.ms
 share/doc/${PKGNAME}/groff.txt
 share/doc/${PKGNAME}/html/mom/appendices.html
 share/doc/${PKGNAME}/html/mom/color.html
@@ -266,14 +268,15 @@ share/doc/${PKGNAME}/meintro_fr.ps
 share/doc/${PKGNAME}/meref.me
 share/doc/${PKGNAME}/meref.ps
 share/doc/${PKGNAME}/ms.ms
-share/doc/${PKGNAME}/ms.ps
 share/doc/${PKGNAME}/msboxes.ms
 share/doc/${PKGNAME}/pdf/automake.pdf
 share/doc/${PKGNAME}/pdf/groff-man-pages.pdf
+share/doc/${PKGNAME}/pdf/groff-pdf-features.pdf
 share/doc/${PKGNAME}/pdf/mom-pdf.pdf
+share/doc/${PKGNAME}/pdf/ms.pdf
 share/doc/${PKGNAME}/pdf/msboxes.pdf
+share/doc/${PKGNAME}/pdf/pic.pdf
 share/doc/${PKGNAME}/pic.ms
-share/doc/${PKGNAME}/pic.ps
 share/groff/${PKGVERSION}/eign
 share/groff/${PKGVERSION}/font/devascii/B
 share/groff/${PKGVERSION}/font/devascii/BI

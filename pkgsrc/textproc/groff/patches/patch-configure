@@ -2,15 +2,31 @@ $NetBSD: patch-configure,v 1.7 2026/07/19 08:05:45 adam Exp $
 
 Add g prefix to some commands.
 
---- configure.orig	2026-03-14 07:53:44.000000000 +0000
+--- configure.orig
 +++ configure
-@@ -46988,8 +46988,7 @@
-   g=
-   { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for existing troff installation" >&5
- printf %s "checking for existing troff installation... " >&6; }
--  if test "`(echo .tm '|n(.g' | tr '|' '\\\\' | troff -z -i 2>&1) \
--    2>/dev/null`" = 0
-+  if test true
-   then
-     { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
- printf '%s\n' "yes" >&6; }
+@@ -46656,23 +46656,8 @@
+ 
+ 
+ 
+-  g=
+-  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking whether a groff-incompatible troff is installed" >&5
+-printf %s "checking whether a groff-incompatible troff is installed... " >&6; }
+-  if test -n "`command -v troff`" \
+-    && test "`(echo .tm '|n(.g' | tr '|' '\\\\' | troff -z -i 2>&1) \
+-      2>/dev/null`" != 1
+-  then
+-    g=g
+-  fi
+-  if test "$g" = "g"
+-  then
+-    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+-printf '%s\n' "yes" >&6; }
+-  else
+-    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-printf '%s\n' "no" >&6; }
+-  fi
++  # Keep the pkgsrc program names independent of the build host.
++  g=g
+ 
+ 
+ { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking file name prefix of system macro packages" >&5
