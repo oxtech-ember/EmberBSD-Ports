@@ -871,7 +871,12 @@ stage_supervise()
     stage_shell=$(command -v "$controller_shell") || return 1
     case "$stage_shell" in /*) ;; *) echo 'Cannot resolve the selected controller shell' >&2; return 1 ;; esac
     state_lock_release_safe=no
-    if "$host_python" -B -E -S "$(dirname "$stage_script")/stage-context-supervisor.py" --sdk-source "$sdk_source" --locks "$stage_json" --manifest "$stage_manifest" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"; then stage_status=0; else stage_status=$?; fi
+    native_info
+    set --
+    for stage_db in "$(k_database "$native_pkg_info")" "$(k_database "${target_pkg_info:-}")"; do
+        case "$stage_db" in /*) set -- "$@" --prefix-database "$stage_db" ;; esac
+    done
+    if "$host_python" -B -E -S "$(dirname "$stage_script")/stage-context-supervisor.py" --sdk-source "$sdk_source" --locks "$stage_json" --manifest "$stage_manifest" "$@" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"; then stage_status=0; else stage_status=$?; fi
     # A normal supervisor exit proves that the owned session was drained.
     if [ "$stage_status" -lt 128 ]; then state_lock_release_safe=yes; fi
     rm -f "$stage_json"
@@ -931,10 +936,11 @@ count()
 # a temporary name and renamed. Compiles never wait for a lock; only the
 # installs into a shared prefix do. pkgsrc runs every pkg_add as
 # NATIVE_PKG_ADD_CMD, which the build points at STATE/run/pkg_add. That
-# wrapper holds a directory lock in STATE/locks per package database (its
-# first -K argument: the target sysroot or the native host prefix), so
-# installs into one prefix never overlap. mkdir is atomic on macOS, NetBSD
-# and Linux alike.
+# wrapper runs pkg_add as the SDK writer of its package database (its first
+# -K argument: the target sysroot or the native host prefix). Installs into
+# one prefix never overlap, and an install stops before it changes a file
+# when another build reads that prefix. The supervised stage of this build
+# reads both prefixes, so its own installs continue.
 #
 # A native package built before the native profile kept rc.d in the host
 # prefix (Ports 6869ff45) recorded "# DIR: /etc/rc.d m" in its +DIRS. When
@@ -946,15 +952,23 @@ count()
 # recording package's prefix (its +CONTENTS @cwd) as preexisting, the state
 # that pkgsrc's +DIRS and +FILES record for a path that existed before the
 # package: REMOVE then leaves it alone. Target databases are not changed.
+# The package database of a pkg_info or pkg_add command: its first -K argument.
+k_database()
+(
+    set -f
+    set -- $1
+    while [ "$#" -gt 1 ]; do [ "$1" != -K ] || { echo "$2"; return 0; }; shift; done
+)
+
 pkg_add_wrapper()
 {
     native_info
-    native_db=$(set -f; set -- $native_pkg_info
-        while [ "$#" -gt 1 ]; do [ "$1" != -K ] || { echo "$2"; break; }; shift; done)
+    native_db=$(k_database "$native_pkg_info")
     cat <<WRAPPER
 #!/bin/sh
 # Written by scripts/cross-bulk.sh build: one pkg_add per package database.
-locks=$state/locks
+host_python='$host_python'
+prefix_lock='$sdk_source/scripts/prefix-lock.py'
 native_db='$native_db'
 WRAPPER
     cat <<'WRAPPER'
@@ -973,10 +987,14 @@ for arg do
     if [ "$prev" = -K ]; then db=$arg; break; fi
     prev=$arg
 done
-lock=$locks/$(printf '%s' "$db" | tr -c 'A-Za-z0-9._-' '_')
-until mkdir "$lock" 2> /dev/null; do sleep 1; done
-trap 'rmdir "$lock"' EXIT
-trap 'exit 143' TERM INT HUP
+# Run again as the writer of this database; the lock stays until pkg_add exits.
+case "$db" in /*) writer=$db ;; *) writer= ;; esac
+if [ -n "$writer" ] && [ "${CROSS_BULK_PREFIX_WRITER:-}" != "$db" ]; then
+    CROSS_BULK_PREFIX_WRITER=$db
+    export CROSS_BULK_PREFIX_WRITER
+    case "$0" in /*) self=$0 ;; *) self=$(pwd -P)/$0 ;; esac
+    exec "$host_python" -B -E -S "$prefix_lock" write --database "$db" -- "$self" "$@"
+fi
 if [ -n "$native_db" ] && [ "$db" = "$native_db" ]; then
     grep -lE '^# (DIR|FILE): /' "$db"/*/+DIRS "$db"/*/+FILES 2> /dev/null |
     while read -r meta; do
@@ -2355,7 +2373,6 @@ package_install_one()
         echo 'Cannot create a private package-install run directory' >&2
         return 2
     }
-    mkdir -p "$state/locks"
     vars_cache=
     gnu_stat=no
     clean=clean
@@ -2664,8 +2681,8 @@ build()
     fi
     run=$state/run
     # Locks and results of an interrupted run; its packages are rebuilt.
-    rm -rf "$run" "$state/locks" "$state/install.lock"
-    mkdir "$run" "$state/locks"
+    rm -rf "$run" "$state/install.lock"
+    mkdir "$run"
     : > "$run/status"
     real_pkg_add=$(var pkgtools/pkg_install NATIVE_PKG_ADD_CMD)
     [ -n "$real_pkg_add" ] || { echo 'NATIVE_PKG_ADD_CMD is empty' >&2; exit 2; }
@@ -2897,7 +2914,7 @@ build()
     failed=no
     [ ! -s "$state/failed" ] || failed=yes
     [ ! -s "$state/blocked" ] || failed=yes
-    rm -rf "$run" "$state/locks"
+    rm -rf "$run"
     [ "$failed" = no ] || return 1
     return 0
 }

@@ -91,4 +91,22 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-supervisor-test-') as tmp:
  assert busy.returncode != 0 and 'object context is busy' in busy.stderr, busy.stderr
  resume.write_text('resume');_,status=os.waitpid(pid,0);assert os.waitstatus_to_exitcode(status)==0
  assert subprocess.run(second,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,timeout=10).returncode==0
-print('owner crash retains stage lock until child session drains')
+ # A supervised stage reads its prefix. A writer of another build stops
+ # before any change; an install of the stage itself continues.
+ db=root/'prefix/pkgdb';db.mkdir(parents=True);own=root/'prefix/own';foreign=root/'prefix/foreign'
+ def writer(target):
+  return [str(a.python),'-B',str(a.sdk_source/'scripts/prefix-lock.py'),'write','--database',str(db),'--',
+          str(a.python),'-B','-c','import pathlib,sys;pathlib.Path(sys.argv[1]).write_text("x")',str(target)]
+ reader=root/'reader.py';status=root/'reader-status';release=root/'reader-release'
+ reader.write_text('import pathlib,subprocess,sys,time\nr=subprocess.run(sys.argv[3:]).returncode\npathlib.Path(sys.argv[1]).write_text(str(r))\nend=time.monotonic()+20\nwhile not pathlib.Path(sys.argv[2]).exists() and time.monotonic()<end:time.sleep(.02)\n')
+ env={k:v for k,v in os.environ.items() if k!='EMBERBSD_PREFIX_READERS'}
+ stage=subprocess.Popen([str(a.python),'-B',str(helper),'--sdk-source',str(a.sdk_source),'--locks',str(state1/'locks.json'),
+                         '--prefix-database',str(db),'--',str(a.python),'-B',str(reader),str(status),str(release),*writer(own)],env=env)
+ end=time.monotonic()+15
+ while not status.exists() and stage.poll() is None and time.monotonic()<end:time.sleep(.02)
+ assert status.read_text()=='0' and own.read_text()=='x', 'the stage could not install into its own prefix'
+ refused=subprocess.run(writer(foreign),stderr=subprocess.PIPE,text=True,env=env,timeout=20)
+ assert refused.returncode==75 and 'another build uses the prefix' in refused.stderr and not foreign.exists(), refused.stderr
+ release.write_text('release');assert stage.wait(timeout=20)==0
+ assert subprocess.run(writer(foreign),env=env,timeout=20).returncode==0 and foreign.exists()
+print('owner crash retains stage lock until child session drains; a stage keeps its prefix unchanged')

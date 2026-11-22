@@ -26,6 +26,10 @@ if grep -Eq 'nproc|sysctl -n hw\.ncpu|getconf _NPROCESSORS_ONLN' "$ports/scripts
     exit 1
 fi
 mkdir -p "$out/tree/t" "$out/packages/All" "$out/active" "$out/work" "$out/target-db" "$out/bin"
+# The pkg_add wrapper runs pkg_add as the SDK writer of its package database.
+: "${CROSS_BULK_TEST_SDK_SOURCE:?Set CROSS_BULK_TEST_SDK_SOURCE to the selected SDK source}"
+mkdir -p "$out/sdk/scripts"
+ln -s "$CROSS_BULK_TEST_SDK_SOURCE/scripts/prefix-lock.py" "$out/sdk/scripts/prefix-lock.py"
 host_python=${CROSS_BULK_TEST_PYTHON:-$(command -v python3)}
 real_shasum=$(command -v shasum)
 # mksh can report its sleep builtin. Resolve sleep with the original PATH,

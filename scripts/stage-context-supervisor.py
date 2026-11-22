@@ -39,6 +39,8 @@ def main():
     p.add_argument('--locks', required=True, type=Path)
     p.add_argument('--bulk', action='store_true')
     p.add_argument('--manifest', type=Path)
+    p.add_argument('--prefix-database', action='append', default=[],
+                   help='package database whose prefix the stage reads')
     p.add_argument('command', nargs=argparse.REMAINDER)
     a = p.parse_args()
     if a.command[:1] == ['--']:
@@ -104,6 +106,13 @@ def main():
         command = a.command
         if a.bulk:
             command = [sys.executable, '-B', str(Path(__file__).resolve()), '--entry', '--', *command]
+        if a.prefix_database:
+            # The stage session reads these prefixes and keeps them unchanged.
+            # Its own installs see the reader names in the environment.
+            reader = [sys.executable, '-B', str(a.sdk_source / 'scripts/prefix-lock.py'), 'read']
+            for database in a.prefix_database:
+                reader += ['--database', database]
+            command = [*reader, '--', *command]
         group = process.OwnedProcessGroup(command, cwd=os.getcwd(), env=env,
                                           stdin=None, stdout=None, stderr=None)
         group.start()

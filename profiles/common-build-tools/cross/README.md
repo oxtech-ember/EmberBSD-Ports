@@ -654,9 +654,13 @@ previous order, edges, skipped list and done records. The order sorts with
 selected-build stop before the first query
 (`scripts/tests/cross-bulk-order-tsort.sh NEW_OUTPUT`). Nothing is locked while
 a package compiles: the build passes a `pkg_add` wrapper as `NATIVE_PKG_ADD_CMD`,
-which takes a lock in `STATE/locks` for the package database it
-installs into, so installs into one prefix never overlap and installs into
-the target sysroot and the native prefix run independently. Only the
+which runs `pkg_add` as the SDK writer of the package database it installs
+into (`scripts/prefix-lock.py` of the SDK). Installs into one prefix never
+overlap, and installs into the target sysroot and the native prefix run
+independently. The supervised stage reads both prefixes until it stops. An
+install of another build into such a prefix stops before it changes a file
+and exits with 75; build in a separate prefix or wait for the other build.
+Only the
 active controller writes the state lists. SIGTERM starts no new package, lets the
 running ones finish and exits with 143; the next run skips the done packages.
 For an existing stage whose installed dependency has added buildlink files,
@@ -720,7 +724,7 @@ dependency classes, transitive native tools, installed native leaves,
 cycles, and package scheduling with a recording bmake.
 `scripts/tests/cross-bulk-order-unreadable.sh NEW_OUTPUT` checks refusal and
 state preservation on an unreadable dependency.
-`scripts/tests/cross-bulk-parallel.sh NEW_OUTPUT` checks scheduling and
+`CROSS_BULK_TEST_SDK_SOURCE=SDK scripts/tests/cross-bulk-parallel.sh NEW_OUTPUT` checks scheduling and
 database-install serialization on a small graph.
 Removing an old work directory is not on a package's path either: before a
 package builds, the build renames its old `WRKDIR` into
