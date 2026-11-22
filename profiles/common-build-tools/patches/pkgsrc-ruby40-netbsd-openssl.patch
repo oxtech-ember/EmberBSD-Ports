@@ -1,0 +1,16 @@
+--- a/lang/ruby40/Makefile
++++ b/lang/ruby40/Makefile
+@@ -21,6 +21,13 @@
+ 
+ # Resolve native Darwin Ruby libraries relative to the installed libruby.
+ .include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    ${MACHINE_ARCH} == "aarch64"
++# NetBSD 11 base sets carry different OpenSSL SONAMEs.
++PKGREVISION=	1
++PREFER.openssl=	pkgsrc
++BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
++.endif
+ .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+ CONFIGURE_ARGS+=	--enable-load-relative
+ CONFIGURE_ARGS+=	--with-destdir=${PREFIX}
