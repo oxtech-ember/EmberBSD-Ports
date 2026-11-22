@@ -316,8 +316,10 @@ versionless roots and do not define another recipe, resolver, cache, or prefix.
   pkgconf 3.0.7, GNU M4 1.4.21, Libtool 2.6.2 and
   [Binutils 2.47nb1](profiles/common-build-tools/binutils.md) pass ordinary package checks
   and installed AArch64 VM consumers with GCC16. Cross metadata, package
-  replacement and rollback have regression checks. The
-  [pkg-config sysroot check](profiles/common-build-tools/cross/pkgconfig.md)
+  replacement and rollback have regression checks. Native Darwin M4 and gzip
+  bootstrap packages retain their release manuals.
+  Gzip phase checks cover cached tool selection and Info registration.
+  The [pkg-config sysroot check](profiles/common-build-tools/cross/pkgconfig.md)
   verifies actual GCC16/CMake target links and unchanged native discovery. The
   [host cross-Libtool dispatcher](profiles/common-build-tools/libtool.md)
   now selects its target configuration; its nb1 package and installed checks pass.
