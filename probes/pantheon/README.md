@@ -12,6 +12,11 @@ recipes. Libadwaita 1.10 reads application metadata through
 Set `PKG_OPTIONS.appstream= -qt -stemming` for the smaller Pantheon
 build. Plasma Discover uses the default Qt binding and Snowball stemming.
 
+
+Pantheon uses the shared `inputmethod/ibus` recipe with
+`PKG_OPTIONS.ibus= gtk4 -gtk2 -gtk3 -introspection -xim`. It supplies
+the GTK4 input module and the Vala interface used by Gala.
+
 ## Version pairing
 
 | Component | Version | Source |
@@ -55,18 +60,6 @@ policy.
 All cross builds run on the development host; boards and VMs receive binary
 packages only. Chain state after this pass:
 
-- **ibus 1.5.34nb3** cross-installed in a GTK4 profile: `--disable-gtk3
-  --disable-gtk2 --enable-gtk4 --disable-ui --disable-xim --disable-tests`
-  (XIM requires gtk2 when gtk3 is off; the GTK3/Vala panel is not built).
-  The `im-ibus.so` GTK4 immodule builds. `patch-cross-generators` builds the
-  three noinst generators (`gen-internal-compose-table`, `emoji-parser`,
-  `unicode-parser`) with `CC_FOR_BUILD` against the host glib, bypasses
-  libtool for their links, keeps the dist-shipped compose sequences behind a
-  guard, and replaces `G_FILE_TEST_EXISTS` with `G_FILE_TEST_IS_REGULAR`
-  (case-insensitive host filesystems match the `compose/` directory).
-  Host-run tools (`glib-compile-resources`, `gdbus-codegen`,
-  `glib-compile-schemas`, `wayland-scanner`, wayland-protocols datadir) are
-  forced through `MAKE_FLAGS` so the install phase sees them too.
 - **colord 1.4.8nb2** cross-installed as a library-only profile:
   `-Ddaemon=false -Dgenerated_data=false -Dman=false` plus the new
   `generated_data` meson option (patch guards the `cd-it8` /

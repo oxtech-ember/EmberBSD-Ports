@@ -1,0 +1,33 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Record the target X11 prefix returned by cross pkg-config.
+
+--- configure.orig
++++ configure
+@@ -22180,4 +22180,11 @@
+ 
+ 
++if test "x$cross_compiling" = xyes && test -n "$IBUS_BUILD_SYSROOT"; then
++    case "$X11_PREFIX" in
++        "$IBUS_BUILD_SYSROOT"/*) X11_PREFIX=${X11_PREFIX#"$IBUS_BUILD_SYSROOT"} ;;
++        "$IBUS_BUILD_SYSROOT") X11_PREFIX=/ ;;
++    esac
++fi
++
+ # Check locale dir for Compose files.
+ if test x"$cross_compiling" != xyes; then
+--- configure.ac.orig
++++ configure.ac
+@@ -393,4 +393,11 @@
+ fi
+ AC_SUBST(X11_PREFIX)
++
++if test "x$cross_compiling" = xyes && test -n "$IBUS_BUILD_SYSROOT"; then
++    case "$X11_PREFIX" in
++        "$IBUS_BUILD_SYSROOT"/*) X11_PREFIX=${X11_PREFIX#"$IBUS_BUILD_SYSROOT"} ;;
++        "$IBUS_BUILD_SYSROOT") X11_PREFIX=/ ;;
++    esac
++fi
+ 
+ # Check locale dir for Compose files.

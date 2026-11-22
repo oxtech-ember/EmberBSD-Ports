@@ -1,8 +1,7 @@
 # $NetBSD: Makefile,v 1.127 2026/09/02 19:03:04 wiz Exp $
 
-DISTNAME=	ibus-1.5.34
+DISTNAME=	ibus-1.5.35
 PKGNAME=	${DISTNAME:S/-rc/rc/:S/-beta/beta/}
-PKGREVISION=	3
 CATEGORIES=	inputmethod
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ibus/}
 GITHUB_PROJECT=	${PKGBASE}
@@ -13,9 +12,6 @@ HOMEPAGE=	https://github.com/ibus/ibus/wiki
 LICENSE=	gnu-lgpl-v2.1
 COMMENT=	Intelligent Input Bus
 
-TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
-# Cross probe: python GObject bindings need a target interpreter.
-# The Python method engine is optional; the daemon does not require it.
 TOOL_DEPENDS+=	cldr-emoji-annotation>=37.0.13.0.0.2:../../textproc/cldr-emoji-annotation
 TOOL_DEPENDS+=	unicode-character-database>=15.0.0:../../textproc/unicode-character-database
 TOOL_DEPENDS+=	unicode-emoji>=15.0:../../textproc/unicode-emoji
@@ -33,28 +29,49 @@ PKGCONFIG_OVERRIDE+=	ibus-1.0.pc.in
 CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFBASEDIR}
 CONFIGURE_ARGS+=	--localedir=${PREFIX}/${PKGLOCALEDIR}/locale
 CONFIGURE_ARGS+=	--enable-dconf
-CONFIGURE_ARGS+=	--disable-gtk2
-# GTK4 profile: the panel UI is GTK3/Vala only and is not built.
-# XIM would pull a gtk2 requirement when gtk3 is off; Wayland/GTK4 does not use XIM.
-CONFIGURE_ARGS+=	--disable-gtk3
-CONFIGURE_ARGS+=	--enable-gtk4
-CONFIGURE_ARGS+=	--disable-ui
-CONFIGURE_ARGS+=	--disable-xim
-# Cross: test programs cannot run on the host; they also link X11 unconditionally.
-CONFIGURE_ARGS+=	--disable-tests
 CONFIGURE_ARGS+=	--enable-surrounding-text
-CONFIGURE_ARGS+=	--enable-introspection=no
 CONFIGURE_ARGS+=	--disable-systemd-services
-# Cross: build-time generators run on the host with the host glib.
-CONFIGURE_ENV+=	GLIB_GENMARSHAL=/private/tmp/ember-common-stack/host/bin/glib-genmarshal
-CFLAGS_FOR_BUILD+=	-I/private/tmp/ember-common-stack/host/include/glib-2.0 -I/private/tmp/ember-common-stack/host/lib/glib-2.0/include
-CPPFLAGS_FOR_BUILD+=	-I/private/tmp/ember-common-stack/host/include/glib-2.0 -I/private/tmp/ember-common-stack/host/lib/glib-2.0/include
-LDFLAGS_FOR_BUILD+=	-L/private/tmp/ember-common-stack/host/lib
-# Cross: the version probe must run on the host; the engine still targets python3.14 at runtime.
-CONFIGURE_ARGS+=	--with-python=/private/tmp/ember-common-stack/host/bin/python3.14
-CONFIGURE_ARGS+=	--with-unicode-emoji-dir=/private/tmp/ember-common-stack/host/share/unicode/emoji
-CONFIGURE_ARGS+=	--with-emoji-annotation-dir=/private/tmp/ember-common-stack/host/share/unicode/cldr/common/annotations
-CONFIGURE_ARGS+=	--with-ucd-dir=/private/tmp/ember-common-stack/host/share/unicode/ucd
+IBUS_HOST_UNICODE_DATA?=	${TOOLBASE}/share/unicode
+CONFIGURE_ARGS+=	--with-unicode-emoji-dir=${IBUS_HOST_UNICODE_DATA:Q}/emoji
+CONFIGURE_ARGS+=	--with-emoji-annotation-dir=${IBUS_HOST_UNICODE_DATA:Q}/cldr/common/annotations
+CONFIGURE_ARGS+=	--with-ucd-dir=${IBUS_HOST_UNICODE_DATA:Q}/ucd
+
+.include "../../mk/bsd.prefs.mk"
+.include "options.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+TOOL_DEPENDS+=	glib2-[0-9]*:../../devel/glib2
+TOOL_DEPENDS+=	libtool-base-[0-9]*:../../devel/libtool-base
+TOOL_DEPENDS+=	vala>=0.56.13nb1:../../lang/vala
+TOOLS_CREATE+=	ibus-pkg-config-for-build
+TOOLS_SCRIPT.ibus-pkg-config-for-build= \
+	exec ${SETENV} PKG_CONFIG_PATH= PKG_CONFIG_SYSROOT_DIR= \
+	PKG_CONFIG_LIBDIR=${TOOLBASE:Q}/lib/pkgconfig:${TOOLBASE:Q}/share/pkgconfig \
+	${TOOLBASE:Q}/bin/pkg-config "$$@"
+CONFIGURE_ENV+=	PKG_CONFIG_FOR_BUILD=${TOOLS_DIR:Q}/bin/ibus-pkg-config-for-build
+CONFIGURE_ENV+=	GLIB_GENMARSHAL=${TOOLBASE:Q}/bin/glib-genmarshal
+CONFIGURE_ENV+=	VALAC=${TOOLBASE:Q}/bin/valac-0.56
+CONFIGURE_ENV+=	VAPIGEN=${TOOLBASE:Q}/bin/vapigen-0.56
+# GLib's gi18n-lib.h used by the native Compose generator includes libintl.h.
+TOOL_DEPENDS+=	gettext-lib>=1.0:../../devel/gettext-lib
+CPPFLAGS_FOR_BUILD+=	-I${TOOLBASE:Q}/include/gettext
+LDFLAGS_FOR_BUILD+=	-L${TOOLBASE:Q}/lib
+.  if ${NATIVE_OPSYS} == "Darwin"
+# The Compose table generator runs from WRKSRC and links the host GLib.
+LDFLAGS_FOR_BUILD+=	-Wl,-rpath,${TOOLBASE:Q}/lib
+.  endif
+CONFIGURE_ENV+=	CPPFLAGS_FOR_BUILD=${CPPFLAGS_FOR_BUILD:Q}
+CONFIGURE_ENV+=	LDFLAGS_FOR_BUILD=${LDFLAGS_FOR_BUILD:Q}
+MAKE_ENV+=	LIBTOOL_FOR_BUILD=${TOOLBASE:Q}/bin/libtool
+# The runtime records the target path. Only the host generator prepends the sysroot.
+CONFIGURE_ENV+=	IBUS_BUILD_SYSROOT=${CROSS_DESTDIR:Q}
+MAKE_ENV+=	IBUS_BUILD_SYSROOT=${CROSS_DESTDIR:Q}
+CONFIGURE_ARGS+=	--with-python=${TOOL_PYTHONBIN}
+CONFIGURE_ARGS+=	--disable-tests
+.else
+CONFIGURE_ARGS+=	--with-python=${PYTHONBIN}
+.include "../../lang/vala/buildlink3.mk"
+.endif
 
 # XXX lack of dbusmenu-glib
 CONFIGURE_ARGS+=	--disable-appindicator
@@ -67,15 +84,7 @@ SUBST_STAGE.pyopt=	pre-configure
 SUBST_FILES.pyopt=	py-compile
 SUBST_SED.pyopt=	-e 's/ -OO / -O /g'
 
-# Cross: the runtime setup script must not embed the build-time host python.
-SUBST_CLASSES+=		python-runtime
-SUBST_MESSAGE.python-runtime=	Fixing runtime python path in ibus-setup.
-SUBST_STAGE.python-runtime=	post-configure
-SUBST_FILES.python-runtime=	setup/ibus-setup
-SUBST_SED.python-runtime=	-e "s,/private/tmp/ember-common-stack/host/bin/python3.14,/usr/pkg/bin/python3.14,g"
-
 SUBST_CLASSES+=		dbus
-
 SUBST_STAGE.dbus=	post-configure
 SUBST_FILES.dbus=	src/ibusshare.c
 SUBST_SED.dbus=		-e 's,/var/lib/dbus/machine-id,${VARBASE}/lib/dbus/machine-id,g'
@@ -102,6 +111,9 @@ PLIST_VARS+=		wayland
 .if ${PLATFORM_SUPPORTS_WAYLAND} == "yes"
 CONFIGURE_ARGS+=	--enable-wayland
 PLIST.wayland=		yes
+.  if !empty(PKG_OPTIONS:Mgtk3)
+PLIST.gtk3wayland=	yes
+.  endif
 .else
 CONFIGURE_ARGS+=	--disable-wayland
 .endif
@@ -114,6 +126,9 @@ CONFIGURE_ARGS+=	--disable-wayland
 # Also make sure to regenerate portal/ibus-portal-dbus.[ch] to
 # sync with system glib2 version.
 pre-build:
+.if !empty(PKG_OPTIONS:Mgtk3)
+	(cd ${WRKSRC} && ${MAKE_PROGRAM} -C ui/gtk3 maintainer-clean-generic)
+.endif
 	(cd ${WRKSRC} && ${MAKE_PROGRAM} -C tools maintainer-clean-generic)
 	(cd ${WRKSRC} && ${MAKE_PROGRAM} -C portal maintainer-clean-generic)
 
@@ -121,20 +136,14 @@ pre-build:
 .include "../../devel/dconf/database.mk"
 .include "../../devel/dconf/buildlink3.mk"
 .include "../../devel/gettext-tools/msgfmt-desktop.mk"
-BUILDLINK_API_DEPENDS.gobject-introspection+=	gobject-introspection>=0.9.6
-BUILDLINK_DEPMETHOD.gobject-introspection+=	build
-.include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"
 BUILDLINK_API_DEPENDS.glib2+=		glib2>=2.46.0
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
-.include "../../lang/vala/buildlink3.mk"
 PY_PATCHPLIST=	yes
 .include "../../sysutils/dbus/buildlink3.mk"
 .include "../../sysutils/libnotify/buildlink3.mk"
 .include "../../textproc/iso-codes/buildlink3.mk"
-BUILDLINK_API_DEPENDS.gtk4+=		gtk4>=4.14.0
-.include "../../x11/gtk4/buildlink3.mk"
 .include "../../x11/libX11/buildlink3.mk"
 .include "../../lang/python/extension.mk"
 .include "../../mk/bsd.pkg.mk"

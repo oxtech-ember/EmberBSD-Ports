@@ -639,3 +639,4 @@ x11/qterminal
 x11/qtxdg-tools
 x11/luit
 x11/xterm
+inputmethod/ibus
