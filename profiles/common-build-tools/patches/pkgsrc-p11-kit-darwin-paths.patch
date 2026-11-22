@@ -1,0 +1,346 @@
+Resolve installed Darwin p11-kit defaults from the current SDK prefix.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/security/p11-kit/Makefile
++++ b/security/p11-kit/Makefile
+@@ -54,6 +54,16 @@
+ 
+ PREFER.gettext=	pkgsrc
+ .include "options.mk"
++
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION= 1
++MESON_ARGS+= -Drelocatable_darwin_paths=true
++# Use the module filename installed by Meson and recorded in the PLIST.
++SUBST_CLASSES+= trust-module
++SUBST_STAGE.trust-module= pre-configure
++SUBST_FILES.trust-module= trust/p11-kit-trust.module
++SUBST_SED.trust-module= -e 's|^module: p11-kit-trust[.]so$$|module: p11-kit-trust.${DLEXT}|'
++.endif
+ .include "../../devel/gettext-lib/buildlink3.mk"
+ .include "../../devel/libffi/buildlink3.mk"
+ .include "../../devel/meson/build.mk"
+--- a/security/p11-kit/distinfo
++++ b/security/p11-kit/distinfo
+@@ -5,3 +5,4 @@
+ Size (p11-kit-0.26.6.tar.xz) = 1150004 bytes
+ SHA1 (patch-common_message.c) = 4169ab2cb0b923d306c0b77908e1a412fec261c8
+ SHA1 (patch-meson.build) = eb1c4130b097e3d57a74c9aa5482872670f3472b
++SHA1 (patch-zz_darwin_installed_paths) = aa4695e80abc8e1cb6495ce70bc78bb678912db9
+--- /dev/null
++++ b/security/p11-kit/patches/patch-zz_darwin_installed_paths
+@@ -0,0 +1,314 @@
++$NetBSD$
++
++Origin: EmberBSD contributors (AI-assisted).
++Upstream status: not submitted.
++
++Resolve package-owned module, trust and helper paths on Darwin.
++
++--- common/path.c.orig
+++++ common/path.c
++@@ -55,6 +55,11 @@
++ #include <unistd.h>
++ #endif
++ 
+++#ifdef P11_RELOCATABLE_DARWIN
+++#include <dlfcn.h>
+++#include <stdio.h>
+++#endif
+++
++ #ifdef OS_WIN32
++ #include <shlobj.h>
++ #endif
++@@ -174,6 +179,48 @@
++ 	}
++ }
++ 
+++/* Resolve only generated installation paths. External configured paths and
+++ * caller-supplied overrides retain their original spelling. */
+++char *
+++p11_path_install (const char *path)
+++{
+++#ifdef P11_RELOCATABLE_DARWIN
+++	static const char marker[] = "@p11-kit-prefix@/";
+++	static const char *const dirs[] = { "/lib/pkcs11", "/libexec/p11-kit", "/bin", "/lib" };
+++	Dl_info image;
+++	char *file, *leaf, *resolved = NULL;
+++	size_t i, len, size;
+++
+++	if (strncmp (path, marker, sizeof (marker) - 1) != 0)
+++		return strdup (path);
+++	if (!dladdr ((const void *)p11_path_install, &image) || !image.dli_fname) {
+++		errno = ENOENT;
+++		return NULL;
+++	}
+++	file = realpath (image.dli_fname, NULL);
+++	if (!file)
+++		return NULL;
+++	leaf = strrchr (file, '/');
+++	if (leaf)
+++		*leaf = 0;
+++	len = strlen (file);
+++	errno = ENOENT;
+++	for (i = 0; i < sizeof (dirs) / sizeof (dirs[0]); i++) {
+++		size = strlen (dirs[i]);
+++		if (size <= len && strcmp (file + len - size, dirs[i]) == 0) {
+++			file[len - size] = 0;
+++			if (asprintf (&resolved, "%s/%s", file, path + sizeof (marker) - 1) < 0)
+++				resolved = NULL;
+++			break;
+++		}
+++	}
+++	free (file);
+++	return resolved;
+++#else
+++	return strdup (path);
+++#endif
+++}
+++
++ char *
++ p11_path_expand (const char *path)
++ {
++@@ -184,7 +231,7 @@
++ 		return expand_homedir (path + 1);
++ 
++ 	} else {
++-		return strdup (path);
+++		return p11_path_install (path);
++ 	}
++ }
++ 
++@@ -274,6 +321,13 @@
++ 
++ 	assert (at < len);
++ 	built[at] = '\0';
+++#ifdef P11_RELOCATABLE_DARWIN
+++	if (strncmp (built, "@p11-kit-prefix@/", sizeof ("@p11-kit-prefix@/") - 1) == 0) {
+++		char *resolved = p11_path_install (built);
+++		free (built);
+++		return resolved;
+++	}
+++#endif
++ 	return built;
++ }
++ 
++--- common/path.h.orig
+++++ common/path.h
++@@ -52,6 +52,8 @@
++  */
++ char *       p11_path_base      (const char *name);
++ 
+++char *       p11_path_install   (const char *path);
+++
++ char *       p11_path_expand    (const char *path);
++ 
++ char *       p11_path_build     (const char *path,
++--- meson.build.orig
+++++ meson.build
++@@ -94,12 +94,6 @@
++ mandir = get_option('mandir')
++ pkgdatadir = datadir / meson.project_name()
++ privatedir = libexecdir / meson.project_name()
++-
++-common_c_args = [
++-  '-DBINDIR="@0@"'.format(prefix / bindir),
++-  '-DPRIVATEDIR="@0@"'.format(prefix / privatedir),
++-  '-DSYSCONFDIR="@0@"'.format(prefix / sysconfdir)
++-]
++ 
++ top_source_dir = meson.current_source_dir()
++ top_build_dir = meson.current_build_dir()
++@@ -450,7 +444,42 @@
++ endif
++ 
++ trust_paths = get_option('trust_paths')
++-conf.set_quoted('TRUST_PATHS', trust_paths)
+++# Keep external configured paths absolute. Mark paths inside this Darwin
+++# package so each image can resolve them from its installed directory.
+++relocatable = get_option('relocatable_darwin_paths')
+++if relocatable and host_system != 'darwin'
+++  error('relocatable_darwin_paths requires Darwin')
+++endif
+++trust_entries = trust_paths.split(':')
+++configured_paths = [bindir, privatedir, sysconfdir, datadir, p11_system_config_file,
+++                    p11_system_config_modules, p11_package_config_modules, p11_module_path]
+++installed_paths = {}
+++foreach value : configured_paths
+++  path = prefix / value
+++  compiled = path
+++  if relocatable and path.startswith(prefix + '/')
+++    compiled = '@p11-kit-prefix@/' + import('fs').relative_to(path, prefix)
+++  endif
+++  installed_paths += {value: compiled}
+++endforeach
+++common_c_args = [
+++  '-DBINDIR="@0@"'.format(installed_paths[bindir]),
+++  '-DPRIVATEDIR="@0@"'.format(installed_paths[privatedir]),
+++  '-DSYSCONFDIR="@0@"'.format(installed_paths[sysconfdir])
+++]
+++if relocatable
+++  conf.set('P11_RELOCATABLE_DARWIN', 1)
+++  compiled_trust = []
+++  foreach value : trust_entries
+++    if value.startswith(prefix + '/')
+++      value = '@p11-kit-prefix@/' + import('fs').relative_to(value, prefix)
+++    endif
+++    compiled_trust += [value]
+++  endforeach
+++  conf.set_quoted('TRUST_PATHS', ':'.join(compiled_trust))
+++else
+++  conf.set_quoted('TRUST_PATHS', trust_paths)
+++endif
++ 
++ # --------------------------------------------------------------------
++ # systemd
++--- meson_options.txt.orig
+++++ meson_options.txt
++@@ -97,3 +97,6 @@
++ option('rpc_max', type : 'integer',
++        min : 0, max : 2, value : 2,
++        description : 'Maximum RPC protocol version we support')
+++
+++option('relocatable_darwin_paths', type: 'boolean', value: false,
+++       description: 'Resolve installed Darwin package paths from their loaded images')
++--- p11-kit/conf.c.orig
+++++ p11-kit/conf.c
++@@ -230,7 +230,12 @@
++ 	 */
++ 
++ 	/* Load the main configuration */
++-	config = _p11_conf_parse_file (system_conf, NULL, CONF_IGNORE_MISSING);
+++	path = p11_path_install (system_conf);
+++	if (!path)
+++		return NULL;
+++	config = _p11_conf_parse_file (path, NULL, CONF_IGNORE_MISSING);
+++	free (path);
+++	path = NULL;
++ 	if (!config)
++ 		goto finished;
++ 
++@@ -398,7 +403,7 @@
++ }
++ 
++ static bool
++-load_configs_from_directory (const char *directory,
+++load_configs_from_directory_at (const char *directory,
++                              p11_dict *configs,
++                              int flags)
++ {
++@@ -461,6 +466,19 @@
++ 	return true;
++ }
++ 
+++static bool
+++load_configs_from_directory (const char *directory, p11_dict *configs, int flags)
+++{
+++	char *path = p11_path_install (directory);
+++	bool result;
+++
+++	if (!path)
+++		return false;
+++	result = load_configs_from_directory_at (path, configs, flags);
+++	free (path);
+++	return result;
+++}
+++
++ p11_dict *
++ _p11_conf_load_modules (int mode,
++                         const char *package_dir,
++--- p11-kit/meson.build.orig
+++++ p11-kit/meson.build
++@@ -87,12 +87,12 @@
++ libp11_kit_internal_sources += 'virtual.c'
++ 
++ libp11_kit_internal_c_args = [
++-  '-DP11_SYSTEM_CONFIG_FILE="@0@"'.format(prefix / p11_system_config_file),
++-  '-DP11_SYSTEM_CONFIG_MODULES="@0@"'.format(prefix / p11_system_config_modules),
++-  '-DP11_PACKAGE_CONFIG_MODULES="@0@"'.format(prefix / p11_package_config_modules),
+++  '-DP11_SYSTEM_CONFIG_FILE="@0@"'.format(installed_paths[p11_system_config_file]),
+++  '-DP11_SYSTEM_CONFIG_MODULES="@0@"'.format(installed_paths[p11_system_config_modules]),
+++  '-DP11_PACKAGE_CONFIG_MODULES="@0@"'.format(installed_paths[p11_package_config_modules]),
++   '-DP11_USER_CONFIG_FILE="@0@"'.format(p11_user_config_file),
++   '-DP11_USER_CONFIG_MODULES="@0@"'.format(p11_user_config_modules),
++-  '-DP11_MODULE_PATH="@0@"'.format(prefix / p11_module_path)
+++  '-DP11_MODULE_PATH="@0@"'.format(installed_paths[p11_module_path])
++ ]
++ 
++ libp11_kit_internal = static_library('p11-kit-internal',
++--- p11-kit/p11-kit.c.orig
+++++ p11-kit/p11-kit.c
++@@ -129,7 +129,11 @@
++ 	args = calloc (argc + 2, sizeof (char *));
++ 	return_val_if_fail (args != NULL, 1);
++ 
++-	args[0] = BINDIR "/trust" EXEEXT;
+++	args[0] = p11_path_build (BINDIR, "trust" EXEEXT, NULL);
+++	if (!args[0]) {
+++		free (args);
+++		return 2;
+++	}
++ 	memcpy (args + 1, argv, sizeof (char *) * argc);
++ 	args[argc + 1] = NULL;
++ 
++@@ -138,6 +142,7 @@
++ 	/* At this point we have no command */
++ 	p11_message_err (errno, _("couldn't run trust tool"));
++ 
+++	free (args[0]);
++ 	free (args);
++ 	return 2;
++ }
++--- trust/meson.build.orig
+++++ trust/meson.build
++@@ -23,8 +23,8 @@
++              install_dir: prefix / p11_package_config_modules)
++ 
++ p11_kit_trust_c_args = [
++-  '-DP11_DEFAULT_TRUST_PREFIX="@0@"'.format(prefix / datadir),
++-  '-DP11_SYSTEM_TRUST_PREFIX="@0@"'.format(prefix / sysconfdir)
+++  '-DP11_DEFAULT_TRUST_PREFIX="@0@"'.format(installed_paths[datadir]),
+++  '-DP11_SYSTEM_TRUST_PREFIX="@0@"'.format(installed_paths[sysconfdir])
++ ]
++ 
++ shared_module('p11-kit-trust',
++--- trust/module.c.orig
+++++ trust/module.c
++@@ -191,6 +191,25 @@
++ 	return ret;
++ }
++ 
+++static int
+++trust_path_has_prefix (const char *path, const char *prefix)
+++{
+++	if (strncmp (path, prefix, strlen (prefix)) == 0)
+++		return true;
+++#ifdef P11_RELOCATABLE_DARWIN
+++	if (path[0] == '/' && prefix[0] == '@') {
+++		char *installed = p11_path_install (prefix);
+++		int match;
+++		if (!installed)
+++			return -1;
+++		match = strncmp (path, installed, strlen (installed)) == 0;
+++		free (installed);
+++		return match;
+++	}
+++#endif
+++	return false;
+++}
+++
++ static bool
++ create_tokens_inlock (p11_array *tokens,
++                       const char *paths)
++@@ -250,7 +269,12 @@
++ 
++ 			/* Claim the various labels based on prefix */
++ 			for (i = 0; label == NULL && labels[i].prefix != NULL; i++) {
++-				if (strncmp (path, labels[i].prefix, strlen (labels[i].prefix)) == 0) {
+++				int match = trust_path_has_prefix (path, labels[i].prefix);
+++				if (match < 0) {
+++					free (alloc);
+++					return false;
+++				}
+++				if (match) {
++ 					label = labels[i].label;
++ 					flags = labels[i].flags;
++ 					labels[i].label = NULL;
