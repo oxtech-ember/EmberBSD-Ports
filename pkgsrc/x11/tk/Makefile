@@ -29,6 +29,10 @@ TEST_TARGET=		test
 CHECK_PORTABILITY_SKIP=	win/configure
 
 .include "options.mk"
+.include "../../mk/compiler.mk"
+.if ${OPSYS} == "NetBSD" && !empty(PKGSRC_COMPILER:Mclang)
+.include "../../lang/tcl/export-dynamic.mk"
+.endif
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # The embedded script archive and host helper must use native tools.
@@ -64,7 +68,8 @@ post-install:
 	cd ${DESTDIR}${PREFIX}/bin && ${LN} -fs wish${TK_BASEVER} wish
 
 .include "../../lang/tcl/buildlink3.mk"
-.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64" && !empty(PKG_OPTIONS:Mbidi)
+.if ${OPSYS} == "NetBSD" && (!empty(PKGSRC_COMPILER:Mclang) || \
+    (${MACHINE_ARCH} == "aarch64" && !empty(PKG_OPTIONS:Mbidi)))
 PKGREVISION=	1
 .endif
 
