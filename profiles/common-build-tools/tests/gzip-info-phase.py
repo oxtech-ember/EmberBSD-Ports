@@ -5,6 +5,7 @@ import argparse
 import os
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import tempfile
 
@@ -19,7 +20,7 @@ makefile = a.makefile or package / 'Makefile'
 assert 'info/gzip.info' in (package / 'PLIST').read_text().splitlines()
 with tempfile.TemporaryDirectory(prefix='gzip-phase-check-') as tmp:
     root = Path(tmp)
-    def query(label, *, bootstrap, override=None):
+    def command(label, *, bootstrap, override=None):
         cmd = [str(a.bmake), '-m', str(a.makefiles), '-f', str(makefile),
                'SHELL=' + str(a.host_prefix / 'bin/mksh'),
                'MAKECONF=' + (str(a.makeconf) if bootstrap else '/dev/null'),
@@ -31,10 +32,14 @@ with tempfile.TemporaryDirectory(prefix='gzip-phase-check-') as tmp:
             cmd.append('EMBERBSD_DARWIN_BOOTSTRAP=yes')
         if override is not None:
             cmd.append('EMBERBSD_GZIP_DEFER_INFO=' + override)
+        return cmd
+    def query(label, *, bootstrap, override=None):
+        cmd = command(label, bootstrap=bootstrap, override=override)
         cmd += ['-V', '${INFO_FILES:Uunset}', '-V', '${EMBERBSD_GZIP_DEFER_INFO:Uunset}',
                 '-V', '${INSTALL_INFO:Uunset}', '-V', '${DEPENDS}',
                 '-V', '${CONFIGURE_ARGS}', '-V', '${INSTALL_ENV}',
-                '-V', '${GNU_CONFIGURE_INFODIR}', '-V', '${USE_TOOLS}']
+                '-V', '${GNU_CONFIGURE_INFODIR}', '-V', '${USE_TOOLS}',
+                '-V', '${WRKDIR}']
         return subprocess.check_output(cmd, cwd=package, text=True).splitlines()
     initial = query('initial', bootstrap=True)
     full = query('full', bootstrap=True, override='no')
@@ -50,6 +55,46 @@ with tempfile.TemporaryDirectory(prefix='gzip-phase-check-') as tmp:
     assert 'AM_UPDATE_INFO_DIR=no' in shlex.split(initial[5]), initial
     for phase in (full, ordinary):
         assert 'AM_UPDATE_INFO_DIR=no' not in shlex.split(phase[5]), phase
+
+    # Exercise the same directory across phases. Fresh metadata alone misses
+    # _USE_TOOLS cached before install-info became a runtime tool.
+    transition = 'transition'
+    work = Path(query(transition, bootstrap=True)[8])
+    work.mkdir(parents=True, exist_ok=True)
+    def run_phase(*targets, override=None):
+        subprocess.run(command(transition, bootstrap=True, override=override) + list(targets),
+                       cwd=package, check=True, capture_output=True, text=True)
+    run_phase('tools-vars', 'stage-install-vars', 'pkginstall')
+    sentinel = work / 'retained.o'
+    sentinel.write_bytes(b'compiled-object-sentinel\n')
+    cookie = work / '.build_done'
+    cookie.write_bytes(b'completed-build-sentinel\n')
+    retained = {path: (path.read_bytes(), path.stat().st_mtime_ns)
+                for path in (sentinel, cookie)}
+    stale = query(transition, bootstrap=True, override='no')
+    assert stale[0:2] == ['yes', 'no'] and stale[2] in ('', 'unset'), stale
+
+    def invalidate_hooks():
+        for name in ('.pkginstall', '.pkgdb'):
+            path = work / name
+            if path.exists():
+                shutil.rmtree(path)
+    invalidate_hooks()
+    run_phase('pkginstall', override='no')
+    hook = work / '.pkginstall/info-files'
+    assert 'INSTALL_INFO=""' in hook.read_text(), 'negative control did not retain stale tools'
+
+    # The public target clears every phase's variables, not only tools-vars.
+    # A separate make invocation then reads the full phase without stale input.
+    run_phase('invalidate-makevars', override='no')
+    assert not list(work.glob('.*_makevars.mk'))
+    refreshed = query(transition, bootstrap=True, override='no')
+    assert refreshed[2] == str(a.install_info), refreshed
+    invalidate_hooks()
+    run_phase('pkginstall', override='no')
+    assert 'INSTALL_INFO="' + str(a.install_info) + '"' in hook.read_text()
+    for path, expected in retained.items():
+        assert (path.read_bytes(), path.stat().st_mtime_ns) == expected, path
 
     if a.gzip_build:
         doc = a.gzip_build.resolve() / 'doc'
@@ -89,4 +134,4 @@ with tempfile.TemporaryDirectory(prefix='gzip-phase-check-') as tmp:
     assert index.read_text().count('* EmberGzipFixture:') == 1
     subprocess.run(cmd[:-1] + ['--delete', str(info)], check=True, capture_output=True)
     assert not index.exists() or '* EmberGzipFixture:' not in index.read_text()
-print('PASS: bootstrap/full/ordinary metadata, Info destination, deferred registration and provider lifecycle')
+print('PASS: bootstrap/full/ordinary metadata, cached-phase handoff, retained objects, Info installation and provider lifecycle')

@@ -106,14 +106,20 @@ That phase retains pkgsrc's configured Info directory and sets Automake's
 `AM_UPDATE_INFO_DIR=no` during installation. It installs the manual without
 creating an untracked Info index or invoking a host `install-info` program.
 After the provider is installed, select `EMBERBSD_GZIP_DEFER_INFO=no` for the
-full package. When changing this phase in an existing work directory, invalidate
-only generated install scripts in `.pkginstall` and their `.pkgdb` copies, then
-run `pkginstall` before `repackage-metadata`; the build-skipping repackage target
-does not run the build phase's `pkginstall` target. Keep the original compiler
-configuration and compiled objects. Verify the regenerated dependency and Info
-hooks before publishing that full package.
+full package. When changing this phase in an existing work directory, run
+`invalidate-makevars` with that selection first. Later phase caches also retain
+`_USE_TOOLS`; removing only `.tools_makevars.mk` does not refresh the provider.
+Use a separate make invocation after invalidation. Check that `INSTALL_INFO`
+names the selected provider. Then invalidate the generated install scripts in
+`.pkginstall` and their `.pkgdb` copies. Run `pkginstall` before
+`repackage-metadata`; the build-skipping repackage target does not run
+`pkginstall`. Keep the original compiler configuration and compiled objects.
+Verify the regenerated dependency and nonempty Info provider in the hooks
+before publishing that full package.
 `tests/gzip-info-phase.py` checks both defaults, the explicit full phase and
-Info registration/removal with the selected provider. Pass `--gzip-build` with
+Info registration/removal with the selected provider. It also checks the cached
+phase transition, the stale-hook negative control and preservation of objects
+and build cookies. Pass `--gzip-build` with
 a configured gzip tree to check its real Info installation target and retained
 file bytes. Package installation and removal are checked separately with the
 resulting archive.
