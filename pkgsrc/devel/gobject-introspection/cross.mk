@@ -20,9 +20,8 @@ PKG_FAIL_REASON+= "GI requires matching NetBSD 11 target, architecture and GNU p
 # The native scanner canonicalizes the target include paths it passes to CPP.
 # Keep declared passthrough roots ahead of the general buildlink include rule.
 .if !empty(CROSS_DESTDIR) && "${CROSS_DESTDIR:tA}" != "${CROSS_DESTDIR}"
-.for _gi_dir in ${BUILDLINK_PASSTHRU_DIRS:M${CROSS_DESTDIR}${PREFIX}/*:O:u:Or}
-BUILDLINK_TRANSFORM+= I:${_gi_dir:S,^${CROSS_DESTDIR},${CROSS_DESTDIR:tA},}:${_gi_dir}
-.endfor
+_EMBER_GI_PASSTHRU= ${BUILDLINK_PASSTHRU_DIRS:M${CROSS_DESTDIR}${PREFIX}/*:O:u:Or}
+BUILDLINK_TRANSFORM+= ${_EMBER_GI_PASSTHRU:@d@I:${d:S,^${CROSS_DESTDIR},${CROSS_DESTDIR:tA},}:${d}@}
 BUILDLINK_TRANSFORM+= I:${CROSS_DESTDIR:tA}${PREFIX}:${BUILDLINK_DIR}
 .endif
 # Keep the published GI selector compatible with the common Python provider.
