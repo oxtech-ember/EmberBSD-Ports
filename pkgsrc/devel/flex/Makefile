@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.66 2024/04/30 12:06:15 cheusov Exp $
 
-DISTNAME=	flex-2.6.4
-PKGREVISION=	3
+DISTNAME=	flex-2.7.3
 CATEGORIES=	devel lang
 MASTER_SITES=	${MASTER_SITE_GITHUB:=westes/}
 GITHUB_RELEASE=	v${PKGVERSION_NOREV}
@@ -21,6 +20,7 @@ USE_PKGLOCALEDIR=	yes
 USE_TOOLS+=		gm4:run	gmake makeinfo
 GNU_CONFIGURE=		yes
 INFO_FILES=		yes
+PKGCONFIG_OVERRIDE+=	src/libfl.pc.in
 
 TEST_TARGET=		check
 LIBS.SunOS+=		-lm

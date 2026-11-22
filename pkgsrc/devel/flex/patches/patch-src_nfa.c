@@ -6,7 +6,7 @@ Authored by OpenAI Codex. Each state is queued once; normal-state barriers remai
 
 --- src/nfa.c.orig
 +++ src/nfa.c
-@@ -335,28 +335,59 @@
+@@ -337,27 +337,57 @@
  
  void    mark_beginning_as_normal (int mach)
  {
@@ -30,8 +30,7 @@ Authored by OpenAI Codex. Each state is queued once; normal-state barriers remai
  		break;
 -
  	default:
- 		flexerror (_
- 			   ("bad state type in mark_beginning_as_normal()"));
+ 		lerr (_("bad state type in %s()"), "mark_beginning_as_normal");
 -		break;
 -	}
 +		return;
@@ -63,13 +62,12 @@ Authored by OpenAI Codex. Each state is queued once; normal-state barriers remai
 +				break;
 +			case STATE_TRAILING_CONTEXT:
 +				if (count >= current_mns)
-+					flexerror (_("NFA worklist overflow"));
++					lerr (_("NFA worklist overflow"));
 +				state_type[next] = STATE_NORMAL;
 +				pending[count++] = next;
 +				break;
 +			default:
-+				flexerror (_
-+					   ("bad state type in mark_beginning_as_normal()"));
++				lerr (_("bad state type in %s()"), "mark_beginning_as_normal");
 +				break;
 +			}
 +		}
