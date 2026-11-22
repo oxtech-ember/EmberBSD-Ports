@@ -123,7 +123,7 @@ x11/plasma6-plasma-workspace	plasma-workspace-6.8.3.tar.xz	3f984e2d960c252ee6353
 multimedia/pipewire	pipewire-1.6.11.tar.gz	f3f70c4af173cc93d05070a9d412efe3ef5889bdf4ac32298e2c0d9ae1350559	https://gitlab.freedesktop.org/pipewire/pipewire/-/archive/1.6.11/pipewire-1.6.11.tar.gz
 x11/plasma6-plasma-desktop	plasma-desktop-6.8.3.tar.xz	aa050cfb1005d6f806dc347bb11bc583d5360dd11d51b4501f6328aa7b26d370	https://download.kde.org/stable/plasma/6.8.3/plasma-desktop-6.8.3.tar.xz
 x11/xdg-user-dirs	xdg-user-dirs-0.20.tar.xz	b8e34286278f4fef3e1bfe9685c395ccc0eb50c14d3a2fb4953dd00fbfd3af39	https://user-dirs.freedesktop.org/releases/xdg-user-dirs-0.20.tar.xz
-devel/SDL3	SDL3-3.4.18.tar.gz	9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3	https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.tar.gz
+devel/SDL3	SDL3-3.4.20.tar.gz	f3bb06f55bed9557227a700af2ea62e49497ebdf58037732a731a5fb3ef8581f	https://github.com/libsdl-org/SDL/releases/download/release-3.4.20/SDL3-3.4.20.tar.gz
 inputmethod/fcitx5	fcitx5-5.1.23.tar.zst	d287119db9dc3113bb3a2b0e78ce8670e064b744c14d3aaec69799374aadb00b	https://download.fcitx-im.org/fcitx5/fcitx5/fcitx5-5.1.23.tar.zst
 inputmethod/fcitx5	en_dict-20121020.tar.gz	c44a5d7847925eea9e4d2d04748d442cd28dd9299a0b572ef7d91eac4f5a6ceb	https://download.fcitx-im.org/data/en_dict-20121020.tar.gz
 inputmethod/fcitx5-qt	fcitx5-qt-5.1.16.tar.zst	2d49cb4dfade430e822377beabae5f23da5caf2b2ff49e1eb54213b64dd0840e	https://download.fcitx-im.org/fcitx5/fcitx5-qt/fcitx5-qt-5.1.16.tar.zst
