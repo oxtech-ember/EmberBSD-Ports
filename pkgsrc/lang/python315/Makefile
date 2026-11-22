@@ -6,10 +6,12 @@ PKGNAME=	python315-${PY_DISTVERSION}
 PKGREVISION=	7
 
 .include "../../mk/bsd.prefs.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.if ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
-PKGREVISION=	8 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
-.endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    ${MACHINE_ARCH} == "aarch64"
+# Supported NetBSD 11 base sets have different OpenSSL SONAMEs.
+PKGREVISION=	9
+PREFER.openssl=	pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
 .endif
 CATEGORIES=	lang python
 
