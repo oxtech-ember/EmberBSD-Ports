@@ -5,11 +5,16 @@ Resolve data and tools within the selected installation during relocation.
 
 --- src/CMakeLists.txt.orig
 +++ src/CMakeLists.txt
-@@ -34,6 +34,7 @@
+@@ -34,6 +34,12 @@
  # needed by KIO, need to export it
  add_library(KF6DocTools SHARED xslt.cpp xslt_kde.cpp ${kdoctoolslog_core_SRCS})
  add_library(KF6::DocTools ALIAS KF6DocTools)
-+target_compile_definitions(KF6DocTools PRIVATE KDOCTOOLS_SHARED_LIBRARY)
++if(UNIX AND RELOCATABLE_DOCBOOK_FILES)
++    target_compile_definitions(KF6DocTools PRIVATE KDOCTOOLS_SHARED_LIBRARY)
++    if(CMAKE_DL_LIBS)
++        target_link_libraries(KF6DocTools PRIVATE ${CMAKE_DL_LIBS})
++    endif()
++endif()
  
  set_target_properties(KF6DocTools PROPERTIES
      VERSION     ${KDOCTOOLS_VERSION}
