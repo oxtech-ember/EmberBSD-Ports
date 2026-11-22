@@ -13,7 +13,13 @@ for tool in clang clang++ llvm-readelf llvm-ar llvm-ranlib llvm-nm llvm-strip ld
     test -x "$seed/bin/$tool"
 done
 export CC="$seed/bin/clang" CXX="$seed/bin/clang++" CPP="$seed/bin/clang -E" CLANGBASE="$seed"
-printf 'TOOLS_PATH.readelf=%s/bin/llvm-readelf\n' "$seed" >"$work/bootstrap.mk"
+cat >"$work/bootstrap.mk" <<MAKE
+.include "$src/EMBERBSD-DEFAULTS-MK.CONF"
+EMBERBSD_NATIVE_BOOTSTRAP=yes
+PKG_OPTIONS.gettext-tools=-style
+TOOLS_PATH.readelf=$seed/bin/llvm-readelf
+TOOLS_PLATFORM.readelf=$seed/bin/llvm-readelf
+MAKE
 cat >"$work/seed.mk" <<MAKE
 .if defined(BSD_PKG_MK)
 .include "$src/EMBERBSD-DEFAULTS-MK.CONF"
@@ -21,6 +27,7 @@ WRKOBJDIR=$work/obj
 DISTDIR=$work/distfiles
 PACKAGES=$work/packages
 MAKE_JOBS=$(nproc)
+EMBERBSD_SDK_SOURCE=$PWD/sdk
 PKGSRC_COMPILER=clang
 CLANGBASE=$seed
 CC=$seed/bin/clang
