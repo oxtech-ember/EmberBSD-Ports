@@ -30,6 +30,8 @@ CONFIGURE_ARGS+=	--with-dnssd=avahi
 .endif
 
 .if !empty(PKG_OPTIONS:Mdbus)
+# The libcups component uses D-Bus only during configuration.
+BUILDLINK_DEPMETHOD.dbus=	build
 .  include "../../sysutils/dbus/buildlink3.mk"
 CONFIGURE_ARGS+=	--enable-dbus
 .else
