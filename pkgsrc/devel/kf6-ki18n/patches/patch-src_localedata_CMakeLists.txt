@@ -1,0 +1,18 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Locate the SDK iso-codes data relative to its Darwin shared library.
+
+--- src/localedata/CMakeLists.txt.orig
++++ src/localedata/CMakeLists.txt
+@@ -73,6 +73,10 @@
+ 
+ target_link_libraries(KF6I18nLocaleData PUBLIC Qt6::Core)
+ target_link_libraries(KF6I18nLocaleData PRIVATE KF6I18n)
++if(APPLE AND BUILD_SHARED_LIBS AND IsoCodes_PREFIX STREQUAL CMAKE_INSTALL_PREFIX)
++    file(RELATIVE_PATH _iso_codes_dir "${KDE_INSTALL_FULL_LIBDIR}" "${IsoCodes_PREFIX}/share/iso-codes/json")
++    target_compile_definitions(KF6I18nLocaleData PRIVATE KI18N_ISO_CODES_RELATIVE_DIR="${_iso_codes_dir}")
++endif()
+ target_compile_options(KF6I18n PRIVATE -DTRANSLATION_DOMAIN=\"ki18n6\")
+ 
+ install(TARGETS KF6I18nLocaleData EXPORT KF6I18nTargets ${KF_INSTALL_TARGETS_DEFAULT_ARGS})

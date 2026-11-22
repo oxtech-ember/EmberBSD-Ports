@@ -13,6 +13,10 @@ CMAKE_CONFIGURE_ARGS+=	-DLibIntl_INCLUDE_DIRS=${BUILDLINK_PREFIX.gettext}/includ
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	1
+.endif
+
 .include "../../devel/gettext-lib/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../textproc/iso-codes/buildlink3.mk"
