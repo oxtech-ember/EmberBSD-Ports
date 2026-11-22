@@ -1,0 +1,56 @@
+$NetBSD$
+
+Resolve the public ModemManager headers in the consuming installation.
+The pkg-config paths used to build the library belong to its SDK.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -64,6 +64,7 @@
+   "${CMAKE_CURRENT_SOURCE_DIR}/KF6ModemManagerQtConfig.cmake.in"
+   "${CMAKE_CURRENT_BINARY_DIR}/KF6ModemManagerQtConfig.cmake"
+   INSTALL_DESTINATION  ${CMAKECONFIG_INSTALL_DIR}
++  PATH_VARS KDE_INSTALL_INCLUDEDIR
+ )
+ 
+ install(FILES
+--- KF6ModemManagerQtConfig.cmake.in.orig
++++ KF6ModemManagerQtConfig.cmake.in
+@@ -1,8 +1,25 @@
+ @PACKAGE_INIT@
++
++find_path(KF6ModemManagerQt_MODEMMANAGER_INCLUDE_DIR
++    NAMES ModemManager/ModemManager.h
++    HINTS "@PACKAGE_KDE_INSTALL_INCLUDEDIR@"
++)
++mark_as_advanced(KF6ModemManagerQt_MODEMMANAGER_INCLUDE_DIR)
++if(NOT KF6ModemManagerQt_MODEMMANAGER_INCLUDE_DIR)
++    set(KF6ModemManagerQt_FOUND FALSE)
++    set(KF6ModemManagerQt_NOT_FOUND_MESSAGE "ModemManager headers are required")
++    return()
++endif()
+ 
+ include(CMakeFindDependencyMacro)
+ find_dependency(Qt6Core @REQUIRED_QT_VERSION@)
+ find_dependency(Qt6DBus @REQUIRED_QT_VERSION@)
+ 
+ 
+-include("${CMAKE_CURRENT_LIST_DIR}/KF6ModemManagerQtTargets.cmake")
++if(NOT TARGET KF6::ModemManagerQt)
++    include("${CMAKE_CURRENT_LIST_DIR}/KF6ModemManagerQtTargets.cmake")
++    set_property(TARGET KF6::ModemManagerQt APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
++        "${KF6ModemManagerQt_MODEMMANAGER_INCLUDE_DIR}"
++        "${KF6ModemManagerQt_MODEMMANAGER_INCLUDE_DIR}/ModemManager"
++    )
++endif()
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -108,7 +108,7 @@
+                                                    EXPORT_NAME ModemManagerQt
+ )
+ 
+-target_include_directories(KF6ModemManagerQt PUBLIC ${MODEMMANAGER_INCLUDE_DIRS})
++target_include_directories(KF6ModemManagerQt PUBLIC "$<BUILD_INTERFACE:${MODEMMANAGER_INCLUDE_DIRS}>")
+ 
+ ########### static lib for tests  ###############
+ add_library(KF6ModemManagerQt_static STATIC ${ModemManagerQt_SRCS} ${DBUS_INTERFACES_FILES})

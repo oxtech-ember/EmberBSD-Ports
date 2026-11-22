@@ -3,4 +3,5 @@ $NetBSD$
 BLAKE2s (modemmanager-qt-6.32.0.tar.xz) = f34cf5ee5136e5a66286f253c7c6b61bf68391d49003610317cd2c4f739b8c64
 SHA512 (modemmanager-qt-6.32.0.tar.xz) = 06850545e37b82531ccd008e5b0c42e4fcc8cbcf2f97cabe2d55a3e6335aeec5ccfa12ae645ee52c4113e6c4047e3bd60e2ffdeb346105e83b3760de6d6064ae
 Size (modemmanager-qt-6.32.0.tar.xz) = 119824 bytes
+SHA1 (patch-cmake-modemmanager-public-includes) = 41498461111a7686b93ca7b0b0b054d40fe23697
 SHA1 (patch-src_generictypes.cpp) = dc3658f24837637b7d11911a8b97e757c72405c0
