@@ -92,6 +92,7 @@ def main():
     parser.add_argument("--bluezqt-archive", type=Path, required=True)
     parser.add_argument("--webengine-archive", type=Path)
     parser.add_argument("--webchannel-archive", type=Path)
+    parser.add_argument("--kdeconnect-archive", type=Path)
     args = parser.parse_args()
     owner = Path(__file__).resolve().parent
     repository = owner.parents[1]
@@ -107,7 +108,8 @@ def main():
     pins = json.loads((owner / "dependency-sources.json").read_text())
     archive_checks = {}
     for recipe, archive_path in [("www/qt6-qtwebengine", args.webengine_archive),
-                                 ("www/qt6-qtwebchannel", args.webchannel_archive)]:
+                                 ("www/qt6-qtwebchannel", args.webchannel_archive),
+                                 ("net/kdeconnect-kde", args.kdeconnect_archive)]:
         if archive_path is None:
             continue
         pin = next(item for item in pins["sources"] if item["recipe"] == recipe)

@@ -81,10 +81,9 @@ The native service and radio-switch contract remain required work.
 
 ## KDE Connect
 
-The official release-service index lists 26.08.2. Its archive and checksum are
-not yet verified, so this candidate does not provide a speculative recipe.
-Bigscreen requires the real `org.kde.kdeconnect` QML module and daemon.
-A configure placeholder or an empty QML module cannot satisfy that contract.
+The KDE Gear 26.08.3 release manifest and its published signing key verify
+the source archive. The target package still needs to supply and exercise the
+`org.kde.kdeconnect` QML module and daemon used by Bigscreen.
 
 ## Source checks and build gates
 

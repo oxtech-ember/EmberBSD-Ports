@@ -29,12 +29,17 @@
     },
     {
       "recipe": "net/kdeconnect-kde",
-      "version": "26.08.2",
-      "url": "https://download.kde.org/stable/release-service/26.08.2/src/kdeconnect-kde-26.08.2.tar.xz",
-      "provenance": "Official release-service index only. Archive/hash and recipe remain pending; do not fetch an unverified archive into a build.",
+      "version": "26.08.3",
+      "url": "https://download.kde.org/stable/release-service/26.08.3/src/kdeconnect-kde-26.08.3.tar.xz",
+      "provenance": "Archive SHA256 matches the KDE release manifest. The detached signature verifies with the published release signing key D81C0CB38EB725EF6691C385BB463350D6EF31EF.",
       "primary_sources": [
-        "https://download.kde.org/stable/release-service/26.08.2/src/"
-      ]
+        "https://kde.org/info/releases-26.08.3/"
+      ],
+      "sha256": "f554a190cc15039f12af14b1f4ccdb3754a308327623a750bc3f4f59b59239fd",
+      "size": 708672,
+      "status": "The package, QML module and daemon still require target acceptance.",
+      "blake2s": "d9ef13f71ac435c812e9c653e0e2d986ec1f975cfcf8374cb147d56a518f2478",
+      "sha512": "aba49be2c2378598982995fb79ce54437dd91eb9e4ce01eda4daee3e4d0b0fa0a2d61015c52eeb66d20bcfe248dab3c614c416c3407d4e7f43b7bbc341f2ce60"
     },
     {
       "recipe": "www/qt6-qtwebchannel",
