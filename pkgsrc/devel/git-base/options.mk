@@ -16,6 +16,10 @@ CONFIGURE_ARGS+=	--without-openssl
 .else
 MAKE_FLAGS+=		NO_APPLE_COMMON_CRYPTO=1
 .  if !empty(PKG_OPTIONS:Mopenssl)
+.    if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PREFER.openssl=		pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
+.    endif
 .    include "../../security/openssl/buildlink3.mk"
 CONFIGURE_ARGS+=	--with-openssl=${SSLBASE}
 .  else

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.104 2026/09/02 19:01:36 wiz Exp $
 
 DISTNAME=	libgit2-1.9.7
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=libgit2/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -43,6 +43,12 @@ post-install:
 	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING.libgit2
 	${INSTALL_DATA} ${TOOLBASE}/share/git-xdiff-source/COPYING.LGPL-2.1 ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING.LGPL-2.1
 	${INSTALL_DATA} ${TOOLBASE}/share/git-xdiff-source/COPYING.EDL-1.0 ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING.EDL-1.0
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PREFER.openssl=			pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
+.endif
 
 .include "../../devel/cmake/build.mk"
 .include "../../devel/zlib/buildlink3.mk"

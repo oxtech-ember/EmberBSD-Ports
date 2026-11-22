@@ -7,7 +7,28 @@ Origin: EmberBSD contributors (AI-assisted).
 
 --- xdiff/xmerge.c.orig
 +++ xdiff/xmerge.c
-@@ -88,7 +88,7 @@
+@@ -21,6 +21,20 @@
+  */
+ 
+ #include "xinclude.h"
++
++#ifdef XDL_COMPAT_HEADER
++/*
++ * Embedded xdiff callers return errors to their application. Saturate the
++ * sizing pass so xdl_do_merge rejects the result before allocation or copy.
++ */
++static size_t st_add(size_t a, size_t b)
++{
++	return a > (size_t)-1 - b ? (size_t)-1 : a + b;
++}
++
++#define st_add4(a, b, c, d) st_add(st_add(a, b), st_add(c, d))
++#define st_add5(a, b, c, d, e) st_add(st_add4(a, b, c, d), e)
++#endif
+ 
+ typedef struct s_xdmerge {
+ 	struct s_xdmerge *next;
+@@ -88,7 +102,7 @@
  		if (c->mode == 0)
  			count++;
  		next_c = c->next;
@@ -16,7 +37,7 @@ Origin: EmberBSD contributors (AI-assisted).
  	}
  	return count;
  }
-@@ -456,7 +456,7 @@
+@@ -457,7 +471,7 @@
  	m->chg1 = next_m->i1 + next_m->chg1 - m->i1;
  	m->chg2 = next_m->i2 + next_m->chg2 - m->i2;
  	m->next = next_m->next;
@@ -25,7 +46,7 @@ Origin: EmberBSD contributors (AI-assisted).
  }
  
  /*
-@@ -709,18 +709,28 @@
+@@ -714,18 +728,28 @@
  		goto out;
  
  	if (!xscr1) {
