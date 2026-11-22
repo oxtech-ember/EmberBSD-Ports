@@ -1,0 +1,17 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Import the Qt and KDE targets in the public StatefulApp link interface.
+
+--- KFKirigamiAddonsConfig.cmake.in.orig
++++ KFKirigamiAddonsConfig.cmake.in
+@@ -4,7 +4,8 @@
+ @PACKAGE_INIT@
+ 
+ include(CMakeFindDependencyMacro)
+-find_dependency(Qt6Core @REQUIRED_QT_VERSION@)
++find_dependency(Qt6 @QT_REQUIRED_VERSION@ COMPONENTS Core Qml Quick)
++find_dependency(KF6Config @KF_MIN_VERSION@)
+ 
+ # Any changes in this ".cmake" file will be overwritten by CMake, the source is the ".cmake.in" file.
+ 
