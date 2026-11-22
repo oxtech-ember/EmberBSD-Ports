@@ -319,6 +319,9 @@ versionless roots and do not define another recipe, resolver, cache, or prefix.
   replacement and rollback have regression checks. Native Darwin M4 and gzip
   bootstrap packages retain their release manuals.
   Gzip phase checks cover cached tool selection and Info registration.
+  Native CMake bootstrap uses its selected build shell outside the installed
+  prefix. Generation and recipe execution pass; installed shell selection
+  retains its missing-provider check.
   The [pkg-config sysroot check](profiles/common-build-tools/cross/pkgconfig.md)
   verifies actual GCC16/CMake target links and unchanged native discovery. The
   [host cross-Libtool dispatcher](profiles/common-build-tools/libtool.md)

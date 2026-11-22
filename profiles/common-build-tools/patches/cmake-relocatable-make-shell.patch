@@ -3,10 +3,13 @@
 
 --- Source/cmLocalUnixMakefileGenerator3.cxx
 +++ Source/cmLocalUnixMakefileGenerator3.cxx
-@@ -679,9 +679,21 @@
+@@ -679,9 +679,25 @@
                        "\n";
    } else {
  #if !defined(__VMS)
++#ifdef CMAKE_BOOTSTRAP
++    std::string shell = "@EMBERBSD_CMAKE_BOOTSTRAP_SHELL@";
++#else
 +    std::string shell = "/bin/sh";
 +    std::string const token = "@EMBERBSD_CMAKE_EXECUTABLE_DIR@/";
 +    if (shell.compare(0, token.size(), token) == 0) {
@@ -19,6 +22,7 @@
 +        return;
 +      }
 +    }
++#endif
      makefileStream << "# The shell in which to execute make rules.\n"
 -                      "SHELL = /bin/sh\n"
 -                      "\n";

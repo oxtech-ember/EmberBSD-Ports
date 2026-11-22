@@ -12,7 +12,7 @@
  
  COMMENT=	Cross platform make
  
-@@ -69,7 +69,12 @@
+@@ -69,7 +69,14 @@
  SUBST_STAGE.shell=	pre-configure
  SUBST_MESSAGE.shell=	Set custom SHELL in generated Makefiles.
  SUBST_FILES.shell+=	Source/cmLocalUnixMakefileGenerator3.cxx
@@ -22,6 +22,8 @@
 +.else
  SUBST_SED.shell=	-e 's,/bin/sh,${SH},g'
 +.endif
++# The bootstrap executable is outside the installed bin directory.
++SUBST_SED.shell+= -e 's,@EMBERBSD_CMAKE_BOOTSTRAP_SHELL@,${SH},g'
  
  pre-configure:
  	${CP} ${FILESDIR}/Source_Checks_cm_cxx_cbegin.cxx ${WRKSRC}/Source/Checks/cm_cxx_cbegin.cxx

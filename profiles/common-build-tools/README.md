@@ -230,6 +230,14 @@ It checks native/built-in/cross policy, real Find modules, the missing-symbol
 link failure and coherent header/runtime versions. A cache replay is not an
 independent discovery baseline. No full-package or memory-safety claim follows.
 
+The native CMake bootstrap uses the selected shell's absolute build path.
+Its executable is in `Bootstrap.cmk`, outside the installed prefix's `bin`.
+Installed CMake retains executable-relative shell selection and rejects a
+missing provider. Run `tests/cmake-bootstrap-shell.sh` with the bootstrap CMake,
+selected GNU make and shell paths to check generation and recipe execution.
+The test requires that no shell exists beside the bootstrap executable.
+Use `tests/cmake-relocatable-shell.py` for the installed relocation checks.
+
 Native CMake consumers and the CMake bootstrap use the selected pkgsrc
 AR, RANLIB, NM, STRIP and LD roles. The common policy requires each real
 build input to be an existing absolute executable. This CMake policy skips
