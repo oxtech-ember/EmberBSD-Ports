@@ -1,7 +1,8 @@
 $NetBSD$
 
 Preserve original addresses when rebasing Mach-O exception frame subtractors,
-including sanitizer function prefixes and temporary local labels.
+including sanitizer function prefixes and temporary local labels. Resolve
+loader-relative install names from the image containing the load command.
 
 Origin: EmberBSD (AI-assisted). Not submitted upstream.
 
@@ -213,3 +214,46 @@ Origin: EmberBSD (AI-assisted). Not submitted upstream.
      } else if (lsdaAddrOpt) {
        uint64_t lsdaAddr = *lsdaAddrOpt;
        Section *sec = findContainingSection(sections, &lsdaAddr);
+@@ -1628,7 +1657,7 @@
+ //
+ // Re-exports can either refer to on-disk files, or to documents within .tbd
+ // files.
+-static DylibFile *findDylib(StringRef path, DylibFile *umbrella,
++static DylibFile *findDylib(StringRef path, DylibFile *umbrella, DylibFile *loader,
+                             const InterfaceFile *currentTopLevelTapi) {
+   // Search order:
+   // 1. Install name basename in -F / -L directories.
+@@ -1676,7 +1705,8 @@
+     path::append(newPath, path::parent_path(config->outputFile), path);
+     path = newPath;
+   } else if (path.consume_front("@loader_path/")) {
+-    fs::real_path(umbrella->getName(), newPath);
++    // The load command is relative to the image that contains it.
++    fs::real_path(loader->getName(), newPath);
+     path::remove_filename(newPath);
+     path::append(newPath, path);
+     path = newPath;
+@@ -1746,12 +1776,12 @@
+ 
+ void DylibFile::loadReexport(StringRef path, DylibFile *umbrella,
+                          const InterfaceFile *currentTopLevelTapi) {
+-  DylibFile *reexport = findDylib(path, umbrella, currentTopLevelTapi);
++  DylibFile *reexport = findDylib(path, umbrella, this, currentTopLevelTapi);
+   if (!reexport) {
+     // If not found in umbrella, retry since some rpaths might have been
+     // defined in "this" dylib (which contains the LC_REEXPORT_DYLIB cmd) and
+     // not in the umbrella.
+-    DylibFile *reexport2 = findDylib(path, this, currentTopLevelTapi);
++    DylibFile *reexport2 = findDylib(path, this, this, currentTopLevelTapi);
+     if (!reexport2) {
+       error(toString(this) + ": unable to locate re-export with install name " +
+             path);
+@@ -1889,7 +1919,7 @@
+       const auto *c = reinterpret_cast<const dylib_command *>(cmd);
+       StringRef dylibPath =
+           reinterpret_cast<const char *>(c) + read32le(&c->dylib.name);
+-      DylibFile *dylib = findDylib(dylibPath, umbrella, nullptr);
++      DylibFile *dylib = findDylib(dylibPath, umbrella, this, nullptr);
+       if (!dylib)
+         error(Twine("unable to locate library '") + dylibPath +
+               "' loaded from '" + toString(this) + "' for -flat_namespace");
