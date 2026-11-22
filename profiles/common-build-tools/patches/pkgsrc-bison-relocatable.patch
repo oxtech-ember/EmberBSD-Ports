@@ -18,3 +18,12 @@
  CONFIGURE_ENV+=		ac_cv_prog_M4=${TOOLS_PATH.gm4}
  
  .include "options.mk"
+--- a/devel/bison/options.mk
++++ b/devel/bison/options.mk
+@@ -27,4 +27,6 @@
+ PLIST.nls=		yes
+ .else
+ CONFIGURE_ARGS+=	--disable-nls
++# The parser generator uses iconv even without translated messages.
++.include "../../converters/libiconv/buildlink3.mk"
+ .endif
