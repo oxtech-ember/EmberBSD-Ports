@@ -1,0 +1,145 @@
+--- a/lang/ruby40/Makefile
++++ b/lang/ruby40/Makefile
+@@ -21,12 +21,28 @@
+ 
+ # Resolve native Darwin Ruby libraries relative to the installed libruby.
+ .include "../../mk/bsd.prefs.mk"
+-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+-    ${MACHINE_ARCH} == "aarch64"
++PLIST_VARS+=	bundled_ext_makefiles
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++PKGREVISION=	1
++.  if ${MACHINE_ARCH} == "aarch64"
+ # NetBSD 11 base sets carry different OpenSSL SONAMEs.
+-PKGREVISION=	1
+ PREFER.openssl=	pkgsrc
+ BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
++.  endif
++
++# Install the target configuration after Ruby has finished using its build tools.
++post-install: ruby-install-target-metadata
++.PHONY: ruby-install-target-metadata
++ruby-install-target-metadata:
++	${TOOLBASE:Q}/bin/${RUBY_NAME:Q} --disable-gems \
++	    ${.CURDIR:Q}/install-cross-rbconfig.rb \
++	    ${DESTDIR:Q}${PREFIX:Q}/${RUBY_ARCHLIB}/rbconfig.rb ${WRKSRC:Q}
++# Ruby generates these fragments while building extensions from bundled gems.
++.for gem in bigdecimal debug fiddle nkf racc rbs syslog
++	${RM} -f ${DESTDIR:Q}${PREFIX:Q}/${GEM_HOME}/gems/${gem}-${RUBY_${gem:tu}_VER}/exts.mk
++.endfor
++.else
++PLIST.bundled_ext_makefiles=	yes
+ .endif
+ .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+ CONFIGURE_ARGS+=	--enable-load-relative
+--- a/lang/ruby40/PLIST
++++ b/lang/ruby40/PLIST
+@@ -1234,7 +1234,7 @@
+ ${GEM_HOME}/gems/bigdecimal-${RUBY_BIGDECIMAL_VER}/ext/bigdecimal/missing.h
+ ${GEM_HOME}/gems/bigdecimal-${RUBY_BIGDECIMAL_VER}/ext/bigdecimal/missing/dtoa.c
+ ${GEM_HOME}/gems/bigdecimal-${RUBY_BIGDECIMAL_VER}/ext/bigdecimal/static_assert.h
+-${GEM_HOME}/gems/bigdecimal-${RUBY_BIGDECIMAL_VER}/exts.mk
++${PLIST.bundled_ext_makefiles}${GEM_HOME}/gems/bigdecimal-${RUBY_BIGDECIMAL_VER}/exts.mk
+ ${GEM_HOME}/gems/bigdecimal-${RUBY_BIGDECIMAL_VER}/lib/bigdecimal.rb
+ ${GEM_HOME}/gems/bigdecimal-${RUBY_BIGDECIMAL_VER}/lib/bigdecimal/jacobian.rb
+ ${GEM_HOME}/gems/bigdecimal-${RUBY_BIGDECIMAL_VER}/lib/bigdecimal/ludcmp.rb
+@@ -1297,7 +1297,7 @@
+ ${GEM_HOME}/gems/debug-${RUBY_DEBUG_VER}/ext/debug/extconf.h
+ ${GEM_HOME}/gems/debug-${RUBY_DEBUG_VER}/ext/debug/extconf.rb
+ ${GEM_HOME}/gems/debug-${RUBY_DEBUG_VER}/ext/debug/iseq_collector.c
+-${GEM_HOME}/gems/debug-${RUBY_DEBUG_VER}/exts.mk
++${PLIST.bundled_ext_makefiles}${GEM_HOME}/gems/debug-${RUBY_DEBUG_VER}/exts.mk
+ ${GEM_HOME}/gems/debug-${RUBY_DEBUG_VER}/lib/debug.rb
+ ${GEM_HOME}/gems/debug-${RUBY_DEBUG_VER}/lib/debug/abbrev_command.rb
+ ${GEM_HOME}/gems/debug-${RUBY_DEBUG_VER}/lib/debug/breakpoint.rb
+@@ -1356,7 +1356,7 @@
+ ${GEM_HOME}/gems/fiddle-${RUBY_FIDDLE_VER}/ext/fiddle/memory_view.c
+ ${GEM_HOME}/gems/fiddle-${RUBY_FIDDLE_VER}/ext/fiddle/pinned.c
+ ${GEM_HOME}/gems/fiddle-${RUBY_FIDDLE_VER}/ext/fiddle/pointer.c
+-${GEM_HOME}/gems/fiddle-${RUBY_FIDDLE_VER}/exts.mk
++${PLIST.bundled_ext_makefiles}${GEM_HOME}/gems/fiddle-${RUBY_FIDDLE_VER}/exts.mk
+ ${GEM_HOME}/gems/fiddle-${RUBY_FIDDLE_VER}/fiddle.gemspec
+ ${GEM_HOME}/gems/fiddle-${RUBY_FIDDLE_VER}/lib/fiddle.rb
+ ${GEM_HOME}/gems/fiddle-${RUBY_FIDDLE_VER}/lib/fiddle/closure.rb
+@@ -1639,7 +1639,7 @@
+ ${GEM_HOME}/gems/nkf-${RUBY_NKF_VER}/ext/nkf/nkf-utf8/utf8tbl.c
+ ${GEM_HOME}/gems/nkf-${RUBY_NKF_VER}/ext/nkf/nkf-utf8/utf8tbl.h
+ ${GEM_HOME}/gems/nkf-${RUBY_NKF_VER}/ext/nkf/nkf.c
+-${GEM_HOME}/gems/nkf-${RUBY_NKF_VER}/exts.mk
++${PLIST.bundled_ext_makefiles}${GEM_HOME}/gems/nkf-${RUBY_NKF_VER}/exts.mk
+ ${GEM_HOME}/gems/nkf-${RUBY_NKF_VER}/lib/kconv.rb
+ ${GEM_HOME}/gems/nkf-${RUBY_NKF_VER}/lib/nkf.rb
+ ${GEM_HOME}/gems/observer-${RUBY_OBSERVER_VER}/Gemfile
+@@ -1707,7 +1707,7 @@
+ ${GEM_HOME}/gems/racc-${RUBY_RACC_VER}/ext/racc/cparse/cparse.c
+ ${GEM_HOME}/gems/racc-${RUBY_RACC_VER}/ext/racc/cparse/extconf.h
+ ${GEM_HOME}/gems/racc-${RUBY_RACC_VER}/ext/racc/cparse/extconf.rb
+-${GEM_HOME}/gems/racc-${RUBY_RACC_VER}/exts.mk
++${PLIST.bundled_ext_makefiles}${GEM_HOME}/gems/racc-${RUBY_RACC_VER}/exts.mk
+ ${GEM_HOME}/gems/racc-${RUBY_RACC_VER}/lib/racc.rb
+ ${GEM_HOME}/gems/racc-${RUBY_RACC_VER}/lib/racc/compat.rb
+ ${GEM_HOME}/gems/racc-${RUBY_RACC_VER}/lib/racc/debugflags.rb
+@@ -1902,7 +1902,7 @@
+ ${GEM_HOME}/gems/rbs-${RUBY_RBS_VER}/ext/rbs_extension/rbs_extension.h
+ ${GEM_HOME}/gems/rbs-${RUBY_RBS_VER}/ext/rbs_extension/rbs_string_bridging.c
+ ${GEM_HOME}/gems/rbs-${RUBY_RBS_VER}/ext/rbs_extension/rbs_string_bridging.h
+-${GEM_HOME}/gems/rbs-${RUBY_RBS_VER}/exts.mk
++${PLIST.bundled_ext_makefiles}${GEM_HOME}/gems/rbs-${RUBY_RBS_VER}/exts.mk
+ ${GEM_HOME}/gems/rbs-${RUBY_RBS_VER}/goodcheck.yml
+ ${GEM_HOME}/gems/rbs-${RUBY_RBS_VER}/include/rbs.h
+ ${GEM_HOME}/gems/rbs-${RUBY_RBS_VER}/include/rbs/ast.h
+@@ -2681,7 +2681,7 @@
+ ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/ext/syslog/extconf.rb
+ ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/ext/syslog/syslog.c
+ ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/ext/syslog/syslog.txt
+-${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/exts.mk
++${PLIST.bundled_ext_makefiles}${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/exts.mk
+ ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/lib/syslog.rb
+ ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/lib/syslog/logger.rb
+ ${GEM_HOME}/gems/test-unit-${RUBY_TEST_UNIT_VER}/BSDL
+--- /dev/null
++++ b/lang/ruby40/install-cross-rbconfig.rb
+@@ -0,0 +1,43 @@
++# Keep build-time rbconfig intact for Ruby's own generators. Extensions use
++# this installed copy on the target and through RubyGems --target-rbconfig.
++require "shellwords"
++
++path, build_dir = ARGV
++target = Module.new
++Kernel.load(path, target)
++config = target::RbConfig::MAKEFILE_CONFIG
++replacements = {
++  "INSTALL" => "/usr/bin/install -c",
++  "MKDIR_P" => "/bin/mkdir -p",
++  "MAKEDIRS" => "/bin/mkdir -p",
++  "SHELL" => "/bin/sh",
++}
++%w[AR RANLIB RUSTC].each do |name|
++  value = config[name]
++  replacements[name] = File.basename(value) if value&.start_with?("/")
++end
++if config["RUST_LIB"]
++  replacements["RUST_LIB"] = config["RUST_LIB"].delete_prefix(build_dir + "/")
++end
++if config["CC_VERSION_MESSAGE"]
++  replacements["CC_VERSION_MESSAGE"] =
++    config["CC_VERSION_MESSAGE"].lines.reject { |line| line.start_with?("InstalledDir: ") }.join.chomp
++end
++args = Shellwords.split(config.fetch("configure_args")).map do |arg|
++  option, separator, value = arg.partition("=")
++  if %w[--with-baseruby AR RANLIB RUSTC].include?(option) && value.start_with?("/")
++    option + separator + File.basename(value)
++  else
++    arg
++  end
++end
++replacements["configure_args"] = Shellwords.join(args)
++
++source = File.binread(path)
++replacements.each do |key, value|
++  assignment = /^  CONFIG\[#{Regexp.escape(key.dump)}\] = .*$/
++  raise "missing RbConfig assignment for #{key}" unless source.sub!(assignment) {
++    "  CONFIG[#{key.dump}] = #{value.dump}"
++  }
++end
++File.binwrite(path, source)
