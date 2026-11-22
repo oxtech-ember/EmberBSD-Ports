@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (node-browserslist/browserslist-4.29.5.tgz) = 99728d54f2677ba470cc10aab99262ac664568e9919713f05ec98490871bc511
-SHA512 (node-browserslist/browserslist-4.29.5.tgz) = 9214e62aee4d1984e8b6a718a3c05ec3693844013d3ee5d14854571b695006b084407c9e43fbd7ea028cc5fa24c32c01b0b89764c9c7b2658c1b5a673bc27bb9
-Size (node-browserslist/browserslist-4.29.5.tgz) = 18804 bytes
+BLAKE2s (node-browserslist/browserslist-4.29.6.tgz) = e698353d644831807e544b68aa1169004b0a9a554ad5bbc814ed941ef7fa31f3
+SHA512 (node-browserslist/browserslist-4.29.6.tgz) = 0a6555210dd155ce47c5811cf57f381afc4afc2f02d701fc4e528088eeee4f117c3c3c2deebf2df5093727d36430e5735f93bf1db2efdf2cf1660f473eb9c8f7
+Size (node-browserslist/browserslist-4.29.6.tgz) = 19079 bytes

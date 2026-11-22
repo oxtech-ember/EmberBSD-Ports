@@ -1,7 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream JavaScript module.
-DISTNAME= asar-4.3.1
-PKGNAME= node-electron-asar-4.3.1
-PKGREVISION= 1
+DISTNAME= asar-4.3.2
+PKGNAME= node-electron-asar-4.3.2
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@electron/asar/-/
 EXTRACT_SUFX= .tgz
