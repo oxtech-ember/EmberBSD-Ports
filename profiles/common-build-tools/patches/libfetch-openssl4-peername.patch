@@ -1,0 +1,34 @@
+Use the OpenSSL 4 peer-name APIs and retain the shared IP parser.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/net/libfetch/files/common.c
++++ b/net/libfetch/files/common.c
+@@ -442,6 +442,16 @@
+ 	connection_cache = conn;
+ }
+ 
++#ifdef WITH_SSL
++static int
++fetch_ssl_set_peername(SSL *ssl, const char *host)
++{
++	if (host == NULL || *host == '\0')
++		return (0);
++	return (SSL_set1_ipaddr(ssl, host) || SSL_set1_dnsname(ssl, host));
++}
++#endif
++
+ /*
+  * Enable SSL on a connection.
+  */
+@@ -473,7 +483,10 @@
+ 	}
+ 	conn->buf_events = 0;
+ 	SSL_set_fd(conn->ssl, conn->sd);
+-	SSL_set1_host(conn->ssl, URL->host);
++	if (!fetch_ssl_set_peername(conn->ssl, URL->host)) {
++		fprintf(stderr, "TLS peer name configuration failed\n");
++		return (-1);
++	}
+ 
+ 	/*
+ 	 * SSL_read can also block inside a partly received record. A receive
