@@ -1,9 +1,9 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-x86_64
 recipe: print/poppler
-package: poppler-26.10.0
+package: poppler-26.11.0
 program: Poppler-0.18
-types-sha256: e8c37f518c810f82d927992f0fb43c3ad49d9eb9c93a6a4e4dba43066bcd034e
+types-sha256: 3bd47aa8de1f1ffd52f59281c822b2db4cd988d47f3234a4d7b9af6a3649b5f7
 dump-sha256: d8409132667003795c65f1622d59ca65035a13dbe7be36cb4eb78cbb95012208
 -->
 <?xml version="1.0"?>

@@ -1,8 +1,8 @@
 # Common Poppler provider
 
-The common recipe pins [Poppler 26.10.0](https://poppler.freedesktop.org/).
-It requires C++23 and the shared GCC16 toolchain. The core library uses
-SONAME 165. The split C++, Qt and header packages use the same source release.
+The common recipe pins [Poppler 26.11.0](https://poppler.freedesktop.org/).
+It requires a C++23 compiler. The core library uses
+SONAME 166. The split C++, Qt and header packages use the same source release.
 
 Brotli stream decoding and HarfBuzz font subsetting use the common Ports
 providers. GLib, GObject introspection, NSS and GPGME++ remain enabled.
