@@ -18,6 +18,16 @@ PKGREVISION=	1
 .endif
 
 .include "../../devel/gettext-lib/buildlink3.mk"
+.include "../../x11/qt6-qtbase/buildlink3.mk"
+# A qt6-qtbase with the host-tools option (the native Qt of a cross build)
+# has no Qt Gui, Qt Qml or Qt Test. Build without the QML modules, the
+# scripted translations (ktranscript) that need Qt Qml, and the tests.
+PLIST_VARS+=	qml
+.if ${PKG_BUILD_OPTIONS.qt6-qtbase:Mhost-tools}
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_WITH_QML=OFF -DBUILD_TESTING=OFF
+.else
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
+PLIST.qml=	yes
+.endif
 .include "../../textproc/iso-codes/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
