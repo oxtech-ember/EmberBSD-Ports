@@ -1,12 +1,11 @@
 $NetBSD$
 
-BLAKE2s (sigtool-0.2.2.tar.gz) = bc85fd23e36dfe16aee966e82e340a8f07d0f5bf82933ece6b218d4315a2806b
-SHA512 (sigtool-0.2.2.tar.gz) = 2dd68f25297a8e7a50e4c1985ce58bd074eee9c9640b1c840a05cfa2d3f48e365ac6ff2447233c984732225949243628abed1c14caed31af5cbb63c6eff91ab6
-Size (sigtool-0.2.2.tar.gz) = 97858 bytes
+BLAKE2s (sigtool-0.2.3.tar.gz) = c9355c9e9aedbdff64694e8fe065a86c534b0de9b360629fe73b2392f3a9482e
+SHA512 (sigtool-0.2.3.tar.gz) = 4e803d067b520dbb1d1187e3b55b1e5c792de1593c1fc1b74957dfffa2119ef1ae1c0ffaefa34b4d549d2346bb38fac33acd313f8ae97e2b348dd14fbb9ef522
+Size (sigtool-0.2.3.tar.gz) = 97892 bytes
 SHA1 (patch-macho.cpp) = 9a09a6dde61fc81a643b1b55e75c690f67c1901e
 SHA1 (patch-main.cpp) = 58c65fcb07c2bd16e37e2811c2a7306c5b38f673
 SHA1 (patch-codesign.cpp) = e30cef2b0b630bc79d8a7bfa8fa5004fc118db14
 SHA1 (patch-CMakeLists.txt) = 84665f04cf80112e389f0687953c0a131310a7af
 SHA1 (patch-commands.cpp) = 54007a79b5e2decd26363f0cbe466118c7f4c4bb
 SHA1 (patch-commands.cpp-metadata) = 0fe2a293a64ecc9448e054ab83be99f10daa482d
-SHA1 (patch-bundle.cpp) = 6f62f834e4848fa0d25c231397004e2c3359bbf9
