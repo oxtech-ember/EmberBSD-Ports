@@ -1,0 +1,30 @@
+# Origin: EmberBSD contributors (AI-assisted).
+
+--- a/devel/ncurses/Makefile
++++ b/devel/ncurses/Makefile
+@@ -61,6 +61,25 @@
+ SUBST_VARS.setenv=	SETENV
+ 
+ .include "../../mk/bsd.prefs.mk"
++
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && !defined(EMBERBSD_NCURSES_TIC_LAYOUT)
++PKGREVISION=	6
++CPPFLAGS+=	-DEMBERBSD_DARWIN_TERMINFO
++SUBST_CLASSES+=	terminfo-relative
++SUBST_STAGE.terminfo-relative=	pre-configure
++SUBST_FILES.terminfo-relative=	ncurses/tinfo/db_iterator.c
++SUBST_VARS.terminfo-relative=	TERMINFODIR
++# Keep the portable upstream tabset paths in the compiled database.
++SUBST_CLASSES+=	terminfo-tabset
++SUBST_STAGE.terminfo-tabset=	pre-configure
++SUBST_FILES.terminfo-tabset=	misc/gen_edit.sh
++SUBST_SED.terminfo-tabset=	-e 's|^TABSET=.*|TABSET=/usr/share/tabset|'
++# Keep the explicit install destination; compiled fallback paths belong to Darwin.
++SUBST_CLASSES+=	terminfo-default
++SUBST_STAGE.terminfo-default=	post-configure
++SUBST_FILES.terminfo-default=	include/ncurses_cfg.h
++SUBST_SED.terminfo-default=	-e '/ TERMINFO[ _]/s|"${PREFIX}/${TERMINFODIR}"|"/usr/${TERMINFODIR}"|'
++.endif
+ 
+ # This private native role uses the configured target's database layout.
+ # Ordinary native builds retain their platform defaults.

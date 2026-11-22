@@ -1,0 +1,177 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Locate the Darwin terminfo database beside the installed shared library.
+
+--- ncurses/tinfo/db_iterator.c.orig
++++ ncurses/tinfo/db_iterator.c
+@@ -55,6 +55,53 @@
+ #define my_time          _nc_globals.dbd_time
+ #define my_vars          _nc_globals.dbd_vars
+ 
++#ifdef EMBERBSD_DARWIN_TERMINFO
++#include <dlfcn.h>
++#include <pthread.h>
++
++/* Locate the database shipped beside a Darwin library or static SDK consumer. */
++static pthread_once_t terminfo_once = PTHREAD_ONCE_INIT;
++static char image_terminfo[PATH_MAX];
++
++static void
++find_image_terminfo(void)
++{
++    Dl_info info;
++    char image[PATH_MAX];
++    char *name, *libdir;
++    int length;
++
++    if (!dladdr((const void *) &find_image_terminfo, &info) ||
++        !info.dli_fname || !realpath(info.dli_fname, image))
++        return;
++    name = strrchr(image, '/');
++    if (name == NULL)
++        return;
++    *name = '\0';
++    libdir = strrchr(image, '/');
++    if (!libdir || (strcmp(libdir, "/lib") && strcmp(libdir, "/bin") &&
++                    strcmp(libdir, "/sbin")))
++        return;
++    *libdir = '\0';
++    length = snprintf(image_terminfo, sizeof(image_terminfo),
++                      "%s/@TERMINFODIR@", image);
++    if (length < 0 || (size_t) length >= sizeof(image_terminfo) ||
++        access(image_terminfo, R_OK | X_OK) < 0)
++        image_terminfo[0] = '\0';
++}
++
++static const char *
++default_terminfo(const char *configured)
++{
++    if (strcmp(configured, TERMINFO))
++        return configured;
++    pthread_once(&terminfo_once, find_image_terminfo);
++    return image_terminfo[0] ? image_terminfo : configured;
++}
++#else
++#define default_terminfo(path) (path)
++#endif
++
+ static void
+ add_to_blob(const char *text, size_t limit)
+ {
+@@ -230,7 +277,7 @@
+ 	    }
+ 	}
+     }
+-    return TicDirectory ? TicDirectory : TERMINFO;
++    return TicDirectory ? TicDirectory : default_terminfo(TERMINFO);
+ }
+ 
+ /*
+@@ -313,10 +360,10 @@
+ 
+ #if NCURSES_USE_DATABASE
+ #ifdef TERMINFO_DIRS
+-	values[dbdCfgList] = TERMINFO_DIRS;
++	values[dbdCfgList] = default_terminfo(TERMINFO_DIRS);
+ #endif
+ #ifdef TERMINFO
+-	values[dbdCfgOnce] = TERMINFO;
++	values[dbdCfgOnce] = default_terminfo(TERMINFO);
+ #endif
+ #endif
+ 
+@@ -384,7 +431,7 @@
+ 		for (j = 0; my_list[j] != NULL; ++j) {
+ #ifdef TERMINFO
+ 		    if (*my_list[j] == '\0') {
+-			char *my_copy = strdup(TERMINFO);
++			char *my_copy = strdup(default_terminfo(TERMINFO));
+ 			if (my_copy != NULL)
+ 			    my_list[j] = my_copy;
+ 		    }
+--- ncurses/tinfo/lib_setup.c.orig
++++ ncurses/tinfo/lib_setup.c
+@@ -662,6 +662,72 @@
+  *
+  ****************************************************************************/
+ 
++#if defined(EMBERBSD_DARWIN_TERMINFO) && NCURSES_USE_DATABASE
++/*
++ * On disk, init_file and reset_file retain their standard FHS names so other
++ * terminfo readers can use them. Return the matching file shipped next to the
++ * selected database when a Darwin SDK is installed in another location.
++ */
++#undef CUR
++#define CUR tp->
++static void
++relocate_tabsets(TERMTYPE2 *tp, const char *filename)
++{
++    static const char standard[] = "/usr/share/tabset/";
++    char **caps[] = { &init_file, &reset_file };
++    char local[2][PATH_MAX];
++    char entry[PATH_MAX], candidate[PATH_MAX];
++    char *leaf, *dir;
++    unsigned i;
++    bool changed = FALSE;
++
++    if (!((VALID_STRING(init_file) && !strncmp(init_file, standard, sizeof(standard) - 1)) ||
++          (VALID_STRING(reset_file) && !strncmp(reset_file, standard, sizeof(standard) - 1))))
++        return;
++    if (realpath(filename, entry) == NULL)
++        return;
++    leaf = strrchr(entry, '/');
++    if (leaf == NULL)
++        return;
++    *leaf = '\0';
++    dir = strrchr(entry, '/');
++    if (dir == NULL)
++        return;
++    *dir = '\0';
++    dir = strrchr(entry, '/');
++    if (dir == NULL || strcmp(dir, "/terminfo") != 0)
++        return;
++    *dir = '\0';
++    for (i = 0; i < SIZEOF(caps); ++i) {
++        char *path = *caps[i];
++        const char *name;
++        int len;
++
++        if (!VALID_STRING(path) || strncmp(path, standard, sizeof(standard) - 1))
++            continue;
++        name = path + sizeof(standard) - 1;
++        if (*name == '\0' || *name == '.' || strchr(name, '/') != NULL)
++            continue;
++        len = snprintf(candidate, sizeof(candidate), "%s/tabset/%s", entry, name);
++        if (len < 0 || (size_t) len >= sizeof(candidate) ||
++            realpath(candidate, local[i]) == NULL || access(local[i], R_OK) != 0)
++            continue;
++        if (strcmp(local[i], path) != 0) {
++            *caps[i] = local[i];
++            changed = TRUE;
++        }
++    }
++    if (changed) {
++        TERMTYPE2 old = *tp;
++        /* Give the entry its own strings before the stack paths go away. */
++        _nc_copy_termtype2(tp, &old);
++        _nc_free_termtype2(&old);
++    }
++}
++#undef CUR
++#define CUR TerminalType(termp).
++#endif
++
+ #if NCURSES_USE_DATABASE || NCURSES_USE_TERMCAP
+ /*
+  * Return 1 if entry found, 0 if not found, -1 if database not accessible,
+@@ -681,6 +747,9 @@
+      */
+     if (status == TGETENT_YES) {
+ 	unsigned n;
++#if defined(EMBERBSD_DARWIN_TERMINFO) && NCURSES_USE_DATABASE
++	relocate_tabsets(tp, filename);
++#endif
+ 	T(("_nc_setup_tinfo - resetting invalid booleans/strings"));
+ 	for_each_boolean(n, tp) {
+ 	    if (!VALID_BOOLEAN(tp->Booleans[n]))
