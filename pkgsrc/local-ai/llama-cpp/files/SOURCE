@@ -1,11 +1,11 @@
 Project: llama.cpp
-Release: v0.6.0
-Revision: 8345f333951c661d166b00e6f9362e553768f292
+Release: v1.0.0
+Revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 Repository: https://github.com/ggml-org/llama.cpp
-Archive SHA256: 84050e783dbd0c4a4678f90f253b0881df04e90a98c20f73ae3709751c4a4850
+Archive SHA256: ae8556670b17c25931cd39eb7c95617650eaf6091bbcff206750583ddde1acb4
 License: MIT; bundled notices are preserved with the package.
 Profile: CPU, armv8-a on AArch64, no GPU, no UI download, no OpenMP.
 Packaging: EmberBSD, AI-assisted. No upstream acceptance is claimed.
 Patch: check two GGML allocator metadata allocations before dereference.
 Patch contract: the existing unconditional GGML_ASSERT fatal OOM path and ABI.
-Compiler: GCC 16.2.0; native and cross builds share the same CPU feature caches.
+Toolchain: See CC_VERSION in the binary package build information.

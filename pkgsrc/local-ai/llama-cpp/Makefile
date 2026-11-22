@@ -1,11 +1,10 @@
-# EmberBSD: CPU runtime package, based on upstream llama.cpp 0.6.0.
-DISTNAME=	llama.cpp-0.6.0
-PKGNAME=	llama-cpp-0.6.0
-PKGREVISION=	1
+# EmberBSD: CPU runtime package, based on upstream llama.cpp 1.0.0.
+DISTNAME=	llama.cpp-1.0.0
+PKGNAME=	llama-cpp-1.0.0
 CATEGORIES=	misc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ggml-org/}
 GITHUB_PROJECT=	llama.cpp
-GITHUB_TAG=	8345f333951c661d166b00e6f9362e553768f292
+GITHUB_TAG=	b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 WRKSRC=		${WRKDIR}/${GITHUB_PROJECT}-${GITHUB_TAG}
 
 HOMEPAGE=	https://github.com/ggml-org/llama.cpp

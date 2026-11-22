@@ -23,11 +23,11 @@ must not exist. The source archive and recipe patches are checked before build.
 All five installed programs use `armv8-a` and the GCC16 runtime path.
 
 ```sh
-curl --fail --location --output /var/tmp/llama.cpp-0.6.0.tar.gz \
-  https://github.com/ggml-org/llama.cpp/archive/8345f333951c661d166b00e6f9362e553768f292.tar.gz
+curl --fail --location --output /var/tmp/llama.cpp-1.0.0.tar.gz \
+  https://github.com/ggml-org/llama.cpp/archive/b1b770d90d94cad9e9ea5b993bdbc383a522fb28.tar.gz
 sh profiles/ai-cpu/cross/build-llama.sh \
   /var/tmp/ember-cross /var/tmp/ember-sysroot \
-  /var/tmp/llama.cpp-0.6.0.tar.gz /var/tmp/llama-cross
+  /var/tmp/llama.cpp-1.0.0.tar.gz /var/tmp/llama-cross
 ```
 
 `CROSS_JOBS` sets the build parallelism; the default is four jobs. The output
@@ -67,7 +67,7 @@ recorded `/usr/pkg` installation prefix:
 
 ```sh
 sh package-llama.sh /stage/usr/pkg /recipes/llama-cpp \
-  /packages/llama-cpp-0.6.0nb1.tgz /recipes/build-info.txt
+  /packages/llama-cpp-1.0.0.tgz /recipes/build-info.txt
 ```
 
 Fetch the small model with the
@@ -77,7 +77,7 @@ Copy the resulting GGUF file to the target. Run as an administrator in a
 disposable test system with no installed `llama-cpp` and free loopback port 18080:
 
 ```sh
-sh run-llama-tests.sh /packages/llama-cpp-0.6.0nb1.tgz \
+sh run-llama-tests.sh /packages/llama-cpp-1.0.0.tgz \
   /models/SmolLM2-135M-Instruct-Q4_K_M.gguf /results/llama
 ```
 

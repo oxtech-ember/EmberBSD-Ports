@@ -1,5 +1,5 @@
 Source: ggml/src/ggml-cpu/llamafile/sgemm.cpp
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 // Copyright 2024 Mozilla Foundation
 //
@@ -24,7 +24,7 @@ Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
 // SOFTWARE.
 
 Source: vendor/hash/xxhash/LICENSE
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 xxHash Library
 Copyright (c) 2012-2021 Yann Collet
@@ -54,12 +54,12 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Source: vendor/hash/sha256/LICENSE
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 2010-06-11 : Igor Pavlov : Public domain
 
 Source: vendor/hash/rotate-bits/LICENSE.md
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 MIT License
 
@@ -84,7 +84,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Source: vendor/hash/sha1/sha1.c
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 /*
 SHA-1 in C
@@ -92,7 +92,7 @@ By Steve Reid <steve@edmweb.com>
 100% Public Domain
 
 Source: vendor/nlohmann/json.hpp
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 //     __ _____ _____ _____
 //  __|  |   __|     |   | |  JSON for Modern C++
@@ -105,7 +105,7 @@ Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
 The MIT license text is reproduced in the adjacent LICENSE file.
 
 Source: vendor/sheredom/subprocess.h
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 /*
    This is free and unencumbered software released into the public domain.
@@ -135,7 +135,7 @@ Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
 */
 
 Source: vendor/stb/stb_image.h
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 /*
 ------------------------------------------------------------------------------
@@ -180,7 +180,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 Source: vendor/miniaudio/miniaudio.h
-Upstream revision: 8345f333951c661d166b00e6f9362e553768f292
+Upstream revision: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
 
 /*
 This software is available as a choice of the following licenses. Choose

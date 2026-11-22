@@ -1,11 +1,11 @@
 # Local AI CPU packages
 
-This profile provides **llama.cpp 0.6.0nb1** and **whisper.cpp 1.9.5**
+This profile provides **llama.cpp 1.0.0** and **whisper.cpp 1.9.5**
 execution tools through ordinary pkgsrc recipes. Models are separate assets.
 
 The [GCC16 cross profile](cross/README.md) builds llama.cpp on Linux for an
-EmberBSD AArch64 sysroot. Target installation, removal, reinstallation, text
-generation and loopback HTTP completion passed on 2026-10-14 in QEMU TCG.
+EmberBSD AArch64 sysroot. The 0.6.0nb1 target passed installation, removal, reinstallation, text
+generation and loopback HTTP completion on 2026-10-14 in QEMU TCG.
 The package checks two GGML metadata allocations before dereference.
 See the [validation record](cross/validation.md) for source hashes, tests,
 memory checks and the exact VM boundary.
@@ -23,7 +23,7 @@ and checked with `pkg_admin`. Those historical releases required no upstream sou
 
 | Package | Executables |
 | --- | --- |
-| `llama-cpp-0.6.0nb1` | `llama-cli`, `llama-completion`, `llama-server`, `llama-bench`, `llama-quantize` |
+| `llama-cpp-1.0.0` | `llama-cli`, `llama-completion`, `llama-server`, `llama-bench`, `llama-quantize` |
 | `whisper-cpp-1.9.5` | `whisper-cli`, `whisper-bench`, `whisper-quantize` |
 
 The initial recipes intentionally install execution tools, not a public C/C++
@@ -86,7 +86,7 @@ For an isolated test installation, use a separate prefix and package database:
 ```sh
 mkdir "$work/runtime" "$work/pkgdb"
 pkg_add -K "$work/pkgdb" -p "$work/runtime" \
-  "$work/packages/All/llama-cpp-0.6.0nb1.tgz" \
+  "$work/packages/All/llama-cpp-1.0.0.tgz" \
   "$work/packages/All/whisper-cpp-1.9.5.tgz"
 pkg_admin -K "$work/pkgdb" check llama-cpp whisper-cpp
 ```
@@ -96,7 +96,7 @@ Use `$work/runtime/bin` as `AI_BIN` in the
 Remove this installation with:
 
 ```sh
-pkg_delete -K "$work/pkgdb" llama-cpp-0.6.0nb1 whisper-cpp-1.9.5
+pkg_delete -K "$work/pkgdb" llama-cpp-1.0.0 whisper-cpp-1.9.5
 ```
 
 For a normal system installation, an administrator uses `pkg_add` without
@@ -107,10 +107,8 @@ establish a signed binary release channel.
 
 ## Source and build policy
 
-- llama.cpp revision: `8345f333951c661d166b00e6f9362e553768f292`.
-- This retained 0.6.0 snapshot is one commit after the stable `v0.6.0` tag
-  (`d81235049384534c167caea52b85a694f6103d14`). The additional commit changes
-  the disabled Hexagon backend; this CPU profile keeps its existing installation.
+- llama.cpp revision: `b1b770d90d94cad9e9ea5b993bdbc383a522fb28`.
+- The revision is the commit for the upstream `v1.0.0` tag.
 - whisper.cpp revision: `d1be6fde11ac6e0407606b4e42fe72d34add8037`.
 - Upstream GitHub archives are checked by pkgsrc `distinfo`; SHA256 and source
   identity are also recorded in each package's installed `SOURCE` file.

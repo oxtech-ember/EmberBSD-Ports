@@ -17,7 +17,7 @@ fi
 mkdir "$out"
 uname -a > "$out/platform.txt"
 pkg_add "$package"
-pkg_info -e llama-cpp-0.6.0nb1
+pkg_info -e llama-cpp-1.0.0
 pkg_admin check llama-cpp > "$out/package-integrity.txt"
 llama-completion --version > "$out/version.txt" 2>&1
 ldd /usr/pkg/bin/llama-completion > "$out/linkage.txt"
@@ -32,9 +32,9 @@ printf 'not a GGUF model\n' > "$out/invalid.gguf"
 if llama-completion -m "$out/invalid.gguf" -n 1 > "$out/invalid.log" 2>&1; then
     echo 'Malformed model was accepted.' >&2; exit 1
 fi
-pkg_delete llama-cpp-0.6.0nb1
+pkg_delete llama-cpp-1.0.0
 test ! -e /usr/pkg/bin/llama-completion
-if pkg_info -e llama-cpp-0.6.0nb1; then echo 'Package remained registered.' >&2; exit 1; fi
+if pkg_info -e llama-cpp-1.0.0; then echo 'Package remained registered.' >&2; exit 1; fi
 pkg_add "$package"
 pkg_admin check llama-cpp > "$out/reinstalled-integrity.txt"
 llama-completion --version > "$out/reinstalled-version.txt" 2>&1
