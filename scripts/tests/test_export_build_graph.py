@@ -111,6 +111,10 @@ if tracked:
         __import__('time').sleep(0.05)
 values = json.loads((root / 'metadata.json').read_text())[package]
 values = dict(values)
+path_options = values.pop('_options_by_path_and_required', {})
+if path_options:
+    selected = path_options.get(__import__('os').environ['PATH'], {})
+    values['PKG_OPTIONS'] = selected.get(settings.get('PKGNAME_REQD'), 'regular')
 options = values.pop('_options_by_required', {})
 if options:
     values['PKG_OPTIONS'] = options.get(settings.get('PKGNAME_REQD'), 'default')
@@ -303,6 +307,45 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         starts = list(events.glob('*.start'))
         self.assertTrue(starts)
         self.assertTrue(all((events / (start.name[:-6] + '.end')).is_file() for start in starts))
+
+    def test_target_rechecks_inherited_paths_and_binds_both(self):
+        self.packages['devel/app'] = {
+            'DEPENDS': 'library>=1:../../devel/library runtime>=1:../../devel/runtime',
+            '_PATH_ORIG': '/sdk/first/bin',
+        }
+        self.packages['devel/runtime'] = {
+            'DEPENDS': 'library>=1:../../devel/library', '_PATH_ORIG': '/sdk/second/bin',
+        }
+        self.packages['devel/library']['_PATH_ORIG'] = '/sdk/selected/bin'
+        def library(jobs):
+            graph = self.run_export('--jobs', str(jobs))
+            return self.nodes(graph)['target:devel/library']['input_sha256']
+        before = library(1)
+        self.assertEqual(before, library(2))
+        self.packages['devel/runtime']['_PATH_ORIG'] = '/sdk/third/bin'
+        self.assertNotEqual(before, library(2))
+        del self.packages['devel/library']['_PATH_ORIG']
+        for jobs in ('1', '2'):
+            self.assertIn('conflicting package variants', self.run_export('--jobs', jobs, success=False))
+
+    def test_repeated_pattern_must_match_in_each_parent_path(self):
+        self.packages['devel/app'] = {
+            'DEPENDS': 'library>=1:../../devel/library runtime>=1:../../devel/runtime',
+            '_PATH_ORIG': '/sdk/first/bin',
+        }
+        self.packages['devel/runtime'] = {
+            'DEPENDS': 'library-1:../../devel/library tests>=1:../../devel/tests',
+            '_PATH_ORIG': '/sdk/second/bin',
+        }
+        self.packages['devel/tests'] = {
+            'DEPENDS': 'library-1:../../devel/library', '_PATH_ORIG': '/sdk/first/bin',
+        }
+        self.packages['devel/library'] = {
+            '_PATH_ORIG': '/sdk/child/bin',
+            '_options_by_path_and_required': {'/sdk/first/bin': {'library-1': 'other'}},
+        }
+        for jobs in ('1', '2'):
+            self.assertIn('conflicting package variants', self.run_export('--jobs', jobs, success=False))
 
     def test_parallel_frontier_preserves_context_and_variant_refusals(self):
         self.packages['devel/app']['PKGSRC_MAKE_ENV'] = 'CFLAGS=-O0'

@@ -135,6 +135,7 @@ class Exporter:
         self.nodes = {}
         self.metadata = {}
         self.contexts = {}
+        self.verified_target_paths = {}
         self.patterns = {}
         self.pending = []
         self.test_requirements = {}
@@ -301,15 +302,27 @@ class Exporter:
         identity = self.node_identity(package, cross, settings)
         context = self.query_context(cross, settings, environment)
         if identity in self.nodes:
-            if self.contexts[identity] != context:
-                raise ExportError('conflicting recursive contexts for ' + identity)
+            previous = self.contexts[identity]
+            path_changed = previous != context
+            self.check_recursive_context(identity, previous, context)
             if pattern:
                 self.matches(pattern, self.metadata[identity]['PKGNAME'])
-                if pattern not in self.patterns[identity]:
-                    candidate = self.query_result(package, cross, settings, environment, pattern)
-                    if (candidate != self.metadata[identity] or
-                            self.inputs(package, candidate) != self.nodes[identity]['input_sha256']):
-                        raise ExportError('conflicting package variants for ' + identity)
+            new_pattern = pattern and pattern not in self.patterns[identity]
+            paths = self.verified_target_paths.get(identity)
+            if path_changed and paths is None:
+                paths = {previous[2]['PATH']: self.patterns[identity].copy()}
+            new_request = paths is not None and pattern not in paths.get(environment['PATH'], ())
+            if new_request or new_pattern:
+                candidate = self.query_result(package, cross, settings, environment, pattern)
+                if (candidate != self.metadata[identity] or
+                        self.inputs(package, candidate) != self.nodes[identity]['input_sha256']):
+                    raise ExportError('conflicting package variants for ' + identity)
+                if new_request:
+                    if not candidate['_PATH_ORIG']:
+                        raise ExportError('target did not select a recursive PATH for ' + identity)
+                    paths.setdefault(environment['PATH'], set()).add(pattern)
+                    self.verified_target_paths[identity] = paths
+                if new_pattern:
                     self.patterns[identity].add(pattern)
                     if identity in self.using_installed and not self.pattern_matches(
                             pattern, self.host_providers[identity][0]):
@@ -350,6 +363,20 @@ class Exporter:
         if cross == 'no' and self.native_make_variables:
             context.append(self.native_make_variables)
         return context
+
+    @staticmethod
+    def check_recursive_context(identity, previous, current):
+        if previous == current:
+            return
+        # A target may select a fixed SDK PATH in its own make configuration.
+        # visit() must prove that re-querying it under both parent paths gives
+        # identical effective metadata and recipe inputs before merging it.
+        if previous[0] == current[0] == 'yes' and previous[1] == current[1] and previous[3:] == current[3:]:
+            old, new = previous[2], current[2]
+            if ('PATH' in old and 'PATH' in new and
+                    old | {'PATH': new['PATH']} == new):
+                return
+        raise ExportError('conflicting recursive contexts for ' + identity)
 
     def query_key(self, package, cross, settings, environment, pattern):
         native = tuple(self.native_make_variables.items()) if cross == 'no' else ()
@@ -418,11 +445,10 @@ class Exporter:
             identity = self.node_identity(package, cross, settings)
             context = self.query_context(cross, settings, environment)
             if identity in self.contexts:
-                if self.contexts[identity] != context:
-                    raise ExportError('conflicting recursive contexts for ' + identity)
+                self.check_recursive_context(identity, self.contexts[identity], context)
             else:
-                if identity in pending_contexts and pending_contexts[identity] != context:
-                    raise ExportError('conflicting recursive contexts for ' + identity)
+                if identity in pending_contexts:
+                    self.check_recursive_context(identity, pending_contexts[identity], context)
                 pending_contexts.setdefault(identity, context)
                 if len(self.nodes) + len(pending_contexts) > self.args.max_nodes:
                     raise ExportError('dependency closure exceeds --max-nodes')
@@ -549,6 +575,12 @@ class Exporter:
             raise ExportError('host package database changed during export')
         for identity, node in self.nodes.items():
             inputs = {'inputs': node['input_sha256'], 'query_context': self.contexts[identity]}
+            if identity in self.verified_target_paths:
+                # The earlier of two parents can differ between serial and parallel traversal.
+                # Bind all proven inputs in a stable order without choosing one parent's PATH.
+                paths = self.verified_target_paths[identity]
+                role, settings, environment, *rest = self.contexts[identity]
+                inputs['query_context'] = [role, settings, environment | {'PATH': sorted(paths)}, *rest]
             if identity in self.using_installed:
                 inputs['host-provider'] = self.host_providers[identity][0]
             node['input_sha256'] = digest(canonical(inputs))
