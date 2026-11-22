@@ -27,6 +27,15 @@ LIBS.SunOS+=		-lm
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${OPSYS} == "Darwin"
+PKGREVISION=		1
+# The build scanner uses the selected build tool. Installed flex finds the
+# runtime tool and message catalogs relative to its own executable.
+MAKE_ENV+=		M4=${TOOLS_PATH.gm4:Q}
+CPPFLAGS+=		-DFLEX_DARWIN_M4=\"${TOOLS_PATH.gm4:T}\"
+CPPFLAGS+=		-DFLEX_DARWIN_LOCALEDIR=\"${PKGLOCALEDIR}/locale\"
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     !empty(OS_VERSION:M11.*)
 # GNU m4 runs on the build host only: it makes the skeleton and the stage1
