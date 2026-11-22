@@ -140,6 +140,12 @@ values keep upstream behavior. Run
 against the built binary to exercise both builtins, exit statuses, symlinks,
 PATH and relative invocations, spaces and the missing-provider failures.
 
+The M4 recipe keeps the release manual in native and cross builds. Its source
+patch preserves the usage text, so the pre-build hook updates only the manual's
+timestamp. It rejects a missing or empty manual. Run
+`sh tests/m4-manpage.sh EXPORTED_PKGSRC BMAKE SHELL NEW_WORK` to check the
+exported hook's freshness, unchanged content and refusal behavior.
+
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
 

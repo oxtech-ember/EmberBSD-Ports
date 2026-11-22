@@ -10,17 +10,15 @@
  CATEGORIES=	devel
  MASTER_SITES=	${MASTER_SITE_GNU:=m4/}
  
-@@ -19,10 +19,30 @@
+@@ -19,10 +19,28 @@
  
  .include "../../mk/bsd.prefs.mk"
  
 +# The release ships m4.1. Patching src/m4.c makes help2man try to run the
-+# newly built target program, although the patch preserves its usage text.
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# newly built program, although the patch preserves its usage text.
 +pre-build:
 +	${TEST} -s ${WRKSRC}/doc/m4.1
 +	${TOUCH} ${WRKSRC}/doc/m4.1
-+.endif
 +
  # This is the target runtime shell, not the shell that runs configure.
  # Leave upstream selection unchanged unless the consumer sets this path.
