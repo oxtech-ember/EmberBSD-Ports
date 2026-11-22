@@ -3,4 +3,4 @@ $NetBSD: distinfo,v 1.40 2023/12/05 20:15:23 markd Exp $
 BLAKE2s (shared-mime-info-2.5.1.tar.bz2) = a5b9b7ec8e696332ddc692cc95cf0fb0f8bb0a6f13f00d810ef1a35faf78989f
 SHA512 (shared-mime-info-2.5.1.tar.bz2) = 042b8e6e54d93b19e34624b30d2ba2808e068bf68d9138103f41f077e805e0de1cfb7a519b643adbe329818ee685506239e918bce169565a0809cf01ccc68ddf
 Size (shared-mime-info-2.5.1.tar.bz2) = 8008103 bytes
-SHA1 (patch-src_update-mime-database.cpp) = 4e4c0370c78cacdd5392099bedd30b4bc8d7e8f0
+SHA1 (patch-src_update-mime-database.cpp) = d1cf529d9dd27c69c335c2339cd62137c389b89e

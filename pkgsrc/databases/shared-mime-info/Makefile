@@ -29,7 +29,12 @@ MESON_ARGS+=		-Dbuild-tests=false
 TOOLS_PLATFORM.msgfmt=
 .endif
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:tl} != "yes"
+PKGREVISION=		1
+CPPFLAGS+=		-DPKGSRC_RELOCATABLE_MIME
+.else
 CPPFLAGS+=		-DPREFIX="\"${PREFIX}\""
+.endif
 
 FILES_SUBST+=		MIMEDB_PATH="${PREFIX}/share/mime"
 FILES_SUBST+=		UPDATE_MIMEDB="${PREFIX}/bin/update-mime-database"
