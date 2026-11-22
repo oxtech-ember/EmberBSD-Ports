@@ -8,8 +8,9 @@ runtime-path and build-reference checks pass. Both Sonnet backends are retained.
 
 [Hunspell 1.7.5](https://github.com/hunspell/hunspell/releases/tag/v1.7.5),
 released 4 October 2026, is the selected current upstream release.
-[Aspell 0.60.8.2](https://github.com/GNUAspell/aspell/releases) is the current
-Aspell release. [sources.tsv](../sources.tsv) pins the original archives and hashes.
+Aspell 0.60.8.3 includes Arabic and Traditional Chinese message catalogs.
+On EmberBSD/AArch64 and AMD64, the packaged command created an English
+dictionary and distinguished its entries from a misspelled word. [sources.tsv](../sources.tsv) pins the original archives and hashes.
 Inherited pkgsrc authorship, licenses and platform patches are preserved.
 
 ## Repairs
