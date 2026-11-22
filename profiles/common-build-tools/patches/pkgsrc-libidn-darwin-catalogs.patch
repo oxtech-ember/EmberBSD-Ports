@@ -1,0 +1,110 @@
+Locate Libidn message catalogs beside the installed Darwin libraries.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/devel/libidn/Makefile
++++ b/devel/libidn/Makefile
+@@ -27,6 +27,22 @@
+ .include "../../mk/bsd.prefs.mk"
+ .include "options.mk"
+ 
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++.  if !empty(PKG_OPTIONS:Mnls)
++PKGREVISION= 1
++# The CLI and public error functions read catalogs from the installed SDK.
++SUBST_CLASSES+= catalogs
++SUBST_STAGE.catalogs= post-patch
++SUBST_FILES.catalogs= src/idn.c lib/strerror-*.c
++SUBST_SED.catalogs= -e 's|"gettext.h"|"../idn-darwin-catalog.h"|' \
++    -e 's|bindtextdomain (PACKAGE, LOCALEDIR)|idn_bind_catalog (PACKAGE)|g' \
++    -e 's|bindtextdomain ("gnulib", GNULIB_LOCALEDIR)|idn_bind_catalog ("gnulib")|g'
++CPPFLAGS+= -DIDN_CATALOG_DIR=\"${PKGLOCALEDIR}/locale\"
++post-extract:
++	${CP} ${FILESDIR}/idn-darwin-catalog.h ${WRKSRC}/
++.  endif
++.endif
++
+ .include "../../converters/libiconv/buildlink3.mk"
+ .include "../../devel/libgetopt/buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- /dev/null
++++ b/devel/libidn/files/idn-darwin-catalog.h
+@@ -0,0 +1,79 @@
++/* SPDX-License-Identifier: BSD-2-Clause */
++/* Origin: EmberBSD contributors (AI-assisted). */
++#ifndef IDN_DARWIN_CATALOG_H
++#define IDN_DARWIN_CATALOG_H
++
++#include "gettext.h"
++#include "idna.h"
++#include <dlfcn.h>
++#include <mach-o/dyld.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++/* Both libraries install in lib below the SDK prefix. Static Libidn
++ * clients can locate the same catalogs through the shared gettext library. */
++static char *
++idn_file_catalog (const char *image, const char *library)
++{
++  char *file, *leaf, *catalog = NULL;
++
++  file = realpath (image, NULL);
++  if (!file)
++    return NULL;
++  leaf = strrchr (file, '/');
++  if (leaf && (!library || strncmp (leaf + 1, library, strlen (library)) == 0))
++    {
++      *leaf = 0;
++      leaf = strrchr (file, '/');
++      if (leaf && (library ? strcmp (leaf, "/lib") == 0
++                   : strcmp (leaf, "/bin") == 0 || strcmp (leaf, "/sbin") == 0))
++        {
++          *leaf = 0;
++          if (asprintf (&catalog, "%s/%s", file, IDN_CATALOG_DIR) < 0)
++            catalog = NULL;
++        }
++    }
++  free (file);
++  return catalog;
++}
++
++static char *
++idn_image_catalog (const void *symbol, const char *library)
++{
++  Dl_info image;
++  if (!dladdr (symbol, &image) || !image.dli_fname)
++    return NULL;
++  return idn_file_catalog (image.dli_fname, library);
++}
++
++static char *
++idn_program_catalog (void)
++{
++  uint32_t size = 0;
++  char *executable, *catalog = NULL;
++
++  _NSGetExecutablePath (NULL, &size);
++  if (!size || !(executable = malloc (size)))
++    return NULL;
++  if (_NSGetExecutablePath (executable, &size) == 0)
++    catalog = idn_file_catalog (executable, NULL);
++  free (executable);
++  return catalog;
++}
++
++static void
++idn_bind_catalog (const char *domain)
++{
++  char *directory = idn_image_catalog ((const void *) idna_strerror, "libidn.");
++  if (!directory)
++    directory = idn_image_catalog ((const void *) dgettext, "libintl.");
++  if (!directory)
++    directory = idn_program_catalog ();
++  if (directory)
++    {
++      bindtextdomain (domain, directory);
++      free (directory);
++    }
++}
++#endif
