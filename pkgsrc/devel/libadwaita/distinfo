@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (libadwaita-1.10.0.tar.xz) = 0e51457f22e080be33c2e400960cd0b25189a764d4fdc142ccf802d2eaaaef89
+SHA512 (libadwaita-1.10.0.tar.xz) = 2c47fecd93f3ebd6dc091adea139a3bad76a6817617090eb7e937f303589e52b4548dde003b0e8ad33d13bce945084ec253733ecf4e935db30a8c87955d29fa7
+Size (libadwaita-1.10.0.tar.xz) = 2949164 bytes
+SHA1 (patch-src_meson.build) = 696d787758b481fe4f3fc98cf447742b1b94e94a

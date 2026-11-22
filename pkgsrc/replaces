@@ -12,6 +12,7 @@ archivers/7-zip
 textproc/lowdown
 textproc/expat
 devel/libidn2
+devel/libadwaita
 textproc/hyphen
 sysutils/libnotify
 sysutils/runit
