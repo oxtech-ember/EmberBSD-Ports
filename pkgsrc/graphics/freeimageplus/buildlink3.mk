@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	freeimageplus
 .if !defined(FREEIMAGEPLUS_BUILDLINK3_MK)
 FREEIMAGEPLUS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.freeimageplus+=	freeimageplus>=3.19.25
+BUILDLINK_API_DEPENDS.freeimageplus+=	freeimageplus>=3.19.33
 BUILDLINK_PKGSRCDIR.freeimageplus?=	../../graphics/freeimageplus
 
 .include "../../graphics/freeimage/buildlink3.mk"

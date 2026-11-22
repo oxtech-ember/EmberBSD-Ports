@@ -8,7 +8,7 @@ It applies the recipe's exact JPEG and CMake patches with zero fuzz.
 
 ```sh
 python3.15 profiles/common-graphics/tests/freeimage-jpeg/check-source.py \
-  /absolute/FreeImage-3.19.25-linux-source.tar.gz \
+  /absolute/FreeImage-3.19.33-linux-source.tar.gz \
   /absolute/native-g++ /absolute/native-codec-prefix /absolute/new-work
 ```
 

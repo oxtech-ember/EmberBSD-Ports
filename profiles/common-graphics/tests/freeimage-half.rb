@@ -9,7 +9,7 @@ require 'shellwords'
 abort 'Usage: freeimage-half.rb ARCHIVE IMATH_PREFIX NEW_WORK' unless ARGV.length == 3
 archive, imath, work = ARGV.map { |p| File.expand_path(p) }
 abort 'Output exists.' if File.exist?(work) || File.symlink?(work)
-expected = 'dab013044c3d9122b0a93cee7b53a656426bccc571d3d46880dd8d90a10d1968'
+expected = 'afbd73964e1105719be3c01740a76f6f09bb87cca5078f16455d7c56f905984a'
 abort 'FreeImage source hash differs.' unless Digest::SHA256.file(archive).hexdigest == expected
 abort 'Real installed Imath headers and metadata required.' unless File.file?(imath + '/include/Imath/half.h') && File.file?(imath + '/lib/pkgconfig/Imath.pc')
 compiler = Shellwords.split(ENV.fetch('CXX'))
@@ -27,7 +27,7 @@ end
 version = run.call('compiler', compiler + ['--version'])
 abort 'Native GCC16 is required.' unless version.match?(/\b16\.\d+\.\d+/)
 run.call('extract', ['tar', '-xzf', archive, '-C', work])
-source = work + '/FreeImage-3.19.25'
+source = work + '/FreeImage-3.19.33'
 recipe = File.expand_path('../../../pkgsrc/graphics/freeimage', __dir__)
 original = File.binread(source + '/Source/FreeImage/PluginTIFF.cpp')
 File.write(source + '/Source/FreeImage/PluginTIFF.cpp', original.delete("\r"))

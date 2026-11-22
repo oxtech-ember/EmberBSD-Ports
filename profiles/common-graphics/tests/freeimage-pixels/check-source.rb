@@ -9,7 +9,7 @@ abort 'Usage: check-source.rb FREEIMAGE_ARCHIVE NATIVE_GXX NEW_WORK' unless ARGV
 archive, compiler = ARGV.first(2).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV.last)
 abort 'New absolute output required.' unless ARGV.last.start_with?('/') && !File.exist?(work) && !File.symlink?(work)
-abort 'Wrong official FreeImage archive.' unless Digest::SHA256.file(archive).hexdigest == 'dab013044c3d9122b0a93cee7b53a656426bccc571d3d46880dd8d90a10d1968'
+abort 'Wrong official FreeImage archive.' unless Digest::SHA256.file(archive).hexdigest == 'afbd73964e1105719be3c01740a76f6f09bb87cca5078f16455d7c56f905984a'
 Dir.mkdir(work)
 commands = []
 run = lambda do |label, args, expected = 0|
@@ -31,8 +31,8 @@ sources = {}
   dir = work + '/' + variant
   Dir.mkdir(dir)
   run.call(variant + '-extract', ['tar', '-xzf', archive, '-C', dir,
-    'FreeImage-3.19.25/Source/FreeImage.h', 'FreeImage-3.19.25/Source/Utilities.h'])
-  source = dir + '/FreeImage-3.19.25'
+    'FreeImage-3.19.33/Source/FreeImage.h', 'FreeImage-3.19.33/Source/Utilities.h'])
+  source = dir + '/FreeImage-3.19.33'
   run.call('apply', ['patch', '-d', source, '-p0', '--fuzz=0', '-i', patch]) if variant == 'after'
   utilities = source + '/Source/Utilities.h'
   text = File.binread(utilities)

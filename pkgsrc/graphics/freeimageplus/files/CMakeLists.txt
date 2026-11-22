@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted), current upstream wrapper around common FreeImage.
 cmake_minimum_required(VERSION 3.16)
-project(FreeImagePlus VERSION 3.19.25 LANGUAGES CXX)
+project(FreeImagePlus VERSION 3.19.33 LANGUAGES CXX)
 include(GNUInstallDirs)
-find_package(FreeImage 3.19.25 CONFIG REQUIRED)
+find_package(FreeImage 3.19.33 CONFIG REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(wrapper "${FREEIMAGE_SOURCE_ROOT}/Wrapper/FreeImagePlus")

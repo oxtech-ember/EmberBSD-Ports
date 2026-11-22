@@ -26,6 +26,9 @@ REPLACE_BASH+=	adm/templates/custom.install.sh.in
 REPLACE_BASH+=	adm/templates/env.install.sh.in
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1
+.endif
 .include "options.mk"
 CMAKE_CONFIGURE_ARGS+=	-DINSTALL_DIR=${PREFIX}
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_LIBRARY_TYPE=Shared
@@ -73,7 +76,7 @@ SUBST_SED.custom-prefix= -e 's,${BUILDLINK_DIR:C|[.[\\*^]|\\\\&|gW},${PREFIX},g'
 .include "../../devel/cmake/build.mk"
 .include "../../fonts/fontconfig/buildlink3.mk"
 .include "../../graphics/freetype2/buildlink3.mk"
-BUILDLINK_API_DEPENDS.freeimage+=	freeimage>=3.19.25nb3
+BUILDLINK_API_DEPENDS.freeimage+=	freeimage>=3.19.33
 .include "../../graphics/freeimage/buildlink3.mk"
 BUILDLINK_API_DEPENDS.eigen3+=	eigen3>=5.0.1
 .include "../../math/eigen3/buildlink3.mk"

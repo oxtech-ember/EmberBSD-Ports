@@ -1,8 +1,7 @@
 # Origin: EmberBSD, current system-codec FreeImage provider.
 .include "Makefile.common"
 
-PKGNAME=	freeimage-3.19.25
-PKGREVISION=	3
+PKGNAME=	freeimage-3.19.33
 MAINTAINER=	pkgsrc-users@NetBSD.org
 COMMENT=	Image decoding, conversion and encoding library (maintained fork)
 

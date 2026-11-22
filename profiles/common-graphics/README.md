@@ -82,7 +82,7 @@ Git library and command-line dependency in the same sysroot. Both GCC16
 packages pass pkgsrc checks, and a `git_libgit2_init()` consumer links;
 target runtime execution remains pending.
 
-[Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
+[Maintained FreeImage 3.19.33 and LibRaw 0.22.3](cross/freeimage.md)
 provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection, half conversions and unaligned pixel-copy checks pass.
 The ordinary GCC16 AArch64 FreeImage nb3 and wrapper nb2 packages pass all nine

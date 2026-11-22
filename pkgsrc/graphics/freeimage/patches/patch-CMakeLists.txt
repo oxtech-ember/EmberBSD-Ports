@@ -2,7 +2,7 @@ Origin: EmberBSD (AI-assisted), common Unix ABI and current system codecs.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
-@@ -105,7 +105,8 @@
+@@ -162,7 +162,8 @@
  # can still be overridden individually). Mirrors what MSYS2's
  # mingw-w64-freeimage package does by unbundling all vendored sub-deps.
  option(FREEIMAGE_USE_SYSTEM_LIBS "Link against system copies of vendored sub-dependencies instead of bundling them" OFF)
@@ -12,18 +12,19 @@ Origin: EmberBSD (AI-assisted), common Unix ABI and current system codecs.
  include(GNUInstallDirs)
  if(FREEIMAGE_USE_SYSTEM_LIBS)
      set(FREEIMAGE_SYSTEM_DEFAULT ON)
-@@ -247,7 +248,9 @@
- if(BUILD_LIBJPEG)
-     if(USE_SYSTEM_LIBJPEG)
-         find_package(JPEG REQUIRED)
+@@ -358,8 +359,9 @@
+         else()
+             message(STATUS "JPEG backend: system libjpeg (${JPEG_LIBRARIES})")
+         endif()
+-        message(STATUS "Lossless JPEG transforms are unavailable with an external JPEG library")
 -        list(APPEND FreeImage_LIBS JPEG::JPEG)
 +        find_package(PkgConfig REQUIRED)
 +        pkg_check_modules(TURBOJPEG REQUIRED IMPORTED_TARGET libturbojpeg>=3.0.0)
 +        list(APPEND FreeImage_LIBS JPEG::JPEG PkgConfig::TURBOJPEG)
          add_definitions(-DFREEIMAGE_SYSTEM_LIBJPEG)
      else()
-         set(FreeImage_LIBJPEG_SRCS
-@@ -759,7 +762,9 @@
+         message(STATUS "JPEG backend: bundled IJG libjpeg")
+@@ -877,7 +879,9 @@
          ./Source/OpenEXR/Half/halfFunction.h ./Source/OpenEXR/Half/halfLimits.h 
          ./Source/OpenEXR/Half/toFloat.h 
      )
@@ -34,7 +35,7 @@ Origin: EmberBSD (AI-assisted), common Unix ABI and current system codecs.
  # Not added to the global include path: half.cpp includes its own headers
  # with quotes (resolved relative to its own directory), and PluginTIFF.cpp/
  # PluginEXR.cpp's bundled-mode "../OpenEXR/Half/half.h" include is likewise
-@@ -1431,23 +1436,41 @@
+@@ -1571,23 +1575,41 @@
  endif()
  
  if(FREEIMAGE_LINUX_PACKAGE_LAYOUT)

@@ -1,8 +1,7 @@
 # Origin: EmberBSD, current C++ wrapper using the common FreeImage C library.
 .include "../../graphics/freeimage/Makefile.common"
 
-PKGNAME=	freeimageplus-3.19.25
-PKGREVISION=	2
+PKGNAME=	freeimageplus-3.19.33
 MAINTAINER=	pkgsrc-users@NetBSD.org
 COMMENT=	C++ wrapper for the maintained FreeImage library
 CMAKE_CONFIGURE_ARGS+=	-DFREEIMAGE_SOURCE_ROOT=${WRKSRC}
@@ -11,7 +10,7 @@ TEST_TARGET=		test
 pre-configure:
 	${CP} ${FILESDIR}/CMakeLists.txt ${WRKSRC}/CMakeLists.txt
 
-BUILDLINK_API_DEPENDS.freeimage+=	freeimage>=3.19.25nb3
+BUILDLINK_API_DEPENDS.freeimage+=	freeimage>=3.19.33
 .include "../../graphics/freeimage/buildlink3.mk"
 .include "../../mk/bsd.prefs.mk"
 PLIST_VARS+=		darwin elf

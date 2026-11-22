@@ -3,7 +3,7 @@ include/FreeImagePlus.h
 lib/libfreeimageplus.a
 ${PLIST.elf}lib/libfreeimageplus.so
 ${PLIST.elf}lib/libfreeimageplus.so.3
-${PLIST.elf}lib/libfreeimageplus.so.3.19.25
+${PLIST.elf}lib/libfreeimageplus.so.3.19.33
 ${PLIST.darwin}lib/libfreeimageplus.dylib
 ${PLIST.darwin}lib/libfreeimageplus.3.dylib
-${PLIST.darwin}lib/libfreeimageplus.3.19.25.dylib
+${PLIST.darwin}lib/libfreeimageplus.3.19.33.dylib

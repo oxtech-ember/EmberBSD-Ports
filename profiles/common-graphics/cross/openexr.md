@@ -27,7 +27,7 @@ Python is not added to the target library dependency closure.
 OpenEXR 3.5 changes its ABI to the `3_5` namespace and SONAME revision 34.
 The buildlink API and ABI floors require 3.5.2. Consumers must rebuild;
 no old-SONAME alias is supplied. The pinned pkgsrc tree has OpenEXR consumers
-across image processing, visualization and CAD. FreeImage 3.19.25 uses the
+across image processing, visualization and CAD. FreeImage 3.19.33 uses the
 public RGBA and general image APIs with the shared Imath half type.
 Consumer discovery is not a claim that every downstream application passes.
 

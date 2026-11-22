@@ -13,7 +13,7 @@ import sys
 import tarfile
 import xml.etree.ElementTree as ET
 
-PIN = "dab013044c3d9122b0a93cee7b53a656426bccc571d3d46880dd8d90a10d1968"
+PIN = "afbd73964e1105719be3c01740a76f6f09bb87cca5078f16455d7c56f905984a"
 target_mode = len(sys.argv) > 1 and sys.argv[1] == "--target"
 if target_mode:
     sys.argv.pop(1)
@@ -55,8 +55,8 @@ if not target_mode:
     run("clang-version", [clang, "--version"])
 provider_env = dict(os.environ, PKG_CONFIG_LIBDIR=str(provider / "lib/pkgconfig"))
 version = run("provider-version", ["pkg-config", "--modversion", "libturbojpeg"], env=provider_env).strip()
-if version != "3.2.0":
-    raise SystemExit("The common libjpeg-turbo 3.2.0 provider is required.")
+if version != "3.2.1":
+    raise SystemExit("The common libjpeg-turbo 3.2.1 provider is required.")
 inputs = [archive, compiler, Path(__file__).resolve()]
 for name in ("libjpeg.so", "libturbojpeg.so"):
     library = (provider / "lib" / name).resolve(strict=True)
@@ -91,7 +91,7 @@ for variant in ("before", "after"):
     source.mkdir()
     with tarfile.open(archive, "r:gz") as tar:
         for name in members:
-            member = tar.getmember("FreeImage-3.19.25/" + name)
+            member = tar.getmember("FreeImage-3.19.33/" + name)
             target = source / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(tar.extractfile(member).read())

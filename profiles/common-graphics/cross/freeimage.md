@@ -1,27 +1,24 @@
 # Maintained FreeImage and LibRaw sources
 
-The common graphics profile replaces `graphics/freeimage` and
-`graphics/freeimageplus` together with the maintained FreeImage 3.19.25 release.
-It also updates the existing `graphics/libraw` provider to 0.22.2.
-The ordinary GCC16 AArch64 core nb3 and C++ nb2 packages pass package checks.
-All nine enabled upstream core tests and the original C++ wrapper test pass
-with the normally installed packages in the EmberBSD VM. The unmodified
-system-JPEG path fails a valid lossless transform. The repair uses the common
-TurboJPEG public API and passes the focused coefficient contract below.
-Complete revised native packages remain a separate acceptance gate.
-The static package list uses the `FreeImageTargets-noconfig.cmake` file produced
-by both ordinary native and AArch64 stages.
+The common recipes package FreeImage and FreeImagePlus 3.19.33 with LibRaw
+0.22.3 and OpenEXR 3.5.4. On AArch64 the FreeImage C API saved and read
+back 256 pixels in both a PNG bitmap and a floating-point EXR image.
+The C++ wrapper saved and reloaded a PNG memory stream with 64 matching pixels.
+
+The previous 3.19.25 GCC16 AArch64 core nb3 and wrapper nb2 packages passed
+the upstream tests described below. The recipes retain the common TurboJPEG
+implementation and install the generated FreeImage CMake targets.
 
 ## Provenance and licensing
 
 The original project is [FreeImage](https://freeimage.sourceforge.io/).
-The maintained [danoli3 release 3.19.25](https://github.com/danoli3/FreeImage/releases/tag/3.19.25)
-was published on 2026-10-17. Its tag points to
-`363311f106e3fa50e9c39fcc80afe832cb26eabb`.
-The recipe uses the release's `FreeImage-3.19.25-linux-source.tar.gz` asset.
+The maintained [danoli3 release 3.19.33](https://github.com/danoli3/FreeImage/releases/tag/3.19.33)
+was published on 2026-11-13. Its tag points to
+`716d94e2d7b04830c66c656926b2885c35309f75`.
+The recipe uses the release's `FreeImage-3.19.33-linux-source.tar.gz` asset.
 The archive contains portable sources; the asset name does not select a Linux binary.
-Its SHA256 is `dab013044c3d9122b0a93cee7b53a656426bccc571d3d46880dd8d90a10d1968`.
-This matches the publisher's `SHA256SUMS-linux.txt`.
+Its SHA256 is `afbd73964e1105719be3c01740a76f6f09bb87cca5078f16455d7c56f905984a`.
+The release asset published on GitHub reports the same digest.
 The [source manifest](../sources.tsv) and recipe `distinfo` pin the download.
 
 The original copyrights remain intact. The package uses the recognized
@@ -29,8 +26,8 @@ GPLv2 or GPLv3 license alternatives. It also installs the original
 FreeImage Public License 1.0 text verbatim. That text is not relabeled MPL.
 System codec packages retain their own license ownership.
 
-[LibRaw 0.22.2](https://www.libraw.org/download) comes from its original upstream.
-The source SHA256 is `de86b035655accff8d4010f1a221fdf50d353cb7b1422ba26f14a0db92612cfa`.
+[LibRaw 0.22.3](https://www.libraw.org/download) comes from its original upstream.
+The source SHA256 is `789f3c33466210a1a0907f747a97c715d21bbf4af712f257fcbbd90111b227e4`.
 The existing LGPLv2.1/CDDL alternatives, dependencies, examples policy,
 package list and `libraw_r.pc` patch remain unchanged.
 The verified 0.22.1 and 0.22.2 sources both select Libtool version `25:0:0`.
@@ -108,7 +105,7 @@ branch. Full package and target execution remain separate gates.
 
 ```sh
 python3.15 profiles/common-graphics/tests/freeimage-jpeg/check-source.py \
-  /absolute/FreeImage-3.19.25-linux-source.tar.gz \
+  /absolute/FreeImage-3.19.33-linux-source.tar.gz \
   /absolute/native-g++ /absolute/native-codec-prefix /absolute/new-check
 ```
 
@@ -135,7 +132,7 @@ complete FreeImage memory acceptance.
 
 ```sh
 ruby profiles/common-graphics/tests/freeimage-pixels/check-source.rb \
-  /absolute/FreeImage-3.19.25-linux-source.tar.gz \
+  /absolute/FreeImage-3.19.33-linux-source.tar.gz \
   /absolute/native-g++ /absolute/new-pixel-check
 ```
 
@@ -167,7 +164,7 @@ Run this bounded native check with an actual installed Imath provider:
 ```sh
 CXX='/absolute/native-g++ -B/absolute/native-binutils/' \
   ruby profiles/common-graphics/tests/freeimage-half.rb \
-  /absolute/FreeImage-3.19.25-linux-source.tar.gz \
+  /absolute/FreeImage-3.19.33-linux-source.tar.gz \
   /absolute/imath-prefix /absolute/new-check-directory
 ```
 

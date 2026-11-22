@@ -2,9 +2,9 @@ Origin: EmberBSD (AI-assisted), common Unix ABI and current system codecs.
 
 --- TestAPI/CMakeLists.txt.orig
 +++ TestAPI/CMakeLists.txt
-@@ -179,3 +179,11 @@
-     endif()
-     add_test(NAME UnicodeMultiPageTest COMMAND UnicodeMultiPageTest)
+@@ -390,3 +390,11 @@
+         endif()
+     endforeach()
  endif()
 +
 +# Tests use assert for their numerical and decoder oracles, including Release.
