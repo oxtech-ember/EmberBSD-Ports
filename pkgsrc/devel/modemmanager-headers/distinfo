@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (ModemManager-1.22.0.tar.gz) = 9ca843d9fb504f84fff4187132e981eee78d86c075cf1137fc1b5be754e0f217
-SHA512 (ModemManager-1.22.0.tar.gz) = f612ec26fc42943abc546fb246619b03d1a8d4f925edfb78231ffa9ee5f559d701e547fd8152f77d3aee16a78b397464abb948c72764ac2d2846edf07d8c0fcc
-Size (ModemManager-1.22.0.tar.gz) = 2004387 bytes
+BLAKE2s (ModemManager-1.24.2.tar.gz) = 5e34b045df1d3e70ad343eac981170d1050a9d4842854963b712f28b93169a55
+SHA512 (ModemManager-1.24.2.tar.gz) = 341a795e6aa4f76f606a57921511233eb68510bea0bc6967449e2d2bb5949106c7d17ae964683797734c1cd688ac15ad076e08cc1d54aee22a16d23a9ca61510
+Size (ModemManager-1.24.2.tar.gz) = 2120956 bytes
