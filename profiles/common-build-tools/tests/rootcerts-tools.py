@@ -12,7 +12,7 @@ import shlex
 import subprocess
 
 
-VARIABLES = ['PKG_FAIL_REASON', 'USE_TOOLS', 'TOOL_DEPENDS', 'DEPENDS',
+VARIABLES = ['OPSYS', 'PKG_FAIL_REASON', 'USE_TOOLS', 'TOOL_DEPENDS', 'DEPENDS',
              'AWK', 'SH', 'TOOLS_PATH.openssl', 'SUBST_VARS.paths',
              'SUBST_SED.paths', '_CERT_BUILD_ENV', 'USE_BUILTIN.openssl']
 BASE = {'AWK': '/usr/bin/awk', 'ECHO': '/bin/echo', 'EXPR': '/bin/expr',
@@ -64,8 +64,15 @@ def main():
     print('PASS: distinct native generator and target OpenSSL dependency/path')
     native = query(args, args.pkgsrc, 'native', 'USE_CROSS_COMPILE=no')
     original = query(args, args.baseline_pkgsrc, 'native-baseline', 'USE_CROSS_COMPILE=no')
-    assert native == original, 'Native tool selection changed'
-    print('PASS: native tool/dependency/substitution behavior is unchanged')
+    if native['OPSYS'] == 'Darwin':
+        for key in ('SH', 'AWK', 'TOOLS_PATH.openssl'):
+            assert native[key] == original[key], (key, native[key], original[key])
+        for path in (*BASE.values(), '/bin/sh'):
+            assert path in native['SUBST_SED.paths'], path
+        assert native['_CERT_BUILD_ENV'] and 'OPENSSL=' in native['_CERT_BUILD_ENV']
+    else:
+        assert native == original, 'Native tool selection changed'
+    print('PASS: native generator and installed script tool selection')
     for name, options in [
         ('arbitrary-tool', ['USE_TOOLS=sed:run']),
         ('unknown-version', ['OS_VERSION=12.0', 'OPSYS_VERSION=120000']),

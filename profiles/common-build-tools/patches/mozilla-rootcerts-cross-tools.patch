@@ -2,15 +2,7 @@
 # Origin: EmberBSD (AI-assisted), native generators and NetBSD 11 base contract.
 --- a/security/mozilla-rootcerts/Makefile
 +++ b/security/mozilla-rootcerts/Makefile
-@@ -4,6 +4,7 @@
- # and bump its version when updating this package.
- 
- DISTNAME=	mozilla-rootcerts-1.1.${CERTDATA_DATE}
-+PKGREVISION=	2
- CATEGORIES=	security
- MASTER_SITES=	-https://raw.githubusercontent.com/nss-dev/nss/${CERTDATA_COMMIT}/lib/ckfw/builtins/certdata.txt
- EXTRACT_SUFX=	# empty
-@@ -49,6 +50,35 @@
+@@ -50,6 +50,44 @@
  SUBST_VARS.paths=	AWK DATADIR ECHO EXPR LN LS MKDIR PREFIX RM SH SSLDIR
  SUBST_SED.paths=	-e 's,@OPENSSL@,${TOOLS_PATH.openssl},g'
  
@@ -27,6 +19,15 @@
 +USE_TOOLS+= awk echo expr ln ls rm mkdir
 +TOOL_DEPENDS+= openssl>=3.6.5:../../security/openssl
 +_CERT_HOST_OPENSSL= ${TOOLBASE}/bin/openssl
++_CERT_BASE_TOOLS= yes
++.elif ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++# The installed script uses the shell and utilities supplied by macOS.
++# The SDK selects the build tools that extract the certificate data.
++_CERT_BASE_TOOLS= yes
++_CERT_HOST_OPENSSL= ${TOOLS_PATH.openssl}
++.endif
++
++.if defined(_CERT_BASE_TOOLS)
 +# Target runtime paths are separate from host paths used for extraction.
 +SUBST_VARS.paths= DATADIR PREFIX SSLDIR
 +SUBST_SED.paths= -e 's,@AWK@,/usr/bin/awk,g' \
@@ -46,7 +47,7 @@
  INSTALLATION_DIRS=	sbin ${DATADIR} share/doc/${PKGBASE}
  
  do-extract:
-@@ -58,7 +88,7 @@
+@@ -59,7 +97,7 @@
  do-build:
  	${MKDIR} ${WRKSRC}/certs
  	cd ${WRKSRC}/certs && \

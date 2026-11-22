@@ -19,10 +19,10 @@ USE_TOOLS=	awk:run echo:run expr:run ln:run ls:run openssl:run rm:run mkdir:run
 # This must be kept in sync with security/mozilla-rootcerts-openssl
 # https://hg-edge.mozilla.org/mozilla-central/log/tip/security/nss/lib/ckfw/builtins/certdata.txt
 # 'created' date
-# NSS 3.132 release includes this certdata revision.
-CERTDATA_DATE=		20261020
+# NSS 3.134 release includes this certdata revision.
+CERTDATA_DATE=		20261113
 # 'git commit hash'
-CERTDATA_COMMIT=	0a2b0c75fa036930d98331b721c0780693a3e17a
+CERTDATA_COMMIT=	8c60e757c30b1b239bae46532b4f6d4ebb1e1cad
 CERTDATA=		certdata-${CERTDATA_DATE}.txt
 
 WRKSRC=		${WRKDIR}

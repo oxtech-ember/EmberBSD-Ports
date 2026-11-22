@@ -10,7 +10,9 @@ explicit roles. Native tools extract the pinned certificate data on the build
 host. The installed script uses the NetBSD 11 full-base runtime contract.
 The recipe does not change the generic `USE_TOOLS+=tool:run` refusal rules.
 Other tools, targets and missing packaged Bash/Perl runtimes remain checked.
-Native builds retain their original tool and substitution behavior.
+On Darwin, the installed script uses the shell and standard utilities from macOS.
+The build uses the selected SDK awk and OpenSSL tools. Other native hosts keep
+their configured tools.
 
 The build needs host awk and OpenSSL 3.6.5 from the ordinary pkgsrc host-tool
 dependency. It passes those tools through the upstream script's `AWK` and

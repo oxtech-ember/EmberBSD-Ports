@@ -58,11 +58,11 @@ class PrefixTests(unittest.TestCase):
         self.assertIn('security/mozilla-rootcerts', replaces)
         self.assertTrue((UPSTREAM / RECIPE).is_file())
         self.assertNotIn('security/mozilla-rootcerts-openssl', replaces)
-        self.assertIn('mozilla-rootcerts>=1.1.20261020:', result[RECIPE])
+        self.assertIn('mozilla-rootcerts>=1.1.20261113:', result[RECIPE])
 
     def test_foundation_selects_trust_in_final_prefix(self):
         policy = (ROOT / 'profiles/development-toolchain/darwin-bootstrap.mk.conf').read_text()
-        self.assertIn('BOOTSTRAP_DEPENDS+= mozilla-rootcerts-openssl>=2.24nb1:../../security/mozilla-rootcerts-openssl', policy)
+        self.assertIn('BOOTSTRAP_DEPENDS+= mozilla-rootcerts-openssl>=2.28:../../security/mozilla-rootcerts-openssl', policy)
         self.assertRegex(policy, r'(?m)^PREFER.openssl= pkgsrc$')
         self.assertRegex(policy, r'(?m)^PKG_SYSCONFBASEDIR= \$\{LOCALBASE\}/etc$')
 
