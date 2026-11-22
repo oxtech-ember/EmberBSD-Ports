@@ -8,4 +8,6 @@ SHA1 (patch-KF6DocToolsConfig.cmake.in) = 5aed6ee22b8b8e1605183f496640cf57ca8507
 SHA1 (patch-config-kdoctools.h.cmake) = d28f8a6cd22b4efb40aad08574114890074f3886
 SHA1 (patch-src_xslt.cpp) = 9a106f1114c49615a22291086f469f4f8615fafe
 SHA1 (patch-src_CMakeLists.txt) = b86b716a5f5800b2eeec873272551f796699c89a
-SHA1 (patch-src_meinproc.cpp) = 9a1d3f4b3fc9a5b3d97cf24657f29e27a4cd67b3
+SHA1 (patch-src_meinproc.cpp) = 4cad6896c824e04d04693050f8bd22800d281d9c
+SHA1 (patch-src_meinproc__common.cpp) = 8258e3793480e5b950b0e30aa89a824543f04021
+SHA1 (patch-src_meinproc__common.h) = 96aaf2779a8258994e9858e65021365d4d70e920

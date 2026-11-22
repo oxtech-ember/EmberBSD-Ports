@@ -6,6 +6,7 @@
 # used by devel/kf6-kdoctools-generators/Makefile
 
 DISTNAME=	kdoctools-${KF6VER}
+PKGREVISION=	1
 CATEGORIES=	devel
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -17,7 +18,6 @@ PATCHDIR=	${EMBERBSD_KDOCTOOLS_PKGDIR}/patches
 
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-PKGREVISION=	1
 CMAKE_CONFIGURE_ARGS+=	-DRELOCATABLE_DOCBOOK_FILES=ON
 CMAKE_CONFIGURE_ARGS+=	-DKDE_SKIP_RPATH_SETTINGS=ON
 .endif

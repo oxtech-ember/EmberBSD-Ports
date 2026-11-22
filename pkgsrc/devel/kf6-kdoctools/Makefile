@@ -9,7 +9,6 @@ COMMENT=	Documentation generation from docbook
 .include "cross-tools.mk"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-PKGREVISION=	1
 CMAKE_CONFIGURE_ARGS+= -DRELOCATABLE_DOCBOOK_FILES=ON
 CMAKE_CONFIGURE_ARGS+= -DLIBXML2_XMLLINT_EXECUTABLE=${TOOLBASE:Q}/bin/xmllint
 .endif

@@ -1,7 +1,7 @@
 $NetBSD$
 
 Origin: EmberBSD contributors (AI-assisted).
-Resolve data and tools within the selected installation during relocation.
+Run the selected XML validator with its original arguments and exit status.
 
 --- src/meinproc.cpp.orig
 +++ src/meinproc.cpp
@@ -16,3 +16,14 @@ Resolve data and tools within the selected installation during relocation.
          exe = QStringLiteral(XMLLINT);
  #endif
          if (!QFileInfo(exe).isExecutable()) {
+@@ -125,8 +127,8 @@
+             break;
+         case CheckNoXmllint:
+             DIE("Could not find xmllint");
+-        case CheckNoOut:
+-            DIE("`xmllint --noout` outputted text");
++        case CheckFailed:
++            DIE("xmllint validation failed");
+         }
+     }
+ 
