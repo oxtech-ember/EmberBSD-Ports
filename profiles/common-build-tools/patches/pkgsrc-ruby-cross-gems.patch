@@ -64,23 +64,31 @@ against the target Ruby configuration and stage generated executables.
  	${RUN} cd ${WRKSRC} && rm -f ${GEM_NAME}.gem
  	${RUN} cd ${WRKSRC} && find . -name ${GEM_NAME}.gem -print | \
  	while read file; do \
-@@ -302,6 +302,11 @@
+@@ -302,6 +302,12 @@
  _RUBYGEM_OPTIONS+=	--install-dir ${PREFIX}/${GEM_HOME}
  _RUBYGEM_OPTIONS+=	${RUBYGEM_INSTALL_ROOT_OPTION}
  _RUBYGEM_OPTIONS+=	--ignore-dependencies
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +_RUBYGEM_OPTIONS+=	--target-rbconfig ${CROSS_DESTDIR:Q}${PREFIX:Q}/${RUBY_ARCHLIB}/rbconfig.rb
 +# RubyGems prepends --install-root for the gems and uses --bindir verbatim.
-+_RUBYGEM_OPTIONS+=	--bindir ${RUBYGEM_INSTALL_ROOT:Q}${PREFIX:Q}/bin --env-shebang
++_RUBYGEM_OPTIONS+=	--bindir ${RUBYGEM_INSTALL_ROOT:Q}${PREFIX:Q}/bin
++_RUBYGEM_INSTALL_ENV=	GEMRC=${WRKDIR:Q}/gem-target.yml
 +.endif
  _RUBYGEM_OPTIONS+=	--local ${WRKSRC}/${GEM_NAME}.gem
  .if !empty(RUBYGEM_VERBOSE:M[Yy][Ee][Ss])
  _RUBYGEM_OPTIONS+=	-V
-@@ -325,7 +330,12 @@
+@@ -324,8 +330,18 @@
+ .PHONY: _gem-build-install-root
  _gem-build-install-root:
  	@${STEP_MSG} "Installing gem into installation root"
- 	${RUN} ${SETENV} ${MAKE_ENV} ${RUBYGEM_ENV} \
+-	${RUN} ${SETENV} ${MAKE_ENV} ${RUBYGEM_ENV} \
 -		${RUBYGEM} install --backtrace ${RUBYGEM_OPTIONS} ${_RUBYGEM_OPTIONS}
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++	${RUN} ${_RUBYGEM_BUILD_RUBY:Q} -ryaml -e \
++	    'puts({ :custom_shebang => ARGV.fetch(0) }.to_yaml)' \
++	    ${PREFIX:Q}/bin/${RUBY_NAME:Q} > ${WRKDIR:Q}/gem-target.yml
++.endif
++	${RUN} ${SETENV} ${MAKE_ENV} ${RUBYGEM_ENV} ${_RUBYGEM_INSTALL_ENV} \
 +		${_RUBYGEM_BUILD_GEM} install --backtrace ${RUBYGEM_OPTIONS} ${_RUBYGEM_OPTIONS}
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +	${RUN} cd ${RUBYGEM_INSTALL_ROOT:Q}${PREFIX:Q} && \
