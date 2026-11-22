@@ -3,7 +3,9 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:12 markd Exp $
 BLAKE2s (kdoctools-6.32.0.tar.xz) = 7f9395c12e97ed6bec6234ca8db0174cd2c9533d1212d33fd78742ae2de1dd5e
 SHA512 (kdoctools-6.32.0.tar.xz) = 8d0f5ebbd8c141737efbf13eada4b2050870ed3a814634599cc997885a9f3b27d11307ba82ede9dd97025f9d6e659c057494d14f5fa68c3384e783be80b5091c
 Size (kdoctools-6.32.0.tar.xz) = 463284 bytes
-SHA1 (patch-CMakeLists.txt) = cb1aa1d16e8260b8dbe2df9fdc14997e97b42923
+SHA1 (patch-CMakeLists.txt) = e69643fb266e4e65a246f5ead84d259f21c6783c
 SHA1 (patch-KF6DocToolsConfig.cmake.in) = 5aed6ee22b8b8e1605183f496640cf57ca850751
-SHA1 (patch-config-kdoctools.h.cmake) = 0e38a2ec1a79e028bf576ccacbf4c247e6360491
-SHA1 (patch-src_xslt.cpp) = 45a7589c68c23a98e445d4ab3b358e8664e44ec6
+SHA1 (patch-config-kdoctools.h.cmake) = d28f8a6cd22b4efb40aad08574114890074f3886
+SHA1 (patch-src_xslt.cpp) = 9a106f1114c49615a22291086f469f4f8615fafe
+SHA1 (patch-src_CMakeLists.txt) = 44e50b9c156a40fda57f53e854ca2c58eec200b5
+SHA1 (patch-src_meinproc.cpp) = 9a1d3f4b3fc9a5b3d97cf24657f29e27a4cd67b3

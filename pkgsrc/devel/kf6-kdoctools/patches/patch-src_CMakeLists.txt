@@ -1,0 +1,15 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Resolve data and tools within the selected installation during relocation.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -34,6 +34,7 @@
+ # needed by KIO, need to export it
+ add_library(KF6DocTools SHARED xslt.cpp xslt_kde.cpp ${kdoctoolslog_core_SRCS})
+ add_library(KF6::DocTools ALIAS KF6DocTools)
++target_compile_definitions(KF6DocTools PRIVATE KDOCTOOLS_SHARED_LIBRARY)
+ 
+ set_target_properties(KF6DocTools PROPERTIES
+     VERSION     ${KDOCTOOLS_VERSION}

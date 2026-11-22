@@ -1,18 +1,20 @@
 $NetBSD$
 
-Origin: EmberBSD (AI-assisted), not submitted upstream.
-Find the KDocTools data relative to the running executable as well,
-so tools from a relocated or selected prefix find their own data.
+Origin: EmberBSD contributors (AI-assisted).
+Resolve data and tools within the selected installation during relocation.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
-@@ -151,6 +151,9 @@
+@@ -147,6 +147,12 @@
    COMPONENT Devel
  )
  
 +file(RELATIVE_PATH KDOCTOOLS_BINDIR_TO_DATADIR_KF
 +    "${CMAKE_INSTALL_PREFIX}/${KDE_INSTALL_BINDIR}"
 +    "${CMAKE_INSTALL_PREFIX}/${KDE_INSTALL_DATADIR_KF}")
++file(RELATIVE_PATH KDOCTOOLS_LIBDIR_TO_DATADIR_KF
++    "${KDE_INSTALL_FULL_LIBDIR}"
++    "${KDE_INSTALL_FULL_DATADIR_KF}")
  configure_file(config-kdoctools.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config-kdoctools.h )
  
  install( FILES
