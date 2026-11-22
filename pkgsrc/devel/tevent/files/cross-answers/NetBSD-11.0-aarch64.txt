@@ -1,0 +1,19 @@
+# EmberBSD Waf cross answers 1
+# platform: NetBSD-11.0-aarch64
+# recipe: devel/tevent
+# package: tevent-0.17.2
+# answers-sha256: 64bc026a2c8dd56b6228147c7aeccd78c7570f239790733b14331fe8de491712
+Checking uname sysname type: "NetBSD"
+rpath library support: OK
+Checking getconf LFS_CFLAGS: NO
+Checking for large file support without additional flags: OK
+Checking correct behavior of strtoll: NO
+Checking for working strptime: OK
+Checking for C99 vsnprintf: "1"
+Checking for HAVE_SHARED_MMAP: OK
+Checking for HAVE_INCOHERENT_MMAP: NO
+Checking for HAVE_SECURE_MKSTEMP: OK
+Checking value of NSIG: "64"
+Checking value of _NSIG: "64"
+Checking value of SIGRTMAX: "63"
+Checking value of SIGRTMIN: "33"

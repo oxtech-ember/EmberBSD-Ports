@@ -205,6 +205,7 @@ devel/qt6-qt5compat
 devel/qt6-qttools
 devel/qt6-qtwayland
 devel/talloc
+devel/tevent
 devel/unittest-cpp
 devel/uthash
 geography/qt6-qtlocation

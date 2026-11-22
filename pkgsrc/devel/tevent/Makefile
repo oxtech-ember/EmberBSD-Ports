@@ -1,0 +1,53 @@
+# $NetBSD: Makefile,v 1.27 2026/08/10 16:46:08 adam Exp $
+
+DISTNAME=	tevent-0.17.2
+CATEGORIES=	devel
+MASTER_SITES=	https://www.samba.org/ftp/tevent/
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://tevent.samba.org/
+COMMENT=	Event system based on the talloc
+LICENSE=	gnu-gpl-v3 AND gnu-lgpl-v3
+
+TOOL_DEPENDS+=	libxslt-[0-9]*:../../textproc/libxslt
+TOOL_DEPENDS+=	docbook-xsl-[0-9]*:../../textproc/docbook-xsl
+
+CONFLICTS+=	samba<=4.9.4nb1
+
+USE_TOOLS+=		pkg-config
+HAS_CONFIGURE=		yes
+CONFIGURE_ARGS+=	--mandir=${PREFIX}/${PKGMANDIR}
+CONFIGURE_ARGS+=	--abi-check-disable
+CONFIGURE_ARGS+=	--disable-symbol-versions
+.if defined(MAKE_JOBS) && !empty(MAKE_JOBS) && !(defined(MAKE_JOBS_SAFE) && ${MAKE_JOBS_SAFE:U:tl} == no)
+CONFIGURE_ARGS+=	--jobs=${MAKE_JOBS}
+.else
+CONFIGURE_ARGS+=	--jobs=1
+.endif
+PKGCONFIG_OVERRIDE+=	tevent.pc.in
+TEST_TARGET=		test
+
+PY_PATCHPLIST=		yes
+REPLACE_TOOL_PYTHON+=	buildtools/bin/waf
+MAKE_FLAGS+=		WAF_BINARY=${TOOL_PYTHONBIN}\ ${WRKSRC}/buildtools/bin/waf
+
+SUBST_CLASSES+=		docbook
+SUBST_MESSAGE.docbook=	Fixing docbook URLs.
+SUBST_FILES.docbook+=	buildtools/wafsamba/samba_conftests.py
+SUBST_FILES.docbook+=	buildtools/wafsamba/wafsamba.py
+SUBST_STAGE.docbook=	pre-configure
+SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${TOOLBASE}/share/xsl/docbook,g'
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.include "../../devel/talloc/waf-cross.mk"
+.endif
+
+.include "../../devel/gettext-lib/buildlink3.mk"
+.include "../../devel/cmocka/buildlink3.mk"
+BUILDLINK_API_DEPENDS.talloc+=	talloc>=2.5.0
+.include "../../devel/talloc/buildlink3.mk"
+.include "../../lang/python/application.mk"
+.include "../../lang/python/extension.mk"
+.include "../../lang/python/tool.mk"
+.include "../../mk/bsd.pkg.mk"
