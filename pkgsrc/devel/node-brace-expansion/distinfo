@@ -1,6 +1,6 @@
 $NetBSD$
 
-BLAKE2s (brace-expansion-5.0.12.tgz) = e25900a87288c28a341413f54de3c359f6da643e0419d3a8e1e170f36cb56f33
-SHA512 (brace-expansion-5.0.12.tgz) = 628bd0debce168b308ac38cd0cc90d4b4d6d79af77aa11211b9c72f1febe47497e770dca8bee6c0a822823de368ae2d94c75a881692d830543854d3d88d12299
-Size (brace-expansion-5.0.12.tgz) = 12620 bytes
+BLAKE2s (brace-expansion-5.0.13.tgz) = 976ebc694d0fce62c77c03a96cb7a020645f5afd7a53b9b8d82698833ac59831
+SHA512 (brace-expansion-5.0.13.tgz) = 561ddd9856dce3065ea31eccf48ff42fd19f15df374aee3ec82724fce17d1a2fcffdd0079f4453ed7e0af51ee030d3210dc9370ef851e905ec9d07638e0c0dbd
+Size (brace-expansion-5.0.13.tgz) = 32333 bytes
 SHA1 (patch-package.json) = 08f08ea610901216a06f2395e062966232c7b874

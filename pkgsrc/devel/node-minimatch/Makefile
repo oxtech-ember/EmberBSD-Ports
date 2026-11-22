@@ -1,5 +1,5 @@
 # Origin: EmberBSD (AI-assisted); common upstream JavaScript module.
-DISTNAME= minimatch-11.0.2
+DISTNAME= minimatch-11.0.9
 PKGNAME= node-${DISTNAME}
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/minimatch/-/
@@ -10,6 +10,6 @@ COMMENT= Match glob patterns
 LICENSE= blue-oak-1.0.0
 JS_MODULE_NAME= minimatch
 JS_MODULE_DEPENDS+= brace-expansion=node-brace-expansion>=5.0.12:../../devel/node-brace-expansion
-JS_MODULE_DEPENDS+= @isaacs/nonrecursive-glob-match=node-nonrecursive-glob-match>=1.0.2:../../devel/node-nonrecursive-glob-match
+JS_MODULE_DEPENDS+= @isaacs/nonrecursive-glob-match=node-nonrecursive-glob-match>=1.1.0:../../devel/node-nonrecursive-glob-match
 .include "../../mk/emberbsd-javascript.mk"
 .include "../../mk/bsd.pkg.mk"

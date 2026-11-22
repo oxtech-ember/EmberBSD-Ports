@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (minimatch-11.0.2.tgz) = d7632ea4f2ce75ded7446e3c6e0233ceeee5b6e53f35e5ba118d116a5a48ed2f
-SHA512 (minimatch-11.0.2.tgz) = a564e0cf908dded8eac993522b6b5e3e54a6bbd230338d6af329fc52c76aab07bd4c81e1fbd744a4b2e3178b80a6c7cf100658ef5aad4a203607600f12bfb563
-Size (minimatch-11.0.2.tgz) = 100552 bytes
+BLAKE2s (minimatch-11.0.9.tgz) = 5f3960aae38e01ba707b43e0e7c3a7b7c310691b38506651460358395c5c29ab
+SHA512 (minimatch-11.0.9.tgz) = 2821647f28ea7ab3654acb6396120635720a64603fe8ee15e1196167e0ecafadb548f3f0d26ce5ca913d0fd64ea0f89579f1c80fe8fbfd7b8c325a9f0ff17ad1
+Size (minimatch-11.0.9.tgz) = 123285 bytes

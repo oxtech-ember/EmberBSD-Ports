@@ -1,5 +1,5 @@
 # Origin: EmberBSD (AI-assisted); common upstream JavaScript module.
-DISTNAME= brace-expansion-5.0.12
+DISTNAME= brace-expansion-5.0.13
 PKGNAME= node-${DISTNAME}
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/brace-expansion/-/
@@ -10,5 +10,6 @@ COMMENT= Expand brace expressions
 LICENSE= mit
 JS_MODULE_NAME= brace-expansion
 JS_MODULE_DEPENDS+= balanced-match=node-balanced-match>=5.0.0:../../devel/node-balanced-match
+JS_MODULE_PATCH_BACKUPS= package.json.orig
 .include "../../mk/emberbsd-javascript.mk"
 .include "../../mk/bsd.pkg.mk"
