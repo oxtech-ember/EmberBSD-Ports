@@ -5,7 +5,7 @@ need the Blocks runtime and libdispatch (only ld64 uses them) without them.
 
 --- configure.orig
 +++ configure
-@@ -826,6 +826,7 @@
+@@ -811,6 +811,7 @@
  with_llvm_config
  with_libblocksruntime
  with_libdispatch
@@ -13,7 +13,7 @@ need the Blocks runtime and libdispatch (only ld64 uses them) without them.
  enable_xar_support
  with_libxar
  enable_tapi_support
-@@ -1494,6 +1495,9 @@
+@@ -1479,6 +1480,9 @@
                            provide on AIX, [default=aix].
    --disable-libtool-lock  avoid locking (might break parallel builds)
    --enable-lto-support    enable link time optimization support
@@ -23,7 +23,7 @@ need the Blocks runtime and libdispatch (only ld64 uses them) without them.
    --enable-xar-support    enable xar support
    --enable-tapi-support   enable tapi support
  
-@@ -3129,11 +3133,6 @@
+@@ -3037,11 +3041,6 @@
  
  CXXFLAGS="$CXXFLAGS -std=c++2a"
  
@@ -35,7 +35,7 @@ need the Blocks runtime and libdispatch (only ld64 uses them) without them.
  
  CWARNINGS=""
  CXXWARNINGS=""
-@@ -20475,6 +20474,20 @@
+@@ -20415,6 +20414,20 @@
  
  LDFLAGS="$LDFLAGS $LTO_RPATH"
  
@@ -56,12 +56,12 @@ need the Blocks runtime and libdispatch (only ld64 uses them) without them.
  ### Check for Blocks Runtime library ###
  
  
-@@ -20791,6 +20804,8 @@
-   LDFLAGS=$ORIGLDFLAGS
- fi
+@@ -20729,6 +20742,8 @@
  
+ if test "x$isdarwin" != "xyes"; then
+   LDFLAGS=$ORIGLDFLAGS
 +fi
 +
- ### Check for libfts (musl) ###
+ fi
  
- { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for fts_open in -lfts" >&5
+ ### Check for libfts (musl) ###

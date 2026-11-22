@@ -1,12 +1,12 @@
 # $NetBSD$
 # Origin: Apple cctools via the cctools-port project.
 
-DISTNAME= cctools-port-1030.6.3
-PKGNAME= cctools-codesign-allocate-1030.6.3
+DISTNAME= cctools-port-1035.1.102
+PKGNAME= cctools-codesign-allocate-1035.1.102
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=tpoechtrager/}
 GITHUB_PROJECT= cctools-port
-GITHUB_TAG= 904de2a71d4da6a9b30d2efaf912a10ddc7d9ddb
+GITHUB_TAG= ef969083aecf77dee1814d6961a06b88af23edef
 WRKSRC= ${WRKDIR}/cctools-port-${GITHUB_TAG}/cctools
 
 MAINTAINER= pkgsrc-users@NetBSD.org
