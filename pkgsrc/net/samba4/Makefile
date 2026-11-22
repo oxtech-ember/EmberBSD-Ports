@@ -1,7 +1,8 @@
 # $NetBSD: Makefile,v 1.223 2026/09/10 08:25:39 adam Exp $
 
 # XXX: Fails to build when mit-krb5 is installed.
-DISTNAME=	samba-4.25.1
+.include "../../net/samba4/Makefile.version"
+DISTNAME=	samba-${SAMBA_VERSION}
 CATEGORIES=	net
 MASTER_SITES=	https://download.samba.org/pub/samba/stable/
 
@@ -28,6 +29,8 @@ BUILD_DEFS+=		VARBASE
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../devel/talloc/waf-cross.mk"
+TOOL_DEPENDS+=	samba-heimdal-tools-${SAMBA_VERSION}{,nb[0-9]*}:../../security/samba-heimdal-tools
+MAKE_ENV+=	SAMBA_HOST_HEIMDAL_TOOLS=${TOOLBASE}/libexec/samba-heimdal-tools
 CONFIGURE_ENV+= SAMBA_TARGET_OS_RELEASE=${CROSS_OS_VERSION:Q}
 CONFIGURE_ENV+= SAMBA_TARGET_PYTHON_SITE=${CROSS_DESTDIR}${LOCALBASE}/${PYSITELIB}
 CONFIGURE_ARGS+=	--bundled-libraries=!talloc,!pytalloc-util,!tdb,!pytdb,!tevent,!pytevent

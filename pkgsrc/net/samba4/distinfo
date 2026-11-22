@@ -47,6 +47,7 @@ SHA1 (patch-source4_dsdb_samdb_ldb__modules_wscript__build__server) = 47f55ec16b
 SHA1 (patch-source4_scripting_wscript__build) = aac6894d49f5c17a28d26cb627be8cef1902bb1e
 SHA1 (patch-source4_torture_local_nss__tests.c) = c68325fdd4f65532de60c1a40e9cbe4173ea1711
 SHA1 (patch-third__party_heimdal__build_roken.h) = 59d5523676fe8c0315e969247f26b4ea2f900402
+SHA1 (patch-third__party_heimdal__build_wscript__build) = 0c7091a7b28eeb9336f59174c65205b0a03af103
 SHA1 (patch-third__party_heimdal_include_heim__threads.h) = 5ad13530cf9688e46f9ad487bb0fddab668c8276
 SHA1 (patch-third__party_heimdal_lib_hcrypto_evp.c) = 8e8e23198ef4afdc24a6930bd57aa5a898f1826f
 SHA1 (patch-third__party_heimdal_lib_roken_getauxval.h) = 23c9cf574d9f042c9f6dd1b0377c91045e755b5b

@@ -1,0 +1,24 @@
+$NetBSD$
+
+Use native matching Lorikeet generators during cross builds.
+
+--- third_party/heimdal_build/wscript_build.orig
++++ third_party/heimdal_build/wscript_build
+@@ -4,6 +4,17 @@
+ from samba_utils import SET_TARGET_TYPE
+ from samba_autoconf import CURRENT_CFLAGS
+ from samba_utils import LOAD_ENVIRONMENT, TO_LIST
++
++# Cross builds run the generators native to the build host. Their ASN.1
++# grammar and generated interfaces belong to this version of Samba's fork.
++tool_dir = os.environ.get('SAMBA_HOST_HEIMDAL_TOOLS')
++if bld.env.CROSS_COMPILE and tool_dir:
++    for name in ('asn1_compile', 'compile_et'):
++        tool = os.path.join(tool_dir, name)
++        if not os.path.isabs(tool) or not os.access(tool, os.X_OK):
++            bld.fatal('Missing host Heimdal generator: %s' % tool)
++        bld.env[name.upper()] = tool
++        bld.env['USING_SYSTEM_' + name.upper()] = True
+ 
+ def heimdal_path(p, absolute=False):
+     hpath = os.path.join("../heimdal", p)

@@ -1,0 +1,2 @@
+Native compile_et and asn1_compile from Samba's Lorikeet Heimdal fork
+generate C sources and headers for the matching Samba release.
