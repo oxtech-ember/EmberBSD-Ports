@@ -7,6 +7,13 @@ HOMEPAGE=	https://community.kde.org/Frameworks
 COMMENT=	Installation and loading of additional content as packages
 LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1
 
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	1
+CMAKE_CONFIGURE_ARGS+=	-DKDE_SKIP_RPATH_SETTINGS=ON
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH="@loader_path/../lib;@loader_path/../qt6/lib"
+.endif
+
 .include "../../meta-pkgs/kde/kf6.mk"
 
 .include "../../devel/kf6-kdoctools/tools.mk"
