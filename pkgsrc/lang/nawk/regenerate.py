@@ -20,7 +20,7 @@ def main():
     cli = argparse.ArgumentParser(description=__doc__)
     for name in ('source', 'byacc', 'cc', 'work'):
         cli.add_argument('--' + name, type=Path, required=True)
-    cli.add_argument('--ccflags', required=True, help='Selected native GCC16 compiler and linker flags')
+    cli.add_argument('--ccflags', required=True, help='Selected native C compiler and linker flags')
     cli.add_argument('--plan', action='store_true', help='Print argv only; do not run generators or write files')
     args = cli.parse_args()
     if not all(path.is_absolute() for path in (args.source, args.byacc, args.cc, args.work)):
@@ -52,8 +52,9 @@ def main():
                                  check=True, capture_output=True, text=True)
         record['tools'][role] = dict(sha256=sha(tool), version=(version.stdout + version.stderr).splitlines()[0])
     major = subprocess.check_output([str(args.cc), '-dumpversion'], env=env, cwd=args.work, text=True).strip()
-    if major.split('.')[0] != '16' or 'clang' in record['tools']['cc']['version'].lower():
-        raise ValueError('Select the admitted native GCC16 producer')
+    banner = record['tools']['cc']['version'].lower()
+    if 'clang version ' not in banner and major.split('.')[0] != '16':
+        raise ValueError('Select the native SDK Clang or GCC 16 producer')
     (args.work / 'record.json').write_text(json.dumps(record, indent=2) + '\n')
     for index, command in enumerate(commands):
         process = subprocess.run(command, cwd=args.work, env=env, capture_output=True)

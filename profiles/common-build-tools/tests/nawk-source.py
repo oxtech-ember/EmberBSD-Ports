@@ -14,8 +14,8 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parents[3]
-TAG = '20260426'
-ARCHIVE_SHA256 = '7ae5b9fc6a8149bc45ea0ba3ba434a69a16d1460d19f6d01b6f04cc885b8e02b'
+TAG = '20261106'
+ARCHIVE_SHA256 = '1b354fe6fa0089a959ef912085e7a064236d15a7d3c9e6ce86456c3b87d3f464'
 
 
 def require(value, message):
@@ -32,7 +32,6 @@ def split_memory_adaptation(raw):
     for before, after in (
         (b'origs = s = strdup(getsval(y));', b'origs = s = tostring(getsval(y));'),
         (b'fs = origfs = strdup(getsval(x));', b'fs = origfs = tostring(getsval(x));'),
-        (b'char *newt = (char *) malloc(strlen(s)); /* for building new string; reuse for each field */', b'char *newt = (char *) malloc(strlen(s) + 1); /* for building new string; reuse for each field */\n\t\tif (newt == NULL)\n\t\t\tFATAL("out of space in split");'),
     ):
         require(raw.count(before) == 1, "pinned split memory input changed")
         raw = raw.replace(before, after, 1)
@@ -59,7 +58,7 @@ def verify(recipe, archive, source_only):
     require(re.search(r'^LICENSE=\s*mit AND modified-bsd$', makefile, re.M), 'missing BSD adapter license metadata')
     manifest = json.loads((recipe / 'SOURCE.json').read_text())
     require(manifest['upstream']['tag'] == TAG and
-            manifest['upstream']['commit'] == '5739fd79bcfc75ba7526773d0cf634521f8aca3c', 'changed upstream pin')
+            manifest['upstream']['commit'] == '72e9b56caddb4a6f8d1405315a5183c26b8650a4', 'changed upstream pin')
     data = archive.read_bytes()
     require(sha(data) == ARCHIVE_SHA256 == manifest['upstream']['archive']['sha256'], 'archive checksum differs')
     require(len(data) == manifest['upstream']['archive']['size'], 'archive size differs')
@@ -172,7 +171,7 @@ def main():
         ('files/command-shell.h', b'#define nawk_popen popen', b'#define nawk_popen other_popen'),
         ('files/LICENSE', b'Lucent Technologies', b'Changed copyright'),
         ('files/Makefile', b'Lucent Technologies', b'Changed copyright'),
-        ('SOURCE.json', b'5739fd79bcfc75ba7526773d0cf634521f8aca3c', b'0' * 40),
+        ('SOURCE.json', b'72e9b56caddb4a6f8d1405315a5183c26b8650a4', b'0' * 40),
         ('Makefile', b'mit AND modified-bsd', b'mit'),
         ('Makefile', b'${CP} -R ${FILESDIR} ${WRKSRC}', b'${CP} -R /foreign/source ${WRKSRC}')):
         path = fixture / relative

@@ -2,12 +2,9 @@
 
 Origin: EmberBSD adaptations are AI-assisted. Original licenses remain intact.
 
-The shared `lang/nawk` recipe selects One True Awk snapshot 20260426,
-commit `5739fd79bcfc75ba7526773d0cf634521f8aca3c`.
-The project [does not normally make formal releases](https://github.com/onetrueawk/awk/blob/20260426/README.md).
-On 2026-10-24, the latest tag and upstream master name that exact commit.
-The [official comparison](https://github.com/onetrueawk/awk/compare/20260426...master)
-contains no later commits. No untagged fix or second snapshot is required.
+The shared `lang/nawk` recipe selects One True Awk snapshot 20261106,
+commit `72e9b56caddb4a6f8d1405315a5183c26b8650a4`.
+The project [does not normally make formal releases](https://github.com/onetrueawk/awk/blob/20261106/README.md).
 `pkgsrc/lang/nawk/SOURCE.json` pins the archive URL, SHA256, size and file map.
 The common source manifest pins the same bytes.
 
@@ -33,9 +30,9 @@ The adaptation also covers new hexadecimal and format-width checks.
 Wide-character operations keep their upstream behavior.
 
 The local `split()` memory fix uses the existing checked `tostring()` helper
-for source and separator copies. The CSV scratch allocation includes the NUL
-byte and reports allocation failure through `FATAL`. The source gate binds
-these exact changes to the pinned upstream bytes. Source checks do not
+for source and separator copies. Upstream now allocates the CSV scratch buffer
+with room for the NUL byte and reports allocation failure through `FATAL`.
+The source gate checks both against the pinned upstream bytes. Source checks do not
 establish allocator-failure, sanitizer or package runtime acceptance.
 Upstream source, licenses, FIXES, FIXES.1e and all test cases remain in the bundle.
 The testdir harness requires explicit `CC`, `awk` and `oldawk` selections.
@@ -139,18 +136,18 @@ It also checks command failures, signal status, pipe reopen, fields, arrays, and
 
 The upstream makefile defaults to Bison. The BSD bundled integration selects
 a pinned byacc to prepare `awkgram.tab.c` and `awkgram.tab.h`.
-A selected native GCC16 builds upstream `maketab.c`; that helper produces
+The selected native SDK Clang or GCC 16 builds upstream `maketab.c`; that helper produces
 `proctab.c`. Do not reuse tables from the preceding source snapshot.
 
 ```sh
 SELECTED_PYTHON -B pkgsrc/lang/nawk/regenerate.py \
     --source /absolute/Ports/pkgsrc/lang/nawk/files \
-    --byacc /absolute/selected/byacc --cc /absolute/selected/gcc16 \
+    --byacc /absolute/selected/byacc --cc /absolute/selected/clang \
     --ccflags 'SELECTED_NATIVE_FLAGS' --work /absolute/new-generator-work
 ```
 
 `--plan` prints argv without running generators or writing files.
-Select and admit the interpreter, generator and GCC16 producer through the
+Select and admit the interpreter, generator and native compiler through the
 SDK contract before an actual run. This helper does not qualify its tools.
 It writes exact argv and diagnostics to private evidence.
 Review and copy only the three generated source files and `GENERATED.json`
@@ -161,7 +158,7 @@ identities without private paths. Repeat generation must produce the same bytes.
 
 ```sh
 SELECTED_PYTHON -B profiles/common-build-tools/tests/nawk-source.py \
-    /absolute/distfiles/nawk-20260426.tar.gz /absolute/Ports/pkgsrc/lang/nawk \
+    /absolute/distfiles/nawk-20261106.tar.gz /absolute/Ports/pkgsrc/lang/nawk \
     /absolute/new-source-check --bmake /absolute/selected/bmake
 SELECTED_PYTHON -B profiles/common-build-tools/tests/nawk-metadata.py \
     --tools-mk /absolute/prepared-pkgsrc/mk/tools/replace.mk \

@@ -40,7 +40,7 @@ def main():
         rows = process.stdout.splitlines()
         dependency, route, flags = rows
         accepted = {}
-        for version in ('20250726', '20260426', '99999999'):
+        for version in ('20250726', '20261106', '99999999'):
             pattern = dependency.partition(':')[0]
             match = subprocess.run([str(args.pkg_admin), 'pmatch', pattern, 'nawk-' + version],
                 env=env, capture_output=True) if pattern else None
@@ -48,9 +48,9 @@ def main():
                 raise ValueError('pkgsrc matcher failed')
             accepted[version] = match is not None and match.returncode == 0
         if label == 'default':
-            valid = accepted == {'20250726': False, '20260426': True, '99999999': True} and route == '/selected/native/bin/nawk'
+            valid = accepted == {'20250726': False, '20261106': True, '99999999': True} and route == '/selected/native/bin/nawk'
         elif label == 'custom':
-            valid = accepted == {'20250726': False, '20260426': False, '99999999': True} and dependency == custom
+            valid = accepted == {'20250726': False, '20261106': False, '99999999': True} and dependency == custom
         elif label == 'self':
             valid = not dependency and not route and 'TOOLS_IGNORE.awk=' in flags
         else:

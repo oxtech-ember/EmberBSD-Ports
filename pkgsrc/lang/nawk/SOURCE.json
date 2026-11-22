@@ -2,13 +2,13 @@
   "schema": 1,
   "upstream": {
     "project": "https://github.com/onetrueawk/awk",
-    "tag": "20260426",
-    "commit": "5739fd79bcfc75ba7526773d0cf634521f8aca3c",
+    "tag": "20261106",
+    "commit": "72e9b56caddb4a6f8d1405315a5183c26b8650a4",
     "archive": {
-      "file": "nawk-20260426.tar.gz",
-      "url": "https://codeload.github.com/onetrueawk/awk/tar.gz/refs/tags/20260426",
-      "sha256": "7ae5b9fc6a8149bc45ea0ba3ba434a69a16d1460d19f6d01b6f04cc885b8e02b",
-      "size": 1846240
+      "file": "nawk-20261106.tar.gz",
+      "url": "https://codeload.github.com/onetrueawk/awk/tar.gz/refs/tags/20261106",
+      "sha256": "1b354fe6fa0089a959ef912085e7a064236d15a7d3c9e6ce86456c3b87d3f464",
+      "size": 1849485
     }
   },
   "files": {
@@ -28,7 +28,8 @@
     "FIXES.1e": "FIXES.1e",
     "REGRESS": "REGRESS",
     "README.md": "README",
-    "awk.1": "nawk.1"
+    "awk.1": "nawk.1",
+    "math.c": "math.c"
   },
   "adapted": [
     "lib.c",

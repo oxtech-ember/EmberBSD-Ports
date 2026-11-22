@@ -1,4 +1,4 @@
-/* original parser id follows */
+/* EmberBSD parser skeleton; original parser id follows. */
 /* yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93" */
 /* (use YYMAJOR/YYMINOR for ifdefs dependent on parser version) */
 
@@ -3643,41 +3643,41 @@ static YYSTACKDATA yystack;
 #if YYBTYACC
 
 /* Current parser state */
-static YYParseState *yyps = NULL;
+static YYParseState *yyps = 0;
 
 /* yypath != NULL: do the full parse, starting at *yypath parser state. */
-static YYParseState *yypath = NULL;
+static YYParseState *yypath = 0;
 
 /* Base of the lexical value queue */
-static YYSTYPE *yylvals = NULL;
+static YYSTYPE *yylvals = 0;
 
 /* Current position at lexical value queue */
-static YYSTYPE *yylvp = NULL;
+static YYSTYPE *yylvp = 0;
 
 /* End position of lexical value queue */
-static YYSTYPE *yylve = NULL;
+static YYSTYPE *yylve = 0;
 
 /* The last allocated position at the lexical value queue */
-static YYSTYPE *yylvlim = NULL;
+static YYSTYPE *yylvlim = 0;
 
 #if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
 /* Base of the lexical position queue */
-static YYLTYPE *yylpsns = NULL;
+static YYLTYPE *yylpsns = 0;
 
 /* Current position at lexical position queue */
-static YYLTYPE *yylpp = NULL;
+static YYLTYPE *yylpp = 0;
 
 /* End position of lexical position queue */
-static YYLTYPE *yylpe = NULL;
+static YYLTYPE *yylpe = 0;
 
 /* The last allocated position at the lexical position queue */
-static YYLTYPE *yylplim = NULL;
+static YYLTYPE *yylplim = 0;
 #endif
 
 /* Current position at lexical token queue */
-static YYINT  *yylexp = NULL;
+static YYINT  *yylexp = 0;
 
-static YYINT  *yylexemes = NULL;
+static YYINT  *yylexemes = 0;
 #endif /* YYBTYACC */
 #line 457 "awkgram.y"
 
@@ -3756,14 +3756,14 @@ static int yygrowstack(YYSTACKDATA *data)
 
     i = (int) (data->s_mark - data->s_base);
     newss = (YYINT *)realloc(data->s_base, newsize * sizeof(*newss));
-    if (newss == NULL)
+    if (newss == 0)
         return YYENOMEM;
 
     data->s_base = newss;
     data->s_mark = newss + i;
 
     newvs = (YYSTYPE *)realloc(data->l_base, newsize * sizeof(*newvs));
-    if (newvs == NULL)
+    if (newvs == 0)
         return YYENOMEM;
 
     data->l_base = newvs;
@@ -3771,7 +3771,7 @@ static int yygrowstack(YYSTACKDATA *data)
 
 #if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
     newps = (YYLTYPE *)realloc(data->p_base, newsize * sizeof(*newps));
-    if (newps == NULL)
+    if (newps == 0)
         return YYENOMEM;
 
     data->p_base = newps;
@@ -3809,6 +3809,7 @@ yyNewState(unsigned size)
     YYParseState *p = (YYParseState *) malloc(sizeof(YYParseState));
     if (p == NULL) return NULL;
 
+    memset(&p->yystack, 0, sizeof(p->yystack));
     p->yystack.stacksize = size;
     if (size == 0)
     {
@@ -3820,17 +3821,26 @@ yyNewState(unsigned size)
         return p;
     }
     p->yystack.s_base    = (YYINT *) malloc(size * sizeof(YYINT));
-    if (p->yystack.s_base == NULL) return NULL;
+    if (p->yystack.s_base == NULL) goto fail;
     p->yystack.l_base    = (YYSTYPE *) malloc(size * sizeof(YYSTYPE));
-    if (p->yystack.l_base == NULL) return NULL;
+    if (p->yystack.l_base == NULL) goto fail;
     memset(p->yystack.l_base, 0, size * sizeof(YYSTYPE));
 #if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
     p->yystack.p_base    = (YYLTYPE *) malloc(size * sizeof(YYLTYPE));
-    if (p->yystack.p_base == NULL) return NULL;
+    if (p->yystack.p_base == NULL) goto fail;
     memset(p->yystack.p_base, 0, size * sizeof(YYLTYPE));
 #endif
 
     return p;
+
+fail:
+    free(p->yystack.s_base);
+    free(p->yystack.l_base);
+#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
+    free(p->yystack.p_base);
+#endif
+    free(p);
+    return NULL;
 }
 
 static void
@@ -3865,7 +3875,7 @@ YYPARSE_DECL()
 #if YYDEBUG
     const char *yys;
 
-    if ((yys = getenv("YYDEBUG")) != NULL)
+    if ((yys = getenv("YYDEBUG")) != 0)
     {
         yyn = *yys;
         if (yyn >= '0' && yyn <= '9')
@@ -3878,20 +3888,21 @@ YYPARSE_DECL()
     memset(yyerror_loc_range, 0, sizeof(yyerror_loc_range));
 #endif
 
+#if YYPURE
+    memset(&yystack, 0, sizeof(yystack));
+#endif
+
 #if YYBTYACC
-    yyps = yyNewState(0); if (yyps == NULL) goto yyenomem;
-    yyps->save = NULL;
+    yyps = yyNewState(0); if (yyps == 0) goto yyenomem;
+    yyps->save = 0;
 #endif /* YYBTYACC */
     yym = 0;
     /* yyn is set below */
     yynerrs = 0;
+    (void)yynerrs; /* User actions may omit the error count. */
     yyerrflag = 0;
     yychar = YYEMPTY;
     yystate = 0;
-
-#if YYPURE
-    memset(&yystack, 0, sizeof(yystack));
-#endif
 
     if (yystack.s_base == NULL && yygrowstack(&yystack) == YYENOMEM) goto yyoverflow;
     yystack.s_mark = yystack.s_base;
@@ -3925,20 +3936,29 @@ yyloop:
             {   /* Enlarge lexical value queue */
                 size_t p = (size_t) (yylvp - yylvals);
                 size_t s = (size_t) (yylvlim - yylvals);
+                YYINT *new_lexemes;
+                YYSTYPE *new_vals;
+#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
+                YYLTYPE *new_psns;
+#endif
 
                 s += YYLVQUEUEGROWTH;
-                if ((yylexemes = (YYINT *)realloc(yylexemes, s * sizeof(YYINT))) == NULL) goto yyenomem;
-                if ((yylvals   = (YYSTYPE *)realloc(yylvals, s * sizeof(YYSTYPE))) == NULL) goto yyenomem;
-#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
-                if ((yylpsns   = (YYLTYPE *)realloc(yylpsns, s * sizeof(YYLTYPE))) == NULL) goto yyenomem;
-#endif
+                new_lexemes = (YYINT *)realloc(yylexemes, s * sizeof(YYINT));
+                if (new_lexemes == NULL) goto yyenomem;
+                yylexemes = new_lexemes;
+                yylexp = yylexemes + p;
+                new_vals = (YYSTYPE *)realloc(yylvals, s * sizeof(YYSTYPE));
+                if (new_vals == NULL) goto yyenomem;
+                yylvals = new_vals;
                 yylvp   = yylve = yylvals + p;
                 yylvlim = yylvals + s;
 #if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
+                new_psns = (YYLTYPE *)realloc(yylpsns, s * sizeof(YYLTYPE));
+                if (new_psns == NULL) goto yyenomem;
+                yylpsns = new_psns;
                 yylpp   = yylpe = yylpsns + p;
                 yylplim = yylpsns + s;
 #endif
-                yylexp  = yylexemes + p;
             }
             *yylexp = (YYINT) YYLEX;
             *yylvp++ = yylval;
@@ -4395,167 +4415,167 @@ case 1:
 #line 99 "awkgram.y"
 	{ if (errorflag==0)
 			winner = (Node *)stat3(PROGRAM, beginloc, yystack.l_mark[0].p, endloc); }
-#line 4399 "awkgram.tab.c"
+#line 4419 "awkgram.tab.c"
 break;
 case 2:
 #line 101 "awkgram.y"
 	{ yyclearin; bracecheck(); SYNTAX("bailing out"); }
-#line 4404 "awkgram.tab.c"
+#line 4424 "awkgram.tab.c"
 break;
 case 13:
 #line 125 "awkgram.y"
 	{inloop++;}
-#line 4409 "awkgram.tab.c"
+#line 4429 "awkgram.tab.c"
 break;
 case 14:
 #line 126 "awkgram.y"
 	{ --inloop; yyval.p = stat4(FOR, yystack.l_mark[-9].p, notnull(yystack.l_mark[-6].p), yystack.l_mark[-3].p, yystack.l_mark[0].p); }
-#line 4414 "awkgram.tab.c"
+#line 4434 "awkgram.tab.c"
 break;
 case 15:
 #line 127 "awkgram.y"
 	{inloop++;}
-#line 4419 "awkgram.tab.c"
+#line 4439 "awkgram.tab.c"
 break;
 case 16:
 #line 128 "awkgram.y"
 	{ --inloop; yyval.p = stat4(FOR, yystack.l_mark[-7].p, NIL, yystack.l_mark[-3].p, yystack.l_mark[0].p); }
-#line 4424 "awkgram.tab.c"
+#line 4444 "awkgram.tab.c"
 break;
 case 17:
 #line 129 "awkgram.y"
 	{inloop++;}
-#line 4429 "awkgram.tab.c"
+#line 4449 "awkgram.tab.c"
 break;
 case 18:
 #line 130 "awkgram.y"
 	{ --inloop; yyval.p = stat3(IN, yystack.l_mark[-5].p, makearr(yystack.l_mark[-3].p), yystack.l_mark[0].p); }
-#line 4434 "awkgram.tab.c"
+#line 4454 "awkgram.tab.c"
 break;
 case 19:
 #line 134 "awkgram.y"
 	{ setfname(yystack.l_mark[0].cp); }
-#line 4439 "awkgram.tab.c"
+#line 4459 "awkgram.tab.c"
 break;
 case 20:
 #line 135 "awkgram.y"
 	{ setfname(yystack.l_mark[0].cp); }
-#line 4444 "awkgram.tab.c"
+#line 4464 "awkgram.tab.c"
 break;
 case 21:
 #line 139 "awkgram.y"
 	{ yyval.p = notnull(yystack.l_mark[-1].p); }
-#line 4449 "awkgram.tab.c"
+#line 4469 "awkgram.tab.c"
 break;
 case 26:
 #line 151 "awkgram.y"
 	{ yyval.i = 0; }
-#line 4454 "awkgram.tab.c"
+#line 4474 "awkgram.tab.c"
 break;
 case 28:
 #line 156 "awkgram.y"
 	{ yyval.i = 0; }
-#line 4459 "awkgram.tab.c"
+#line 4479 "awkgram.tab.c"
 break;
 case 30:
 #line 162 "awkgram.y"
 	{ yyval.p = 0; }
-#line 4464 "awkgram.tab.c"
+#line 4484 "awkgram.tab.c"
 break;
 case 32:
 #line 167 "awkgram.y"
 	{ yyval.p = 0; }
-#line 4469 "awkgram.tab.c"
+#line 4489 "awkgram.tab.c"
 break;
 case 33:
 #line 168 "awkgram.y"
 	{ yyval.p = yystack.l_mark[-1].p; }
-#line 4474 "awkgram.tab.c"
+#line 4494 "awkgram.tab.c"
 break;
 case 34:
 #line 172 "awkgram.y"
 	{ yyval.p = notnull(yystack.l_mark[0].p); }
-#line 4479 "awkgram.tab.c"
+#line 4499 "awkgram.tab.c"
 break;
 case 35:
 #line 176 "awkgram.y"
 	{ yyval.p = stat2(PASTAT, yystack.l_mark[0].p, stat2(PRINT, rectonode(), NIL)); }
-#line 4484 "awkgram.tab.c"
+#line 4504 "awkgram.tab.c"
 break;
 case 36:
 #line 177 "awkgram.y"
 	{ yyval.p = stat2(PASTAT, yystack.l_mark[-3].p, yystack.l_mark[-1].p); }
-#line 4489 "awkgram.tab.c"
+#line 4509 "awkgram.tab.c"
 break;
 case 37:
 #line 178 "awkgram.y"
 	{ yyval.p = pa2stat(yystack.l_mark[-3].p, yystack.l_mark[0].p, stat2(PRINT, rectonode(), NIL)); }
-#line 4494 "awkgram.tab.c"
+#line 4514 "awkgram.tab.c"
 break;
 case 38:
 #line 179 "awkgram.y"
 	{ yyval.p = pa2stat(yystack.l_mark[-6].p, yystack.l_mark[-3].p, yystack.l_mark[-1].p); }
-#line 4499 "awkgram.tab.c"
+#line 4519 "awkgram.tab.c"
 break;
 case 39:
 #line 180 "awkgram.y"
 	{ yyval.p = stat2(PASTAT, NIL, yystack.l_mark[-1].p); }
-#line 4504 "awkgram.tab.c"
+#line 4524 "awkgram.tab.c"
 break;
 case 40:
 #line 182 "awkgram.y"
 	{ beginloc = linkum(beginloc, yystack.l_mark[-1].p); yyval.p = 0; }
-#line 4509 "awkgram.tab.c"
+#line 4529 "awkgram.tab.c"
 break;
 case 41:
 #line 184 "awkgram.y"
 	{ endloc = linkum(endloc, yystack.l_mark[-1].p); yyval.p = 0; }
-#line 4514 "awkgram.tab.c"
+#line 4534 "awkgram.tab.c"
 break;
 case 42:
 #line 185 "awkgram.y"
 	{infunc = true;}
-#line 4519 "awkgram.tab.c"
+#line 4539 "awkgram.tab.c"
 break;
 case 43:
 #line 186 "awkgram.y"
 	{ infunc = false; curfname=0; defn((Cell *)yystack.l_mark[-7].p, yystack.l_mark[-5].p, yystack.l_mark[-1].p); yyval.p = 0; }
-#line 4524 "awkgram.tab.c"
+#line 4544 "awkgram.tab.c"
 break;
 case 45:
 #line 191 "awkgram.y"
 	{ yyval.p = linkum(yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4529 "awkgram.tab.c"
+#line 4549 "awkgram.tab.c"
 break;
 case 47:
 #line 196 "awkgram.y"
 	{ yyval.p = linkum(yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4534 "awkgram.tab.c"
+#line 4554 "awkgram.tab.c"
 break;
 case 48:
 #line 200 "awkgram.y"
 	{ yyval.p = op2(yystack.l_mark[-1].i, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4539 "awkgram.tab.c"
+#line 4559 "awkgram.tab.c"
 break;
 case 49:
 #line 202 "awkgram.y"
 	{ yyval.p = op3(CONDEXPR, notnull(yystack.l_mark[-4].p), yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4544 "awkgram.tab.c"
+#line 4564 "awkgram.tab.c"
 break;
 case 50:
 #line 204 "awkgram.y"
 	{ yyval.p = op2(BOR, notnull(yystack.l_mark[-2].p), notnull(yystack.l_mark[0].p)); }
-#line 4549 "awkgram.tab.c"
+#line 4569 "awkgram.tab.c"
 break;
 case 51:
 #line 206 "awkgram.y"
 	{ yyval.p = op2(AND, notnull(yystack.l_mark[-2].p), notnull(yystack.l_mark[0].p)); }
-#line 4554 "awkgram.tab.c"
+#line 4574 "awkgram.tab.c"
 break;
 case 52:
 #line 207 "awkgram.y"
 	{ yyval.p = op3(yystack.l_mark[-1].i, NIL, yystack.l_mark[-2].p, (Node*)makedfa(yystack.l_mark[0].s, 0)); free(yystack.l_mark[0].s); }
-#line 4559 "awkgram.tab.c"
+#line 4579 "awkgram.tab.c"
 break;
 case 53:
 #line 209 "awkgram.y"
@@ -4564,77 +4584,77 @@ case 53:
 			free(yystack.l_mark[0].p);
 		  } else
 			yyval.p = op3(yystack.l_mark[-1].i, (Node *)1, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4568 "awkgram.tab.c"
+#line 4588 "awkgram.tab.c"
 break;
 case 54:
 #line 214 "awkgram.y"
 	{ yyval.p = op2(INTEST, yystack.l_mark[-2].p, makearr(yystack.l_mark[0].p)); }
-#line 4573 "awkgram.tab.c"
+#line 4593 "awkgram.tab.c"
 break;
 case 55:
 #line 215 "awkgram.y"
 	{ yyval.p = op2(INTEST, yystack.l_mark[-3].p, makearr(yystack.l_mark[0].p)); }
-#line 4578 "awkgram.tab.c"
+#line 4598 "awkgram.tab.c"
 break;
 case 56:
 #line 216 "awkgram.y"
 	{ yyval.p = op2(CAT, yystack.l_mark[-1].p, yystack.l_mark[0].p); }
-#line 4583 "awkgram.tab.c"
+#line 4603 "awkgram.tab.c"
 break;
 case 59:
 #line 222 "awkgram.y"
 	{ yyval.p = op2(yystack.l_mark[-1].i, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4588 "awkgram.tab.c"
+#line 4608 "awkgram.tab.c"
 break;
 case 60:
 #line 224 "awkgram.y"
 	{ yyval.p = op3(CONDEXPR, notnull(yystack.l_mark[-4].p), yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4593 "awkgram.tab.c"
+#line 4613 "awkgram.tab.c"
 break;
 case 61:
 #line 226 "awkgram.y"
 	{ yyval.p = op2(BOR, notnull(yystack.l_mark[-2].p), notnull(yystack.l_mark[0].p)); }
-#line 4598 "awkgram.tab.c"
+#line 4618 "awkgram.tab.c"
 break;
 case 62:
 #line 228 "awkgram.y"
 	{ yyval.p = op2(AND, notnull(yystack.l_mark[-2].p), notnull(yystack.l_mark[0].p)); }
-#line 4603 "awkgram.tab.c"
+#line 4623 "awkgram.tab.c"
 break;
 case 63:
 #line 229 "awkgram.y"
 	{ yyval.p = op2(yystack.l_mark[-1].i, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4608 "awkgram.tab.c"
+#line 4628 "awkgram.tab.c"
 break;
 case 64:
 #line 230 "awkgram.y"
 	{ yyval.p = op2(yystack.l_mark[-1].i, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4613 "awkgram.tab.c"
+#line 4633 "awkgram.tab.c"
 break;
 case 65:
 #line 231 "awkgram.y"
 	{ yyval.p = op2(yystack.l_mark[-1].i, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4618 "awkgram.tab.c"
+#line 4638 "awkgram.tab.c"
 break;
 case 66:
 #line 232 "awkgram.y"
 	{ yyval.p = op2(yystack.l_mark[-1].i, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4623 "awkgram.tab.c"
+#line 4643 "awkgram.tab.c"
 break;
 case 67:
 #line 233 "awkgram.y"
 	{ yyval.p = op2(yystack.l_mark[-1].i, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4628 "awkgram.tab.c"
+#line 4648 "awkgram.tab.c"
 break;
 case 68:
 #line 234 "awkgram.y"
 	{ yyval.p = op2(yystack.l_mark[-1].i, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4633 "awkgram.tab.c"
+#line 4653 "awkgram.tab.c"
 break;
 case 69:
 #line 235 "awkgram.y"
 	{ yyval.p = op3(yystack.l_mark[-1].i, NIL, yystack.l_mark[-2].p, (Node*)makedfa(yystack.l_mark[0].s, 0)); free(yystack.l_mark[0].s); }
-#line 4638 "awkgram.tab.c"
+#line 4658 "awkgram.tab.c"
 break;
 case 70:
 #line 237 "awkgram.y"
@@ -4643,369 +4663,369 @@ case 70:
 			free(yystack.l_mark[0].p);
 		  } else
 			yyval.p = op3(yystack.l_mark[-1].i, (Node *)1, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4647 "awkgram.tab.c"
+#line 4667 "awkgram.tab.c"
 break;
 case 71:
 #line 242 "awkgram.y"
 	{ yyval.p = op2(INTEST, yystack.l_mark[-2].p, makearr(yystack.l_mark[0].p)); }
-#line 4652 "awkgram.tab.c"
+#line 4672 "awkgram.tab.c"
 break;
 case 72:
 #line 243 "awkgram.y"
 	{ yyval.p = op2(INTEST, yystack.l_mark[-3].p, makearr(yystack.l_mark[0].p)); }
-#line 4657 "awkgram.tab.c"
+#line 4677 "awkgram.tab.c"
 break;
 case 73:
 #line 244 "awkgram.y"
 	{
 			if (safe) SYNTAX("cmd | getline is unsafe");
 			else yyval.p = op3(GETLINE, yystack.l_mark[0].p, itonp(yystack.l_mark[-2].i), yystack.l_mark[-3].p); }
-#line 4664 "awkgram.tab.c"
+#line 4684 "awkgram.tab.c"
 break;
 case 74:
 #line 247 "awkgram.y"
 	{
 			if (safe) SYNTAX("cmd | getline is unsafe");
 			else yyval.p = op3(GETLINE, (Node*)0, itonp(yystack.l_mark[-1].i), yystack.l_mark[-2].p); }
-#line 4671 "awkgram.tab.c"
+#line 4691 "awkgram.tab.c"
 break;
 case 75:
 #line 250 "awkgram.y"
 	{ yyval.p = op2(CAT, yystack.l_mark[-1].p, yystack.l_mark[0].p); }
-#line 4676 "awkgram.tab.c"
+#line 4696 "awkgram.tab.c"
 break;
 case 78:
 #line 256 "awkgram.y"
 	{ yyval.p = linkum(yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4681 "awkgram.tab.c"
+#line 4701 "awkgram.tab.c"
 break;
 case 79:
 #line 257 "awkgram.y"
 	{ yyval.p = linkum(yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4686 "awkgram.tab.c"
+#line 4706 "awkgram.tab.c"
 break;
 case 81:
 #line 262 "awkgram.y"
 	{ yyval.p = linkum(yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4691 "awkgram.tab.c"
+#line 4711 "awkgram.tab.c"
 break;
 case 82:
 #line 266 "awkgram.y"
 	{ yyval.p = rectonode(); }
-#line 4696 "awkgram.tab.c"
+#line 4716 "awkgram.tab.c"
 break;
 case 84:
 #line 268 "awkgram.y"
 	{ yyval.p = yystack.l_mark[-1].p; }
-#line 4701 "awkgram.tab.c"
+#line 4721 "awkgram.tab.c"
 break;
 case 93:
 #line 285 "awkgram.y"
 	{ yyval.p = op3(MATCH, NIL, rectonode(), (Node*)makedfa(yystack.l_mark[0].s, 0)); free(yystack.l_mark[0].s); }
-#line 4706 "awkgram.tab.c"
+#line 4726 "awkgram.tab.c"
 break;
 case 94:
 #line 286 "awkgram.y"
 	{ yyval.p = op1(NOT, notnull(yystack.l_mark[0].p)); }
-#line 4711 "awkgram.tab.c"
+#line 4731 "awkgram.tab.c"
 break;
 case 95:
 #line 290 "awkgram.y"
 	{startreg();}
-#line 4716 "awkgram.tab.c"
+#line 4736 "awkgram.tab.c"
 break;
 case 96:
 #line 290 "awkgram.y"
 	{ yyval.s = yystack.l_mark[-1].s; }
-#line 4721 "awkgram.tab.c"
+#line 4741 "awkgram.tab.c"
 break;
 case 99:
 #line 298 "awkgram.y"
 	{
 			if (safe) SYNTAX("print | is unsafe");
 			else yyval.p = stat3(yystack.l_mark[-3].i, yystack.l_mark[-2].p, itonp(yystack.l_mark[-1].i), yystack.l_mark[0].p); }
-#line 4728 "awkgram.tab.c"
+#line 4748 "awkgram.tab.c"
 break;
 case 100:
 #line 301 "awkgram.y"
 	{
 			if (safe) SYNTAX("print >> is unsafe");
 			else yyval.p = stat3(yystack.l_mark[-3].i, yystack.l_mark[-2].p, itonp(yystack.l_mark[-1].i), yystack.l_mark[0].p); }
-#line 4735 "awkgram.tab.c"
+#line 4755 "awkgram.tab.c"
 break;
 case 101:
 #line 304 "awkgram.y"
 	{
 			if (safe) SYNTAX("print > is unsafe");
 			else yyval.p = stat3(yystack.l_mark[-3].i, yystack.l_mark[-2].p, itonp(yystack.l_mark[-1].i), yystack.l_mark[0].p); }
-#line 4742 "awkgram.tab.c"
+#line 4762 "awkgram.tab.c"
 break;
 case 102:
 #line 307 "awkgram.y"
 	{ yyval.p = stat3(yystack.l_mark[-1].i, yystack.l_mark[0].p, NIL, NIL); }
-#line 4747 "awkgram.tab.c"
+#line 4767 "awkgram.tab.c"
 break;
 case 103:
 #line 308 "awkgram.y"
 	{ yyval.p = stat2(DELETE, makearr(yystack.l_mark[-3].p), yystack.l_mark[-1].p); }
-#line 4752 "awkgram.tab.c"
+#line 4772 "awkgram.tab.c"
 break;
 case 104:
 #line 309 "awkgram.y"
 	{ yyval.p = stat2(DELETE, makearr(yystack.l_mark[0].p), 0); }
-#line 4757 "awkgram.tab.c"
+#line 4777 "awkgram.tab.c"
 break;
 case 105:
 #line 310 "awkgram.y"
 	{ yyval.p = exptostat(yystack.l_mark[0].p); }
-#line 4762 "awkgram.tab.c"
+#line 4782 "awkgram.tab.c"
 break;
 case 106:
 #line 311 "awkgram.y"
 	{ yyclearin; SYNTAX("illegal statement"); }
-#line 4767 "awkgram.tab.c"
+#line 4787 "awkgram.tab.c"
 break;
 case 109:
 #line 320 "awkgram.y"
 	{ if (!inloop) SYNTAX("break illegal outside of loops");
 				  yyval.p = stat1(BREAK, NIL); }
-#line 4773 "awkgram.tab.c"
+#line 4793 "awkgram.tab.c"
 break;
 case 110:
 #line 322 "awkgram.y"
 	{  if (!inloop) SYNTAX("continue illegal outside of loops");
 				  yyval.p = stat1(CONTINUE, NIL); }
-#line 4779 "awkgram.tab.c"
+#line 4799 "awkgram.tab.c"
 break;
 case 111:
 #line 324 "awkgram.y"
 	{inloop++;}
-#line 4784 "awkgram.tab.c"
+#line 4804 "awkgram.tab.c"
 break;
 case 112:
 #line 324 "awkgram.y"
 	{--inloop;}
-#line 4789 "awkgram.tab.c"
+#line 4809 "awkgram.tab.c"
 break;
 case 113:
 #line 325 "awkgram.y"
 	{ yyval.p = stat2(DO, yystack.l_mark[-6].p, notnull(yystack.l_mark[-2].p)); }
-#line 4794 "awkgram.tab.c"
+#line 4814 "awkgram.tab.c"
 break;
 case 114:
 #line 326 "awkgram.y"
 	{ yyval.p = stat1(EXIT, yystack.l_mark[-1].p); }
-#line 4799 "awkgram.tab.c"
+#line 4819 "awkgram.tab.c"
 break;
 case 115:
 #line 327 "awkgram.y"
 	{ yyval.p = stat1(EXIT, NIL); }
-#line 4804 "awkgram.tab.c"
+#line 4824 "awkgram.tab.c"
 break;
 case 117:
 #line 329 "awkgram.y"
 	{ yyval.p = stat3(IF, yystack.l_mark[-3].p, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4809 "awkgram.tab.c"
+#line 4829 "awkgram.tab.c"
 break;
 case 118:
 #line 330 "awkgram.y"
 	{ yyval.p = stat3(IF, yystack.l_mark[-1].p, yystack.l_mark[0].p, NIL); }
-#line 4814 "awkgram.tab.c"
+#line 4834 "awkgram.tab.c"
 break;
 case 119:
 #line 331 "awkgram.y"
 	{ yyval.p = yystack.l_mark[-1].p; }
-#line 4819 "awkgram.tab.c"
+#line 4839 "awkgram.tab.c"
 break;
 case 120:
 #line 332 "awkgram.y"
 	{ if (infunc)
 				SYNTAX("next is illegal inside a function");
 			  yyval.p = stat1(NEXT, NIL); }
-#line 4826 "awkgram.tab.c"
+#line 4846 "awkgram.tab.c"
 break;
 case 121:
 #line 335 "awkgram.y"
 	{ if (infunc)
 				SYNTAX("nextfile is illegal inside a function");
 			  yyval.p = stat1(NEXTFILE, NIL); }
-#line 4833 "awkgram.tab.c"
+#line 4853 "awkgram.tab.c"
 break;
 case 122:
 #line 338 "awkgram.y"
 	{ yyval.p = stat1(RETURN, yystack.l_mark[-1].p); }
-#line 4838 "awkgram.tab.c"
+#line 4858 "awkgram.tab.c"
 break;
 case 123:
 #line 339 "awkgram.y"
 	{ yyval.p = stat1(RETURN, NIL); }
-#line 4843 "awkgram.tab.c"
+#line 4863 "awkgram.tab.c"
 break;
 case 125:
 #line 341 "awkgram.y"
 	{inloop++;}
-#line 4848 "awkgram.tab.c"
+#line 4868 "awkgram.tab.c"
 break;
 case 126:
 #line 341 "awkgram.y"
 	{ --inloop; yyval.p = stat2(WHILE, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4853 "awkgram.tab.c"
+#line 4873 "awkgram.tab.c"
 break;
 case 127:
 #line 342 "awkgram.y"
 	{ yyval.p = 0; }
-#line 4858 "awkgram.tab.c"
+#line 4878 "awkgram.tab.c"
 break;
 case 129:
 #line 347 "awkgram.y"
 	{ yyval.p = linkum(yystack.l_mark[-1].p, yystack.l_mark[0].p); }
-#line 4863 "awkgram.tab.c"
+#line 4883 "awkgram.tab.c"
 break;
 case 133:
 #line 356 "awkgram.y"
 	{ yyval.cp = catstr(yystack.l_mark[-1].cp, yystack.l_mark[0].cp); }
-#line 4868 "awkgram.tab.c"
+#line 4888 "awkgram.tab.c"
 break;
 case 134:
 #line 360 "awkgram.y"
 	{ yyval.p = op2(DIVEQ, yystack.l_mark[-3].p, yystack.l_mark[0].p); }
-#line 4873 "awkgram.tab.c"
+#line 4893 "awkgram.tab.c"
 break;
 case 135:
 #line 361 "awkgram.y"
 	{ yyval.p = op2(ADD, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4878 "awkgram.tab.c"
+#line 4898 "awkgram.tab.c"
 break;
 case 136:
 #line 362 "awkgram.y"
 	{ yyval.p = op2(MINUS, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4883 "awkgram.tab.c"
+#line 4903 "awkgram.tab.c"
 break;
 case 137:
 #line 363 "awkgram.y"
 	{ yyval.p = op2(MULT, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4888 "awkgram.tab.c"
+#line 4908 "awkgram.tab.c"
 break;
 case 138:
 #line 364 "awkgram.y"
 	{ yyval.p = op2(DIVIDE, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4893 "awkgram.tab.c"
+#line 4913 "awkgram.tab.c"
 break;
 case 139:
 #line 365 "awkgram.y"
 	{ yyval.p = op2(MOD, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4898 "awkgram.tab.c"
+#line 4918 "awkgram.tab.c"
 break;
 case 140:
 #line 366 "awkgram.y"
 	{ yyval.p = op2(POWER, yystack.l_mark[-2].p, yystack.l_mark[0].p); }
-#line 4903 "awkgram.tab.c"
+#line 4923 "awkgram.tab.c"
 break;
 case 141:
 #line 367 "awkgram.y"
 	{ yyval.p = op1(UMINUS, yystack.l_mark[0].p); }
-#line 4908 "awkgram.tab.c"
+#line 4928 "awkgram.tab.c"
 break;
 case 142:
 #line 368 "awkgram.y"
 	{ yyval.p = op1(UPLUS, yystack.l_mark[0].p); }
-#line 4913 "awkgram.tab.c"
+#line 4933 "awkgram.tab.c"
 break;
 case 143:
 #line 369 "awkgram.y"
 	{ yyval.p = op1(NOT, notnull(yystack.l_mark[0].p)); }
-#line 4918 "awkgram.tab.c"
+#line 4938 "awkgram.tab.c"
 break;
 case 144:
 #line 370 "awkgram.y"
 	{ yyval.p = op2(BLTIN, itonp(yystack.l_mark[-2].i), rectonode()); }
-#line 4923 "awkgram.tab.c"
+#line 4943 "awkgram.tab.c"
 break;
 case 145:
 #line 371 "awkgram.y"
 	{ yyval.p = op2(BLTIN, itonp(yystack.l_mark[-3].i), yystack.l_mark[-1].p); }
-#line 4928 "awkgram.tab.c"
+#line 4948 "awkgram.tab.c"
 break;
 case 146:
 #line 372 "awkgram.y"
 	{ yyval.p = op2(BLTIN, itonp(yystack.l_mark[0].i), rectonode()); }
-#line 4933 "awkgram.tab.c"
+#line 4953 "awkgram.tab.c"
 break;
 case 147:
 #line 373 "awkgram.y"
 	{ yyval.p = op2(CALL, celltonode(yystack.l_mark[-2].cp,CVAR), NIL); }
-#line 4938 "awkgram.tab.c"
+#line 4958 "awkgram.tab.c"
 break;
 case 148:
 #line 374 "awkgram.y"
 	{ yyval.p = op2(CALL, celltonode(yystack.l_mark[-3].cp,CVAR), yystack.l_mark[-1].p); }
-#line 4943 "awkgram.tab.c"
+#line 4963 "awkgram.tab.c"
 break;
 case 149:
 #line 375 "awkgram.y"
 	{ yyval.p = op1(CLOSE, yystack.l_mark[0].p); }
-#line 4948 "awkgram.tab.c"
+#line 4968 "awkgram.tab.c"
 break;
 case 150:
 #line 376 "awkgram.y"
 	{ yyval.p = op1(PREDECR, yystack.l_mark[0].p); }
-#line 4953 "awkgram.tab.c"
+#line 4973 "awkgram.tab.c"
 break;
 case 151:
 #line 377 "awkgram.y"
 	{ yyval.p = op1(PREINCR, yystack.l_mark[0].p); }
-#line 4958 "awkgram.tab.c"
+#line 4978 "awkgram.tab.c"
 break;
 case 152:
 #line 378 "awkgram.y"
 	{ yyval.p = op1(POSTDECR, yystack.l_mark[-1].p); }
-#line 4963 "awkgram.tab.c"
+#line 4983 "awkgram.tab.c"
 break;
 case 153:
 #line 379 "awkgram.y"
 	{ yyval.p = op1(POSTINCR, yystack.l_mark[-1].p); }
-#line 4968 "awkgram.tab.c"
+#line 4988 "awkgram.tab.c"
 break;
 case 154:
 #line 380 "awkgram.y"
 	{ yyval.p = op3(GETLINE, yystack.l_mark[-2].p, itonp(yystack.l_mark[-1].i), yystack.l_mark[0].p); }
-#line 4973 "awkgram.tab.c"
+#line 4993 "awkgram.tab.c"
 break;
 case 155:
 #line 381 "awkgram.y"
 	{ yyval.p = op3(GETLINE, NIL, itonp(yystack.l_mark[-1].i), yystack.l_mark[0].p); }
-#line 4978 "awkgram.tab.c"
+#line 4998 "awkgram.tab.c"
 break;
 case 156:
 #line 382 "awkgram.y"
 	{ yyval.p = op3(GETLINE, yystack.l_mark[0].p, NIL, NIL); }
-#line 4983 "awkgram.tab.c"
+#line 5003 "awkgram.tab.c"
 break;
 case 157:
 #line 383 "awkgram.y"
 	{ yyval.p = op3(GETLINE, NIL, NIL, NIL); }
-#line 4988 "awkgram.tab.c"
+#line 5008 "awkgram.tab.c"
 break;
 case 158:
 #line 385 "awkgram.y"
 	{ yyval.p = op2(INDEX, yystack.l_mark[-3].p, yystack.l_mark[-1].p); }
-#line 4993 "awkgram.tab.c"
+#line 5013 "awkgram.tab.c"
 break;
 case 159:
 #line 387 "awkgram.y"
 	{ SYNTAX("index() doesn't permit regular expressions");
 		  yyval.p = op2(INDEX, yystack.l_mark[-3].p, (Node*)yystack.l_mark[-1].s); }
-#line 4999 "awkgram.tab.c"
+#line 5019 "awkgram.tab.c"
 break;
 case 160:
 #line 389 "awkgram.y"
 	{ yyval.p = yystack.l_mark[-1].p; }
-#line 5004 "awkgram.tab.c"
+#line 5024 "awkgram.tab.c"
 break;
 case 161:
 #line 391 "awkgram.y"
 	{ yyval.p = op3(MATCHFCN, NIL, yystack.l_mark[-3].p, (Node*)makedfa(yystack.l_mark[-1].s, 1)); free(yystack.l_mark[-1].s); }
-#line 5009 "awkgram.tab.c"
+#line 5029 "awkgram.tab.c"
 break;
 case 162:
 #line 393 "awkgram.y"
@@ -5014,42 +5034,42 @@ case 162:
 			free(yystack.l_mark[-1].p);
 		  } else
 			yyval.p = op3(MATCHFCN, (Node *)1, yystack.l_mark[-3].p, yystack.l_mark[-1].p); }
-#line 5018 "awkgram.tab.c"
+#line 5038 "awkgram.tab.c"
 break;
 case 163:
 #line 398 "awkgram.y"
 	{ yyval.p = celltonode(yystack.l_mark[0].cp, CCON); }
-#line 5023 "awkgram.tab.c"
+#line 5043 "awkgram.tab.c"
 break;
 case 164:
 #line 400 "awkgram.y"
 	{ yyval.p = op4(SPLIT, yystack.l_mark[-5].p, makearr(yystack.l_mark[-3].p), yystack.l_mark[-1].p, (Node*)STRING); }
-#line 5028 "awkgram.tab.c"
+#line 5048 "awkgram.tab.c"
 break;
 case 165:
 #line 402 "awkgram.y"
 	{ yyval.p = op4(SPLIT, yystack.l_mark[-5].p, makearr(yystack.l_mark[-3].p), (Node*)makedfa(yystack.l_mark[-1].s, 1), (Node *)REGEXPR); free(yystack.l_mark[-1].s); }
-#line 5033 "awkgram.tab.c"
+#line 5053 "awkgram.tab.c"
 break;
 case 166:
 #line 404 "awkgram.y"
 	{ yyval.p = op4(SPLIT, yystack.l_mark[-3].p, makearr(yystack.l_mark[-1].p), NIL, (Node*)STRING); }
-#line 5038 "awkgram.tab.c"
+#line 5058 "awkgram.tab.c"
 break;
 case 167:
 #line 405 "awkgram.y"
 	{ yyval.p = op1(yystack.l_mark[-3].i, yystack.l_mark[-1].p); }
-#line 5043 "awkgram.tab.c"
+#line 5063 "awkgram.tab.c"
 break;
 case 168:
 #line 406 "awkgram.y"
 	{ yyval.p = celltonode(yystack.l_mark[0].cp, CCON); }
-#line 5048 "awkgram.tab.c"
+#line 5068 "awkgram.tab.c"
 break;
 case 169:
 #line 408 "awkgram.y"
 	{ yyval.p = op4(yystack.l_mark[-5].i, NIL, (Node*)makedfa(yystack.l_mark[-3].s, 1), yystack.l_mark[-1].p, rectonode()); free(yystack.l_mark[-3].s); }
-#line 5053 "awkgram.tab.c"
+#line 5073 "awkgram.tab.c"
 break;
 case 170:
 #line 410 "awkgram.y"
@@ -5058,12 +5078,12 @@ case 170:
 			free(yystack.l_mark[-3].p);
 		  } else
 			yyval.p = op4(yystack.l_mark[-5].i, (Node *)1, yystack.l_mark[-3].p, yystack.l_mark[-1].p, rectonode()); }
-#line 5062 "awkgram.tab.c"
+#line 5082 "awkgram.tab.c"
 break;
 case 171:
 #line 416 "awkgram.y"
 	{ yyval.p = op4(yystack.l_mark[-7].i, NIL, (Node*)makedfa(yystack.l_mark[-5].s, 1), yystack.l_mark[-3].p, yystack.l_mark[-1].p); free(yystack.l_mark[-5].s); }
-#line 5067 "awkgram.tab.c"
+#line 5087 "awkgram.tab.c"
 break;
 case 172:
 #line 418 "awkgram.y"
@@ -5072,71 +5092,71 @@ case 172:
 			free(yystack.l_mark[-5].p);
 		  } else
 			yyval.p = op4(yystack.l_mark[-7].i, (Node *)1, yystack.l_mark[-5].p, yystack.l_mark[-3].p, yystack.l_mark[-1].p); }
-#line 5076 "awkgram.tab.c"
+#line 5096 "awkgram.tab.c"
 break;
 case 173:
 #line 424 "awkgram.y"
 	{ yyval.p = op3(SUBSTR, yystack.l_mark[-5].p, yystack.l_mark[-3].p, yystack.l_mark[-1].p); }
-#line 5081 "awkgram.tab.c"
+#line 5101 "awkgram.tab.c"
 break;
 case 174:
 #line 426 "awkgram.y"
 	{ yyval.p = op3(SUBSTR, yystack.l_mark[-3].p, yystack.l_mark[-1].p, NIL); }
-#line 5086 "awkgram.tab.c"
+#line 5106 "awkgram.tab.c"
 break;
 case 177:
 #line 432 "awkgram.y"
 	{ yyval.p = op2(ARRAY, makearr(yystack.l_mark[-3].p), yystack.l_mark[-1].p); }
-#line 5091 "awkgram.tab.c"
+#line 5111 "awkgram.tab.c"
 break;
 case 178:
 #line 433 "awkgram.y"
 	{ yyval.p = op1(INDIRECT, celltonode(yystack.l_mark[0].cp, CVAR)); }
-#line 5096 "awkgram.tab.c"
+#line 5116 "awkgram.tab.c"
 break;
 case 179:
 #line 434 "awkgram.y"
 	{ yyval.p = op1(INDIRECT, yystack.l_mark[0].p); }
-#line 5101 "awkgram.tab.c"
+#line 5121 "awkgram.tab.c"
 break;
 case 180:
 #line 438 "awkgram.y"
 	{ arglist = yyval.p = 0; }
-#line 5106 "awkgram.tab.c"
+#line 5126 "awkgram.tab.c"
 break;
 case 181:
 #line 439 "awkgram.y"
 	{ arglist = yyval.p = celltonode(yystack.l_mark[0].cp,CVAR); }
-#line 5111 "awkgram.tab.c"
+#line 5131 "awkgram.tab.c"
 break;
 case 182:
 #line 440 "awkgram.y"
 	{
 			checkdup(yystack.l_mark[-2].p, yystack.l_mark[0].cp);
 			arglist = yyval.p = linkum(yystack.l_mark[-2].p,celltonode(yystack.l_mark[0].cp,CVAR)); }
-#line 5118 "awkgram.tab.c"
+#line 5138 "awkgram.tab.c"
 break;
 case 183:
 #line 446 "awkgram.y"
 	{ yyval.p = celltonode(yystack.l_mark[0].cp, CVAR); }
-#line 5123 "awkgram.tab.c"
+#line 5143 "awkgram.tab.c"
 break;
 case 184:
 #line 447 "awkgram.y"
 	{ yyval.p = op1(ARG, itonp(yystack.l_mark[0].i)); }
-#line 5128 "awkgram.tab.c"
+#line 5148 "awkgram.tab.c"
 break;
 case 185:
 #line 448 "awkgram.y"
 	{ yyval.p = op1(VARNF, (Node *) yystack.l_mark[0].cp); }
-#line 5133 "awkgram.tab.c"
+#line 5153 "awkgram.tab.c"
 break;
 case 186:
 #line 453 "awkgram.y"
 	{ yyval.p = notnull(yystack.l_mark[-1].p); }
-#line 5138 "awkgram.tab.c"
+#line 5158 "awkgram.tab.c"
 break;
-#line 5140 "awkgram.tab.c"
+#line 5160 "awkgram.tab.c"
     default:
         break;
     }
@@ -5189,23 +5209,32 @@ break;
                 {   /* Enlarge lexical value queue */
                     size_t p = (size_t) (yylvp - yylvals);
                     size_t s = (size_t) (yylvlim - yylvals);
+                    YYINT *new_lexemes;
+                    YYSTYPE *new_vals;
+#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
+                    YYLTYPE *new_psns;
+#endif
 
                     s += YYLVQUEUEGROWTH;
-                    if ((yylexemes = (YYINT *)realloc(yylexemes, s * sizeof(YYINT))) == NULL)
+                    new_lexemes = (YYINT *)realloc(yylexemes, s * sizeof(YYINT));
+                    if (new_lexemes == NULL)
                         goto yyenomem;
-                    if ((yylvals   = (YYSTYPE *)realloc(yylvals, s * sizeof(YYSTYPE))) == NULL)
+                    yylexemes = new_lexemes;
+                    yylexp = yylexemes + p;
+                    new_vals = (YYSTYPE *)realloc(yylvals, s * sizeof(YYSTYPE));
+                    if (new_vals == NULL)
                         goto yyenomem;
-#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
-                    if ((yylpsns   = (YYLTYPE *)realloc(yylpsns, s * sizeof(YYLTYPE))) == NULL)
-                        goto yyenomem;
-#endif
+                    yylvals = new_vals;
                     yylvp   = yylve = yylvals + p;
                     yylvlim = yylvals + s;
 #if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
+                    new_psns = (YYLTYPE *)realloc(yylpsns, s * sizeof(YYLTYPE));
+                    if (new_psns == NULL)
+                        goto yyenomem;
+                    yylpsns = new_psns;
                     yylpp   = yylpe = yylpsns + p;
                     yylplim = yylpsns + s;
 #endif
-                    yylexp  = yylexemes + p;
                 }
                 *yylexp = (YYINT) YYLEX;
                 *yylvp++ = yylval;

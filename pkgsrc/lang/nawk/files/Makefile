@@ -28,7 +28,7 @@
 CC?= cc
 CFLAGS?= -O2
 LDFLAGS?=
-OFILES= awkgram.tab.o b.o main.o parse.o proctab.o tran.o lib.o run.o lex.o
+OFILES= awkgram.tab.o b.o main.o parse.o proctab.o tran.o lib.o run.o lex.o math.o
 .SUFFIXES: .c .o
 
 a.out: $(OFILES)

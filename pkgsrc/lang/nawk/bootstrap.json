@@ -2,9 +2,9 @@
   "format": "emberbsd-native-bootstrap-program",
   "version": 1,
   "name": "nawk",
-  "release": "nawk-20260426",
+  "release": "nawk-20261106",
   "initial_only": true,
-  "origin": "One True Awk 20260426, imported and adapted by the common EmberBSD Ports recipe. Retain SOURCE.json, GENERATED.json, and LICENSE.",
+  "origin": "One True Awk 20261106, imported and adapted by the common EmberBSD Ports recipe. Retain SOURCE.json, GENERATED.json, and LICENSE.",
   "canonical_host_recipe": "pkgsrc/lang/nawk/Makefile",
   "source_makefile": "pkgsrc/lang/nawk/files/Makefile",
   "compiler": {
@@ -21,7 +21,8 @@
     "pkgsrc/lang/nawk/files/tran.c",
     "pkgsrc/lang/nawk/files/lib.c",
     "pkgsrc/lang/nawk/files/run.c",
-    "pkgsrc/lang/nawk/files/lex.c"
+    "pkgsrc/lang/nawk/files/lex.c",
+    "pkgsrc/lang/nawk/files/math.c"
   ],
   "headers": [
     "pkgsrc/lang/nawk/files/awk.h",
