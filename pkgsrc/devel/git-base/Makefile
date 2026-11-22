@@ -84,6 +84,26 @@ post-patch:
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:tl} != "yes"
+PKGREVISION=		1
+# Git resolves installed commands and configuration from its Mach-O executable.
+# Preserve absolute configuration directories chosen outside the package prefix.
+MAKE_FLAGS+=		RUNTIME_PREFIX=YesPlease
+MAKE_FLAGS+=		NO_HOMEBREW=YesPlease
+MAKE_FLAGS+=		gitexecdir=libexec/${GIT_COREDIR} template_dir=${GIT_CORE_TEMPLATEDIR}
+_GIT_SYSTEM_CONFIG=	${PKG_SYSCONFDIR}/gitconfig
+_GIT_SYSTEM_ATTRIBUTES=	${PKG_SYSCONFDIR}/gitattributes
+MAKE_FLAGS+=		ETC_GITCONFIG=${_GIT_SYSTEM_CONFIG:S,^${PREFIX}/,,:Q}
+MAKE_FLAGS+=		ETC_GITATTRIBUTES=${_GIT_SYSTEM_ATTRIBUTES:S,^${PREFIX}/,,:Q}
+# pkgsrc's default is used if git is copied outside either installed bin directory.
+MAKE_FLAGS+=		fallback_runtime_prefix=/usr/pkg
+# The Darwin SDK's builtin iconv is already in the system linker search path.
+MAKE_FLAGS+=		ICONVDIR=${BUILDLINK_PREFIX.iconv:N${OSX_SDK_PATH}/usr:Q}
+# These quote variants supply the installed shell scripts and the C string.
+# The configure and make generators still use the selected SDK shell.
+MAKE_FLAGS+=		SHELL_PATH_SQ=/bin/sh SHELL_PATH_CQ=\"/bin/sh\"
+.endif
+
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 .  if ${OPSYS} == "NetBSD"
 # Git records this quoted C string in its executable. Script generators use

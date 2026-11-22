@@ -20,3 +20,4 @@ SHA1 (patch-xdiff_xemit.c) = 703ffb4499f15f7dd25114f75949e15f0386a4a4
 SHA1 (patch-xdiff_xinclude.h) = 595fd1cf0291e79f38215cc60f7139ca3ebc94c5
 SHA1 (patch-xdiff_xmerge.c) = c5d2507e6483bb5ca132750e012cc865a0eef78a
 SHA1 (patch-xdiff_xprepare.c) = dbcdb4fb01d8bfaf6368cc1f629e5c6e295e5a36
+SHA1 (patch-zz-runtime-prefix) = 23bff019f24c3dbff4084ff173528bf52a03dcdd

@@ -1,0 +1,39 @@
+Allow relocatable packages to select Git's fallback for an unrecognized executable layout.
+Origin: EmberBSD (AI-assisted).
+
+--- Makefile.orig
++++ Makefile
+@@ -635,6 +635,7 @@
+ # This can help installing the suite in a relocatable way.
+ 
+ prefix = $(HOME)
++fallback_runtime_prefix ?= $(prefix)
+ bindir = $(prefix)/bin
+ mandir = $(prefix)/share/man
+ infodir = $(prefix)/share/info
+@@ -2474,6 +2475,7 @@
+ template_dir_SQ = $(subst ','\'',$(template_dir))
+ htmldir_relative_SQ = $(subst ','\'',$(htmldir_relative))
+ prefix_SQ = $(subst ','\'',$(prefix))
++fallback_runtime_prefix_SQ = $(subst ','\'',$(fallback_runtime_prefix))
+ perllibdir_relative_SQ = $(subst ','\'',$(perllibdir_relative))
+ gitwebdir_SQ = $(subst ','\'',$(gitwebdir))
+ gitwebstaticdir_SQ = $(subst ','\'',$(gitwebstaticdir))
+@@ -2963,7 +2965,7 @@
+ 	'-DGIT_EXEC_PATH="$(gitexecdir_SQ)"' \
+ 	'-DGIT_LOCALE_PATH="$(localedir_relative_SQ)"' \
+ 	'-DBINDIR="$(bindir_relative_SQ)"' \
+-	'-DFALLBACK_RUNTIME_PREFIX="$(prefix_SQ)"'
++	'-DFALLBACK_RUNTIME_PREFIX="$(fallback_runtime_prefix_SQ)"'
+ 
+ setup.sp setup.s setup.o: GIT-PREFIX
+ setup.sp setup.s setup.o: EXTRA_CPPFLAGS = \
+@@ -3292,7 +3294,7 @@
+ 
+ ### Detect prefix changes
+ TRACK_PREFIX = $(bindir_SQ):$(gitexecdir_SQ):$(template_dir_SQ):$(prefix_SQ):\
+-		$(localedir_SQ)
++		$(localedir_SQ):$(fallback_runtime_prefix_SQ)
+ 
+ GIT-PREFIX: FORCE
+ 	@FLAGS='$(TRACK_PREFIX)'; \
