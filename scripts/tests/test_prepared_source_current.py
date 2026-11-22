@@ -205,8 +205,10 @@ class PreparedSourceCurrentTest(unittest.TestCase):
 
     def test_configuration_is_read_once_for_every_source(self):
         selector = current.selector()
-        exporter = selector._exporter(ROOT)
-        self.assertIs(exporter, selector._exporter(ROOT))
+        exporter_path = ROOT / 'scripts/prepare-pkgsrc.py'
+        exporter = selector._exporter(exporter_path)
+        self.assertEqual(Path(exporter.__file__), exporter_path)
+        self.assertIs(exporter, selector._exporter(exporter_path))
         self.assertIs(exporter.configuration(ROOT), exporter.configuration(ROOT))
 
 

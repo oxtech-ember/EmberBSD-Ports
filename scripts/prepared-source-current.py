@@ -28,6 +28,7 @@ import tempfile
 
 sys.dont_write_bytecode = True
 PORTS = Path(__file__).resolve().parents[1]
+EXPORTER_SCRIPT = PORTS / 'scripts/prepare-pkgsrc.py'
 RECEIPT = 'emberbsd-prepared-source.json'
 
 # SDK source name -> (owner script, package).
@@ -95,12 +96,12 @@ def selector():
     Reading the export configuration walks every Ports overlay, so it is read
     once here instead of once per package."""
     module = load(PORTS / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_source_identity')
-    exporter = module._exporter(PORTS)
+    module._exporter = functools.cache(module._exporter)
+    exporter = module._exporter(EXPORTER_SCRIPT)
     configuration = functools.cache(exporter.configuration)
     exporter.configuration = lambda root, **kwargs: configuration(Path(root).resolve(strict=True), **kwargs)
     families = functools.cache(exporter.version_families)
     exporter.version_families = lambda root: families(Path(root).resolve(strict=True))
-    module._exporter = lambda root: exporter
     return module
 
 
@@ -129,7 +130,7 @@ def recipe_files(selector, package, git, patch):
     recipe files of this package (not its distinfo, patches or exported
     files) are then applied as the export applies them."""
     inputs = selector.git_package_inputs(PORTS, package, git)
-    exporter = selector._exporter(PORTS)
+    exporter = selector._exporter(EXPORTER_SCRIPT)
     recipes, patches, files, _ = exporter.configuration(PORTS)
     overlay = dict(recipes).get(package)
     env = selector._git_environment()
@@ -283,7 +284,7 @@ def distfiles(selector, package, git):
     too; only its section for this distinfo is read. The list can name a
     distfile that the recipe does not fetch; the producer selects its own."""
     inputs = selector.git_package_inputs(PORTS, package, git)
-    exporter = selector._exporter(PORTS)
+    exporter = selector._exporter(EXPORTER_SCRIPT)
     recipes, _, files, _ = exporter.configuration(PORTS)
     overlay = dict(recipes).get(package)
     target = package + '/distinfo'
