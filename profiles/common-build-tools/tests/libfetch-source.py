@@ -21,8 +21,9 @@ assert match is not None
 assert re.match(r'\s*if \(i < l\) \{\s*e = FTP_PROTOCOL_ERROR;\s*goto ouch;\s*\}',
                 ftp[match.end():]) is not None
 common = (root / 'net/libfetch/files/common.c').read_text()
-assert 'SSL_set1_host(conn->ssl, URL->host);' in common
-for package, minimum in (('net/libfetch', 9), ('net/fetch', 6), ('pkgtools/pkg_install', 24)):
+assert 'if (!fetch_ssl_set_peername(conn->ssl, URL->host))' in common
+assert 'return (SSL_set1_ipaddr(ssl, host) || SSL_set1_dnsname(ssl, host));' in common
+for package, minimum in (('net/libfetch', 10), ('net/fetch', 7), ('pkgtools/pkg_install', 25)):
     text = (root / package / 'Makefile').read_text()
     revision = re.search(r'^PKGREVISION=[ \t]*(\d+)\b', text, re.MULTILINE)
     assert revision and int(revision[1]) >= minimum, package

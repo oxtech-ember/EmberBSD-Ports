@@ -32,3 +32,26 @@ Run the focused regression with the selected tools:
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/libfetch/test-refresh.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" --patch "$PATCH"
 ```
+
+## OpenSSL 4 peer names
+
+The common patch uses `SSL_set1_ipaddr` and `SSL_set1_dnsname` on each new
+connection. It retains OpenSSL's IP parser and DNS fallback. It rejects an
+empty reference identifier and stops if neither setter succeeds. SNI and the
+existing certificate-chain verification remain in the shared connection path.
+The library and its static `fetch` and `pkg_install` consumers have new revisions.
+
+Run the certificate-matching check against the real exported helper:
+
+```sh
+"$HOST_PREFIX/bin/ruby40" profiles/common-build-tools/tests/libfetch-peername.rb \
+  /absolute/exported-pkgsrc "$HOST_PREFIX"
+"$HOST_PREFIX/bin/ruby40" profiles/common-build-tools/tests/libfetch-peername.rb \
+  /absolute/exported-pkgsrc "$HOST_PREFIX" --sanitize
+```
+
+The check uses real OpenSSL certificate verification for DNS, IPv4 and IPv6,
+including mismatches and a numeric DNS SAN that must not match an IP address.
+It also checks SNI selection and empty-name refusal. `--sanitize` adds UBSan.
+This host check does not establish a remote TLS handshake or target execution.
+A strict build of the full exported `common.c` detects the former deprecated API.
