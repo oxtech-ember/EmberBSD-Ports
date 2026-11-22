@@ -1,0 +1,91 @@
+Origin: NetBSD pkgsrc, 96d9e6a8b1508cc67d4286a1705e671f158b98ba.
+Update libjxl and its matching GdkPixbuf module to 0.13.0.
+EmberBSD records the 0.13 shared-library ABI for linked consumers.
+
+--- a/graphics/gdk-pixbuf2-jxl/Makefile
++++ b/graphics/gdk-pixbuf2-jxl/Makefile
+@@ -1,6 +1,6 @@
+-# $NetBSD: Makefile,v 1.5 2026/09/02 19:02:36 wiz Exp $
++# $NetBSD: Makefile,v 1.7 2026/09/29 06:05:38 wiz Exp $
+ 
+-PKGREVISION= 1
++PKGREVISION= 3
+ .include "../../graphics/libjxl/Makefile.common"
+ 
+ PKGNAME=	${DISTNAME:S/lib/gdk-pixbuf2-/g}
+--- a/graphics/libjxl/Makefile
++++ b/graphics/libjxl/Makefile
+@@ -1,6 +1,5 @@
+-# $NetBSD: Makefile,v 1.17 2026/08/03 18:10:26 wiz Exp $
++# $NetBSD: Makefile,v 1.20 2026/11/12 09:06:30 adam Exp $
+ 
+-PKGREVISION= 1
+ .include "Makefile.common"
+ 
+ COMMENT=	JpegXL reference codec
+--- a/graphics/libjxl/Makefile.common
++++ b/graphics/libjxl/Makefile.common
+@@ -1,9 +1,10 @@
+-# $NetBSD: Makefile.common,v 1.6 2026/07/02 03:13:36 adam Exp $
++# $NetBSD: Makefile.common,v 1.9 2026/11/15 19:31:00 wiz Exp $
+ # used by graphics/gdk-pixbuf2-jxl/Makefile
+ 
+-DISTNAME=	libjxl-0.12.0
++DISTNAME=	libjxl-0.13.0
+ CATEGORIES=	graphics
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=libjxl/}
++GITHUB_PROJECT=	libjxl
+ GITHUB_TAG=	v${PKGVERSION_NOREV}
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+--- a/graphics/libjxl/PLIST
++++ b/graphics/libjxl/PLIST
+@@ -1,4 +1,4 @@
+-@comment $NetBSD: PLIST,v 1.6 2026/07/02 03:13:36 adam Exp $
++@comment $NetBSD: PLIST,v 1.7 2026/11/12 09:06:30 adam Exp $
+ bin/cjxl
+ bin/djxl
+ bin/jxlinfo
+@@ -27,14 +27,14 @@
+ include/jxl/version.h
+ lib/libjxl.so
+ lib/libjxl.so.${PKGVERSION}
+-lib/libjxl.so.0.12
++lib/libjxl.so.0.13
+ lib/libjxl_cms.so
+ lib/libjxl_cms.so.${PKGVERSION}
+-lib/libjxl_cms.so.0.12
++lib/libjxl_cms.so.0.13
+ lib/libjxl_extras_codec.a
+ lib/libjxl_threads.so
+ lib/libjxl_threads.so.${PKGVERSION}
+-lib/libjxl_threads.so.0.12
++lib/libjxl_threads.so.0.13
+ lib/pkgconfig/libjxl.pc
+ lib/pkgconfig/libjxl_cms.pc
+ lib/pkgconfig/libjxl_threads.pc
+--- a/graphics/libjxl/distinfo
++++ b/graphics/libjxl/distinfo
+@@ -1,8 +1,8 @@
+-$NetBSD: distinfo,v 1.8 2026/07/02 03:13:36 adam Exp $
++$NetBSD: distinfo,v 1.9 2026/11/12 09:06:30 adam Exp $
+ 
+-BLAKE2s (libjxl-0.12.0.tar.gz) = 975f06d153d23eefc6184e4afebfb9c9746ad2f2ffb9a9c8f377f28b0d26242a
+-SHA512 (libjxl-0.12.0.tar.gz) = 71d45123e47588c8028c0e01a7820c7a18d98df05c29b5318ab6858eaff5f249879763907201ba19a93f817c6ef75c393c1974d2a0cc8e461c4e2709ca6fa45f
+-Size (libjxl-0.12.0.tar.gz) = 1698757 bytes
++BLAKE2s (libjxl-0.13.0.tar.gz) = a5fed835d2381c0938e21cd91a584a78b7aa93d3302b418ca6ce29f29f02c608
++SHA512 (libjxl-0.13.0.tar.gz) = f5a6cc4c875c9cdd217001096d34e5912afffdf3a58bae816c1c28c7e241eb0909ea37af0bef6d4b2fb8fae20ae94e29b2ef30fb65f778d4a7d62e07e20e3f85
++Size (libjxl-0.13.0.tar.gz) = 1734982 bytes
+ SHA1 (patch-CMakeLists.txt) = 61a53fd1bd533f8c488b8e8c3db04fba3373a617
+ SHA1 (patch-lib_jxl.cmake) = a0ddd494e1d7a4992ce22161602c44aae2c44267
+ SHA1 (patch-lib_jxl__threads.cmake) = a18c85c6ab0111bad03eaa52b005d8f3204fcf58
+--- a/graphics/libjxl/buildlink3.mk
++++ b/graphics/libjxl/buildlink3.mk
+@@ -6,6 +6,7 @@
+ LIBJXL_BUILDLINK3_MK:=
+ 
+ BUILDLINK_API_DEPENDS.libjxl+=	libjxl>=0.8.2
++BUILDLINK_ABI_DEPENDS.libjxl+=	libjxl>=0.13.0
+ BUILDLINK_PKGSRCDIR.libjxl?=	../../graphics/libjxl
+ 
+ .include "../../archivers/brotli/buildlink3.mk"
