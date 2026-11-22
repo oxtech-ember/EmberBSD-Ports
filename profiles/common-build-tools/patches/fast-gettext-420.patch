@@ -1,0 +1,33 @@
+Origin: EmberBSD contributors (AI-assisted).
+Update FastGettext and record the licenses of its Ruby source and vendored parts.
+
+--- a/devel/ruby-fast_gettext/Makefile
++++ b/devel/ruby-fast_gettext/Makefile
+@@ -1,12 +1,14 @@
+ # $NetBSD: Makefile,v 1.26 2023/02/23 14:52:59 taca Exp $
+ 
+-DISTNAME=	fast_gettext-2.3.0
++DISTNAME=	fast_gettext-4.2.0
+ CATEGORIES=	devel
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+ HOMEPAGE=	https://github.com/grosser/fast_gettext
+ COMMENT=	Simple, fast, memory-efficient and threadsafe GetText
+-LICENSE=	ruby-license
++LICENSE=	mit AND 2-clause-bsd
++
++RUBY_VERSIONS_INCOMPATIBLE=	32 31
+ 
+ USE_LANGUAGES=	# none
+ 
+--- a/devel/ruby-fast_gettext/distinfo
++++ b/devel/ruby-fast_gettext/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.29 2023/02/23 14:52:59 taca Exp $
+ 
+-BLAKE2s (fast_gettext-2.3.0.gem) = d21e08b3f9470e97e42e0f548eec0b96557436edaac69b6d11ab4bdfabae4b01
+-SHA512 (fast_gettext-2.3.0.gem) = 41deba7e682091ed30bce4fadec31f92eb124abc796779b2e1d5a65e1c98b829163a1f8a8e34abc091096792deafbf901b837dc61a936f9572d4c4eec548122e
+-Size (fast_gettext-2.3.0.gem) = 30208 bytes
++BLAKE2s (fast_gettext-4.2.0.gem) = c510b9018102bf018285597d132fdb9ec9ce89cceba7f34b003c186e2bc3f467
++SHA512 (fast_gettext-4.2.0.gem) = 8093709e823bfd5253fc4b747562742783eeec418ef1ec40c26dbb899ac7e657e9c210b1eb39cf7c3e16ecf5e869fe5f22c07420064f734f04a9eea02af8efaf
++Size (fast_gettext-4.2.0.gem) = 30720 bytes
