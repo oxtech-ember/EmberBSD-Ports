@@ -21,16 +21,14 @@ case "$work/" in "$ports/"*) echo 'Keep outputs outside the checkout.' >&2; exit
 [ -f "$deps/lib/libedit.so" ]
 case "$("$ncurses/bin/ncursesw6-config" --version)" in 6.6|6.6.*) ;; *) exit 2 ;; esac
 mkdir -p "$work/downloads" "$work/src" "$work/logs" "$work/records/dash"
-archive=dash-0.5.13.5.tar.gz
-digest=40090101a2a491f13e901d3d48e90414f26634628b9bfff35ff540363c227a7d
-# The author's release server can be unavailable. This pkgsrc mirror is
-# checked against the same release bytes, including pinned pkgsrc SHA512.
+archive=dash-0.5.13.6.tar.gz
+digest=7cf031480d46e0dd45a42a7c951e482dc850ae63106dc39821350e133d9fe73e
 curl --fail --location --proto '=https' --tlsv1.2 \
-    "https://cdn.NetBSD.org/pub/pkgsrc/distfiles/$archive" \
+    "https://git.kernel.org/pub/scm/utils/dash/dash.git/snapshot/$archive" \
     -o "$work/downloads/$archive"
 printf '%s  %s\n' "$digest" "$work/downloads/$archive" | sha256sum -c -
 tar -xf "$work/downloads/$archive" -C "$work/src"
-src=$work/src/dash-0.5.13.5
+src=$work/src/dash-0.5.13.6
 for name in patch-configure.ac patch-src_histedit.c; do
     patch -p0 -F0 -d "$src" < "$ports/upstream/pkgsrc/shells/dash/patches/$name" \
         >> "$work/logs/patches.log"

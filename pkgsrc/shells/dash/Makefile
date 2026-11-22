@@ -1,12 +1,11 @@
 # $NetBSD: Makefile,v 1.21 2026/07/22 07:32:51 adam Exp $
 
-DISTNAME=	dash-0.5.13.5
-PKGREVISION=	1
+DISTNAME=	dash-0.5.13.6
 CATEGORIES=	shells
-MASTER_SITES=	https://gondor.apana.org.au/~herbert/dash/files/
+MASTER_SITES=	https://git.kernel.org/pub/scm/utils/dash/dash.git/snapshot/
 
 MAINTAINER=	cheusov@NetBSD.org
-HOMEPAGE=	http://gondor.apana.org.au/~herbert/dash/
+HOMEPAGE=	https://git.kernel.org/pub/scm/utils/dash/dash.git/
 COMMENT=	Debian Almquist shell, POSIX-compliant shell faster than bash
 LICENSE=	modified-bsd AND gnu-gpl-v2
 
