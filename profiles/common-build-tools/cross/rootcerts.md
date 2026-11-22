@@ -5,9 +5,10 @@ Its build runs `tools` and `libs`. It does not build a complete base userland.
 An absent `/bin/echo` or `/usr/bin/awk` in that SDK does not identify the
 installed target's base utilities. Its METALOG cannot prove those executables.
 
-For cross builds that select NetBSD 11, `security/mozilla-rootcerts` has two
-explicit roles. Native tools extract the pinned certificate data on the build
-host. The installed script uses the NetBSD 11 full-base runtime contract.
+When cross-building for EmberBSD, pkgsrc selects the base tools for
+`OPSYS=NetBSD` and an `OS_VERSION` that starts with `11.`. Native tools
+extract the pinned certificate data on the build host. The installed script
+uses EmberBSD base utilities.
 The recipe does not change the generic `USE_TOOLS+=tool:run` refusal rules.
 Other tools, targets and missing packaged Bash/Perl runtimes remain checked.
 On Darwin, the installed script uses the shell and standard utilities from macOS.
@@ -23,8 +24,7 @@ The installed script uses `/bin/sh`, `/usr/bin/awk` and the `/bin/echo`,
 `cat` command. With target builtin OpenSSL, the script uses `/usr/bin/openssl`.
 With pkgsrc OpenSSL, it uses `${PREFIX}/bin/openssl` and has an explicit target
 `openssl>=3.6.5` dependency. The host formatter dependency remains separate.
-This contract requires a target with the normal NetBSD 11 full base.
-It does not describe an appliance image that omits these commands.
+The target image must supply these EmberBSD base commands.
 
 The source contract is pinned to EmberBSD commit
 [`32afa976de8d28799739978f80cc3fca08928145`](https://github.com/oxtech-ember/EmberBSD/tree/32afa976de8d28799739978f80cc3fca08928145).
