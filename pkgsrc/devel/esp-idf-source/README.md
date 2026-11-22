@@ -1,6 +1,6 @@
 # ESP-IDF component source
 
-This package supplies the upstream ESP-IDF 6.1 `components` tree, with the
+This package supplies the upstream ESP-IDF 6.1.1 `components` tree, with the
 Wi-Fi and PHY binary-library submodules pinned by that release. It preserves
 their original source, binary files, license notices and submodule READMEs;
 no upstream patches are applied. Other ESP-IDF submodules, the IDF build tools,
