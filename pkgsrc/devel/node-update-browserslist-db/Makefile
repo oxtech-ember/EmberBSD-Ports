@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream update-browserslist-db module.
-DISTNAME= update-browserslist-db-1.3.4
-PKGNAME= node-update-browserslist-db-1.3.4
+DISTNAME= update-browserslist-db-1.4.0
+PKGNAME= node-update-browserslist-db-1.4.0
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/update-browserslist-db/-/
 DIST_SUBDIR= node-update-browserslist-db
