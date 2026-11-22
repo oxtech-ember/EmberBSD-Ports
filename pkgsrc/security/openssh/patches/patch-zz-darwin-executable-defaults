@@ -1,0 +1,415 @@
+$NetBSD$
+
+Use the installed Darwin executable to resolve prefix-owned programs and data.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- /dev/null
++++ darwin-defaults.c
+@@ -0,0 +1,240 @@
++/* SPDX-License-Identifier: BSD-2-Clause */
++/* Resolve configured prefix-owned defaults once, before privileges change. */
++#define SSH_DARWIN_DEFAULTS_IMPL
++#include "includes.h"
++#include "pathnames.h"
++
++#include "platform.h"
++
++#include <mach-o/dyld.h>
++#include <membership.h>
++#include <sys/acl.h>
++#include <sys/param.h>
++#include <sys/stat.h>
++#include <err.h>
++#include <errno.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++char ssh_darwin_defaults[sizeof(templates) / sizeof(templates[0])][PATH_MAX];
++
++enum acl_scope {
++	EXISTING, SYMLINK, NEW_FILE, NEW_DIRECTORY, NEW_SUBTREE
++};
++
++static void
++check_acl(const char *path, const uuid_t root_user, enum acl_scope scope)
++{
++	const acl_permset_mask_t change = ACL_WRITE_DATA | ACL_APPEND_DATA |
++	    ACL_DELETE | ACL_DELETE_CHILD | ACL_WRITE_ATTRIBUTES |
++	    ACL_WRITE_EXTATTRIBUTES | ACL_WRITE_SECURITY | ACL_CHANGE_OWNER;
++	acl_t acl;
++	acl_entry_t entry;
++	acl_tag_t tag;
++	acl_permset_mask_t rights;
++	acl_flagset_t flags;
++	void *owner;
++	int id = ACL_FIRST_ENTRY, only, files, dirs, limit;
++
++	acl = scope == SYMLINK ? acl_get_link_np(path, ACL_TYPE_EXTENDED) :
++	    acl_get_file(path, ACL_TYPE_EXTENDED);
++	if (acl == NULL) {
++		/* Darwin reports ENOENT when an existing path has no ACL. */
++		if (errno == ENOENT || errno == ENOTSUP)
++			return;
++		err(1, "cannot inspect OpenSSH installation ACL: %s", path);
++	}
++	while (acl_get_entry(acl, id, &entry) == 0) {
++		id = ACL_NEXT_ENTRY;
++		if (acl_get_tag_type(entry, &tag) != 0 ||
++		    acl_get_permset_mask_np(entry, &rights) != 0 ||
++		    acl_get_flagset_np(entry, &flags) != 0 ||
++		    (only = acl_get_flag_np(flags, ACL_ENTRY_ONLY_INHERIT)) < 0 ||
++		    (files = acl_get_flag_np(flags, ACL_ENTRY_FILE_INHERIT)) < 0 ||
++		    (dirs = acl_get_flag_np(flags, ACL_ENTRY_DIRECTORY_INHERIT)) < 0 ||
++		    (limit = acl_get_flag_np(flags, ACL_ENTRY_LIMIT_INHERIT)) < 0)
++			err(1, "cannot read OpenSSH installation ACL: %s", path);
++		if (tag != ACL_EXTENDED_ALLOW || !(rights & change))
++			continue;
++		/* A new intermediate directory can itself grant access to its children. */
++		if (only && !((scope == NEW_FILE && files) ||
++		    (scope == NEW_DIRECTORY && dirs) ||
++		    (scope == NEW_SUBTREE && (dirs || (files && !limit)))))
++			continue;
++		if ((owner = acl_get_qualifier(entry)) == NULL)
++			err(1, "cannot identify OpenSSH installation ACL: %s", path);
++		if (memcmp(owner, root_user, sizeof(uuid_t)) != 0)
++			errx(1, "unsafe privileged OpenSSH installation ACL: %s", path);
++		acl_free(owner);
++	}
++	if (errno != EINVAL)
++		err(1, "cannot enumerate OpenSSH installation ACL: %s", path);
++	acl_free(acl);
++}
++
++/*
++ * Walk the path as the kernel will, including the recorded spelling of each
++ * symlink target. Every existing parent must be protected before its child is
++ * examined. An optional default may end below a protected, absent component.
++ */
++static void
++check_trusted_path(const char *path, const uuid_t root_user, enum acl_scope absent,
++    unsigned int links)
++{
++	char current[PATH_MAX] = "/", target[PATH_MAX], next[PATH_MAX];
++	const char *p = path, *end;
++	size_t len, used;
++	ssize_t n;
++	struct stat st;
++	int written;
++
++	if (*p != '/')
++		errx(1, "expected an absolute OpenSSH default: %s", path);
++	for (;;) {
++		if (lstat(current, &st) != 0) {
++			if (absent != EXISTING && errno == ENOENT) {
++				char *sep = strrchr(current, '/');
++				sep[sep == current ? 1 : 0] = '\0';
++				check_acl(current, root_user, *p ? NEW_SUBTREE : absent);
++				return;
++			}
++			err(1, "cannot inspect OpenSSH installation: %s", current);
++		}
++		if (!platform_sys_dir_uid(st.st_uid))
++			errx(1, "unsafe privileged OpenSSH owner: %s", current);
++		if (S_ISLNK(st.st_mode)) {
++			if (links >= MAXSYMLINKS)
++				errx(1, "too many links in OpenSSH path: %s", path);
++			check_acl(current, root_user, SYMLINK);
++			n = readlink(current, target, sizeof(target));
++			if (n < 0 || (size_t)n >= sizeof(target))
++				errx(1, "cannot read OpenSSH path link: %s", current);
++			target[n] = '\0';
++			if (*target == '/')
++				written = snprintf(next, sizeof(next), "%s%s", target, p);
++			else {
++				*strrchr(current, '/') = '\0';
++				written = snprintf(next, sizeof(next), "%s/%s%s",
++				    current, target, p);
++			}
++			if (written < 0 || (size_t)written >= sizeof(next))
++				errx(1, "OpenSSH link target is too long");
++			check_trusted_path(next, root_user, absent, links + 1);
++			return;
++		}
++		if ((st.st_mode & 022) != 0 ||
++		    (!S_ISDIR(st.st_mode) && !S_ISREG(st.st_mode)))
++			errx(1, "unsafe privileged OpenSSH path: %s", current);
++		check_acl(current, root_user, EXISTING);
++		while (*p == '/')
++			p++;
++		if (*p == '\0')
++			return;
++		if (!S_ISDIR(st.st_mode))
++			errx(1, "invalid OpenSSH path component: %s", current);
++		end = p + strcspn(p, "/");
++		len = (size_t)(end - p);
++		if (len == 2 && strncmp(p, "..", len) == 0) {
++			if (current[1] != '\0') {
++				char *sep = strrchr(current, '/');
++				sep[sep == current ? 1 : 0] = '\0';
++			}
++		} else if (!(len == 1 && *p == '.')) {
++			used = strlen(current);
++			if (used > 1 && used < sizeof(current) - 1)
++				current[used++] = '/';
++			if (len >= sizeof(current) - used)
++				errx(1, "OpenSSH default path is too long");
++			memcpy(current + used, p, len);
++			current[used + len] = '\0';
++		}
++		p = end;
++	}
++}
++
++__attribute__((constructor)) static void
++init_darwin_defaults(void)
++{
++	char image[PATH_MAX], prefix[PATH_MAX], *role, *file, *dst;
++	const char *input;
++	int privileged = geteuid() == 0 || issetugid();
++	uuid_t root_user;
++	uint32_t cap = sizeof(image);
++	size_t i, len, room;
++
++	if (_NSGetExecutablePath(image, &cap) != 0 || realpath(image, prefix) == NULL)
++		errx(1, "cannot locate the installed OpenSSH executable");
++	if (privileged) {
++		if (mbr_uid_to_uuid(0, root_user) != 0)
++			errx(1, "cannot identify the root account");
++		check_trusted_path(prefix, root_user, EXISTING, 0);
++	}
++	file = strrchr(prefix, '/');
++	if (file == NULL || file == prefix)
++		errx(1, "invalid OpenSSH executable location");
++	*file = '\0';
++	role = strrchr(prefix, '/');
++	if (role != NULL && (strcmp(role, "/bin") == 0 ||
++	    strcmp(role, "/sbin") == 0 || strcmp(role, "/libexec") == 0))
++		*role = '\0';
++	else if (privileged)
++		errx(1, "unknown privileged OpenSSH executable directory: %s", prefix);
++	len = strlen(prefix);
++	for (i = 0; i < sizeof(templates) / sizeof(templates[0]); i++) {
++		dst = ssh_darwin_defaults[i];
++		room = sizeof(ssh_darwin_defaults[i]);
++		for (input = templates[i]; *input != '\0'; input++) {
++			if (*input == '\001') {
++				if (privileged) {
++					char owned[PATH_MAX];
++					size_t suffix = lists[i] ? strcspn(input + 1, ":") :
++					    strlen(input + 1);
++					if (len + suffix >= sizeof(owned))
++						errx(1, "OpenSSH default path is too long");
++					memcpy(owned, prefix, len);
++					memcpy(owned + len, input + 1, suffix);
++					owned[len + suffix] = '\0';
++					check_trusted_path(owned, root_user,
++					    directories[i] ? NEW_DIRECTORY : NEW_FILE, 0);
++				}
++				if (room <= len)
++					errx(1, "OpenSSH default path is too long");
++				memcpy(dst, prefix, len);
++				dst += len;
++				room -= len;
++			} else {
++				if (room <= 1)
++					errx(1, "OpenSSH default path is too long");
++				*dst++ = *input;
++				room--;
++			}
++		}
++		*dst = '\0';
++	}
++}
++
++const char *
++ssh_darwin_rc_command(void)
++{
++	static char command[sizeof(_PATH_BSHELL) + 4 * PATH_MAX + 4];
++	const char *src = _PATH_SSH_SYSTEM_RC;
++	char *dst = command;
++
++	memcpy(dst, _PATH_BSHELL, sizeof(_PATH_BSHELL) - 1);
++	dst += sizeof(_PATH_BSHELL) - 1;
++	*dst++ = ' ';
++	*dst++ = '\'';
++	while (*src != '\0') {
++		if (*src == '\'') {
++			memcpy(dst, "'\\''", 4);
++			dst += 4;
++		} else
++			*dst++ = *src;
++		src++;
++	}
++	*dst++ = '\'';
++	*dst = '\0';
++	return command;
++}
+--- /dev/null
++++ darwin-defaults-gen.c
+@@ -0,0 +1,97 @@
++/* SPDX-License-Identifier: BSD-2-Clause */
++/* Generate recipient-relative defaults from the values selected by configure. */
++#define SSH_DARWIN_GENERATING_DEFAULTS
++#include "includes.h"
++#include "pathnames.h"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#define ENTRY(name) { #name, name, 0, 0 }
++#define DIRECTORY(name) { #name, name, 0, 1 }
++#define PATH_LIST(name) { #name, name, 1, 1 }
++static const struct {
++	const char *name;
++	const char *value;
++	int is_list;
++	int directory;
++} defaults[] = {
++	DIRECTORY(SSHDIR), ENTRY(_PATH_SSH_SYSTEM_HOSTFILE),
++	ENTRY(_PATH_SSH_SYSTEM_HOSTFILE2), ENTRY(_PATH_SERVER_CONFIG_FILE),
++	ENTRY(_PATH_HOST_CONFIG_FILE), ENTRY(_PATH_HOST_ECDSA_KEY_FILE),
++	ENTRY(_PATH_HOST_RSA_KEY_FILE), ENTRY(_PATH_HOST_ED25519_KEY_FILE),
++	ENTRY(_PATH_HOST_MLDSA44_ED25519_KEY_FILE), ENTRY(_PATH_DH_MODULI),
++	ENTRY(_PATH_SSH_PROGRAM), ENTRY(_PATH_SSHD_SESSION), ENTRY(_PATH_SSHD_AUTH),
++	DIRECTORY(_PATH_SSH_PIDDIR), ENTRY(_PATH_SSH_DAEMON_PID_FILE),
++	ENTRY(_PATH_SSH_SYSTEM_RC), ENTRY(_PATH_SSH_HOSTS_EQUIV),
++	ENTRY(_PATH_SSH_ASKPASS_DEFAULT), ENTRY(_PATH_SSH_KEY_SIGN),
++	ENTRY(_PATH_SSH_PKCS11_HELPER), ENTRY(_PATH_SSH_SK_HELPER),
++	ENTRY(_PATH_XAUTH), ENTRY(_PATH_SFTP_SERVER), DIRECTORY(_PATH_PRIVSEP_CHROOT_DIR),
++	PATH_LIST(_PATH_STDPATH),
++#ifdef XAUTH_PATH
++	ENTRY(XAUTH_PATH),
++#endif
++#ifdef SUPERUSER_PATH
++	PATH_LIST(SUPERUSER_PATH),
++#endif
++};
++
++static void
++write_template(const char *value, const char *prefix, size_t prefixlen, int list)
++{
++	const char *p;
++	unsigned char c;
++
++	putchar('"');
++	for (p = value; *p != '\0';) {
++		if ((p == value || (list && p[-1] == ':')) &&
++		    strncmp(p, prefix, prefixlen) == 0 &&
++		    (p[prefixlen] == '\0' || p[prefixlen] == '/' ||
++		    (list && p[prefixlen] == ':'))) {
++			fputs("\\001", stdout);
++			p += prefixlen;
++			continue;
++		}
++		c = (unsigned char)*p++;
++		if (c == 1) {
++			fputs("unsupported control character in OpenSSH defaults\n", stderr);
++			exit(1);
++		}
++		if (c < ' ' || c > '~' || c == '"' || c == '\\')
++			printf("\\%03o", c);
++		else
++			putchar(c);
++	}
++	putchar('"');
++}
++
++int
++main(int argc, char **argv)
++{
++	size_t i, n = sizeof(defaults) / sizeof(defaults[0]);
++
++	if (argc != 2 || argv[1][0] != '/')
++		return 1;
++	puts("#ifndef SSH_DARWIN_DEFAULTS_H\n#define SSH_DARWIN_DEFAULTS_H");
++	puts("#include <sys/syslimits.h>");
++	printf("extern char ssh_darwin_defaults[%zu][PATH_MAX];\n", n);
++	puts("extern const char *ssh_darwin_rc_command(void);");
++	puts("#ifdef SSH_DARWIN_DEFAULTS_IMPL\nstatic const char *const templates[] = {");
++	for (i = 0; i < n; i++) {
++		write_template(defaults[i].value, argv[1], strlen(argv[1]), defaults[i].is_list);
++		puts(",");
++	}
++	puts("};\nstatic const int lists[] = {");
++	for (i = 0; i < n; i++)
++		printf("%d,\n", defaults[i].is_list);
++	puts("};\nstatic const int directories[] = {");
++	for (i = 0; i < n; i++)
++		printf("%d,\n", defaults[i].directory);
++	puts("};\n#endif");
++	for (i = 0; i < n; i++)
++		printf("#undef %s\n#define %s ssh_darwin_defaults[%zu]\n",
++		    defaults[i].name, defaults[i].name, i);
++	puts("#endif");
++	return ferror(stdout) != 0;
++}
+--- Makefile.in.orig
++++ Makefile.in
+@@ -51,7 +51,7 @@
+ LD=@LD@
+ CFLAGS=@CFLAGS@
+ CFLAGS_NOPIE=@CFLAGS_NOPIE@
+-CPPFLAGS=-I. -I$(srcdir) -I$(COMPATINCLUDES) @CPPFLAGS@ $(PATHS) @DEFS@
++CPPFLAGS=$(SSH_DARWIN_CPPFLAGS) -I. -I$(srcdir) -I$(COMPATINCLUDES) @CPPFLAGS@ $(PATHS) @DEFS@
+ PICFLAG=@PICFLAG@
+ LIBS=@LIBS@
+ CHANNELLIBS=@CHANNELLIBS@
+@@ -88,7 +88,7 @@
+ 	krl.o \
+ 	bitmap.o
+ 
+-LIBSSH_OBJS=${LIBOPENSSH_OBJS} \
++LIBSSH_OBJS=${LIBOPENSSH_OBJS} $(SSH_DARWIN_OBJ) \
+ 	authfd.o authfile.o \
+ 	canohost.o channels.o cipher.o cipher-aes.o cipher-aesctr.o \
+ 	cleanup.o \
+@@ -891,3 +891,10 @@
+ 	fi
+ 
+ # @DEPEND@
++
++
++# Ordinary native Darwin packages generate defaults from the configured paths.
++darwin-defaults.h: $(srcdir)/darwin-defaults-gen.c $(srcdir)/pathnames.h config.h Makefile
++	$(CC) $(CFLAGS) $(CPPFLAGS) -o darwin-defaults-gen $(srcdir)/darwin-defaults-gen.c
++	./darwin-defaults-gen "$(prefix)" > $@.tmp
++	mv $@.tmp $@
+--- pathnames.h.orig
++++ pathnames.h
+@@ -192,3 +192,7 @@
+ #ifndef ASKPASS_PROGRAM
+ #define ASKPASS_PROGRAM         "/usr/lib/ssh/ssh-askpass"
+ #endif /* ASKPASS_PROGRAM */
++
++#if defined(SSH_DARWIN_DEFAULTS) && !defined(SSH_DARWIN_GENERATING_DEFAULTS)
++# include "darwin-defaults.h"
++#endif
+--- session.c.orig
++++ session.c
+@@ -1199,7 +1199,11 @@
+ 		if (debug_flag)
+ 			fprintf(stderr, "Running %s %s\n", _PATH_BSHELL,
+ 			    _PATH_SSH_SYSTEM_RC);
++#ifdef SSH_DARWIN_DEFAULTS
++		f = popen(ssh_darwin_rc_command(), "w");
++#else
+ 		f = popen(_PATH_BSHELL " " _PATH_SSH_SYSTEM_RC, "w");
++#endif
+ 		if (f) {
+ 			if (do_xauth)
+ 				fprintf(f, "%s %s\n", s->auth_proto,
+--- misc.c.orig
++++ misc.c
+@@ -19,6 +19,9 @@
+ 
+ 
+ #include "includes.h"
++#ifdef SSH_DARWIN_DEFAULTS
++# include "pathnames.h"
++#endif
+ 
+ #include <sys/types.h>
+ #include <sys/ioctl.h>

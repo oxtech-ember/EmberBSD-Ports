@@ -1,10 +1,22 @@
 $NetBSD: patch-defines.h,v 1.6 2025/02/18 09:33:07 wiz Exp $
 
-Define ROOTUID, UTMPX_FILE and WTMPX_FILE
+Provide the NetBSD const cast for portable builds and define login record paths.
 
 --- defines.h.orig	2015-08-21 04:49:03.000000000 +0000
 +++ defines.h
-@@ -721,6 +721,24 @@ struct winsize {
+@@ -24,6 +24,11 @@
+ 
+ #ifndef _DEFINES_H
+ #define _DEFINES_H
++
++/* NetBSD const-correct interfaces also serve portable OpenSSH builds. */
++#ifndef __UNCONST
++# define __UNCONST(a) ((void *)(uintptr_t)(const void *)(a))
++#endif
+ 
+ /* Constants */
+ 
+@@ -721,6 +726,24 @@ struct winsize {
  #    endif
  #  endif
  #endif

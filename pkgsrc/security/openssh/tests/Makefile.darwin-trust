@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Include after the configured OpenSSH Makefile.
+darwin-trust-probe: $(DARWIN_TRUST_SOURCE) darwin-defaults.h platform-misc.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(DARWIN_TRUST_SOURCE) platform-misc.o

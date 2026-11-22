@@ -32,11 +32,39 @@ INSTALL_TARGET=		install-nokeys
 
 .include "options.mk"
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=		36
+MAKE_FLAGS+=		SSH_DARWIN_CPPFLAGS=-DSSH_DARWIN_DEFAULTS
+MAKE_FLAGS+=		SSH_DARWIN_OBJ=darwin-defaults.o
+
+pre-build:
+	cd ${WRKSRC} && ${PKGSRC_SETENV} ${MAKE_ENV} ${MAKE_PROGRAM} \
+	    ${MAKE_FLAGS} darwin-defaults.h
+
+.PHONY: check-darwin-sdk-trust
+check-darwin-sdk-trust: build
+	cd ${WRKSRC} && ${PKGSRC_SETENV} ${MAKE_ENV} ${MAKE_PROGRAM} \
+	    ${MAKE_FLAGS} -f Makefile -f ${.CURDIR}/tests/Makefile.darwin-trust \
+	    DARWIN_TRUST_SOURCE=${.CURDIR}/tests/darwin-trusted-paths.c darwin-trust-probe
+.endif
+
 # fixes: dyld: Symbol not found: _allow_severity
 CONFIGURE_ARGS.Darwin+=	--disable-strip
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# Darwin provides sshd and _sshd as aliases for its service user and group.
+PKG_GROUPS=		${OPENSSH_GROUP:Nsshd:N_sshd}
+.  if !empty(OPENSSH_USER:Nsshd:N_sshd)
+PKG_USERS=		${OPENSSH_USER}:${OPENSSH_GROUP}
+.  endif
+.  if !empty(UNPRIVILEGED:M[yY][eE][sS])
+# A relocated installation creates etc/ssh with the recipient's ownership.
+PKG_SYSCONFDIR_PERMS?=	'' '' 755
+.  endif
+.else
 PKG_GROUPS=		${OPENSSH_GROUP}
 PKG_USERS=		${OPENSSH_USER}:${OPENSSH_GROUP}
+.endif
 
 PKG_GECOS.${OPENSSH_USER}=	sshd privsep pseudo-user
 PKG_HOME.${OPENSSH_USER}=	${OPENSSH_CHROOT}
