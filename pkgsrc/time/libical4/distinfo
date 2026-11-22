@@ -4,3 +4,4 @@ BLAKE2s (libical-4.0.8.tar.gz) = 3def41d48230ffd4a77981a50c038b4e857b21825317331
 SHA512 (libical-4.0.8.tar.gz) = ae28ffb118b08aea0f732ecdcc0d3dd8ba1a7391214ba56163d2495ed49ce0890d3238639e25cf0fb563af496402f4322c1126be0587e5030c834b36f2285565
 Size (libical-4.0.8.tar.gz) = 1957738 bytes
 SHA1 (patch-src_libical_icaltimezone.c) = 4b110c2307e5bb144efeecc9db9dc37af80a977f
+SHA1 (patch-cmake_modules_GObjectIntrospectionMacros.cmake) = 3dad08bf90b4cac86c354ac3348d8ce5644ce5a9
