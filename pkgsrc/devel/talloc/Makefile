@@ -1,7 +1,3 @@
-# STATUS: cross capture mode (EMBERBSD_WAF_ANSWERS_MODE=capture) does not
-# complete yet; see the shared-executor failure marker note in net/samba4.
-# The default replay of stored answers runs nothing on a target.
-
 # $NetBSD: Makefile,v 1.53 2026/08/10 16:45:32 adam Exp $
 
 DISTNAME=	talloc-2.5.0
@@ -42,19 +38,13 @@ SUBST_MESSAGE.docbook=	Fixing docbook URLs.
 SUBST_FILES.docbook+=	buildtools/wafsamba/samba_conftests.py
 SUBST_FILES.docbook+=	buildtools/wafsamba/wafsamba.py
 SUBST_STAGE.docbook=	pre-configure
-SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${PREFIX}/share/xsl/docbook,g'
-
+SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${TOOLBASE}/share/xsl/docbook,g'
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Waf runs on the host. Its compiled feature probes are answered from the
 # stored per-platform answers in files/cross-answers (devel/talloc/waf-cross.mk).
 .include "waf-cross.mk"
-# The Python binding probes build host binaries that the target executor
-# rightly refuses; the KIO SMB consumer needs the C library only.
-CONFIGURE_ARGS+= --disable-python
-CONFIGURE_ENV+= PYTHONPATH=${WRKDIR}/.pysite:${CROSS_DESTDIR}${LOCALBASE}/${PYLIB}
-CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-config
 .endif
 
 .include "../../devel/gettext-lib/buildlink3.mk"

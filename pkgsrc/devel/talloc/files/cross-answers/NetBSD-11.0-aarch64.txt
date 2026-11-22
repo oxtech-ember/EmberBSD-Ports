@@ -1,0 +1,15 @@
+# EmberBSD Waf cross answers 1
+# platform: NetBSD-11.0-aarch64
+# recipe: devel/talloc
+# package: talloc-2.5.0
+# answers-sha256: 553a78c70572b88c69de992ef970ff924b5f90d9adc764938a77ba6a3c889564
+Checking uname sysname type: "NetBSD"
+rpath library support: OK
+Checking getconf LFS_CFLAGS: NO
+Checking for large file support without additional flags: OK
+Checking correct behavior of strtoll: NO
+Checking for working strptime: OK
+Checking for C99 vsnprintf: "1"
+Checking for HAVE_SHARED_MMAP: OK
+Checking for HAVE_INCOHERENT_MMAP: NO
+Checking for HAVE_SECURE_MKSTEMP: OK

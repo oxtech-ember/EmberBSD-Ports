@@ -1,8 +1,8 @@
 # $NetBSD$
 # Origin: EmberBSD (AI-assisted).
 #
-# Waf cross configuration for the Samba library recipes (devel/talloc,
-# databases/tdb). Include after bsd.prefs.mk in cross builds only.
+# Waf cross configuration for Samba, talloc, tdb and tevent.
+# Include after bsd.prefs.mk in cross builds only.
 #
 # Waf runs its compiled feature probes through --cross-answers. By default
 # (EMBERBSD_WAF_ANSWERS_MODE=replay) the answers come from the stored file
@@ -28,6 +28,11 @@ _EMBER_WAF_RUN=		${TOOL_PYTHONBIN} -B -E -S ${_EMBER_WAF_TOOL}
 
 CONFIGURE_ARGS+=	--cross-compile --cross-answers=${_EMBER_WAF_WORK:Q}
 CONFIGURE_ENV+=		PYTHON=${TOOL_PYTHONBIN:Q}
+# Waf runs Python on the build host with target sysconfig data and headers.
+.if ${PYTHON_FOR_BUILD_ONLY:Uno:tl} == "no"
+CONFIGURE_ENV+= PYTHONPATH=${WRKDIR}/.pysite:${CROSS_DESTDIR}${LOCALBASE}/${PYLIB}
+CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-config
+.endif
 
 pre-configure: emberbsd-waf-answers
 .PHONY: emberbsd-waf-answers

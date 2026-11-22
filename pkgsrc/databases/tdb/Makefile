@@ -62,12 +62,6 @@ SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${T
 # Waf runs on the host. Its compiled feature probes are answered from the
 # stored per-platform answers in files/cross-answers (devel/talloc/waf-cross.mk).
 .include "../../devel/talloc/waf-cross.mk"
-# Reuse pkgsrc's target sysconfig environment during configure as well as make.
-# Execute the target python-config script with the host interpreter.
-.if !empty(PKG_OPTIONS:Mpython)
-CONFIGURE_ENV+= PYTHONPATH=${WRKDIR}/.pysite:${CROSS_DESTDIR}${LOCALBASE}/${PYLIB}
-CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-config
-.endif
 .endif
 
 .include "../../devel/gettext-lib/buildlink3.mk"
