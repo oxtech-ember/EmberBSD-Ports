@@ -1,0 +1,144 @@
+Origin: EmberBSD contributors (AI-assisted).
+Use the matching host Ruby to extract and install target gems. Build extensions
+against the target Ruby configuration and stage generated executables.
+
+--- a/lang/ruby/gem-vars.mk
++++ b/lang/ruby/gem-vars.mk
+@@ -10,6 +10,19 @@
+ 
+ RUBYGEM_LANG?=	en_US.UTF-8
+ RUBYGEM_ENV?=	LANG=${RUBYGEM_LANG} LC_CTYPE=${RUBYGEM_LANG}
++
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# Run RubyGems on the host and obtain extension ABI settings from the target.
++TOOL_DEPENDS+=	${RUBY_BASE}>=${RUBY_VERSION}:${RUBY_SRCDIR}
++_RUBYGEM_BUILD_RUBY=	${TOOLBASE}/bin/${RUBY_NAME}
++_RUBYGEM_BUILD_GEM=	${_RUBYGEM_BUILD_RUBY:Q} ${TOOLBASE:Q}/bin/${RUBYGEM_NAME}
++_RUBYGEM_BUILD_RAKE=	${_RUBYGEM_BUILD_RUBY:Q} ${TOOLBASE:Q}/bin/${RAKE_NAME}
++RUBYGEM_ENV+=	GEM_PATH=${TOOLBASE:Q}/${GEM_HOME} RUBY=${_RUBYGEM_BUILD_RUBY:Q}
++.else
++_RUBYGEM_BUILD_RUBY=	${RUBY}
++_RUBYGEM_BUILD_GEM=	${RUBYGEM}
++_RUBYGEM_BUILD_RAKE=	${RAKE}
++.endif
+ 
+ _RUBY_GEM_MAJOR=	${RUBY_RUBYGEMS_VER:C/([0-9]+)\..*/\1/}
+ _RUBY_GEM_MINOR=	${RUBY_RUBYGEMS_VER:C/[0-9]+\.([0-9]+)\..*/\1/}
+--- a/lang/ruby/gem-extract.mk
++++ b/lang/ruby/gem-extract.mk
+@@ -25,7 +25,7 @@
+ 	${RUN} ${ECHO} "Generating gemspec file from ${_gem_:R}"
+ 	${RUN} cd ${WRKDIR} && \
+ 		${SETENV} ${MAKE_ENV} TZ=UTC ${RUBYGEM_ENV} \
+-		${RUBYGEM} spec --ruby ${_DISTDIR:Q}/${_gem_:Q} > ${_gem_}spec
++		${_RUBYGEM_BUILD_GEM} spec --ruby ${_DISTDIR:Q}/${_gem_:Q} > ${_gem_}spec
+ .  endfor
+ .endif
+ 
+--- a/lang/ruby/gem.mk
++++ b/lang/ruby/gem.mk
+@@ -270,7 +270,7 @@
+ _gem-pre-build:
+ .if !empty(OVERRIDE_GEMSPEC)
+ 	@${STEP_MSG} Override gemspec
+-	@${RUBY} ${.CURDIR}/${UPDATE_GEMSPEC} ${WRKDIR}/${GEM_NAME}.gemspec \
++	@${_RUBYGEM_BUILD_RUBY:Q} ${.CURDIR}/${UPDATE_GEMSPEC} ${WRKDIR}/${GEM_NAME}.gemspec \
+ 		${OVERRIDE_GEMSPEC:Q}
+ .endif
+ 	@${STEP_MSG} "Removing backup files of patch before build"
+@@ -281,7 +281,7 @@
+ .PHONY: _gem-gemspec-build
+ _gem-gemspec-build:
+ 	${RUN} cd ${WRKSRC} && ${SETENV} ${MAKE_ENV} ${RUBYGEM_ENV} \
+-		${RUBYGEM} build ${GEM_SPECFILE}
++		${_RUBYGEM_BUILD_GEM} build ${GEM_SPECFILE}
+ 	${RUN} ${TEST} -f ${WRKSRC}/${GEM_NAME}.gem || \
+ 		${FAIL_MSG} "Build of ${GEM_NAME}.gem failed."
+ 
+@@ -289,7 +289,7 @@
+ 
+ .PHONY: _gem-rake-build
+ _gem-rake-build:
+-	${RUN} cd ${WRKSRC} && ${SETENV} ${MAKE_ENV} ${RAKE} ${BUILD_TARGET}
++	${RUN} cd ${WRKSRC} && ${SETENV} ${MAKE_ENV} ${RUBYGEM_ENV} ${_RUBYGEM_BUILD_RAKE} ${BUILD_TARGET}
+ 	${RUN} cd ${WRKSRC} && rm -f ${GEM_NAME}.gem
+ 	${RUN} cd ${WRKSRC} && find . -name ${GEM_NAME}.gem -print | \
+ 	while read file; do \
+@@ -302,6 +302,11 @@
+ _RUBYGEM_OPTIONS+=	--install-dir ${PREFIX}/${GEM_HOME}
+ _RUBYGEM_OPTIONS+=	${RUBYGEM_INSTALL_ROOT_OPTION}
+ _RUBYGEM_OPTIONS+=	--ignore-dependencies
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++_RUBYGEM_OPTIONS+=	--target-rbconfig ${CROSS_DESTDIR:Q}${PREFIX:Q}/${RUBY_ARCHLIB}/rbconfig.rb
++# RubyGems prepends --install-root for the gems and uses --bindir verbatim.
++_RUBYGEM_OPTIONS+=	--bindir ${RUBYGEM_INSTALL_ROOT:Q}${PREFIX:Q}/bin --env-shebang
++.endif
+ _RUBYGEM_OPTIONS+=	--local ${WRKSRC}/${GEM_NAME}.gem
+ .if !empty(RUBYGEM_VERBOSE:M[Yy][Ee][Ss])
+ _RUBYGEM_OPTIONS+=	-V
+@@ -325,7 +330,12 @@
+ _gem-build-install-root:
+ 	@${STEP_MSG} "Installing gem into installation root"
+ 	${RUN} ${SETENV} ${MAKE_ENV} ${RUBYGEM_ENV} \
+-		${RUBYGEM} install --backtrace ${RUBYGEM_OPTIONS} ${_RUBYGEM_OPTIONS}
++		${_RUBYGEM_BUILD_GEM} install --backtrace ${RUBYGEM_OPTIONS} ${_RUBYGEM_OPTIONS}
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++	${RUN} cd ${RUBYGEM_INSTALL_ROOT:Q}${PREFIX:Q} && \
++	    ${_RUBYGEM_BUILD_RUBY:Q} ${PKGSRCDIR:Q}/lang/ruby/install-cross-extensions.rb \
++	    ${GEM_EXTSDIR:Q} ${GEM_LIBDIR:Q} ${GEM_HOME:Q}/specifications/${GEM_NAME:Q}.gemspec ${RUBY_DLEXT:Q}
++.endif
+ 	${RUN} cd ${RUBYGEM_INSTALL_ROOT}${PREFIX}/${GEM_HOME} && rmdir * 2>/dev/null || ${TRUE}
+ 
+ # The ``gem'' command doesn't exit with a non-zero result even if the
+--- /dev/null
++++ b/lang/ruby/install-cross-extensions.rb
+@@ -0,0 +1,49 @@
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD contributors (AI-assisted).
++# Match RubyGems' extension layout inside the target package staging directory.
++require "fileutils"
++require "rubygems"
++
++def checked_path(path, root)
++  resolved = File.realpath(path)
++  unless resolved == root || resolved.start_with?(root + File::SEPARATOR)
++    abort "Ruby extension path is outside its staging directory: #{path}"
++  end
++  resolved
++end
++
++def destination_directory(root, components)
++  components.reduce(root) do |parent, name|
++    abort "Invalid relative Ruby extension directory" if name.empty? || name == "." || name == ".."
++    path = File.join(parent, name)
++    Dir.mkdir(path) unless File.exist?(path) || File.symlink?(path)
++    resolved = checked_path(path, root)
++    abort "Ruby extension parent is not a directory: #{path}" unless File.directory?(resolved)
++    resolved
++  end
++end
++
++extensions, gemdir, gemspec, suffix = ARGV
++exit unless Gem.install_extension_in_lib && File.directory?(extensions)
++
++stage = File.realpath(Dir.pwd)
++extensions = checked_path(extensions, stage)
++gemdir = checked_path(gemdir, stage)
++spec = Gem::Specification.load(checked_path(gemspec, stage)) or abort "Missing installed gem specification"
++require_path = spec.raw_require_paths.fetch(0)
++require_dir = File.expand_path(require_path, gemdir)
++unless require_dir == gemdir || require_dir.start_with?(gemdir + File::SEPARATOR)
++  abort "Ruby extension require path is outside the installed gem"
++end
++relative = require_dir.delete_prefix(gemdir).delete_prefix(File::SEPARATOR)
++require_dir = destination_directory(gemdir, relative.split(File::SEPARATOR))
++Dir.glob("**/*.#{suffix}", base: extensions).each do |entry|
++  source = checked_path(File.join(extensions, entry), extensions)
++  abort "Ruby extension is not a regular file: #{entry}" unless File.file?(source)
++  parts = entry.split(File::SEPARATOR)
++  basename = parts.pop
++  parent = destination_directory(require_dir, parts)
++  target = File.join(parent, basename)
++  abort "Ruby extension destination is a symlink: #{entry}" if File.symlink?(target)
++  FileUtils.install(source, target, preserve: true)
++end
