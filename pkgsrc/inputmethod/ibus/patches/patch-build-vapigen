@@ -1,0 +1,77 @@
+$NetBSD$
+
+Query the native Vala generator and its make rules when compiling IBus
+for another platform. Restore target pkg-config immediately afterwards.
+Origin: EmberBSD (AI-assisted).
+
+--- m4/vapigen.m4.orig
++++ m4/vapigen.m4
+@@ -66,6 +66,16 @@
+ 
+   PKG_PROG_PKG_CONFIG
+ 
++  ibus_build_vapigen=no
++  if test "$cross_compiling" = yes && test "$found_introspection" = yes && test -n "$PKG_CONFIG_FOR_BUILD"; then
++    ibus_build_vapigen=yes
++    ibus_target_pkg_config=$PKG_CONFIG
++    ibus_target_sysroot_set=${PKG_CONFIG_SYSROOT_DIR+set}
++    ibus_target_sysroot=$PKG_CONFIG_SYSROOT_DIR
++    PKG_CONFIG=$PKG_CONFIG_FOR_BUILD
++    PKG_CONFIG_SYSROOT_DIR=
++  fi
++
+   PKG_CHECK_EXISTS([$vapigen_pkg], [
+       AS_IF([test "$enable_vala" = "auto"], [
+           enable_vala=yes
+@@ -91,6 +101,15 @@
+         ])
+     ])
+ 
++  if test "$ibus_build_vapigen" = yes; then
++    PKG_CONFIG=$ibus_target_pkg_config
++    if test "$ibus_target_sysroot_set" = set; then
++      PKG_CONFIG_SYSROOT_DIR=$ibus_target_sysroot
++    else
++      unset PKG_CONFIG_SYSROOT_DIR
++    fi
++  fi
++
+   AC_MSG_RESULT([$enable_vala])
+ 
+   AC_SUBST([VAPIGEN])
+
+--- configure.orig
++++ configure
+@@ -23021,6 +23021,16 @@
+ 	as_fn_error $? "pkg-config not found" "$LINENO" 5
+ fi
+ 
++  ibus_build_vapigen=no
++  if test "$cross_compiling" = yes && test "$found_introspection" = yes && test -n "$PKG_CONFIG_FOR_BUILD"; then
++    ibus_build_vapigen=yes
++    ibus_target_pkg_config=$PKG_CONFIG
++    ibus_target_sysroot_set=${PKG_CONFIG_SYSROOT_DIR+set}
++    ibus_target_sysroot=$PKG_CONFIG_SYSROOT_DIR
++    PKG_CONFIG=$PKG_CONFIG_FOR_BUILD
++    PKG_CONFIG_SYSROOT_DIR=
++  fi
++
+   if test -n "$PKG_CONFIG" && \
+     { { printf '%s\n' "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"\$vapigen_pkg\""; } >&5
+   ($PKG_CONFIG --exists --print-errors "$vapigen_pkg") 2>&5
+@@ -23075,6 +23085,15 @@
+   *) :
+      ;;
+ esac
++
++  if test "$ibus_build_vapigen" = yes; then
++    PKG_CONFIG=$ibus_target_pkg_config
++    if test "$ibus_target_sysroot_set" = set; then
++      PKG_CONFIG_SYSROOT_DIR=$ibus_target_sysroot
++    else
++      unset PKG_CONFIG_SYSROOT_DIR
++    fi
++  fi
+ 
+   { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $enable_vala" >&5
+ printf '%s\n' "$enable_vala" >&6; }
