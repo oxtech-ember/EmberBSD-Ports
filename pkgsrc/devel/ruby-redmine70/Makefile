@@ -10,7 +10,7 @@ HOMEPAGE=	https://www.redmine.org/
 COMMENT=	Flexible project management web application
 LICENSE=	gnu-gpl-v2 # and so on.
 
-RM_VERSION=	7.0.2
+RM_VERSION=	7.0.3
 
 NO_BUILD=	yes
 
@@ -42,7 +42,7 @@ DEPENDS+=	${RUBY_PKGPREFIX}-rack>=3.1.3:../../www/ruby-rack
 DEPENDS+=	${RUBY_PKGPREFIX}-stimulus-rails>=1.3<2:../../www/ruby-stimulus-rails
 DEPENDS+=	${RUBY_PKGPREFIX}-importmap-rails>=2.0<3:../../www/ruby-importmap-rails
 DEPENDS+=	${RUBY_PKGPREFIX}-commonmarker>=2.8.2:../../textproc/ruby-commonmarker
-DEPENDS+=	${RUBY_PKGPREFIX}-doorkeeper>=5.8.2<5.9:../../www/ruby-doorkeeper
+DEPENDS+=	${RUBY_PKGPREFIX}-doorkeeper>=5.9.6<5.10:../../www/ruby-doorkeeper
 DEPENDS+=	${RUBY_PKGPREFIX}-bcrypt>=3.0:../../security/ruby-bcrypt
 DEPENDS+=	${RUBY_PKGPREFIX}-doorkeeper-i18n>=5.2<6:../../www/ruby-doorkeeper-i18n
 DEPENDS+=	${RUBY_PKGPREFIX}-requestjs-rails>=0.0.13<0.1:../../www/ruby-requestjs-rails

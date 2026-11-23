@@ -2,6 +2,7 @@ $NetBSD$
 
 * Relax dependency: allow newer Rails 8.1, rubyzip, commonmarker,
   net-ldap, mini_magick and sqlite3 releases.
+* Backport upstream Redmine r25017 (#44391) for Doorkeeper 5.9.
 * Do not load gem for development and test.
 
 --- Gemfile.orig
@@ -27,7 +28,8 @@ $NetBSD$
  gem "importmap-rails", "~> 2.0"
 -gem 'commonmarker', '~> 2.8.2'
 +gem 'commonmarker', '>= 2.8.2'
- gem "doorkeeper", "~> 5.8.2"
+-gem "doorkeeper", "~> 5.8.2"
++gem 'doorkeeper', '~> 5.9.6'
  gem "bcrypt", require: false
  gem "doorkeeper-i18n", "~> 5.2"
 @@ -43,12 +43,12 @@
