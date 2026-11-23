@@ -7,7 +7,7 @@ Use the current Commander API and native Node source-map support.
 +++ package.json
 @@ -6,7 +6,7 @@
    "license": "BSD-2-Clause",
-   "version": "5.51.2",
+   "version": "5.51.4",
    "engines": {
 -    "node": ">=10"
 +    "node": ">=22.12.0"

@@ -1,7 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream terser module.
-DISTNAME= terser-5.51.2
-PKGNAME= node-terser-5.51.2
-PKGREVISION= 2
+DISTNAME= terser-5.51.4
+PKGNAME= node-terser-5.51.4
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/terser/-/
 EXTRACT_SUFX= .tgz
