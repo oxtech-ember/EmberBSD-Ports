@@ -53,4 +53,8 @@ post-install:
 .include "../../x11/libXrender/buildlink3.mk"
 .include "../../x11/libXtst/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION= 3
+.endif
+
 .include "../../mk/bsd.pkg.mk"
