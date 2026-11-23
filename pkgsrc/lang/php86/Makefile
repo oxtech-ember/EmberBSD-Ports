@@ -63,6 +63,8 @@ PHP_PKGSRC_README=	../../lang/php/files/README.pkgsrc
 
 # Make sure modules can link correctly
 .if ${OPSYS} == "Darwin"
+PKGREVISION=		1
+CPPFLAGS+=		-DPHP_DARWIN_PACKAGE_LAYOUT
 INSTALL_UNSTRIPPED=	yes
 .endif
 
@@ -74,6 +76,9 @@ CFLAGS+=	-DSQLITE_ENABLE_LOCKING_STYLE=0 -DSQLITE_WITHOUT_ZONEMALLOC
 
 post-patch:
 	${CP} ${.CURDIR}/${PHP_PKGSRC_README} ${WRKDIR}/${PHP_PKGSRC_README:T}
+.if ${OPSYS} == "Darwin"
+	${PATCH} -d ${WRKSRC} -p0 -F 0 < ${FILESDIR}/darwin-install-paths.patch
+.endif
 
 pre-configure:
 	cd ${WRKSRC} && ${PKGSRC_SETENV} ${CONFIGURE_ENV} autoconf -f

@@ -1,0 +1,404 @@
+--- main/php.h.orig
++++ main/php.h
+@@ -120,6 +120,14 @@
+ 
+ #ifdef HAVE_BUILD_DEFS_H
+ #include <build-defs.h>
++#ifdef PHP_DARWIN_PACKAGE_LAYOUT
++BEGIN_EXTERN_C()
++PHPAPI const char *php_package_path(const char *configured);
++END_EXTERN_C()
++# define PHP_INSTALL_PATH(value) php_package_path(value)
++#else
++# define PHP_INSTALL_PATH(value) (value)
++#endif
+ #endif
+ 
+ /*
+--- main/main.c.orig
++++ main/main.c
+@@ -440,6 +440,104 @@
+ 	return FAILURE;
+ }
+ /* }}} */
++
++#ifdef PHP_DARWIN_PACKAGE_LAYOUT
++#include <mach-o/dyld.h>
++#include <pthread.h>
++
++#define PHP_LAYOUT_STR_I(n) #n
++#define PHP_LAYOUT_STR(n) PHP_LAYOUT_STR_I(n)
++#define PHP_LAYOUT_VERSION PHP_LAYOUT_STR(PHP_MAJOR_VERSION) PHP_LAYOUT_STR(PHP_MINOR_VERSION)
++
++/* The package installs CLI and debugger programs in bin and CGI in libexec.
++ * Build-tree programs and other SAPIs retain their configured directories. */
++static const char *const php_program_suffixes[] = {
++    "/bin/php" PHP_LAYOUT_VERSION,
++    "/bin/phpdbg" PHP_LAYOUT_VERSION,
++    "/libexec/cgi-bin/php" PHP_LAYOUT_VERSION,
++    "/sbin/php-fpm" PHP_LAYOUT_VERSION
++};
++static const char *const configured_dirs[] = {
++    PHP_INCLUDE_PATH, PEAR_INSTALLDIR, PHP_EXTENSION_DIR, PHP_PREFIX,
++    PHP_BINDIR, PHP_SBINDIR, PHP_MANDIR, PHP_LIBDIR, PHP_DATADIR,
++    PHP_SYSCONFDIR, PHP_LOCALSTATEDIR, PHP_CONFIG_FILE_PATH, PHP_CONFIG_FILE_SCAN_DIR
++};
++static char *installed_dirs[sizeof(configured_dirs) / sizeof(configured_dirs[0])];
++static pthread_once_t php_layout_once = PTHREAD_ONCE_INIT;
++
++/* PHP path lists use a colon on Darwin. Replace complete prefix components. */
++static char *php_map_directories(const char *configured, const char *prefix)
++{
++    const size_t old_len = strlen(PHP_PREFIX), new_len = strlen(prefix);
++    size_t size = strlen(configured) + 1;
++    const char *entry = configured;
++    do {
++        size_t len = strcspn(entry, ":");
++        if (len >= old_len && !memcmp(entry, PHP_PREFIX, old_len)
++                && (len == old_len || entry[old_len] == '/')) {
++            size = size - old_len + new_len;
++        }
++        entry += len;
++    } while (*entry++ == ':');
++    char *result = malloc(size);
++    if (result == NULL) {
++        zend_error_noreturn(E_CORE_ERROR, "Cannot allocate PHP installation paths");
++    }
++    char *dest = result;
++    entry = configured;
++    for (;;) {
++        size_t len = strcspn(entry, ":");
++        if (len >= old_len && !memcmp(entry, PHP_PREFIX, old_len)
++                && (len == old_len || entry[old_len] == '/')) {
++            memcpy(dest, prefix, new_len);
++            dest += new_len;
++            entry += old_len;
++            len -= old_len;
++        }
++        memcpy(dest, entry, len);
++        dest += len;
++        entry += len;
++        *dest++ = *entry;
++        if (!*entry++) {
++            break;
++        }
++    }
++    return result;
++}
++
++static void php_initialize_package_layout(void)
++{
++    char executable[PATH_MAX], canonical[PATH_MAX];
++    uint32_t capacity = sizeof(executable);
++    if (_NSGetExecutablePath(executable, &capacity) || !realpath(executable, canonical)) {
++        return;
++    }
++    const size_t len = strlen(canonical);
++    for (size_t i = 0; i < sizeof(php_program_suffixes) / sizeof(php_program_suffixes[0]); ++i) {
++        const char *suffix = php_program_suffixes[i];
++        const size_t tail = strlen(suffix);
++        if (len <= tail || strcmp(canonical + len - tail, suffix)) {
++            continue;
++        }
++        canonical[len - tail] = 0;
++        for (size_t j = 0; j < sizeof(configured_dirs) / sizeof(configured_dirs[0]); ++j) {
++            installed_dirs[j] = php_map_directories(configured_dirs[j], canonical);
++        }
++        break;
++    }
++}
++
++PHPAPI const char *php_package_path(const char *configured)
++{
++    pthread_once(&php_layout_once, php_initialize_package_layout);
++    for (size_t i = 0; i < sizeof(configured_dirs) / sizeof(configured_dirs[0]); ++i) {
++        if (installed_dirs[i] && !strcmp(configured_dirs[i], configured)) {
++            return installed_dirs[i];
++        }
++    }
++    return configured;
++}
++#endif
+ 
+ /* {{{ php_binary_init */
+ static void php_binary_init(void)
+@@ -920,6 +1018,22 @@
+ 	STD_PHP_INI_ENTRY("syslog.ident",		"php",			PHP_INI_SYSTEM,		OnUpdateString,		syslog_ident,		php_core_globals,		core_globals)
+ 	STD_PHP_INI_ENTRY("syslog.filter",		"no-ctrl",		PHP_INI_ALL,		OnSetLogFilter,		syslog_filter,		php_core_globals, 		core_globals)
+ PHP_INI_END()
++
++#ifdef PHP_DARWIN_PACKAGE_LAYOUT
++static zend_ini_entry_def php_package_defaults[sizeof(ini_entries) / sizeof(ini_entries[0])];
++static pthread_once_t php_package_ini_once = PTHREAD_ONCE_INIT;
++
++static void php_init_package_ini_defaults(void)
++{
++    memcpy(php_package_defaults, ini_entries, sizeof(php_package_defaults));
++    for (zend_ini_entry_def *entry = php_package_defaults; entry->name; ++entry) {
++        if (!strcmp(entry->name, "extension_dir") || !strcmp(entry->name, "include_path")) {
++            entry->value = PHP_INSTALL_PATH(entry->value);
++            entry->value_length = (uint32_t)strlen(entry->value);
++        }
++    }
++}
++#endif
+ /* }}} */
+ 
+ /* True globals (no need for thread safety */
+@@ -2279,7 +2393,12 @@
+ 	zend_stream_shutdown();
+ 
+ 	/* Register PHP core ini entries */
+-	zend_register_ini_entries_ex(ini_entries, module_number, MODULE_PERSISTENT);
++#ifdef PHP_DARWIN_PACKAGE_LAYOUT
++    pthread_once(&php_package_ini_once, php_init_package_ini_defaults);
++    zend_register_ini_entries_ex(php_package_defaults, module_number, MODULE_PERSISTENT);
++#else
++    zend_register_ini_entries_ex(ini_entries, module_number, MODULE_PERSISTENT);
++#endif
+ 
+ 	/* Register Zend ini entries */
+ 	zend_register_standard_ini_entries();
+--- main/main.stub.php.orig
++++ main/main.stub.php
+@@ -71,74 +71,74 @@
+ const PHP_OS_FAMILY = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_INCLUDE_PATH
++ * @cvalue PHP_INSTALL_PATH(PHP_INCLUDE_PATH)
+  */
+ const DEFAULT_INCLUDE_PATH = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PEAR_INSTALLDIR
++ * @cvalue PHP_INSTALL_PATH(PEAR_INSTALLDIR)
+  */
+ const PEAR_INSTALL_DIR = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_EXTENSION_DIR
++ * @cvalue PHP_INSTALL_PATH(PHP_EXTENSION_DIR)
+  */
+ const PEAR_EXTENSION_DIR = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_EXTENSION_DIR
++ * @cvalue PHP_INSTALL_PATH(PHP_EXTENSION_DIR)
+  */
+ const PHP_EXTENSION_DIR = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_PREFIX
++ * @cvalue PHP_INSTALL_PATH(PHP_PREFIX)
+  */
+ const PHP_PREFIX = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_BINDIR
++ * @cvalue PHP_INSTALL_PATH(PHP_BINDIR)
+  */
+ const PHP_BINDIR = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_SBINDIR
++ * @cvalue PHP_INSTALL_PATH(PHP_SBINDIR)
+  */
+ const PHP_SBINDIR = UNKNOWN;
+ #ifdef PHP_MANDIR
+ /**
+  * @var string
+- * @cvalue PHP_MANDIR
++ * @cvalue PHP_INSTALL_PATH(PHP_MANDIR)
+  */
+ const PHP_MANDIR = UNKNOWN;
+ #endif
+ /**
+  * @var string
+- * @cvalue PHP_LIBDIR
++ * @cvalue PHP_INSTALL_PATH(PHP_LIBDIR)
+  */
+ const PHP_LIBDIR = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_DATADIR
++ * @cvalue PHP_INSTALL_PATH(PHP_DATADIR)
+  */
+ const PHP_DATADIR = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_SYSCONFDIR
++ * @cvalue PHP_INSTALL_PATH(PHP_SYSCONFDIR)
+  */
+ const PHP_SYSCONFDIR = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_LOCALSTATEDIR
++ * @cvalue PHP_INSTALL_PATH(PHP_LOCALSTATEDIR)
+  */
+ const PHP_LOCALSTATEDIR = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_CONFIG_FILE_PATH
++ * @cvalue PHP_INSTALL_PATH(PHP_CONFIG_FILE_PATH)
+  */
+ const PHP_CONFIG_FILE_PATH = UNKNOWN;
+ /**
+  * @var string
+- * @cvalue PHP_CONFIG_FILE_SCAN_DIR
++ * @cvalue PHP_INSTALL_PATH(PHP_CONFIG_FILE_SCAN_DIR)
+  */
+ const PHP_CONFIG_FILE_SCAN_DIR = UNKNOWN;
+ /**
+--- main/main_arginfo.h.orig
++++ main/main_arginfo.h
+@@ -1,5 +1,5 @@
+ /* This is a generated file, edit main.stub.php instead.
+- * Stub hash: 22b4c7412680888c122886bccd21e3d38953ce33 */
++ * Stub hash: 77f4a949bbb63335f3279a397dd5504754ef2228 */
+ 
+ #include "zend_constants.h"
+ 
+@@ -19,22 +19,22 @@
+ 	REGISTER_BOOL_CONSTANT("PHP_DEBUG", PHP_DEBUG, CONST_PERSISTENT);
+ 	REGISTER_STRING_CONSTANT("PHP_OS", PHP_OS_STR, CONST_PERSISTENT);
+ 	REGISTER_STRING_CONSTANT("PHP_OS_FAMILY", PHP_OS_FAMILY, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("DEFAULT_INCLUDE_PATH", PHP_INCLUDE_PATH, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PEAR_INSTALL_DIR", PEAR_INSTALLDIR, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PEAR_EXTENSION_DIR", PHP_EXTENSION_DIR, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_EXTENSION_DIR", PHP_EXTENSION_DIR, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_PREFIX", PHP_PREFIX, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_BINDIR", PHP_BINDIR, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_SBINDIR", PHP_SBINDIR, CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("DEFAULT_INCLUDE_PATH", PHP_INSTALL_PATH(PHP_INCLUDE_PATH), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PEAR_INSTALL_DIR", PHP_INSTALL_PATH(PEAR_INSTALLDIR), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PEAR_EXTENSION_DIR", PHP_INSTALL_PATH(PHP_EXTENSION_DIR), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_EXTENSION_DIR", PHP_INSTALL_PATH(PHP_EXTENSION_DIR), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_PREFIX", PHP_INSTALL_PATH(PHP_PREFIX), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_BINDIR", PHP_INSTALL_PATH(PHP_BINDIR), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_SBINDIR", PHP_INSTALL_PATH(PHP_SBINDIR), CONST_PERSISTENT);
+ #if defined(PHP_MANDIR)
+-	REGISTER_STRING_CONSTANT("PHP_MANDIR", PHP_MANDIR, CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_MANDIR", PHP_INSTALL_PATH(PHP_MANDIR), CONST_PERSISTENT);
+ #endif
+-	REGISTER_STRING_CONSTANT("PHP_LIBDIR", PHP_LIBDIR, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_DATADIR", PHP_DATADIR, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_SYSCONFDIR", PHP_SYSCONFDIR, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_LOCALSTATEDIR", PHP_LOCALSTATEDIR, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_CONFIG_FILE_PATH", PHP_CONFIG_FILE_PATH, CONST_PERSISTENT);
+-	REGISTER_STRING_CONSTANT("PHP_CONFIG_FILE_SCAN_DIR", PHP_CONFIG_FILE_SCAN_DIR, CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_LIBDIR", PHP_INSTALL_PATH(PHP_LIBDIR), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_DATADIR", PHP_INSTALL_PATH(PHP_DATADIR), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_SYSCONFDIR", PHP_INSTALL_PATH(PHP_SYSCONFDIR), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_LOCALSTATEDIR", PHP_INSTALL_PATH(PHP_LOCALSTATEDIR), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_CONFIG_FILE_PATH", PHP_INSTALL_PATH(PHP_CONFIG_FILE_PATH), CONST_PERSISTENT);
++	REGISTER_STRING_CONSTANT("PHP_CONFIG_FILE_SCAN_DIR", PHP_INSTALL_PATH(PHP_CONFIG_FILE_SCAN_DIR), CONST_PERSISTENT);
+ 	REGISTER_STRING_CONSTANT("PHP_SHLIB_SUFFIX", PHP_SHLIB_SUFFIX, CONST_PERSISTENT);
+ 	REGISTER_STRING_CONSTANT("PHP_EOL", PHP_EOL, CONST_PERSISTENT);
+ 	REGISTER_LONG_CONSTANT("PHP_MAXPATHLEN", MAXPATHLEN, CONST_PERSISTENT);
+--- main/php_ini.c.orig
++++ main/php_ini.c
+@@ -531,7 +531,7 @@
+ 		efree(default_location);
+ 
+ #else
+-		default_location = PHP_CONFIG_FILE_PATH;
++		default_location = (char *)PHP_INSTALL_PATH(PHP_CONFIG_FILE_PATH);
+ 		append_ini_path(php_ini_search_path, search_path_size, default_location);
+ #endif
+ 	}
+@@ -627,7 +627,7 @@
+ 	php_ini_scanned_path = getenv("PHP_INI_SCAN_DIR");
+ 	if (!php_ini_scanned_path) {
+ 		/* Or fall back using possible --with-config-file-scan-dir setting (defaults to empty string!) */
+-		php_ini_scanned_path = PHP_CONFIG_FILE_SCAN_DIR;
++		php_ini_scanned_path = (char *)PHP_INSTALL_PATH(PHP_CONFIG_FILE_SCAN_DIR);
+ 	}
+ 	php_ini_scanned_path_len = strlen(php_ini_scanned_path);
+ 
+@@ -653,7 +653,7 @@
+ 			if (!debpath[0]) {
+ 				/* empty string means default builtin value
+ 				   to allow "/foo/php.d:" or ":/foo/php.d" */
+-				debpath = PHP_CONFIG_FILE_SCAN_DIR;
++				debpath = (char *)PHP_INSTALL_PATH(PHP_CONFIG_FILE_SCAN_DIR);
+ 			}
+ 			lenpath = strlen(debpath);
+ 
+--- ext/standard/info.c.orig
++++ ext/standard/info.c
+@@ -826,7 +826,7 @@
+ 		php_info_print_table_row(2, "Virtual Directory Support", "disabled" );
+ #endif
+ 
+-		php_info_print_table_row(2, "Configuration File (php.ini) Path", PHP_CONFIG_FILE_PATH);
++		php_info_print_table_row(2, "Configuration File (php.ini) Path", PHP_INSTALL_PATH(PHP_CONFIG_FILE_PATH));
+ 		php_info_print_table_row(2, "Loaded Configuration File", php_ini_opened_path ? php_ini_opened_path : "(none)");
+ 		php_info_print_table_row(2, "Scan this dir for additional .ini files", php_ini_scanned_path ? php_ini_scanned_path : "(none)");
+ 		php_info_print_table_row(2, "Additional .ini files parsed", php_ini_scanned_files ? php_ini_scanned_files : "(none)");
+--- sapi/cli/php_cli.c.orig
++++ sapi/cli/php_cli.c
+@@ -1108,7 +1108,7 @@
+ 
+ 		case PHP_CLI_MODE_SHOW_INI_CONFIG:
+ 			{
+-				zend_printf("Configuration File (php.ini) Path: \"%s\"\n", PHP_CONFIG_FILE_PATH);
++				zend_printf("Configuration File (php.ini) Path: \"%s\"\n", PHP_INSTALL_PATH(PHP_CONFIG_FILE_PATH));
+ 				if (php_ini_opened_path) {
+ 					zend_printf("Loaded Configuration File:         \"%s\"\n", php_ini_opened_path);
+ 				} else {
+--- sapi/phpdbg/phpdbg_prompt.c.orig
++++ sapi/phpdbg/phpdbg_prompt.c
+@@ -319,12 +319,12 @@
+ 		char *sys_ini;
+ 		int i;
+ 
+-		size_t sys_ini_length = asprintf(&sys_ini, "%s/" PHPDBG_INIT_FILENAME, PHP_CONFIG_FILE_PATH);
++		size_t sys_ini_length = asprintf(&sys_ini, "%s/" PHPDBG_INIT_FILENAME, PHP_INSTALL_PATH(PHP_CONFIG_FILE_PATH));
+ 		phpdbg_try_file_init(sys_ini, sys_ini_length, 0);
+ 		free(sys_ini);
+ 
+ 		if (!scan_dir) {
+-			scan_dir = PHP_CONFIG_FILE_SCAN_DIR;
++			scan_dir = (char *)PHP_INSTALL_PATH(PHP_CONFIG_FILE_SCAN_DIR);
+ 		}
+ 		while (*scan_dir != 0) {
+ 			i = 0;
+--- sapi/fpm/fpm/fpm_conf.c.orig
++++ sapi/fpm/fpm/fpm_conf.c
+@@ -795,7 +795,7 @@
+ 
+ 	/* if the global prefix is not set */
+ 	if (prefix == NULL) {
+-		prefix = default_prefix ? default_prefix : PHP_PREFIX;
++		prefix = default_prefix ? default_prefix : PHP_INSTALL_PATH(PHP_PREFIX);
+ 	}
+ 
+ 	if (expand) {
+@@ -1278,7 +1278,7 @@
+ 	struct fpm_worker_pool_s *wp;
+ 
+ 	if (fpm_global_config.pid_file) {
+-		fpm_evaluate_full_path(&fpm_global_config.pid_file, NULL, PHP_LOCALSTATEDIR, 0);
++		fpm_evaluate_full_path(&fpm_global_config.pid_file, NULL, (char *)PHP_INSTALL_PATH(PHP_LOCALSTATEDIR), 0);
+ 	}
+ 
+ 	if (force_daemon >= 0) {
+@@ -1327,7 +1327,7 @@
+ 	if (strcasecmp(fpm_global_config.error_log, "syslog") != 0)
+ #endif
+ 	{
+-		fpm_evaluate_full_path(&fpm_global_config.error_log, NULL, PHP_LOCALSTATEDIR, 0);
++		fpm_evaluate_full_path(&fpm_global_config.error_log, NULL, (char *)PHP_INSTALL_PATH(PHP_LOCALSTATEDIR), 0);
+ 	}
+ 
+ 	if (!fpm_global_config.daemonize && 0 > fpm_stdio_save_original_stderr()) {
+@@ -1833,7 +1833,7 @@
+ 		char *tmp;
+ 
+ 		if (fpm_globals.prefix == NULL) {
+-			spprintf(&tmp, 0, "%s/php-fpm.conf", PHP_SYSCONFDIR);
++			spprintf(&tmp, 0, "%s/php-fpm.conf", PHP_INSTALL_PATH(PHP_SYSCONFDIR));
+ 		} else {
+ 			spprintf(&tmp, 0, "%s/etc/php-fpm.conf", fpm_globals.prefix);
+ 		}
