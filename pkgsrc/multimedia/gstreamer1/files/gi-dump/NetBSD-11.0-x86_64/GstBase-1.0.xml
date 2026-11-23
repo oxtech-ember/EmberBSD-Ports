@@ -1,9 +1,9 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-x86_64
 recipe: multimedia/gstreamer1
-package: gstreamer1-1.28.8
+package: gstreamer1-1.28.9
 program: GstBase-1.0
-types-sha256: c559f79b205e715f86efb4f39f2ed34ebcdbe17d624d48cfc3574fc35d2b94af
+types-sha256: 73b8414f944068f1e9e143c2311fb36472df6f10ca948903032514bf06c97c15
 dump-sha256: e18c49cf64f9b49838db97ba707f9e04e6fe86d359a09a4edd40cf92f11fb46d
 -->
 <?xml version="1.0"?>

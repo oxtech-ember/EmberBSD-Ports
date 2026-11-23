@@ -23,7 +23,7 @@ normal external-codec and CM5 results keep their separate selection and scope.
 The [complete speech packages](speech.md) also provide tested Sonic, eSpeak NG,
 Flite and speech-dispatcher for Qt/KDE on CM5.
 
-The profile pins the complete [GStreamer 1.28.8 source family](gstreamer.md)
+The profile pins the complete [GStreamer 1.28.9 source family](gstreamer.md)
 for the export. Its core cross-build corrections preserve introspection.
 Complete [base/bad plugin packages](gstreamer-plugins.md) now pass bounded
 CM5 introspection, conversion and parser checks; other plugin packages remain separate.

@@ -1,7 +1,7 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-x86_64
 recipe: multimedia/gst-plugins1-bad
-package: gst-plugins1-bad-1.28.8
+package: gst-plugins1-bad-1.28.9
 program: GstInsertBin-1.0
 types-sha256: f4b4605b46fbc0e2afed90e472a4f4fd3c861df451d9c09651cb8f548b6e7ff9
 dump-sha256: 7b4bc819fd1eb8e023f8217f7ce7659fb3fbcb01951cefbc0fdb2c44f6f448d4

@@ -1,6 +1,6 @@
 # $NetBSD: version.mk,v 1.34 2026/08/06 19:11:10 adam Exp $
 
-GST_VERSION=	1.28.8
+GST_VERSION=	1.28.9
 .if ${GST_VERSION:E} < 10
 SHLIBVER=	${GST_VERSION:S/1.//:S/./0/}
 .else

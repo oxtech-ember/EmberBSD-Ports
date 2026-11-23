@@ -64,7 +64,7 @@ def main():
                 package.mkdir(parents=True)
                 shutil.copy2(source, package / 'PLIST')
                 escape = lambda s: str(s).replace('$', '$$').replace('#', r'\#')
-                makefile = ['PKGNAME=gst-plugins1-' + family + '-1.28.8nb1',
+                makefile = ['PKGNAME=gst-plugins1-' + family + '-1.28.9',
                             'DESTDIR=' + escape(dest), 'PREFIX=/usr/pkg',
                             'TOOLBASE=' + escape(host), 'PKGMANDIR=' + mandir,
                             '_MANZ=' + ('yes' if compressed else 'no'),

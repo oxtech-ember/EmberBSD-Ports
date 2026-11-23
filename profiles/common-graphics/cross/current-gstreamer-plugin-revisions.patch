@@ -1,0 +1,540 @@
+--- a/audio/gst-plugins1-a52/Makefile
++++ b/audio/gst-plugins1-a52/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.10 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-ugly/-a52/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - Dolby AC-3 audio plugin
+--- a/audio/gst-plugins1-alsa/Makefile
++++ b/audio/gst-plugins1-alsa/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.8 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-alsa/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - ALSA (Linux audio) plugin
+--- a/audio/gst-plugins1-cdparanoia/Makefile
++++ b/audio/gst-plugins1-cdparanoia/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.8 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-cdparanoia/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - CD audio plugin
+--- a/audio/gst-plugins1-dts/Makefile
++++ b/audio/gst-plugins1-dts/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.8 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-dts/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - DTS plugin
+--- a/audio/gst-plugins1-faac/Makefile
++++ b/audio/gst-plugins1-faac/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.7 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-faac/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - AAC encoder plugin
+--- a/audio/gst-plugins1-faad/Makefile
++++ b/audio/gst-plugins1-faad/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.10 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-faad/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - AAC decoder plugin
+--- a/audio/gst-plugins1-flac/Makefile
++++ b/audio/gst-plugins1-flac/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.11 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-flac/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - FLAC plugin
+--- a/audio/gst-plugins1-fluidsynth/Makefile
++++ b/audio/gst-plugins1-fluidsynth/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.22 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-fluidsynth/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - MIDI plugin
+--- a/audio/gst-plugins1-gme/Makefile
++++ b/audio/gst-plugins1-gme/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.6 2026/09/02 19:00:50 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-gme/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - Game Music Emu plugin
+--- a/audio/gst-plugins1-jack/Makefile
++++ b/audio/gst-plugins1-jack/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.21 2026/09/02 19:00:51 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-jack/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - JACK plugin
+--- a/audio/gst-plugins1-ladspa/Makefile
++++ b/audio/gst-plugins1-ladspa/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.31 2026/09/02 19:00:51 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-ladspa/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - LADSPA support plugin
+--- a/audio/gst-plugins1-lame/Makefile
++++ b/audio/gst-plugins1-lame/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.10 2026/09/02 19:00:51 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-lame/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - MP3 encoder plugin
+--- a/audio/gst-plugins1-lv2/Makefile
++++ b/audio/gst-plugins1-lv2/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.36 2026/09/02 19:00:51 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-lv2/}
+-PKGREVISION=	2
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - LV2 support plugin
+--- a/audio/gst-plugins1-modplug/Makefile
++++ b/audio/gst-plugins1-modplug/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:00:51 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-modplug/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - MOD/S3M/XM/IT decoder plugin
+--- a/audio/gst-plugins1-mpg123/Makefile
++++ b/audio/gst-plugins1-mpg123/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.7 2026/09/02 19:00:51 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-mpg123/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - MP3 decoder plugin
+--- a/audio/gst-plugins1-musepack/Makefile
++++ b/audio/gst-plugins1-musepack/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:00:51 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-musepack/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - Musepack plugin
+--- a/audio/gst-plugins1-opus/Makefile
++++ b/audio/gst-plugins1-opus/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.9 2026/09/02 19:00:51 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-opus/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - Opus audio plugin
+--- a/audio/gst-plugins1-oss/Makefile
++++ b/audio/gst-plugins1-oss/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.8 2026/09/02 19:00:52 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-oss/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - Open Sound System plugin
+--- a/audio/gst-plugins1-osxaudio/Makefile
++++ b/audio/gst-plugins1-osxaudio/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:00:52 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-osxaudio/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - macOS audio plugin
+--- a/audio/gst-plugins1-pulse/Makefile
++++ b/audio/gst-plugins1-pulse/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.45 2026/09/02 19:00:52 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-pulse/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - PulseAudio plugin
+--- a/audio/gst-plugins1-sid/Makefile
++++ b/audio/gst-plugins1-sid/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.9 2026/09/02 19:00:52 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-ugly/-sid/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - Commodore 64 audio plugin
+--- a/audio/gst-plugins1-sndfile/Makefile
++++ b/audio/gst-plugins1-sndfile/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.14 2026/09/02 19:00:52 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-sndfile/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - libsndfile plugin
+--- a/audio/gst-plugins1-soundtouch/Makefile
++++ b/audio/gst-plugins1-soundtouch/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.7 2026/09/02 19:00:52 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-soundtouch/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - SoundTouch plugin
+--- a/audio/gst-plugins1-speex/Makefile
++++ b/audio/gst-plugins1-speex/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.7 2026/09/02 19:00:52 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-speex/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - Speex plugin
+--- a/audio/gst-plugins1-twolame/Makefile
++++ b/audio/gst-plugins1-twolame/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.19 2026/09/02 19:00:53 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-twolame/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - MP2 encoder plugin
+--- a/audio/gst-plugins1-vorbis/Makefile
++++ b/audio/gst-plugins1-vorbis/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.8 2026/09/02 19:00:53 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-vorbis/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - Vorbis audio plugin
+--- a/audio/gst-plugins1-wavpack/Makefile
++++ b/audio/gst-plugins1-wavpack/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.7 2026/09/02 19:00:53 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-wavpack/}
+-PKGREVISION=	1
+ CATEGORIES=	audio gnome
+ 
+ COMMENT=	Open source multimedia framework - WavPack plugin
+--- a/devel/gst-plugins1-pango/Makefile
++++ b/devel/gst-plugins1-pango/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.43 2026/09/02 19:01:27 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-pango/}
+-PKGREVISION=	1
+ CATEGORIES=	devel gnome
+ 
+ COMMENT=	Open source multimedia framework - pango plugin
+--- a/graphics/gst-plugins1-aalib/Makefile
++++ b/graphics/gst-plugins1-aalib/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.6 2026/09/02 19:02:39 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-aalib/}
+-PKGREVISION=	1
+ CATEGORIES=	graphics gnome
+ 
+ COMMENT=	Open source multimedia framework - aalib plugin
+--- a/graphics/gst-plugins1-cairo/Makefile
++++ b/graphics/gst-plugins1-cairo/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.27 2026/09/02 19:02:39 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-cairo/}
+-PKGREVISION=	1
+ CATEGORIES=	graphics gnome
+ 
+ COMMENT=	Open source multimedia framework - Cairo plugin
+--- a/graphics/gst-plugins1-gdk_pixbuf/Makefile
++++ b/graphics/gst-plugins1-gdk_pixbuf/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.16 2026/09/02 19:02:39 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-gdk_pixbuf/}
+-PKGREVISION=	1
+ CATEGORIES=	graphics gnome
+ 
+ COMMENT=	Open source multimedia framework - GDK Pixbuf plugin
+--- a/graphics/gst-plugins1-gl/Makefile
++++ b/graphics/gst-plugins1-gl/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:02:40 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-gl/}
+-PKGREVISION=	1
+ CATEGORIES=	graphics gnome
+ 
+ COMMENT=	Open source multimedia framework - GL plugin
+--- a/graphics/gst-plugins1-jpeg/Makefile
++++ b/graphics/gst-plugins1-jpeg/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.10 2026/09/02 19:02:40 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-jpeg/}
+-PKGREVISION=	1
+ CATEGORIES=	graphics gnome
+ 
+ COMMENT=	Open source multimedia framework - JPEG plugin
+--- a/graphics/gst-plugins1-png/Makefile
++++ b/graphics/gst-plugins1-png/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.9 2026/09/02 19:02:40 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-png/}
+-PKGREVISION=	1
+ CATEGORIES=	graphics gnome
+ 
+ COMMENT=	Open source multimedia framework - PNG image plugin
+--- a/graphics/gst-plugins1-webp/Makefile
++++ b/graphics/gst-plugins1-webp/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:02:40 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-webp/}
+-PKGREVISION=	1
+ CATEGORIES=	graphics gnome
+ 
+ COMMENT=	Open source multimedia framework - WebP image plugin
+--- a/multimedia/gst-plugins1-aom/Makefile
++++ b/multimedia/gst-plugins1-aom/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:03:41 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-aom/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - AV1 plugin
+--- a/multimedia/gst-plugins1-dvdread/Makefile
++++ b/multimedia/gst-plugins1-dvdread/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.10 2026/09/02 19:03:41 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-ugly/-dvdread/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - DVD plugin
+--- a/multimedia/gst-plugins1-gtk/Makefile
++++ b/multimedia/gst-plugins1-gtk/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.36 2026/09/02 19:03:42 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-gtk/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia x11 gnome
+ 
+ COMMENT=	Open source multimedia framework - GTK plugin
+--- a/multimedia/gst-plugins1-libde265/Makefile
++++ b/multimedia/gst-plugins1-libde265/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:03:42 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-libde265/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - HEVC/H.265 decoder plugin
+--- a/multimedia/gst-plugins1-mpeg2dec/Makefile
++++ b/multimedia/gst-plugins1-mpeg2dec/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.9 2026/09/02 19:03:42 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-ugly/-mpeg2dec/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - MPEG2 decoder plugin
+--- a/multimedia/gst-plugins1-ogg/Makefile
++++ b/multimedia/gst-plugins1-ogg/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.8 2026/09/02 19:03:42 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-ogg/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - Ogg plugin
+--- a/multimedia/gst-plugins1-openh264/Makefile
++++ b/multimedia/gst-plugins1-openh264/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.6 2026/09/02 19:03:43 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-openh264/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - H.264/MPEG-4 decoder plugin
+--- a/multimedia/gst-plugins1-osxvideo/Makefile
++++ b/multimedia/gst-plugins1-osxvideo/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:03:43 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-osxvideo/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - macOS video plugin
+--- a/multimedia/gst-plugins1-resindvd/Makefile
++++ b/multimedia/gst-plugins1-resindvd/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.12 2026/09/02 19:03:43 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-resindvd/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - DVD navigation plugin
+--- a/multimedia/gst-plugins1-theora/Makefile
++++ b/multimedia/gst-plugins1-theora/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.10 2026/09/02 19:03:43 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-theora/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - Theora video plugin
+--- a/multimedia/gst-plugins1-v4l2/Makefile
++++ b/multimedia/gst-plugins1-v4l2/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.9 2026/09/02 19:03:43 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-v4l2/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - Webcam plugin
+--- a/multimedia/gst-plugins1-vpx/Makefile
++++ b/multimedia/gst-plugins1-vpx/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.17 2026/09/02 19:03:43 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-vpx/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - VP8/VP9 plugin
+--- a/multimedia/gst-plugins1-x264/Makefile
++++ b/multimedia/gst-plugins1-x264/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.16 2026/09/02 19:03:43 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-ugly/-x264/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - H.264/MPEG-4 encoder plugin
+--- a/multimedia/gst-plugins1-x265/Makefile
++++ b/multimedia/gst-plugins1-x265/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.13 2026/09/02 19:03:43 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-x265/}
+-PKGREVISION=	1
+ CATEGORIES=	multimedia gnome
+ 
+ COMMENT=	Open source multimedia framework - HEVC/H.265 encoding plugin
+--- a/net/gst-plugins1-adaptivedemux2/Makefile
++++ b/net/gst-plugins1-adaptivedemux2/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.20 2026/09/02 19:03:54 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-adaptivedemux2/}
+-PKGREVISION=	1
+ CATEGORIES=	net gnome
+ 
+ COMMENT=	Open source multimedia framework - adaptive format (HLS/DASH) plugin
+--- a/net/gst-plugins1-rtmp/Makefile
++++ b/net/gst-plugins1-rtmp/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.43 2026/09/02 19:03:55 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-bad/-rtmp/}
+-PKGREVISION=	1
+ CATEGORIES=	net gnome
+ 
+ COMMENT=	Open source multimedia framework - RTMP streaming plugin
+--- a/net/gst-plugins1-soup/Makefile
++++ b/net/gst-plugins1-soup/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.61 2026/09/02 19:03:55 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-soup/}
+-PKGREVISION=	1
+ CATEGORIES=	net gnome
+ 
+ COMMENT=	Open source multimedia framework - HTML (soup) plugin
+--- a/x11/gst-plugins1-x11/Makefile
++++ b/x11/gst-plugins1-x11/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.9 2026/09/02 19:05:07 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-base/-x11/}
+-PKGREVISION=	1
+ CATEGORIES=	x11 gnome
+ 
+ COMMENT=	Open source multimedia framework - X11 plugin
+--- a/x11/gst-plugins1-ximagesrc/Makefile
++++ b/x11/gst-plugins1-ximagesrc/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.4 2026/09/02 19:05:07 wiz Exp $
+ 
+ PKGNAME=	${DISTNAME:S/plugins/plugins1/:S/-good/-ximagesrc/}
+-PKGREVISION=	1
+ CATEGORIES=	x11 gnome
+ 
+ COMMENT=	Open source multimedia framework - X11 image plugin

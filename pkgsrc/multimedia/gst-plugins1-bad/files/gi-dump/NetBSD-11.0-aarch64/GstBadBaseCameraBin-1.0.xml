@@ -1,9 +1,9 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-aarch64
 recipe: multimedia/gst-plugins1-bad
-package: gst-plugins1-bad-1.28.8
+package: gst-plugins1-bad-1.28.9
 program: GstBadBaseCameraBin-1.0
-types-sha256: 3d3dc064554d802750caa7e323570562de2e64acc6e9f1e6acc3d92e8683fd93
+types-sha256: c0429cf02702507cafbf133d95def850a08f98f9cc82ce8084c296df148b2551
 dump-sha256: acd679cdb3ec695e36151ada2b1f7152e538aa68fea6ccb44bc8617285db7198
 -->
 <?xml version="1.0"?>

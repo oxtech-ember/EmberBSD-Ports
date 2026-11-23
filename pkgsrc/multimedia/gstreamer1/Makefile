@@ -4,7 +4,6 @@
 
 DISTNAME=	gstreamer-${GST_VERSION}
 PKGNAME=	${DISTNAME:S/gstreamer/gstreamer1/}
-PKGREVISION=	1
 CATEGORIES=	multimedia
 MASTER_SITES=	https://gstreamer.freedesktop.org/src/gstreamer/
 EXTRACT_SUFX=	.tar.xz

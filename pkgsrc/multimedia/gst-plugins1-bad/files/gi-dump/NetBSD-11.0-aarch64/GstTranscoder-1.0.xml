@@ -1,9 +1,9 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-aarch64
 recipe: multimedia/gst-plugins1-bad
-package: gst-plugins1-bad-1.28.8
+package: gst-plugins1-bad-1.28.9
 program: GstTranscoder-1.0
-types-sha256: ee50f104f80bd0d0c01590aa620664f99ae30ad9a783975fbe6337ecf0cabf67
+types-sha256: bba6a04de78f79d637652b031ba2b9bd3eded4b33606295bf116179cc021ab5c
 dump-sha256: 8f4e240721dc1bc214ca32508c64d2b4c2171791daedf6d582a3d055ce20f9ed
 -->
 <?xml version="1.0"?>

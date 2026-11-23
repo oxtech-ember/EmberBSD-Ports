@@ -6,7 +6,7 @@ The existing native `video(4)` framework supplies capture devices only.
 A CIX codec driver must own separate input/output queues, firmware,
 interrupts and DMA lifetimes before hardware acceptance can start.
 
-The common provider remains FFmpeg 9.0.2 and GStreamer 1.28.8.
+The common provider remains FFmpeg 9.0.2 and GStreamer 1.28.9.
 Their original archive URLs and hashes are in [sources.tsv](../sources.tsv).
 No older vendor fork or retired DKMS module replaces these providers.
 The changes and diagnostics are AI-assisted EmberBSD work.
@@ -54,7 +54,7 @@ CC_FOR_BUILD=HOST_CC CXX_FOR_BUILD=HOST_CXX \
 
 Use absolute paths. The GStreamer check uses the common Meson 1.12.1 source.
 Its cross file and pkg-config environment must select the installed common
-GStreamer 1.28.8 and GLib dependencies. It installs into a private staging tree.
+GStreamer 1.28.9 and GLib dependencies. It installs into a private staging tree.
 It preserves the upstream V4L2 implementation and all its codec modules.
 These are focused diagnostics, not complete FFmpeg or GStreamer package acceptance.
 

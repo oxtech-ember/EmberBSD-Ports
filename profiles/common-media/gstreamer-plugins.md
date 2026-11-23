@@ -1,7 +1,7 @@
 # GStreamer base and bad plugin packages
 
-The complete `gst-plugins1-base-1.28.8nb1` and
-`gst-plugins1-bad-1.28.8nb1` packages cross-build on macOS for EmberBSD/AArch64.
+The complete `gst-plugins1-base-1.28.9` and
+`gst-plugins1-bad-1.28.9` packages cross-build on macOS for EmberBSD/AArch64.
 The inherited package split and options remain intact. Optional GL and codec
 plugin packages are separate; their presence is not implied by these results.
 
@@ -15,7 +15,7 @@ plugins, development files and translations. No output was removed from PLIST.
 
 Installed introspection also exposed a missing dependency: Gst imports
 GLib/GObject, whose typelibs now belong to `glib2-introspection`.
-`gstreamer1-1.28.8nb1` records that target runtime dependency explicitly.
+`gstreamer1-1.28.9` records that target runtime dependency explicitly.
 Having the matching host generator package is insufficient.
 
 These are AI-assisted EmberBSD adaptations of upstream GStreamer and pkgsrc.

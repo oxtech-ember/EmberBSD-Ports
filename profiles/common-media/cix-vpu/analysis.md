@@ -2,7 +2,7 @@
 
 These checks cover the native M2M header selection, its semaphore cleanup fix
 and the four diagnostic C units. They do not audit an entire multimedia stack.
-The upstream source pins remain FFmpeg 9.0.2 and gst-plugins-good 1.28.8.
+The upstream source pins remain FFmpeg 9.0.2 and gst-plugins-good 1.28.9.
 The owning recipes preserve source hashes and upstream licences.
 
 | Check | Scope and observed result |

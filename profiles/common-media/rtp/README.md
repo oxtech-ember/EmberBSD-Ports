@@ -5,7 +5,7 @@ This profile builds the installed FFmpeg/GStreamer C SDK used by the
 Use [results.md](results.md) for platform acceptance and recorded limitations.
 A successful cross-build alone does not establish target execution.
 
-The pinned providers are FFmpeg 9.0.2, GStreamer 1.28.8, GLib 2.90.1,
+The pinned providers are FFmpeg 9.0.2, GStreamer 1.28.9, GLib 2.90.1,
 PCRE2 10.49, libffi 3.8.0, x265 4.2 and libxml2 2.15.4.
 Archives and checksums come from [media sources](../sources.tsv),
 [graphics sources](../../common-graphics/sources.tsv), and

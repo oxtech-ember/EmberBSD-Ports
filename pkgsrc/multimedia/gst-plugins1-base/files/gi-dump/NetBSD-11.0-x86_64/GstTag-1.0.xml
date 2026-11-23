@@ -1,9 +1,9 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-x86_64
 recipe: multimedia/gst-plugins1-base
-package: gst-plugins1-base-1.28.8
+package: gst-plugins1-base-1.28.9
 program: GstTag-1.0
-types-sha256: 2c955d2f00f5c22fbbbb9d4230ffe5b1f8aa366309f2d92bcc69007f5d628209
+types-sha256: 87eabe48c110394f120ae8a204841a3a9702a111d5410e0cd7adc9c4f0466108
 dump-sha256: ba73f6c89d72f04e1ba74786af935a32bbeecc90aa301841e82b37d650862f91
 -->
 <?xml version="1.0"?>

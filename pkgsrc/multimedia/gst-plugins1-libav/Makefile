@@ -4,7 +4,6 @@
 
 DISTNAME=	gst-libav-${GST_VERSION}
 PKGNAME=	${DISTNAME:S/gst/gst-plugins1/}
-PKGREVISION=	1
 CATEGORIES=	multimedia
 MASTER_SITES=	https://gstreamer.freedesktop.org/src/gst-libav/
 EXTRACT_SUFX=	.tar.xz

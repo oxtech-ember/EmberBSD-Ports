@@ -11,7 +11,7 @@ printf '{ print }\n' > "$work/print-man-paths.awk"
 for family in base bad; do
     recipe=$tree/multimedia/gst-plugins1-$family
     get() { "$BMAKE" -C "$recipe" -V "\${$1}"; }
-    [ "$(get PKGNAME)" = gst-plugins1-$family-1.28.8nb1 ]
+    [ "$(get PKGNAME)" = gst-plugins1-$family-1.28.9 ]
     stage=$(get DESTDIR)$(get PREFIX)
     host=$(get TOOLBASE)
     for tool in glib-mkenums glib-genmarshal g-ir-scanner g-ir-compiler; do

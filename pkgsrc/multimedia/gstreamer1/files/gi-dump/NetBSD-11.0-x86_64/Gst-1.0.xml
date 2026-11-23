@@ -1,10 +1,10 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-x86_64
 recipe: multimedia/gstreamer1
-package: gstreamer1-1.28.8
+package: gstreamer1-1.28.9
 program: Gst-1.0
-types-sha256: dffe5042d3b0a87972f7987948c7832543b576ce3a8164b304aaceef449db8e1
-dump-sha256: fc2f89e74a26b8455766aff1f2c906dabb944c319ee19540a47fb90c519dd68a
+types-sha256: f525e7b32075a5f283c8791ab1d7acd43fe4b4aa5d99d3bb49b72c8ba1bd3098
+dump-sha256: d8a9b1cd9667950625a88bce102982c9f10ccfc0d1b1b6e016e3a8d3bb851541
 -->
 <?xml version="1.0"?>
 <dump>
@@ -896,9 +896,9 @@ dump-sha256: fc2f89e74a26b8455766aff1f2c906dabb944c319ee19540a47fb90c519dd68a
   </fundamental>
   <fundamental name="GstFlagSet" get-type="gst_flagset_get_type">
   </fundamental>
-  <fundamental name="GstParamFraction" get-type="gst_param_spec_fraction_get_type" instantiatable="1" parents="GParam">
+  <fundamental name="GstParamSpecFraction" get-type="gst_param_spec_fraction_get_type" instantiatable="1" parents="GParam">
   </fundamental>
-  <fundamental name="GstParamArray" get-type="gst_param_spec_array_get_type" instantiatable="1" parents="GParam">
+  <fundamental name="GstParamSpecArray" get-type="gst_param_spec_array_get_type" instantiatable="1" parents="GParam">
   </fundamental>
   <class name="GstPipeline" get-type="gst_pipeline_get_type" parents="GstBin,GstElement,GstObject,GInitiallyUnowned,GObject">
     <implements name="GstChildProxy"/>

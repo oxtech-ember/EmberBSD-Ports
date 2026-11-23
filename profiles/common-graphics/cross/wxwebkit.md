@@ -226,7 +226,7 @@ The native locale test requires a genuine comma-decimal locale. Set
 actual native Valgrind command. The helper does not deploy or run target code.
 
 For E14, compose the entire [common media profile](../../common-media/README.md):
-GStreamer 1.28.8 and FFmpeg 9.0.2. Core, plugin families and shared version
+GStreamer 1.28.9 and FFmpeg 9.0.2. Core, plugin families and shared version
 metadata must change together. A partial plugin overlay would mix versions.
 This checkpoint supplies source recipes and bounded checks; full dependency
 composition, configure, packages, installed GI and GUI workflows
