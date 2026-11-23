@@ -1,0 +1,24 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-aarch64
+recipe: inputmethod/ibus
+package: ibus-1.5.35
+program: IBusWaylandIM-1.0
+types-sha256: 66782007184d7e0c3569a329c1516ddc0f6b482a9cc67672422f25a27edb31f0
+dump-sha256: 63bd858203eca6c4c3d3ae047ec00b60d86f912778c3b730b21712a8908930bb
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="IBusWaylandIM" get-type="ibus_wayland_im_get_type" parents="IBusObject,GInitiallyUnowned,GObject">
+    <property name="bus" type="IBusBus" flags="11"/>
+    <property name="wl-display" type="gpointer" flags="11"/>
+    <property name="log" type="gpointer" flags="11"/>
+    <property name="verbose" type="gboolean" flags="11" default-value="FALSE"/>
+    <property name="use-system-keymap" type="gboolean" flags="3" default-value="FALSE"/>
+    <signal name="ibus-focus-in" return="void" when="last">
+      <param type="gchararray"/>
+    </signal>
+    <signal name="ibus-focus-out" return="void" when="last">
+      <param type="gchararray"/>
+    </signal>
+  </class>
+</dump>
