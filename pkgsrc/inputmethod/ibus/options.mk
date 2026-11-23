@@ -40,6 +40,12 @@ TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
 BUILDLINK_API_DEPENDS.gobject-introspection+=	gobject-introspection>=0.9.6
 BUILDLINK_DEPMETHOD.gobject-introspection=	build
 .include "../../devel/gobject-introspection/buildlink3.mk"
+.include "../../devel/gobject-introspection/autotools.mk"
+.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# The distribution GIR was generated for the release host.
+post-extract:
+	${RUN} ${RM} -f ${WRKSRC}/src/IBus-1.0.gir
+.  endif
 .else
 # Vala clients can use the interface shipped in the same upstream release.
 INSTALLATION_DIRS+=	share/vala/vapi
