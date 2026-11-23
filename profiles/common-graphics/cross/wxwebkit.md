@@ -73,9 +73,20 @@ The older GCC16 configure/header checks above establish only the provider
 lookup and cross flags they exercise. Full GTK4 library, installed package and
 GUI acceptance remain separate from those checks.
 
-## WebKitGTK 2.54.2
+## WebKitGTK 2.54.3
 
-The common `webkit-gtk41` and `webkit-gtk60` recipes share the official
+The WebKitGTK API 4.1 and API 6.0 recipes share the 2.54.3 archive.
+Its SHA-256 is
+`2779c1b46f88762e8400650271ba14452dc4e30b37059981552d8b562b7d0862`.
+The source check verifies the API 4.1 and API 6.0 library versions.
+[Official source archive](https://webkitgtk.org/releases/webkitgtk-2.54.3.tar.xz)
+
+On EmberBSD AArch64, the API 6.0 MiniBrowser loaded a page over HTTP.
+JavaScript changed the page content and sent the result to the test server.
+
+## Earlier checks for WebKitGTK 2.54.2
+
+For 2.54.2, the recipes shared the official
 [WebKitGTK 2.54.2 release](https://webkitgtk.org/2026/10/23/webkitgtk2.54.2-released.html),
 patch directory and distinfo. The archive SHA256 is
 `a76345b391bef6211fb5ab6cfab2e86b285d18cda17cbb9ade595f1252b86065`.
@@ -213,11 +224,11 @@ Run the bounded source and locale checks with genuine tools and a new output:
 
 ```sh
 DIGEST=/native/bin/digest ruby profiles/common-graphics/tests/webkit-source.rb \
-  /pinned/pkgsrc /downloads/webkitgtk-2.54.2.tar.xz \
+  /pinned/pkgsrc /downloads/webkitgtk-2.54.3.tar.xz \
   /cross/bin/aarch64--netbsd-g++ /sdk /new/source-check
 NATIVE_CXX='/native/bin/g++ -B/usr/bin/' \
   ruby profiles/common-graphics/tests/webkit-locale/build.rb \
-  /downloads/webkitgtk-2.54.2.tar.xz /cross/bin/aarch64--netbsd-g++ \
+  /downloads/webkitgtk-2.54.3.tar.xz /cross/bin/aarch64--netbsd-g++ \
   /sdk /new/locale-check
 ```
 

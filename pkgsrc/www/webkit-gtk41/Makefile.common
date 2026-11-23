@@ -2,7 +2,7 @@
 # used by www/webkit-gtk41/Makefile
 # used by www/webkit-gtk60/Makefile
 
-DISTNAME=	webkitgtk-2.54.2
+DISTNAME=	webkitgtk-2.54.3
 CATEGORIES=	www
 MASTER_SITES=	https://www.webkitgtk.org/releases/
 EXTRACT_SUFX=	.tar.xz

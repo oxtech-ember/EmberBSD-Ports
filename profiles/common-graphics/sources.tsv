@@ -51,8 +51,8 @@ graphics/libraw	LibRaw-0.22.3.tar.gz	789f3c33466210a1a0907f747a97c715d21bbf4af71
 graphics/lerc	lerc-4.3.0.tar.gz	28d74992e0bc0f13ecdda1dd9ca3b40b1a87009369b9ec5a599853f6f311fee7	https://github.com/Esri/lerc/archive/v4.3.0.tar.gz
 x11/wxGTK32	wxWidgets-3.2.12.tar.bz2	a62719bb5e1dcc41c1a6fc1eecd499c7ee8521f70402c7b1bb3342a1e16344e0	https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.12/wxWidgets-3.2.12.tar.bz2
 graphics/jbigkit	jbigkit-2.2.tar.gz	3302109c93b7befbffa3cfe8bceb4355f19dea0ee7dcb5f33710b1648bf6645c	https://www.cl.cam.ac.uk/~mgk25/jbigkit/download/jbigkit-2.2.tar.gz
-www/webkit-gtk41	webkitgtk-2.54.2.tar.xz	a76345b391bef6211fb5ab6cfab2e86b285d18cda17cbb9ade595f1252b86065	https://webkitgtk.org/releases/webkitgtk-2.54.2.tar.xz
-www/webkit-gtk60	webkitgtk-2.54.2.tar.xz	a76345b391bef6211fb5ab6cfab2e86b285d18cda17cbb9ade595f1252b86065	https://webkitgtk.org/releases/webkitgtk-2.54.2.tar.xz
+www/webkit-gtk41	webkitgtk-2.54.3.tar.xz	2779c1b46f88762e8400650271ba14452dc4e30b37059981552d8b562b7d0862	https://webkitgtk.org/releases/webkitgtk-2.54.3.tar.xz
+www/webkit-gtk60	webkitgtk-2.54.3.tar.xz	2779c1b46f88762e8400650271ba14452dc4e30b37059981552d8b562b7d0862	https://webkitgtk.org/releases/webkitgtk-2.54.3.tar.xz
 graphics/openexr	openexr-3.5.4.tar.gz	cedafe3171176d20baea4e887ceacc74cbe3a5a06fbb30d9f0a394a4416e5f7b	https://github.com/AcademySoftwareFoundation/openexr/archive/refs/tags/v3.5.4.tar.gz
 graphics/OpenJPH	OpenJPH-0.33.0.tar.gz	3437f296ff8531b35558650b0ed7fde45cad39394329eef4064a3d4900cf101f	https://github.com/aous72/OpenJPH/archive/refs/tags/0.33.0.tar.gz
 textproc/rapidjson	rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz	2d2601a82d2d3b7e143a3c8d43ef616671391034bc46891a9816b79cf2d3e7a8	https://github.com/Tencent/rapidjson/archive/24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz

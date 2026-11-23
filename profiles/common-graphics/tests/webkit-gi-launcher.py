@@ -98,7 +98,7 @@ def main():
     source = args.work / "source/Source/cmake/FindGI.cmake"
     source.parent.mkdir(parents=True)
     with tarfile.open(args.archive) as archive:
-        source.write_bytes(archive.extractfile("webkitgtk-2.54.2/Source/cmake/FindGI.cmake").read())
+        source.write_bytes(archive.extractfile("webkitgtk-2.54.3/Source/cmake/FindGI.cmake").read())
     patch = recipe / "patches/patch-Source_cmake_FindGI.cmake"
     applied = subprocess.run(["patch", "-f", "-p0", "-F", "0", "-d", str(args.work / "source")],
                              input=patch.read_text(), capture_output=True, text=True)
