@@ -11,3 +11,6 @@ SHA1 (patch-gdk-pixbuf_gdk-pixbuf-scaled-anim.c) = a9d2436711b1a1c3bb58beef0df5e
 SHA1 (patch-gdk-pixbuf_meson.build) = 8aef6ea62bd11dec169cea1d1b4c0e327d68ddf0
 SHA1 (patch-tests_meson.build) = 7d60098d957e4b0677aad6452de651189fc06b2d
 SHA1 (patch-thumbnailer_meson.build) = 25d1ee1934bed00b4353ce33dacd52e3414b943f
+SHA1 (patch-emberbsd_gdk-pixbuf_gdk-pixbuf-private.h) = 3f00754e76a49a5893b28cc24eb375e9ca2a4c50
+SHA1 (patch-emberbsd_gdk-pixbuf_gdk-pixbuf-io.c) = 9b2268aba9f6d6f0ae6f1c5f0e2e184fd7c0f6ab
+SHA1 (patch-emberbsd_gdk-pixbuf_queryloaders.c) = 70da6cf8ff7a726d27daa2f4ab0224ffbbef8689

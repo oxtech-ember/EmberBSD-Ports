@@ -36,6 +36,9 @@ SUBST_FILES.dyld=	gdk-pixbuf/meson.build \
 			tests/meson.build \
 			thumbnailer/meson.build
 .if ${OPSYS} == "Darwin"
+PKGREVISION=		7
+MESON_ARGS+=		-Drelocatable=true
+CPPFLAGS+=		-D_DARWIN_C_SOURCE
 SUBST_SED.dyld=		-e 's|@LD_LIBRARY_PATH@|DYLD_LIBRARY_PATH|g'
 .else
 SUBST_SED.dyld=		-e 's|@LD_LIBRARY_PATH@|LD_LIBRARY_PATH|g'
