@@ -1,0 +1,11 @@
+--- a/x11/gtk2/Makefile
++++ b/x11/gtk2/Makefile
+@@ -63,6 +63,8 @@
+ 
+ .if ${USE_CROSS_COMPILE:tl} == "yes"
+ TOOL_DEPENDS+=		glib2-tools>=0:../../devel/glib2-tools
++TOOL_DEPENDS+=		gdk-pixbuf2>=2.22.0:../../graphics/gdk-pixbuf2
++CONFIGURE_ARGS+=	GDK_PIXBUF_CSOURCE=${TOOLBASE:Q}/bin/gdk-pixbuf-csource
+ CONFIGURE_ARGS+=	GLIB_GENMARSHAL=${TOOLBASE:Q}/bin/glib-genmarshal
+ CONFIGURE_ARGS+=	GLIB_MKENUMS=${TOOLBASE:Q}/bin/glib-mkenums
+ 
