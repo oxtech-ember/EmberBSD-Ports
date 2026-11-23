@@ -1,0 +1,29 @@
+Use the gem's declared concurrent-ruby dependency and ignore NetBSD tzdata metadata.
+
+--- a/time/ruby-tzinfo/Makefile
++++ b/time/ruby-tzinfo/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.50 2023/01/31 12:51:37 taca Exp $
+ 
+ DISTNAME=	tzinfo-2.0.6
++PKGREVISION=	1
+ CATEGORIES=	time
+ 
+ MAINTAINER=	taca@NetBSD.org
+@@ -8,9 +9,15 @@
+ COMMENT=	Daylight savings aware timezone library
+ LICENSE=	mit
+ 
+-DEPENDS+=	${RUBY_PKGPREFIX}-thread_safe>=0.1<1:../../misc/ruby-thread_safe
++DEPENDS+=	${RUBY_PKGPREFIX}-concurrent-ruby>=1.0<2:../../devel/ruby-concurrent-ruby
+ 
+ USE_LANGUAGES=	# none
+ 
++# NetBSD installs the tzdata release identifier next to the compiled zones.
++SUBST_CLASSES+=		tzversion
++SUBST_STAGE.tzversion=	post-extract
++SUBST_FILES.tzversion=	lib/tzinfo/data_sources/zoneinfo_data_source.rb
++SUBST_SED.tzversion=	-e "s/'SECURITY',/'SECURITY', 'TZDATA_VERSION',/"
++
+ .include "../../lang/ruby/gem.mk"
+ .include "../../mk/bsd.pkg.mk"
