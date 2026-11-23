@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream postcss module.
-DISTNAME= postcss-8.5.32
-PKGNAME= node-postcss-8.5.32
+DISTNAME= postcss-8.5.33
+PKGNAME= node-postcss-8.5.33
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/postcss/-/
 EXTRACT_SUFX= .tgz

@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream postcss-calc module.
-DISTNAME= postcss-calc-11.2.3
-PKGNAME= node-postcss-calc-11.2.3
+DISTNAME= postcss-calc-11.3.0
+PKGNAME= node-postcss-calc-11.3.0
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/postcss-calc/-/
 DIST_SUBDIR= node-postcss-calc

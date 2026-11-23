@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (node-postcss-calc/postcss-calc-11.2.3.tgz) = 7ca879dd2e866f11812231fecf64067074ff0f85bedf7018e9dc549ebcf43178
-SHA512 (node-postcss-calc/postcss-calc-11.2.3.tgz) = a455b7311d9ae16eee1dc486522c901865d9587a27f379636cdc27509d6644ab9b95641bbfede8f4d8aa8655784c97cd6f2f94fb32d8d8e822cb0ce1039785ab
-Size (node-postcss-calc/postcss-calc-11.2.3.tgz) = 52990 bytes
+BLAKE2s (node-postcss-calc/postcss-calc-11.3.0.tgz) = 33ece69d7459e4fcdfbdfa474f87c92f7d98f9c06931ca4440ae1f3fbc697597
+SHA512 (node-postcss-calc/postcss-calc-11.3.0.tgz) = 0e33a9cbd6aee7b3caf0c5cfae30db1885633ba54de021b2e000f33c68b5bc42745cea49fccc68081e454604371e7bf9f28a1ba4166d1114bfab04154f758f59
+Size (node-postcss-calc/postcss-calc-11.3.0.tgz) = 67709 bytes
