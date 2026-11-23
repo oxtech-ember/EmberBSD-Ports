@@ -33,6 +33,7 @@
 DISCOVER_BACKEND_PLUGIN(EmberBSDBackend)
 
 namespace {
+constexpr int catalogTimeoutMs = 180000;
 const QString python = QStringLiteral("/usr/pkg/bin/python3.15");
 const QString client = QStringLiteral("/usr/local/libexec/ember-sdk.pyz");
 const QString config = QStringLiteral("/usr/local/etc/ember-sdk.json");
@@ -87,23 +88,43 @@ void EmberBSDBackend::reload()
         Q_EMIT fetchingUpdatesProgressChanged();
         return;
     }
+    auto *process = new QProcess(this);
+    m_process = process;
     m_ready = false;
     m_error.clear();
     Q_EMIT fetchingUpdatesProgressChanged();
-    m_process = new QProcess(this);
-    connect(m_process, &QProcess::finished, this, [this](int code, QProcess::ExitStatus status) {
-        const QByteArray output = m_process->readAllStandardOutput();
-        const QByteArray errors = m_process->readAllStandardError();
-        m_process->deleteLater();
+
+    enum class CatalogResult { Success, Failed, TimedOut };
+    auto complete = [this, process](CatalogResult result, const QByteArray &errors) {
+        if (m_process != process)
+            return;
         m_process = nullptr;
-        applyCatalog(output, errors, code, status != QProcess::NormalExit);
+        // A late process signal must not finish the next read.
+        if (result == CatalogResult::TimedOut)
+            process->kill();
+        applyCatalog(process->readAllStandardOutput(), errors, result != CatalogResult::Success);
+    };
+    connect(process, &QProcess::finished, this, [process, complete](int code, QProcess::ExitStatus status) {
+        process->deleteLater();
+        const bool ok = status == QProcess::NormalExit && code == 0;
+        complete(ok ? CatalogResult::Success : CatalogResult::Failed, process->readAllStandardError());
     });
-    m_process->start(python, {client, QStringLiteral("--config"), config, QStringLiteral("--state-dir"), stateDir, QStringLiteral("--cache-dir"), cacheDir, QStringLiteral("catalog")});
+    connect(process, &QProcess::errorOccurred, this, [process, complete](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart) {
+            process->deleteLater();
+            complete(CatalogResult::Failed, process->errorString().toUtf8());
+        }
+    });
+    // On timeout, report the failure now. The finished signal reaps the child.
+    QTimer::singleShot(catalogTimeoutMs, process, [complete] {
+        complete(CatalogResult::TimedOut, i18n("The signed catalog client timed out.").toUtf8());
+    });
+    process->start(python, {client, QStringLiteral("--config"), config, QStringLiteral("--state-dir"), stateDir, QStringLiteral("--cache-dir"), cacheDir, QStringLiteral("catalog")});
 }
 
-void EmberBSDBackend::applyCatalog(const QByteArray &output, const QByteArray &errors, int code, bool crashed)
+void EmberBSDBackend::applyCatalog(const QByteArray &output, const QByteArray &errors, bool failed)
 {
-    if (crashed || code != 0) {
+    if (failed) {
         const QString detail = QString::fromUtf8(errors).trimmed();
         m_error = detail.isEmpty() ? i18n("The signed catalog client failed.") : detail.left(800);
         Q_EMIT passiveMessage(m_error);

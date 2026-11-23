@@ -2,6 +2,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 
 DISTNAME=	discover-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 COMMENT=	KDE Discover software manager
 HOMEPAGE=	https://apps.kde.org/discover/

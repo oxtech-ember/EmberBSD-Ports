@@ -59,7 +59,7 @@ private:
     };
 
     void reload();
-    void applyCatalog(const QByteArray &output, const QByteArray &errors, int code, bool crashed);
+    void applyCatalog(const QByteArray &output, const QByteArray &errors, bool failed);
     void completePending();
     QVector<StreamResult> match(const Filters &filter) const;
     Transaction *refused(AbstractResource *app, Transaction::Role role);
