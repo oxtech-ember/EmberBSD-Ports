@@ -3,7 +3,8 @@ $NetBSD$
 BLAKE2s (LIEF-1.0.0.tar.gz) = 78e2f114f9556a011e200aff549fb332922b3e1fdf2262a8ec769c5ad069a178
 SHA512 (LIEF-1.0.0.tar.gz) = 35d86d23306be0d9713fe6feb4632d83945a3e81557d12c6bdc23164818981dea30483d9ed7fdd5f8ba91803ceec716244f43527221e407f4b8fae021743e6a3
 Size (LIEF-1.0.0.tar.gz) = 20009137 bytes
-SHA1 (patch-cmake_LIEFConfig.cmake.in) = 70af970dd090fc2ca0583a7fd53a44c261609e44
+SHA1 (patch-cmake_LIEFConfig.cmake.in) = 77d27b77b6fd77bdc66d4cbbe7ba097b56beea29
+SHA1 (patch-cmake_LIEFDependencies.cmake) = 103cb2ced2d15c256271f56d3747018c3c688aa8
 SHA1 (patch-cmake_LIEFOptions.cmake) = 82c7d1fe49eb28d7d355aea2bd9b8c2d3bc15c0a
 SHA1 (patch-include_LIEF_errors.hpp) = c8f0235206cb51d352810d7a9bfcff3239c28697
 SHA1 (patch-include_LIEF_runtime_osx_Host.hpp) = 505c3ea1fcd301de4d515ac36f785b9e85c28141
