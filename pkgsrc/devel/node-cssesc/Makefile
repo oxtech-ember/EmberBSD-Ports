@@ -1,7 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream cssesc module.
 DISTNAME= cssesc-3.0.0
 PKGNAME= node-cssesc-3.0.0
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/cssesc/-/
 EXTRACT_SUFX= .tgz
@@ -11,6 +11,7 @@ COMMENT= Common cssesc JavaScript module
 LICENSE= mit
 JS_MODULE_NAME= cssesc
 REPLACE_NODEJS= bin/cssesc
+JS_MODULE_PATCH_BACKUPS= cssesc.js.orig
 
 .include "../../mk/emberbsd-javascript.mk"
 .include "../../mk/bsd.pkg.mk"

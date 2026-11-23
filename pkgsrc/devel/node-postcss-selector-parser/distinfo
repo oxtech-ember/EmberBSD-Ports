@@ -1,5 +1,6 @@
 $NetBSD$
 
-BLAKE2s (postcss-selector-parser-7.1.7.tgz) = e55e2a454f97bbe0a14cc1c1bb1e75ccdc62e635aa0c4e488a65d54dd45d22e2
-SHA512 (postcss-selector-parser-7.1.7.tgz) = c1606ba3fee1278d327ba4cf8979144285ca0b0db7c52b23ae252fa9ded496cf52b28de82e238dd5f95cd7c7027678e00915f0e1f055a9424978e7434e1dcfde
-Size (postcss-selector-parser-7.1.7.tgz) = 47677 bytes
+BLAKE2s (postcss-selector-parser-7.2.1.tgz) = 19517887140e46f2b5a73d1c264de540fbfbffba32af669ff478584b16c5e9d3
+SHA512 (postcss-selector-parser-7.2.1.tgz) = 1b0c653204d35f02289be79b0bb6a7de4e916890f09254504277e25ec2cf1a272ef05615fe4ffed7ff58636394dbeafddfc1f6b785f44c3c6889ff873f6ae3cd
+Size (postcss-selector-parser-7.2.1.tgz) = 57761 bytes
+SHA1 (patch-package.json) = 8de1f5dd3215c461199fc7e641b7c7bcf06616d0

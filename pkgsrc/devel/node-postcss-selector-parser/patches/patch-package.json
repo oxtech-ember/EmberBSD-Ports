@@ -1,0 +1,14 @@
+$NetBSD$
+
+Use the shared cssesc package for the selector parser.
+
+--- package.json.orig
++++ package.json
+@@ -36,6 +36,7 @@
+     "release": "npx npmpub"
+   },
+   "dependencies": {
++    "cssesc": "^3.0.0",
+     "util-deprecate": "^1.0.2"
+   },
+   "license": "MIT",
