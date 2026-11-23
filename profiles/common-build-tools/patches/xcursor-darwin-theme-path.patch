@@ -1,0 +1,80 @@
+$NetBSD$
+
+Find the cursor themes in the installed Darwin prefix.
+
+--- src/library.c.orig
++++ src/library.c
+@@ -38,9 +38,53 @@
+     const char	*theme;
+ } XcursorInherit;
+ 
++#ifdef EMBERBSD_RELATIVE_CURSOR_PATH
++#include <dlfcn.h>
++#include <limits.h>
++#include <pthread.h>
++#include <stdio.h>
++
++static pthread_once_t cursor_path_once = PTHREAD_ONCE_INIT;
++static const char *cursor_path;
++
++static void
++set_cursor_path (void)
++{
++    Dl_info info;
++    char image[PATH_MAX], *dir, *slash;
++    static char paths[2 * PATH_MAX + 96];
++    int len;
++
++    cursor_path = getenv ("XCURSOR_PATH");
++    if (cursor_path != NULL)
++        return;
++    cursor_path = "~/.local/share/icons:~/.icons:" XCURSORPATH;
++    if (!dladdr ((const void *) &XcursorLibraryPath, &info) ||
++        !info.dli_fname || !realpath (info.dli_fname, image))
++        return;
++    slash = strrchr (image, '/');
++    if (!slash)
++        return;
++    *slash = '\0';
++    dir = strrchr (image, '/');
++    if (!dir || (strcmp (dir + 1, "lib") && strcmp (dir + 1, "bin")))
++        return;
++    *dir = '\0';
++    len = snprintf (paths, sizeof (paths),
++                    "~/.local/share/icons:~/.icons:%s/share/icons:%s/share/pixmaps",
++                    image, image);
++    if (len >= 0 && (size_t) len < sizeof (paths))
++        cursor_path = paths;
++}
++#endif
++
+ const char *
+ XcursorLibraryPath (void)
+ {
++#ifdef EMBERBSD_RELATIVE_CURSOR_PATH
++    pthread_once (&cursor_path_once, set_cursor_path);
++    return cursor_path;
++#else
+     static const char	*path;
+ 
+     if (!path)
+@@ -51,6 +95,7 @@
+ 	traceOpts((T_OPTION(XCURSOR_PATH) ": %s\n", NonNull(path)));
+     }
+     return path;
++#endif
+ }
+ 
+ static  void
+--- man/Xcursor.man.orig
++++ man/Xcursor.man
+@@ -478,7 +478,8 @@
+ If the environment variable \fBXCURSOR_PATH\fP is set,
+ return that value.
+ .bP
+-Otherwise, return the compiled-in search path.
++On a relocatable Darwin installation, the default searches the user icon directories and the icons and pixmaps in the installed prefix.
++Other installations use the compiled-in search path.
+ .RE
+ .
+ .PC
