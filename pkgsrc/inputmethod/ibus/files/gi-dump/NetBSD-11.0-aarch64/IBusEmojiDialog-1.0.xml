@@ -1,0 +1,30 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-aarch64
+recipe: inputmethod/ibus
+package: ibus-1.5.35
+program: IBusEmojiDialog-1.0
+types-sha256: 407f72a39483560a84656c6b4ee2a30c983079c80220c0bc869ba0457828ab05
+dump-sha256: 27b57012417b9298aef5bd04cd0e85cf0d7cf0b109d2840334c53afd8c7cfdae
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="IBusEmojier" get-type="ibus_emojier_get_type" parents="GtkApplicationWindow,GtkWindow,GtkBin,GtkContainer,GtkWidget,GInitiallyUnowned,GObject">
+    <implements name="AtkImplementorIface"/>
+    <implements name="GtkBuildable"/>
+    <implements name="GActionGroup"/>
+    <implements name="GActionMap"/>
+    <signal name="candidate-clicked" return="void" when="last">
+      <param type="guint"/>
+      <param type="guint"/>
+      <param type="guint"/>
+    </signal>
+    <signal name="commit-text" return="void" when="last">
+      <param type="gchararray"/>
+    </signal>
+    <signal name="cancel" return="void" when="last">
+    </signal>
+    <signal name="send-message" return="void" when="last">
+      <param type="IBusMessage"/>
+    </signal>
+  </class>
+</dump>
