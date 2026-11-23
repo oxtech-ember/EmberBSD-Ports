@@ -54,10 +54,20 @@ IBUS_WAYLAND_GIR_FLAGS+= --extra-library=${WRKSRC}/client/wayland/.libs/libibusw
 IBUS_WAYLAND_GIR_FLAGS+= --pkg=wayland-client --pkg=xkbcommon --extra-library=m
 MAKE_FLAGS+= IBusWaylandIM_1_0_gir_LIBS=ibus-1.0
 MAKE_FLAGS+= IBusWaylandIM_1_0_gir_LDFLAGS=${IBUS_WAYLAND_GIR_FLAGS:Q}
+# The private IMModule namespace describes one function and has no GTypes.
+MAKE_FLAGS+= IBusIMModule_1_0_gir_LDFLAGS=--header-only
+# The emoji dialog's GType implementation is linked into the GTK panel.
+IBUS_EMOJI_GIR_FLAGS= -L${WRKSRC}/src/.libs
+IBUS_EMOJI_GIR_FLAGS+= --extra-library=${WRKSRC}/bindings/vala/.libs/libibus-emoji-dialog-1.0.a
+IBUS_EMOJI_GIR_FLAGS+= --pkg=gthread-2.0 --pkg=x11 --pkg=xi --extra-library=m
+MAKE_FLAGS+= IBusEmojiDialog_1_0_gir_LIBS=ibus-1.0
+MAKE_FLAGS+= IBusEmojiDialog_1_0_gir_LDFLAGS=${IBUS_EMOJI_GIR_FLAGS:Q}
 # The distribution GIR files were generated for the release host.
 post-extract:
 	${RUN} ${RM} -f ${WRKSRC}/src/IBus-1.0.gir \
-	    ${WRKSRC}/client/wayland/IBusWaylandIM-1.0.gir
+	    ${WRKSRC}/client/wayland/IBusWaylandIM-1.0.gir \
+	    ${WRKSRC}/tools/IBusIMModule-1.0.gir \
+	    ${WRKSRC}/bindings/vala/IBusEmojiDialog-1.0.gir
 .  endif
 .else
 # Vala clients can use the interface shipped in the same upstream release.
