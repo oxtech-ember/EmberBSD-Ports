@@ -43,6 +43,17 @@ MESON_ARGS+=	-Dsession-managers=
 # Meson uses *_FOR_BUILD for build-machine generators in cross builds.
 # Keep native builds on Meson's ordinary native compiler selection.
 .include "../../mk/bsd.prefs.mk"
+
+# EmberBSD 11 images on these architectures ship different base libcrypto ABIs.
+# Link the installed RAOP module to the common package on both images.
+.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	1
+PREFER.openssl=	pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
+MESON_ARGS+=	-Draop=enabled
+.include "../../security/openssl/buildlink3.mk"
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 MAKE_ENV+= CC_FOR_BUILD=${NATIVE_CC:Q}
 MAKE_ENV+= CXX_FOR_BUILD=${NATIVE_CXX:Q}
