@@ -14,10 +14,10 @@ headers and a small set of converter/runtime implementation files; the full
 TensorFlow runtime and Python package are not built. zlib 1.3.2 supplies
 minizip sources only; compression uses the target's base zlib.
 
-Internal XNNPACK, Ruy, gemmlowp, cpuinfo, ml_dtypes, FP16 and farmhash inputs
+Internal XNNPACK, Ruy, gemmlowp, cpuinfo, FP16 and farmhash inputs
 follow LiteRT 2.2.0's exact integration revisions. Their private interfaces
 are part of that upstream runtime snapshot, not additional installed
-system libraries. FXdiv is pinned to commit 63058eff77e11aa15bf531df5dd34395ec3017c8
+system libraries. The ml_dtypes headers come from the shared `devel/ml-dtypes` source package or its prepared source tree. FXdiv is pinned to commit 63058eff77e11aa15bf531df5dd34395ec3017c8
 instead of the upstream pthreadpool build's floating `master`. OouraFFT 1.0
 is the upstream runtime's bundled FFT implementation; this does not install
 a second FFTW or liquid-dsp package.

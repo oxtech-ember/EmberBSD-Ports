@@ -1,9 +1,9 @@
 # Origin: EmberBSD contributors (AI-assisted); upstream shared source owner.
-DISTNAME= ml-dtypes-0.6.0
-PKGNAME= ml-dtypes-source-0.6.0
+DISTNAME= ml-dtypes-0.7.0
+PKGNAME= ml-dtypes-source-0.7.0
 CATEGORIES= devel
-MASTER_SITES= -https://github.com/jax-ml/ml_dtypes/archive/v0.6.0.tar.gz
-WRKSRC= ${WRKDIR}/ml_dtypes-0.6.0
+MASTER_SITES= -https://github.com/jax-ml/ml_dtypes/archive/v0.7.0.tar.gz
+WRKSRC= ${WRKDIR}/ml_dtypes-0.7.0
 HOMEPAGE= https://github.com/jax-ml/ml_dtypes
 COMMENT= Shared ml-dtypes upstream source for SDK consumers
 LICENSE= apache-2.0

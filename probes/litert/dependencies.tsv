@@ -3,7 +3,6 @@ eigen e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec https://g
 abseil-cpp f7e05179df39c45434cad433f5783840bb3788ef322976f9138bc6b72b3a107d https://codeload.github.com/abseil/abseil-cpp/tar.gz/refs/tags/20260817.0
 cpuinfo b47d81a022b3b1145e7043360c3bfdb7428ab8361e89bd831027355df4900638 https://codeload.github.com/pytorch/cpuinfo/tar.gz/8ce83db858065145192c97af90cb668ad72a12e9
 gemmlowp c3feb896a1b42595cf9a508ed64ed0dc3cd84fffdb8eed790d02d0534ab322ce https://codeload.github.com/google/gemmlowp/tar.gz/16e8662c34917be0065110bfcd9cc27d30f52fdf
-ml_dtypes f6e5880666661351e6cd084ac4178ddc4dabcde7e9a73722981c0d1500cf5937 https://codeload.github.com/jax-ml/ml_dtypes/tar.gz/00d98cd92ade342fef589c0470379abb27baebe9
 ruy 7c6f82bb6243befdd34472d631db8c18f22eeddf78608f082e5dd72ecb22b3a3 https://codeload.github.com/google/ruy/tar.gz/3286a34cc8de6149ac6844107dfdffac91531e72
 fft2d 5f4dabc2ae21e1f537425d58a49cdca1c49ea11db0d6271e2a4b27e9697548eb https://storage.googleapis.com/mirror.tensorflow.org/github.com/petewarden/OouraFFT/archive/v1.0.tar.gz
 farmhash 18392cf0736e1d62ecbb8d695c31496b6507859e8c75541d7ad0ba092dc52115 https://codeload.github.com/google/farmhash/tar.gz/0d859a811870d10f53a594927d0d0b97573ad06d

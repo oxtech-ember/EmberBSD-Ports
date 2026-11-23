@@ -24,6 +24,8 @@ symlinks, including libm, libpthread and libz; linker-name files alone are
 insufficient for a consumer of the shared runtime. When creating a target
 archive on macOS, use `COPYFILE_DISABLE=1 tar --no-xattrs --no-acls --no-fflags`
 to avoid errors restoring Apple metadata on NetBSD.
+Install the source-only `devel/ml-dtypes` package in the selected sysroot. To use its native package or a tree prepared by the common source producer, set `EMBER_ML_DTYPES_SOURCE` to that source directory. The same tree can be used for offline builds.
+
 XNNPACK's upstream microkernel list generator uses host Python; the installed
 runtime does not require Python. Project-owned helpers use shell, C and C++.
 

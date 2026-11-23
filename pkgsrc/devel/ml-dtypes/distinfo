@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (ml-dtypes-0.6.0.tar.gz) = 1c08e4bc92dc3c859dd7d02007aef9414af5342bd235238f0a739a3c33157c97
-SHA512 (ml-dtypes-0.6.0.tar.gz) = 6597d4bc9e28deab87d4ce26307d0227f037546710d1794f48186daab633b316134ccbc433fe1175601ea800b19aad178b63a01c529419ca41299b93185290d8
-Size (ml-dtypes-0.6.0.tar.gz) = 103221 bytes
+BLAKE2s (ml-dtypes-0.7.0.tar.gz) = 51fd7bf57a047497a3ebb52d4ec9dba5e4e707d58bdc1f0b94d9256326aafd37
+SHA512 (ml-dtypes-0.7.0.tar.gz) = b4c661eb0f048bf96f1aa217566ff4dd23416b67d78d791c865614c3298fa21e5f754ba9877963412665b3a24fefe4f1fe03cae41d3f055e962e88f67b58d6b5
+Size (ml-dtypes-0.7.0.tar.gz) = 152371 bytes

@@ -7,6 +7,12 @@ umask 022
 }
 : "${EMBER_CROSS_PREFIX:?Set the NetBSD/AArch64 GCC16 executable prefix}"
 : "${EMBER_SYSROOT:?Set the matching target sysroot}"
+ml_dtypes=${EMBER_ML_DTYPES_SOURCE:-$EMBER_SYSROOT/usr/pkg/share/ml-dtypes-source}
+[ -f "$ml_dtypes/ml_dtypes/include/float8.h" ] || {
+    echo 'Install devel/ml-dtypes in the sysroot or set EMBER_ML_DTYPES_SOURCE to its prepared tree.' >&2
+    exit 2
+}
+ml_dtypes=$(CDPATH= cd "$ml_dtypes" && pwd)
 work=$1
 case "$work" in /*) ;; *) echo 'Use an absolute work directory.' >&2; exit 2 ;; esac
 case "$work$EMBER_CROSS_PREFIX$EMBER_SYSROOT" in *[!a-zA-Z0-9_./-]*)
@@ -68,7 +74,7 @@ run regenerate sh "$recipe/regenerate-schemas.sh" "$work/host-build/flatbuffers/
 run target-configure cmake -S "$recipe" -B "$work/target-build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/pkg \
     -DCMAKE_TOOLCHAIN_FILE="$recipe/cmake/netbsd-aarch64.cmake" \
-    -DEMBER_DEPS="$work/deps" -DEMBER_HOST_TOOLS="$work/host-build" \
+    -DEMBER_DEPS="$work/deps" -DEMBER_HOST_TOOLS="$work/host-build" -DEMBER_ML_DTYPES_SOURCE="$ml_dtypes" \
     -DEMBER_LITERT_SOURCE_DIR="$work/src/LiteRT-2.2.0" \
     -DEMBER_LITERT_LM_SOURCE_DIR="$work/src/LiteRT-LM-0.18.0" \
     -DEMBER_MINIZIP_SOURCE_DIR="$work/deps/zlib/contrib/minizip"
