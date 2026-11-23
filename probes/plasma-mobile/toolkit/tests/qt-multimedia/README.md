@@ -62,7 +62,7 @@ Wrong pixels exit 3; a missing file yields `QMediaPlayer::ResourceError`.
 All 111 loaded package-library hashes match the common sysroot. Package checks
 cover 2,051 files across Multimedia, Quick3D, Timeline and Assimp 6.0.5.
 
-The fan/V3D kernel remains `EMBERV3DRENDER #0`, source
+The fan/V3D kernel remains V3D render trial, source
 `ab6f88f04ca73c6958adb39d0e1c717f629e7901`, SHA256
 `c8600af1c6a31404fe6b3a3995196a910efda594c708194369925adb54ff1886`.
 Boot identity is unchanged during the bounded run; firmware and carrier-board

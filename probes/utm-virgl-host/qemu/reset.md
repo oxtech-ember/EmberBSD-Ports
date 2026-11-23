@@ -1,12 +1,12 @@
 # Isolated reset with live 2D backing
 
-This Ports check boots an isolated EMBERGPU guest and performs three actual
+This Ports check boots an isolated VirtGPU trial guest and performs three actual
 QMP system resets while a guest process owns a dumb GEM resource and mmap.
 The fourth boot also holds a resource when QMP quits the process. It exercises
 the complete patched QEMU and renderer on ANGLE Metal. It is not an in-flight
 3D draw, display-block, memory non-aliasing or no-touch-after-revoke proof.
 
-Use the [built QEMU and renderer](README.md), the matched EMBERGPU kernel and
+Use the [built QEMU and renderer](README.md), the matched VirtGPU trial kernel and
 a separate 64 MiB FFS root prepared by the
 [kernel boot method](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/virtio/kernel-boot.md).
 Never provide an existing VM disk. No guest account or network is needed.
@@ -47,7 +47,7 @@ Run on a Mac with physical GPU access, using simple absolute paths:
 
 ```sh
 ruby test-reset.rb /absolute/private/qemu-work /absolute/private/renderer-work \
-  /absolute/private/netbsd-EMBERGPU.img /absolute/private/reset-root.ffs \
+  /absolute/private/netbsd-VIRTGPU_TRIAL.img /absolute/private/reset-root.ffs \
   /absolute/path/to/UTM.app/Contents/Frameworks /absolute/private/new-reset-run
 ```
 

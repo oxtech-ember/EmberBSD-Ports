@@ -113,7 +113,7 @@ hash differs. The other dependencies are the 28 October packages listed above.
 ## On the CIX P1 board
 
 Target: the Orange Pi 6 Plus on 30 October 2026, with the
-`EMBER64_CIX_PERIPHERALS` kernel from OS `6373585bb9a`. Its root is the reduced
+CIX peripherals trial kernel from OS `6373585bb9a`. Its root is the reduced
 static cohort; it was not written. The test tree lives in a separate 1 GB
 tmpfs and is lost on reboot.
 

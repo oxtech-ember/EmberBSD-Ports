@@ -18,7 +18,7 @@ On 2026-10-12, GCC16 cross builds passed ordinary package checks for files,
 ELF dependencies, interpreters, permissions, PIE, RELRO, RPATH and work paths.
 Both packages installed normally on CM5 and in the common build sysroot.
 The board is CM5 Rev 1.0, BCM2712D0, 4 GiB RAM, on a Waveshare CM5-NANO-B.
-Kernel `EMBERV3DRENDER #1` has SHA256
+Kernel V3D render trial has SHA256
 `6c5aa74d3c33fb6e84ea5c04d6f3df48928deb021cdc908ee972a42df03c7bf5`.
 
 | Package | SHA256 |

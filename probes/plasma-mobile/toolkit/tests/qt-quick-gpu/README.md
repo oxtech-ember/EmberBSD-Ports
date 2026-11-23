@@ -33,7 +33,7 @@ The AArch64 recipe retains its inherited JIT-disabled policy; this does not
 claim a JIT port. The build retains Quick Controls, templates and development tools.
 
 CM5 Rev 1.0 / BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B used the unchanged
-`EMBERV3DRENDER #11` kernel from `78c6715a9496f779c3832b27f771bd865a9cdcdf`.
+V3D render trial kernel from `78c6715a9496f779c3832b27f771bd865a9cdcdf`.
 The original UEFI and carrier revisions are unknown. The shared stack was
 MesaLib 26.2.4nb3, libdrm 2.4.134nb2, LLVM 23.1.2nb1, labwc 0.20.2nb2,
 wlroots 0.20.2nb4 and libxkbcommon 1.13.2nb2.
@@ -65,7 +65,7 @@ KWin, Plasma and a long run remain separate acceptance gates.
 ## Regression after the fan kernel update, 2026-10-12
 
 The same consumer and runners pass again on the same CM5 after the operator's
-completed cooling update. The `EMBERV3DRENDER #0` kernel comes from EmberBSD
+completed cooling update. The V3D render trial kernel comes from EmberBSD
 `ab6f88f04ca73c6958adb39d0e1c717f629e7901`; its installed SHA256 is
 `c8600af1c6a31404fe6b3a3995196a910efda594c708194369925adb54ff1886`.
 MesaLib 26.2.4nb4 and LLVM 23.1.3 are the current common providers.

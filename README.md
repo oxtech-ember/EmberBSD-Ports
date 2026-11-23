@@ -790,7 +790,7 @@ versionless roots and do not define another recipe, resolver, cache, or prefix.
   The [Cocoa context repair](probes/utm-virgl-host/qemu/cocoa-context.md) additionally
   enables the installed guest's four-frame VirGL DRM check on Metal. In-flight
   3D reset/display lifetimes and a complete accelerated session remain
-  unverified. The host profile defaults to OFF; only the separate EMBERVIRGL
+  unverified. The host profile defaults to OFF; only the separate VirGL trial
   kernel explicitly requests guest VirGL.
 - [Native Phosh session](probes/phosh/README.md): Phosh 0.58.0 builds and
   runs inside GNOME/X11 through Phoc and software-rendered Wayland.

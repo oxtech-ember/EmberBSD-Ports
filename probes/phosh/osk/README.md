@@ -90,7 +90,7 @@ the nested launcher supervises the process directly.
 ## Validation boundary
 
 On 2026-10-06, a fresh native build and private installation completed on
-NetBSD 11/aarch64 with the EMBERGPU kernel, GCC 12.5.0, Meson 1.11.1 and
+NetBSD 11/aarch64 with the VirtGPU trial kernel, GCC 12.5.0, Meson 1.11.1 and
 pkgsrc dependencies. The dynamic dependency audit found the native
 `libintl.so.1` and no conflicting `libintl.so.8`.
 

@@ -56,7 +56,7 @@ package or remove unrelated dependencies.
 ## CM5 result, 2026-10-11
 
 Qt 6.12.0 passed on CM5 Rev 1.0 / BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B,
-using EMBERV3DRENDER #11 and the previously accepted common GCC16/Mesa26/LLVM23
+using V3D render trial and the previously accepted common GCC16/Mesa26/LLVM23
 stack. Carrier PCB and installed UEFI source revisions remain unknown.
 The five packages in [the package receipt](../../cross/qt-packages.md) were
 installed through ordinary pkg_add. The normal/restart, missing-plugin and

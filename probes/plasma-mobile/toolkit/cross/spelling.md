@@ -55,7 +55,7 @@ Use the same Qt 6.12 generators and common EmberBSD sysroot as the other modules
 ## CM5 acceptance
 
 CM5 Rev 1.0 / BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B uses the operator's
-`EMBERV3DRENDER #0` fan-update kernel from
+V3D render trial fan-update kernel from
 `ab6f88f04ca73c6958adb39d0e1c717f629e7901`. Original firmware/carrier revisions
 are unknown. The test intervals preserve the boot identity.
 

@@ -3,7 +3,7 @@
 The local [patch](cocoa-context.patch) preserves the caller's current GL
 context while Cocoa updates its display texture. It fixes a real failure
 encountered by the installed Mesa26/wlroots DRM consumer in an isolated
-EMBERVIRGL guest on the paired QEMU/ANGLE Metal host. It does not change
+VirGL trial guest on the paired QEMU/ANGLE Metal host. It does not change
 renderer fence validation or guest error handling.
 
 ## Observed cause
@@ -90,7 +90,7 @@ the normal recipe applies the same patch to a fresh full source tree.
 
 ## Isolated runtime acceptance
 
-On 2026-10-08, EMBERVIRGL from OS commit
+On 2026-10-08, VirGL trial from OS commit
 `9c0b92bea0af2b69fbdfcbf633b7c0be74be650c` was tested with both host binaries.
 With the original host, the same scanout fence failed, but the repaired PCI
 queue teardown returned consumer failure and halted cleanly without a panic.
@@ -106,6 +106,6 @@ ANGLE Metal on Apple M3. The final public supervisor repeated the result.
 The [wlroots instructions and hashes](../../../profiles/common-graphics/cross/wlroots-virgl.md)
 record the accepted bundle and logs.
 
-The default CPU consumer also passed four frames on the original 2D EMBERGPU
+The default CPU consumer also passed four frames on the original 2D VirtGPU trial
 device. These results do not establish application surfaces, input-event
 delivery, VT switching, live 3D reset or sustained compositor use.

@@ -52,7 +52,7 @@ and the [common migration sequence](../../MIGRATION.md).
 ## CM5 result and isolated compositor
 
 CM5 Rev 1.0 / BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B passed the runner.
-Its unchanged experimental `EMBERV3DRENDER #11` kernel comes from fork revision
+Its unchanged experimental V3D render trial kernel comes from fork revision
 `78c6715a9496f779c3832b27f771bd865a9cdcdf`; kernel SHA256 is
 `e3dd93954fa7fde09e9da0667cb67b7e0c3544e91719be8dfc05e478cd9deea4`.
 The four modules remain from that same bundle. UEFI source and carrier revision

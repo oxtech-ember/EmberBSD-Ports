@@ -52,7 +52,7 @@ Use ordinary alternate-root installation/replacement for the build sysroot.
 ## CM5 GnuPG evidence, 2026-10-12
 
 GnuPG 2.5.24 and its dependencies were installed on CM5 Rev 1.0, BCM2712D0,
-4 GiB RAM, Waveshare CM5-NANO-B. The EmberBSD `EMBERV3DRENDER #1` kernel SHA256
+4 GiB RAM, Waveshare CM5-NANO-B. The EmberBSD V3D render trial kernel SHA256
 was `6c5aa74d3c33fb6e84ea5c04d6f3df48928deb021cdc908ee972a42df03c7bf5`.
 Carrier revision and firmware revision were not re-measured by this check.
 

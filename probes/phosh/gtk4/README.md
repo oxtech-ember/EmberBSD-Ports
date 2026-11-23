@@ -7,7 +7,7 @@ memfd mapping constraint; choosing Cairo alone does not avoid that code.
 
 ## Cause and adaptation
 
-On NetBSD 11/aarch64 with the tested EmberBSD `EMBERGPU` kernel,
+On NetBSD 11/aarch64 with the tested EmberBSD VirtGPU trial kernel,
 GTK4 Demo calls `memfd_create`, adds `F_SEAL_SHRINK`, then sizes its
 backing file to 801360 bytes. These operations succeed. Mapping those
 bytes with `PROT_READ | PROT_WRITE` and `MAP_SHARED` returns `EINVAL`.
@@ -111,7 +111,7 @@ Its default display is `:89`; the same display-number variable can override
 it. The native regression passed with the deliberately stopped group.
 
 The fresh build and runtime check used NetBSD 11/aarch64, EmberBSD
-`EMBERGPU`, GCC 12.5.0 and Meson 1.11.1 on 2026-10-06. The client produced
+VirtGPU trial, GCC 12.5.0 and Meson 1.11.1 on 2026-10-06. The client produced
 four `after-paint` signals on a mapped 360x540 surface and reported
 `GskCairoRenderer`. Both demos submitted buffers and exited normally.
 The installed GTK library loaded native `libintl.so.1`, without the

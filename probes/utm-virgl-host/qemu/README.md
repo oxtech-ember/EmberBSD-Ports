@@ -73,7 +73,7 @@ separately through all 1863 build steps.
 The complete executable linked with libepoxy 1.5.10 and the patched renderer
 1.3.0. All original UTM Cocoa/Metal code and actual VirtGPU translation units
 compiled together. A private VM then booted the complete
-[EMBERGPU kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/virtio/kernel-boot.md)
+[VirtGPU trial kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/virtio/kernel-boot.md)
 with a 64 MiB temporary FFS root containing the documented rescue utilities,
 libdrm and GEM/PRIME tests. The root runs its tests and calls `halt -p`.
 No existing VM disk or network was used. `-snapshot` preserves the input image.
@@ -84,7 +84,7 @@ DYLD_FRAMEWORK_PATH=/absolute/path/to/UTM.app/Contents/Frameworks \
   /absolute/private/qemu-work/build/qemu-system-aarch64 \
   -name EmberBSD-VirGL-isolated -machine virt,accel=hvf -cpu host \
   -m 1024 -smp 2 -display cocoa,gl=es -serial file:/absolute/private/boot.log \
-  -no-reboot -snapshot -kernel /absolute/private/netbsd-EMBERGPU.img \
+  -no-reboot -snapshot -kernel /absolute/private/netbsd-VIRTGPU_TRIAL.img \
   -append 'root=ld4a console=plcom0' \
   -drive file=/absolute/private/root.ffs,if=none,format=raw,id=root \
   -device virtio-blk-pci,drive=root \

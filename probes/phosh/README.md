@@ -129,7 +129,7 @@ and physical-device functionality remain unverified. Mouse automation in
 the UTM client did not reliably move the guest pointer; recorded input
 checks also ran on a separate Xvfb display through a localhost-only SSH/VNC viewer. This proved
 pointer navigation and OSK clicks through X11, not UTM USB or touch input.
-The extended checks used the experimental EMBERGPU kernel; no GPU result
+The extended checks used the experimental VirtGPU trial kernel; no GPU result
 is inferred from these software-rendered sessions.
 
 Run `sh test-nested.sh SHELL_WORK OSK_PREFIX [GTK4_PREFIX]` for the real
