@@ -1,0 +1,60 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local, not submitted upstream.
+MAVLink header generation installs pymavlink requirements with pip at
+build time. Add MAVLINK_USE_PREINSTALLED_PYTHON: use the installed lxml
+and keep PYTHONHASHSEED=0 from the QGC deterministic-mavgen patch.
+
+--- pkgsrc-deps/mavlink/CMakeLists.txt.orig
++++ pkgsrc-deps/mavlink/CMakeLists.txt
+@@ -4,15 +4,29 @@
+ 
+ find_package(Python COMPONENTS Interpreter REQUIRED)
+ 
+-# We automatically install the pip dependencies locally below.
+-# Therefore, we check whether pip is available here.
+-execute_process(
+-    COMMAND ${Python_EXECUTABLE} -m pip -V
+-    RESULT_VARIABLE EXIT_CODE
+-    OUTPUT_QUIET
+-)
+-if (NOT ${EXIT_CODE} EQUAL 0)
+-    message(FATAL_ERROR "Python pip not found, pip is required")
++option(MAVLINK_USE_PREINSTALLED_PYTHON "Use local Python dependencies without pip" OFF)
++set(mavlink_prepare_python)
++set(mavlink_python_environment "PYTHONHASHSEED=0")
++if (MAVLINK_USE_PREINSTALLED_PYTHON)
++    execute_process(
++        COMMAND ${Python_EXECUTABLE} -c "from lxml import etree"
++        RESULT_VARIABLE python_status
++    )
++    if (NOT python_status STREQUAL "0")
++        message(FATAL_ERROR "Preinstalled Python lxml is required for MAVLink XML validation")
++    endif()
++else()
++    execute_process(
++        COMMAND ${Python_EXECUTABLE} -m pip -V
++        RESULT_VARIABLE EXIT_CODE
++        OUTPUT_QUIET
++    )
++    if (NOT ${EXIT_CODE} EQUAL 0)
++        message(FATAL_ERROR "Python pip not found, pip is required")
++    endif()
++    set(mavlink_prepare_python COMMAND ${Python_EXECUTABLE} -m pip install
++        -r pymavlink/requirements.txt --upgrade -t ${CMAKE_CURRENT_BINARY_DIR}/pip-dependencies/)
++    list(APPEND mavlink_python_environment "PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}/pip-dependencies/")
+ endif()
+ 
+ if (NOT MAVLINK_DIALECT)
+@@ -28,9 +42,8 @@
+ set(EXAMPLE_HEADER ${CMAKE_CURRENT_BINARY_DIR}/include/mavlink/${MAVLINK_DIALECT}/mavlink.h)
+ 
+ add_custom_command(OUTPUT ${EXAMPLE_HEADER}
+-    COMMAND ${Python_EXECUTABLE}
+-        -m pip install -r pymavlink/requirements.txt --upgrade -t ${CMAKE_CURRENT_BINARY_DIR}/pip-dependencies/
+-        COMMAND ${CMAKE_COMMAND} -E env "PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}/pip-dependencies/" "PYTHONHASHSEED=0" ${Python_EXECUTABLE}
++    ${mavlink_prepare_python}
++    COMMAND ${CMAKE_COMMAND} -E env ${mavlink_python_environment} ${Python_EXECUTABLE}
+         -m pymavlink.tools.mavgen
+         --lang=C
+         --wire-protocol=${MAVLINK_VERSION}

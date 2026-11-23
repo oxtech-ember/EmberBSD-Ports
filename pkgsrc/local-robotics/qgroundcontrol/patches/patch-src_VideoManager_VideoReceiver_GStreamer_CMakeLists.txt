@@ -1,0 +1,19 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local, not submitted upstream.
+With system libraries on NetBSD, use the installed GStreamer. Do not
+set up a bundled GStreamer SDK.
+
+--- src/VideoManager/VideoReceiver/GStreamer/CMakeLists.txt.orig
++++ src/VideoManager/VideoReceiver/GStreamer/CMakeLists.txt
+@@ -184,6 +184,10 @@ if(ANDROID OR IOS)
+     return()
+ endif()
+ 
++if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD" AND QGC_USE_SYSTEM_LIBS)
++    return()
++endif()
++
+ include(GStreamer/Helpers)
+ 
+ # Build-time rpath so the unrelocated binary finds component dylibs in the SDK

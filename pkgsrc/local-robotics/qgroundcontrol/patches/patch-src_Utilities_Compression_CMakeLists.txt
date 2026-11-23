@@ -1,0 +1,44 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local, not submitted upstream.
+With QGC_USE_SYSTEM_LIBS, use the installed libzstd through pkg-config.
+
+--- src/Utilities/Compression/CMakeLists.txt.orig
++++ src/Utilities/Compression/CMakeLists.txt
+@@ -131,7 +131,18 @@ message(STATUS "liblzma support enabled")
+ # Zstandard (ZSTD) Integration
+ # ============================================================================
+ 
+-CPMAddPackage(
++if(QGC_USE_SYSTEM_LIBS)
++    find_package(PkgConfig QUIET)
++    if(PkgConfig_FOUND)
++        pkg_check_modules(QGC_ZSTD QUIET IMPORTED_TARGET libzstd>=1.5.7)
++        if(TARGET PkgConfig::QGC_ZSTD AND NOT TARGET Zstd::Zstd)
++            add_library(Zstd::Zstd ALIAS PkgConfig::QGC_ZSTD)
++        endif()
++    endif()
++endif()
++
++if(NOT TARGET Zstd::Zstd)
++    CPMAddPackage(
+     NAME zstd
+     VERSION 1.5.7
+     GITHUB_REPOSITORY facebook/zstd
+@@ -148,6 +159,7 @@ CPMAddPackage(
+         "ZSTD_BUILD_COMPRESSION OFF"
+         "ZSTD_BUILD_DICTBUILDER OFF"
+ )
++endif()
+ 
+ # find_package(zstd) (config mode) may export zstd::libzstd_{static,shared}; map whichever
+ # exists onto the canonical Zstd::Zstd alias QGCCompression links.
+@@ -167,7 +179,7 @@ if(zstd_ADDED)
+     if(NOT TARGET zstd::libzstd_static)
+         add_library(zstd::libzstd_static ALIAS libzstd_static)
+     endif()
+-elseif(zstd_FOUND OR Zstd_FOUND)
++elseif(TARGET Zstd::Zstd OR zstd_FOUND OR Zstd_FOUND)
+     if(NOT TARGET Zstd::Zstd)
+         if(TARGET zstd::libzstd_static)
+             add_library(Zstd::Zstd ALIAS zstd::libzstd_static)

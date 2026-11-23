@@ -1,0 +1,23 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local, not submitted upstream.
+Add FirmwareUpgrade/checkLatestStable (default true, upstream behavior).
+A site can stop the message about a newer stable vehicle firmware.
+
+--- src/Settings/FirmwareUpgrade.SettingsGroup.json.orig
++++ src/Settings/FirmwareUpgrade.SettingsGroup.json
+@@ -24,6 +24,14 @@
+             "enumValues": "0,1,2,3,4",
+             "default": 0,
+             "label": "apmVehicleType"
++        },
++        {
++            "name": "checkLatestStable",
++            "shortDesc": "Check for the latest stable firmware",
++            "longDesc": "When a vehicle connects, download the latest stable firmware version and show a message if the vehicle firmware is older.",
++            "type": "bool",
++            "default": true,
++            "label": "Check for the latest stable firmware"
+         }
+     ]
+ }

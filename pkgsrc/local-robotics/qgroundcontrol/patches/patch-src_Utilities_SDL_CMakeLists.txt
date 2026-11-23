@@ -1,0 +1,69 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local, not submitted upstream.
+Desktop builds can use the installed SDL3 library. Android keeps its pin.
+
+--- src/Utilities/SDL/CMakeLists.txt.orig
++++ src/Utilities/SDL/CMakeLists.txt
+@@ -74,32 +74,37 @@ CPMAddPackage(
+         "${SDL_EXTRA_OPTIONS}"
+ )
+ 
+-qgc_require_cpm_added(SDL3)
+-
+-if(ANDROID)
+-    set(_qgc_sdl3_target SDL3-shared)
+-else()
+-    set(_qgc_sdl3_target SDL3-static)
+-endif()
+-
+-qgc_disable_dependency_warnings(${_qgc_sdl3_target})
+-
+-set_target_properties(${_qgc_sdl3_target} PROPERTIES
+-    AUTOMOC OFF
+-    AUTOUIC OFF
+-    AUTORCC OFF
+-)
+-
+-# SDL3's subdir-scoped LibUSB::LibUSB target breaks qt_add_translations' top-level scan.
+-set_property(DIRECTORY "${SDL3_SOURCE_DIR}" PROPERTY QT_EXCLUDE_FROM_TRANSLATION ON)
++if(SDL3_ADDED)
++    if(ANDROID)
++        set(_qgc_sdl3_target SDL3-shared)
++    else()
++        set(_qgc_sdl3_target SDL3-static)
++    endif()
++
++    qgc_disable_dependency_warnings(${_qgc_sdl3_target})
++
++    set_target_properties(${_qgc_sdl3_target} PROPERTIES
++        AUTOMOC OFF
++        AUTOUIC OFF
++        AUTORCC OFF
++    )
+ 
+-if(ANDROID)
+-    target_compile_definitions(SDL3-shared PRIVATE SDL_MAIN_NOIMPL SDL_MAIN_HANDLED)
+-    target_link_libraries(SDL3-shared PRIVATE log android)
+-    set(QGC_SDL3_TARGET SDL3::SDL3-shared)
++    # SDL3's subdir-scoped LibUSB::LibUSB target breaks qt_add_translations' top-level scan.
++    set_property(DIRECTORY "${SDL3_SOURCE_DIR}" PROPERTY QT_EXCLUDE_FROM_TRANSLATION ON)
++
++    if(ANDROID)
++        target_compile_definitions(SDL3-shared PRIVATE SDL_MAIN_NOIMPL SDL_MAIN_HANDLED)
++        target_link_libraries(SDL3-shared PRIVATE log android)
++        set(QGC_SDL3_TARGET SDL3::SDL3-shared)
++    else()
++        target_compile_definitions(SDL3-static PRIVATE SDL_MAIN_NOIMPL SDL_MAIN_HANDLED)
++        set(QGC_SDL3_TARGET SDL3::SDL3-static)
++    endif()
++elseif(NOT ANDROID AND TARGET SDL3::SDL3)
++    # Desktop builds can use an installed SDL library. Android keeps the JNI pin.
++    set(QGC_SDL3_TARGET SDL3::SDL3)
+ else()
+-    target_compile_definitions(SDL3-static PRIVATE SDL_MAIN_NOIMPL SDL_MAIN_HANDLED)
+-    set(QGC_SDL3_TARGET SDL3::SDL3-static)
++    qgc_require_cpm_added(SDL3)
+ endif()
+ 
+ # ============================================================================

@@ -1,0 +1,22 @@
+@comment $NetBSD$
+bin/qgroundcontrol
+libexec/qgroundcontrol/QGroundControl
+share/applications/qgroundcontrol.desktop
+share/doc/qgroundcontrol/LICENSE-APACHE
+share/doc/qgroundcontrol/LICENSE-GPL
+share/doc/qgroundcontrol/earcut-LICENSE
+share/doc/qgroundcontrol/geographiclib-LICENSE.txt
+share/doc/qgroundcontrol/libevents-LICENSE.md
+share/doc/qgroundcontrol/libexif-COPYING
+share/doc/qgroundcontrol/libosmium-LICENSE
+share/doc/qgroundcontrol/mavlink-COPYING
+share/doc/qgroundcontrol/protozero-LICENSE.from_folly
+share/doc/qgroundcontrol/protozero-LICENSE.md
+share/doc/qgroundcontrol/px4-gpsdrivers-LICENSE.md
+share/doc/qgroundcontrol/pymavlink-COPYING
+share/doc/qgroundcontrol/sdl_gamecontrollerdb-LICENSE
+share/doc/qgroundcontrol/shapelib-LICENSE-MIT
+share/doc/qgroundcontrol/ulog_cpp-LICENSE
+share/doc/qgroundcontrol/valijson-LICENSE
+share/icons/hicolor/256x256/apps/qgroundcontrol.png
+share/icons/hicolor/scalable/apps/qgroundcontrol.svg

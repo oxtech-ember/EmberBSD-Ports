@@ -1,0 +1,7 @@
+QGroundControl is a ground control station for vehicles that use the
+MAVLink protocol, such as ArduPilot and PX4. It provides flight setup,
+parameter editing, mission planning, flight monitoring, video and log
+analysis.
+
+This package adds the setting FirmwareUpgrade/checkLatestStable. Set it
+to false to stop the message about a newer stable vehicle firmware.

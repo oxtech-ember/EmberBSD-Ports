@@ -2,6 +2,7 @@ COMMENT=	Local EmberBSD robotics packages
 
 SUBDIR+=	gtsam
 SUBDIR+=	ompl
+SUBDIR+=	qgroundcontrol
 SUBDIR+=	osqp
 SUBDIR+=	ruckig
 SUBDIR+=	rtabmap

@@ -1,0 +1,19 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local, not submitted upstream.
+NetBSD has no QGC platform file. Use the Linux desktop path.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -100,6 +100,11 @@ project(${QGC_APP_NAME}
+     LANGUAGES C CXX
+ )
+ 
++# NetBSD has no platform file. Follow the Linux X11 desktop path.
++if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++    set(LINUX ON)
++endif()
++
+ # ============================================================================
+ # CMake & Build System Configuration
+ # ============================================================================
