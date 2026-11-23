@@ -1,0 +1,48 @@
+$NetBSD$
+
+Preserve the runtime library name of a Darwin SDK dependency when a GIR
+producer selects its library directory. The remaining system and external
+install names follow g-ir-scanner's normal platform policy.
+Origin: EmberBSD contributors (AI-assisted); upstream status: not submitted.
+
+--- giscanner/shlibs.py.orig
++++ giscanner/shlibs.py
+@@ -29,12 +29,27 @@
+ 
+ 
+ # For .la files, the situation is easy.
++def _darwin_sdk_library(lib):
++    directory = os.environ.get("GI_SCANNER_DARWIN_LIBDIR")
++    if (sys.platform != "darwin" or not directory or not os.path.isabs(directory)
++            or not lib.endswith(".dylib")):
++        return None
++    parent, name = os.path.split(lib)
++    directory = os.path.realpath(directory)
++    if parent != "@rpath" and (not os.path.isabs(parent) or os.path.realpath(parent) != directory):
++        return None
++    candidate = os.path.join(directory, name)
++    if os.path.isfile(candidate) and os.path.dirname(os.path.realpath(candidate)) == directory:
++        return "@rpath/" + name
++    return None
++
++
+ def _resolve_libtool(options, binary, libraries):
+     shlibs = []
+     for library in libraries:
+         shlib = extract_libtool_shlib(library)
+         if shlib:
+-            shlibs.append(shlib)
++            shlibs.append(_darwin_sdk_library(shlib) or shlib)
+ 
+     return shlibs
+ 
+@@ -119,6 +134,9 @@
+     # back to the basename as well:
+     # https://gitlab.gnome.org/GNOME/gobject-introspection/issues/222
+     if sys.platform == "darwin":
++        sdk_library = _darwin_sdk_library(lib)
++        if sdk_library is not None:
++            return sdk_library
+         if not os.path.isabs(lib):
+             return os.path.basename(lib)
+         return lib

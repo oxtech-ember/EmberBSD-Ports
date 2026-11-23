@@ -3,7 +3,10 @@
 DISTNAME=	gobject-introspection-1.86.0
 PKGREVISION=	11
 .include "../../mk/bsd.prefs.mk"
-.if ${OPSYS} == "NetBSD"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	12	# Relocatable names for prefix-owned introspection libraries.
+EXTRA_PATCHES+=	${FILESDIR}/darwin-dylib-names.patch
+.elif ${OPSYS} == "NetBSD"
 PKGREVISION=	12	# Updated libffi shared-library requirement.
 .endif
 CATEGORIES=	devel gnome

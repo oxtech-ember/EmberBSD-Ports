@@ -22,6 +22,11 @@ MESON_ARGS+=	-Dlocalstatedir=${VARBASE}
 MESON_ARGS+=	-Druntime_dir=${VARBASE}/run
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	2
+TOOL_DEPENDS+=	gobject-introspection>=1.86.0nb12:../../devel/gobject-introspection
+MAKE_ENV+=	GI_SCANNER_DARWIN_LIBDIR=${PREFIX:Q}/lib
+.endif
 .include "options.mk"
 
 EMBERBSD_GI_MESON_OPTIONS=	no
