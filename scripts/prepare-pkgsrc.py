@@ -207,12 +207,16 @@ def check_recipe(source, label, root):
     check_tree_links(root, source, label)
     require((source / 'Makefile').is_file(), f'Incomplete recipe: {label} has no Makefile.')
     declared = {}
-    if (source / 'distinfo').is_file():
-        for line in (source / 'distinfo').read_bytes().splitlines():
+    distinfo = source / 'distinfo'
+    if distinfo.is_file():
+        for line in distinfo.read_bytes().splitlines():
             fields = line.split()
             if len(fields) >= 4 and fields[0] == b'SHA1' and fields[1].startswith(b'(patch-'):
                 name = fields[1].replace(b'(', b'').replace(b')', b'').decode('utf-8')
                 path = source / 'patches' / name
+                # A shared distinfo also lists patches used only by its owner.
+                if distinfo.is_symlink() and not path.exists():
+                    continue
                 require(path.is_file(), f'Missing patch: {label}/patches/{name}')
                 require(fields[3].decode('ascii') == patch_sha1(path),
                         f'Patch checksum differs: {label}/patches/{name}')

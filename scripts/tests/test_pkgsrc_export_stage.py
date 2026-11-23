@@ -50,6 +50,28 @@ class ExportStageInputTests(unittest.TestCase):
                      'profiles/patches/patch-example', 'profiles/exported.txt'):
             (self.root / name).write_text('input\n')
 
+    def test_shared_distinfo_checks_the_selected_patch_subset(self):
+        exporter = stage._exporter(self.root)
+        owner = self.root / 'pkgsrc/category/library'
+        tools = self.root / 'pkgsrc/category/tools'
+        for package in (owner, tools):
+            (package / 'patches').mkdir(parents=True)
+            (package / 'Makefile').touch()
+        records = []
+        for name in ('patch-library', 'patch-tools'):
+            path = owner / 'patches' / name
+            path.write_text(name + '\n')
+            records.append(f'SHA1 ({name}) = {exporter.patch_sha1(path)}\n')
+        (owner / 'distinfo').write_text(''.join(records))
+        (tools / 'distinfo').symlink_to('../library/distinfo')
+        selected = tools / 'patches/patch-tools'
+        selected.symlink_to('../../library/patches/patch-tools')
+        exporter.check_recipe(tools, 'tools', self.root)
+        selected.unlink()
+        selected.write_text('changed\n')
+        with self.assertRaisesRegex(exporter.ExportError, 'Patch checksum differs'):
+            exporter.check_recipe(tools, 'tools', self.root)
+
     def test_input_discovery_does_not_run_full_recipe_validation(self):
         exporter = stage._exporter(self.root)
         with mock.patch.object(exporter, 'check_recipe', side_effect=AssertionError), \

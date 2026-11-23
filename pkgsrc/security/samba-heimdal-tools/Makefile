@@ -12,7 +12,6 @@ HOMEPAGE=	https://www.samba.org/
 COMMENT=	Lorikeet Heimdal code generators for Samba
 LICENSE=	modified-bsd
 
-DISTINFO_FILE=		${.CURDIR}/../../net/samba4/distinfo
 PATCH_STRIP=		-p2
 EXTRACT_ELEMENTS=	${DISTNAME}/third_party/heimdal
 WRKSRC=			${WRKDIR}/${DISTNAME}/third_party/heimdal
