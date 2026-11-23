@@ -1,0 +1,34 @@
+$NetBSD$
+
+Include the standard declarations of the default comparison functions.
+
+--- include/frozen/map.h.orig
++++ include/frozen/map.h
+@@ -30,6 +30,7 @@
+ #include "frozen/bits/mpl.h"
+ #include "frozen/bits/version.h"
+ 
++#include <functional>
+ #include <iterator>
+ #include <utility>
+ 
+--- include/frozen/set.h.orig
++++ include/frozen/set.h
+@@ -29,6 +29,7 @@
+ #include "frozen/bits/version.h"
+ #include "frozen/bits/defines.h"
+ 
++#include <functional>
+ #include <iterator>
+ #include <utility>
+ 
+--- include/frozen/unordered_set.h.orig
++++ include/frozen/unordered_set.h
+@@ -30,6 +30,7 @@
+ #include "frozen/bits/version.h"
+ #include "frozen/random.h"
+ 
++#include <functional>
+ #include <utility>
+ 
+ namespace frozen {
