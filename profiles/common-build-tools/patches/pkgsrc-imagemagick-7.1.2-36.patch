@@ -1,0 +1,627 @@
+$NetBSD$
+
+Update ImageMagick and PerlMagick to 7.1.2-36 and list the documentation
+installed by that release. Include the upstream license with every build.
+Origin: EmberBSD (AI-assisted).
+
+--- a/graphics/ImageMagick/Makefile
++++ b/graphics/ImageMagick/Makefile
+@@ -1,6 +1,5 @@
+ # $NetBSD: Makefile,v 1.372 2026/09/02 19:02:29 wiz Exp $
+ 
+-PKGREVISION= 5
+ .include "Makefile.common"
+ 
+ PKGNAME=	ImageMagick-${DISTVERSION}
+@@ -82,6 +81,8 @@
+ CHECK_PORTABILITY_SKIP+=	app-image/AppRun.in
+ 
+ post-install:
++	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/doc/ImageMagick-${IM_MAJOR_LIB_VER}
++	${INSTALL_DATA} ${WRKSRC}/LICENSE ${DESTDIR}${PREFIX}/share/doc/ImageMagick-${IM_MAJOR_LIB_VER}/LICENSE
+ 	${INSTALL_DATA} ${WRKSRC}/config/policy*xml ${DESTDIR}${EGDIR}
+ 
+ .include "../../archivers/bzip2/buildlink3.mk"
+
+--- a/graphics/ImageMagick/Makefile.common
++++ b/graphics/ImageMagick/Makefile.common
+@@ -5,7 +5,7 @@
+ # Changelog: https://github.com/ImageMagick/Website/blob/main/ChangeLog.md
+ 
+ IM_MAJOR_VER=		7.1.2
+-IM_MINOR_VER=		21
++IM_MINOR_VER=		36
+ IM_MAJOR_LIB_VER=	7
+ 
+ .if ${IM_MINOR_VER} != NONE
+@@ -18,11 +18,13 @@
+ DISTVERSION=	${DISTSUFFIX:S/-/./}
+ 
+ CATEGORIES=	graphics
+-MASTER_SITES=	https://imagemagick.org/archive/releases/
++MASTER_SITES=	${MASTER_SITE_GITHUB:=ImageMagick/}
++GITHUB_PROJECT=	ImageMagick
++GITHUB_RELEASE=	${DISTSUFFIX}
+ EXTRACT_SUFX=	.tar.xz
+ 
+ HOMEPAGE=	https://www.imagemagick.org/
+-LICENSE=	gnu-gpl-v3
++LICENSE=	imagemagick-license
+ 
+ WRKSRC=		${WRKDIR}/ImageMagick-${DISTSUFFIX}
+ 
+
+--- a/graphics/ImageMagick/PLIST
++++ b/graphics/ImageMagick/PLIST
+@@ -166,6 +166,7 @@
+ share/ImageMagick-7/english.xml
+ share/ImageMagick-7/francais.xml
+ share/ImageMagick-7/locale.xml
++share/doc/ImageMagick-7/LICENSE
+ share/examples/ImageMagick/colors.xml
+ share/examples/ImageMagick/delegates.xml
+ share/examples/ImageMagick/log.xml
+
+--- a/graphics/ImageMagick/PLIST.doc
++++ b/graphics/ImageMagick/PLIST.doc
+@@ -16,338 +16,206 @@
+ man/man1/mogrify.1
+ man/man1/montage.1
+ man/man1/stream.1
+-share/doc/ImageMagick-7/LICENSE
+-share/doc/ImageMagick-7/images/ImageMagick.ico
+-share/doc/ImageMagick-7/images/affine.png
+-share/doc/ImageMagick-7/images/annotate.png
+-share/doc/ImageMagick-7/images/arc.png
+-share/doc/ImageMagick-7/images/atop.gif
+-share/doc/ImageMagick-7/images/background.jpg
+-share/doc/ImageMagick-7/images/bitcoin.svg
+-share/doc/ImageMagick-7/images/black.png
+-share/doc/ImageMagick-7/images/bluebells_clipped.jpg
+-share/doc/ImageMagick-7/images/bluebells_darker.jpg
+-share/doc/ImageMagick-7/images/bluebells_lin.jpg
+-share/doc/ImageMagick-7/images/bluebells_log.jpg
+-share/doc/ImageMagick-7/images/button.gif
+-share/doc/ImageMagick-7/images/color-thresholding-gray.gif
+-share/doc/ImageMagick-7/images/color-thresholding-hsv-rgb.gif
+-share/doc/ImageMagick-7/images/color-thresholding-hsv.gif
+-share/doc/ImageMagick-7/images/color-thresholding-rgb.gif
+-share/doc/ImageMagick-7/images/color-thresholding.gif
+-share/doc/ImageMagick-7/images/color-thresholding.jpg
+-share/doc/ImageMagick-7/images/configure.jpg
+-share/doc/ImageMagick-7/images/convex-hull-barn-closure.jpg
+-share/doc/ImageMagick-7/images/convex-hull-barn.jpg
+-share/doc/ImageMagick-7/images/convex-hull-blocks-closure.png
+-share/doc/ImageMagick-7/images/convex-hull-blocks.png
+-share/doc/ImageMagick-7/images/convex-hull.png
+-share/doc/ImageMagick-7/images/cylinder_shaded.png
+-share/doc/ImageMagick-7/images/difference.png
+-share/doc/ImageMagick-7/images/examples.jpg
+-share/doc/ImageMagick-7/images/frame.jpg
+-share/doc/ImageMagick-7/images/fuzzy-magick.png
+-share/doc/ImageMagick-7/images/gaussian-blur.png
+-share/doc/ImageMagick-7/images/granite.png
+-share/doc/ImageMagick-7/images/imade_art2.jpg
+-share/doc/ImageMagick-7/images/label.gif
+-share/doc/ImageMagick-7/images/logo-sm-flop.png
+-share/doc/ImageMagick-7/images/logo-sm-fx.png
+-share/doc/ImageMagick-7/images/logo-sm.png
+-share/doc/ImageMagick-7/images/logo.eps
+-share/doc/ImageMagick-7/images/logo.jpg
+-share/doc/ImageMagick-7/images/logo.png
+-share/doc/ImageMagick-7/images/montage.jpg
+-share/doc/ImageMagick-7/images/mountains-clahe.jpg
+-share/doc/ImageMagick-7/images/mountains-equalize.jpg
+-share/doc/ImageMagick-7/images/mountains.jpg
+-share/doc/ImageMagick-7/images/navy.png
+-share/doc/ImageMagick-7/images/objects.gif
+-share/doc/ImageMagick-7/images/objects.jpg
+-share/doc/ImageMagick-7/images/objects.png
+-share/doc/ImageMagick-7/images/over.gif
+-share/doc/ImageMagick-7/images/patterns/bricks.png
+-share/doc/ImageMagick-7/images/patterns/checkerboard.png
+-share/doc/ImageMagick-7/images/patterns/circles.png
+-share/doc/ImageMagick-7/images/patterns/crosshatch.png
+-share/doc/ImageMagick-7/images/patterns/crosshatch30.png
+-share/doc/ImageMagick-7/images/patterns/crosshatch45.png
+-share/doc/ImageMagick-7/images/patterns/fishscales.png
+-share/doc/ImageMagick-7/images/patterns/gray0.png
+-share/doc/ImageMagick-7/images/patterns/gray10.png
+-share/doc/ImageMagick-7/images/patterns/gray100.png
+-share/doc/ImageMagick-7/images/patterns/gray15.png
+-share/doc/ImageMagick-7/images/patterns/gray20.png
+-share/doc/ImageMagick-7/images/patterns/gray25.png
+-share/doc/ImageMagick-7/images/patterns/gray30.png
+-share/doc/ImageMagick-7/images/patterns/gray35.png
+-share/doc/ImageMagick-7/images/patterns/gray40.png
+-share/doc/ImageMagick-7/images/patterns/gray45.png
+-share/doc/ImageMagick-7/images/patterns/gray5.png
+-share/doc/ImageMagick-7/images/patterns/gray50.png
+-share/doc/ImageMagick-7/images/patterns/gray55.png
+-share/doc/ImageMagick-7/images/patterns/gray60.png
+-share/doc/ImageMagick-7/images/patterns/gray65.png
+-share/doc/ImageMagick-7/images/patterns/gray70.png
+-share/doc/ImageMagick-7/images/patterns/gray75.png
+-share/doc/ImageMagick-7/images/patterns/gray80.png
+-share/doc/ImageMagick-7/images/patterns/gray85.png
+-share/doc/ImageMagick-7/images/patterns/gray90.png
+-share/doc/ImageMagick-7/images/patterns/gray95.png
+-share/doc/ImageMagick-7/images/patterns/hexagons.png
+-share/doc/ImageMagick-7/images/patterns/horizontal.png
+-share/doc/ImageMagick-7/images/patterns/horizontal2.png
+-share/doc/ImageMagick-7/images/patterns/horizontal3.png
+-share/doc/ImageMagick-7/images/patterns/horizontalsaw.png
+-share/doc/ImageMagick-7/images/patterns/hs_bdiagonal.png
+-share/doc/ImageMagick-7/images/patterns/hs_cross.png
+-share/doc/ImageMagick-7/images/patterns/hs_diagcross.png
+-share/doc/ImageMagick-7/images/patterns/hs_fdiagonal.png
+-share/doc/ImageMagick-7/images/patterns/hs_horizontal.png
+-share/doc/ImageMagick-7/images/patterns/hs_vertical.png
+-share/doc/ImageMagick-7/images/patterns/left30.png
+-share/doc/ImageMagick-7/images/patterns/left45.png
+-share/doc/ImageMagick-7/images/patterns/leftshingle.png
+-share/doc/ImageMagick-7/images/patterns/octagons.png
+-share/doc/ImageMagick-7/images/patterns/right30.png
+-share/doc/ImageMagick-7/images/patterns/right45.png
+-share/doc/ImageMagick-7/images/patterns/rightshingle.png
+-share/doc/ImageMagick-7/images/patterns/smallfishscales.png
+-share/doc/ImageMagick-7/images/patterns/vertical.png
+-share/doc/ImageMagick-7/images/patterns/vertical2.png
+-share/doc/ImageMagick-7/images/patterns/vertical3.png
+-share/doc/ImageMagick-7/images/patterns/verticalbricks.png
+-share/doc/ImageMagick-7/images/patterns/verticalleftshingle.png
+-share/doc/ImageMagick-7/images/patterns/verticalrightshingle.png
+-share/doc/ImageMagick-7/images/patterns/verticalsaw.png
+-share/doc/ImageMagick-7/images/piechart.png
+-share/doc/ImageMagick-7/images/radial-gradient.png
+-share/doc/ImageMagick-7/images/reconstruct.jpg
+-share/doc/ImageMagick-7/images/red-ball.png
+-share/doc/ImageMagick-7/images/red-circle.png
+-share/doc/ImageMagick-7/images/right.gif
+-share/doc/ImageMagick-7/images/rose-over.png
+-share/doc/ImageMagick-7/images/rose-sigmoidal.png
+-share/doc/ImageMagick-7/images/rose.jpg
+-share/doc/ImageMagick-7/images/rose.png
+-share/doc/ImageMagick-7/images/rose.pnm
+-share/doc/ImageMagick-7/images/script.png
+-share/doc/ImageMagick-7/images/smile.gif
+-share/doc/ImageMagick-7/images/sponsor.jpg
+-share/doc/ImageMagick-7/images/sprite.jpg
+-share/doc/ImageMagick-7/images/t-shirt.png
+-share/doc/ImageMagick-7/images/wand.ico
+-share/doc/ImageMagick-7/images/wand.png
+-share/doc/ImageMagick-7/images/white-highlight.png
+-share/doc/ImageMagick-7/images/wizard.jpg
+-share/doc/ImageMagick-7/images/wizard.png
+ share/doc/ImageMagick-7/index.html
+-share/doc/ImageMagick-7/www/Magick++/Blob.html
+-share/doc/ImageMagick-7/www/Magick++/Cache.fig
+-share/doc/ImageMagick-7/www/Magick++/Cache.png
+-share/doc/ImageMagick-7/www/Magick++/Cache.svg
+-share/doc/ImageMagick-7/www/Magick++/ChangeLog.html
+-share/doc/ImageMagick-7/www/Magick++/CoderInfo.html
+-share/doc/ImageMagick-7/www/Magick++/Color.html
+-share/doc/ImageMagick-7/www/Magick++/Documentation.html
+-share/doc/ImageMagick-7/www/Magick++/Drawable.html
+-share/doc/ImageMagick-7/www/Magick++/Drawable_example_1.png
+-share/doc/ImageMagick-7/www/Magick++/Enumerations.html
+-share/doc/ImageMagick-7/www/Magick++/Exception.html
+-share/doc/ImageMagick-7/www/Magick++/FormatCharacters.html
+-share/doc/ImageMagick-7/www/Magick++/Future.html
+-share/doc/ImageMagick-7/www/Magick++/Geometry.html
+-share/doc/ImageMagick-7/www/Magick++/Image++.html
+-share/doc/ImageMagick-7/www/Magick++/Image.fig
+-share/doc/ImageMagick-7/www/Magick++/Image.html
+-share/doc/ImageMagick-7/www/Magick++/Image.png
+-share/doc/ImageMagick-7/www/Magick++/ImageDesign.html
+-share/doc/ImageMagick-7/www/Magick++/ImageMagick.png
+-share/doc/ImageMagick-7/www/Magick++/Install.html
+-share/doc/ImageMagick-7/www/Magick++/Magick++.png
+-share/doc/ImageMagick-7/www/Magick++/Montage.html
+-share/doc/ImageMagick-7/www/Magick++/NEWS.html
+-share/doc/ImageMagick-7/www/Magick++/PixelPacket.html
+-share/doc/ImageMagick-7/www/Magick++/Pixels.html
+-share/doc/ImageMagick-7/www/Magick++/Quantum.html
+-share/doc/ImageMagick-7/www/Magick++/README.txt
+-share/doc/ImageMagick-7/www/Magick++/STL.html
+-share/doc/ImageMagick-7/www/Magick++/TypeMetric.html
+-share/doc/ImageMagick-7/www/Magick++/index.html
+-share/doc/ImageMagick-7/www/Magick++/magick.css
+-share/doc/ImageMagick-7/www/Magick++/montage-sample-framed.jpg
+-share/doc/ImageMagick-7/www/Magick++/right_triangle.png
+-share/doc/ImageMagick-7/www/Magick++/thumbnail-anatomy-framed.fig
+-share/doc/ImageMagick-7/www/Magick++/thumbnail-anatomy-framed.jpg
+-share/doc/ImageMagick-7/www/Magick++/thumbnail-anatomy-plain.fig
+-share/doc/ImageMagick-7/www/Magick++/thumbnail-anatomy-plain.jpg
+-share/doc/ImageMagick-7/www/Magick++/thumbnail-sample-framed.jpg
+-share/doc/ImageMagick-7/www/Magick++/thumbnail-sample-plain.jpg
+-share/doc/ImageMagick-7/www/advanced-linux-installation.html
+-share/doc/ImageMagick-7/www/advanced-unix-installation.html
+-share/doc/ImageMagick-7/www/advanced-windows-installation.html
+-share/doc/ImageMagick-7/www/animate.html
+-share/doc/ImageMagick-7/www/api/Image++.html
+-share/doc/ImageMagick-7/www/api/animate.html
+-share/doc/ImageMagick-7/www/api/annotate.html
+-share/doc/ImageMagick-7/www/api/attribute.html
+-share/doc/ImageMagick-7/www/api/blob.html
+-share/doc/ImageMagick-7/www/api/cache-view.html
+-share/doc/ImageMagick-7/www/api/cache.html
+-share/doc/ImageMagick-7/www/api/channel.html
+-share/doc/ImageMagick-7/www/api/cipher.html
+-share/doc/ImageMagick-7/www/api/color.html
+-share/doc/ImageMagick-7/www/api/colormap.html
+-share/doc/ImageMagick-7/www/api/colorspace.html
+-share/doc/ImageMagick-7/www/api/compare.html
+-share/doc/ImageMagick-7/www/api/composite.html
+-share/doc/ImageMagick-7/www/api/constitute.html
+-share/doc/ImageMagick-7/www/api/decorate.html
+-share/doc/ImageMagick-7/www/api/deprecate.html
+-share/doc/ImageMagick-7/www/api/display.html
+-share/doc/ImageMagick-7/www/api/distort.html
+-share/doc/ImageMagick-7/www/api/draw.html
+-share/doc/ImageMagick-7/www/api/drawing-wand.html
+-share/doc/ImageMagick-7/www/api/effect.html
+-share/doc/ImageMagick-7/www/api/enhance.html
+-share/doc/ImageMagick-7/www/api/exception.html
+-share/doc/ImageMagick-7/www/api/feature.html
+-share/doc/ImageMagick-7/www/api/fourier.html
+-share/doc/ImageMagick-7/www/api/fx.html
+-share/doc/ImageMagick-7/www/api/histogram.html
+-share/doc/ImageMagick-7/www/api/image-view.html
+-share/doc/ImageMagick-7/www/api/image.html
+-share/doc/ImageMagick-7/www/api/layer.html
+-share/doc/ImageMagick-7/www/api/list.html
+-share/doc/ImageMagick-7/www/api/magick++-classes.html
+-share/doc/ImageMagick-7/www/api/magick-deprecate.html
+-share/doc/ImageMagick-7/www/api/magick-image.html
+-share/doc/ImageMagick-7/www/api/magick-property.html
+-share/doc/ImageMagick-7/www/api/magick-wand.html
+-share/doc/ImageMagick-7/www/api/magick.html
+-share/doc/ImageMagick-7/www/api/memory.html
+-share/doc/ImageMagick-7/www/api/mime.html
+-share/doc/ImageMagick-7/www/api/module.html
+-share/doc/ImageMagick-7/www/api/mogrify.html
+-share/doc/ImageMagick-7/www/api/monitor.html
+-share/doc/ImageMagick-7/www/api/montage.html
+-share/doc/ImageMagick-7/www/api/morphology.html
+-share/doc/ImageMagick-7/www/api/paint.html
+-share/doc/ImageMagick-7/www/api/pixel-iterator.html
+-share/doc/ImageMagick-7/www/api/pixel-wand.html
+-share/doc/ImageMagick-7/www/api/profile.html
+-share/doc/ImageMagick-7/www/api/property.html
+-share/doc/ImageMagick-7/www/api/quantize.html
+-share/doc/ImageMagick-7/www/api/registry.html
+-share/doc/ImageMagick-7/www/api/resize.html
+-share/doc/ImageMagick-7/www/api/resource.html
+-share/doc/ImageMagick-7/www/api/segment.html
+-share/doc/ImageMagick-7/www/api/shear.html
+-share/doc/ImageMagick-7/www/api/signature.html
+-share/doc/ImageMagick-7/www/api/statistic.html
+-share/doc/ImageMagick-7/www/api/stream.html
+-share/doc/ImageMagick-7/www/api/transform.html
+-share/doc/ImageMagick-7/www/api/version.html
+-share/doc/ImageMagick-7/www/api/vision.html
+-share/doc/ImageMagick-7/www/api/wand-view.html
+-share/doc/ImageMagick-7/www/architecture.html
+-share/doc/ImageMagick-7/www/assets/bootstrap.bundle.min.js
+-share/doc/ImageMagick-7/www/assets/bootstrap.min.css
+-share/doc/ImageMagick-7/www/assets/color-modes.js
+-share/doc/ImageMagick-7/www/changelog.html
+-share/doc/ImageMagick-7/www/cipher.html
+-share/doc/ImageMagick-7/www/cite.html
+-share/doc/ImageMagick-7/www/clahe.html
+-share/doc/ImageMagick-7/www/color-management.html
+-share/doc/ImageMagick-7/www/color-thresholding.html
+-share/doc/ImageMagick-7/www/color.html
+-share/doc/ImageMagick-7/www/command-line-options.html
+-share/doc/ImageMagick-7/www/command-line-processing.html
+-share/doc/ImageMagick-7/www/command-line-tools.html
+-share/doc/ImageMagick-7/www/compare.html
+-share/doc/ImageMagick-7/www/compose.html
+-share/doc/ImageMagick-7/www/composite.html
+-share/doc/ImageMagick-7/www/conjure.html
+-share/doc/ImageMagick-7/www/connected-components.html
+-share/doc/ImageMagick-7/www/contact.html
+-share/doc/ImageMagick-7/www/convert.html
+-share/doc/ImageMagick-7/www/convex-hull.html
+-share/doc/ImageMagick-7/www/defines.html
+-share/doc/ImageMagick-7/www/develop.html
+-share/doc/ImageMagick-7/www/display.html
+-share/doc/ImageMagick-7/www/distribute-pixel-cache.html
+-share/doc/ImageMagick-7/www/download.html
+-share/doc/ImageMagick-7/www/escape.html
+-share/doc/ImageMagick-7/www/examples.html
+-share/doc/ImageMagick-7/www/exception.html
+-share/doc/ImageMagick-7/www/export.html
+-share/doc/ImageMagick-7/www/favicon.ico
+-share/doc/ImageMagick-7/www/formats.html
+-share/doc/ImageMagick-7/www/fx.html
+-share/doc/ImageMagick-7/www/gradient.html
+-share/doc/ImageMagick-7/www/high-dynamic-range.html
+-share/doc/ImageMagick-7/www/history.html
+-share/doc/ImageMagick-7/www/identify.html
+-share/doc/ImageMagick-7/www/import.html
++share/doc/ImageMagick-7/www/animate/index.html
++share/doc/ImageMagick-7/www/architecture/index.html
++share/doc/ImageMagick-7/www/backblue.gif
++share/doc/ImageMagick-7/www/changelog/index.html
++share/doc/ImageMagick-7/www/cipher/index.html
++share/doc/ImageMagick-7/www/cite/index.html
++share/doc/ImageMagick-7/www/clahe/index.html
++share/doc/ImageMagick-7/www/color/index.html
++share/doc/ImageMagick-7/www/color-management/index.html
++share/doc/ImageMagick-7/www/color-thresholding/index.html
++share/doc/ImageMagick-7/www/command-line-options/index.html
++share/doc/ImageMagick-7/www/command-line-processing/index.html
++share/doc/ImageMagick-7/www/command-line-tools/index.html
++share/doc/ImageMagick-7/www/compare/index.html
++share/doc/ImageMagick-7/www/compose/index.html
++share/doc/ImageMagick-7/www/composite/index.html
++share/doc/ImageMagick-7/www/conjure/index.html
++share/doc/ImageMagick-7/www/connected-components/index.html
++share/doc/ImageMagick-7/www/content-provenance-authenticity/index.html
++share/doc/ImageMagick-7/www/convert/index.html
++share/doc/ImageMagick-7/www/convex-hull/index.html
++share/doc/ImageMagick-7/www/defines/index.html
++share/doc/ImageMagick-7/www/develop/index.html
++share/doc/ImageMagick-7/www/display/index.html
++share/doc/ImageMagick-7/www/distribute-pixel-cache/index.html
++share/doc/ImageMagick-7/www/download/index.html
++share/doc/ImageMagick-7/www/escape/index.html
++share/doc/ImageMagick-7/www/examples/index.html
++share/doc/ImageMagick-7/www/export/index.html
++share/doc/ImageMagick-7/www/fade.gif
++share/doc/ImageMagick-7/www/formats/index.html
++share/doc/ImageMagick-7/www/fx/index.html
++share/doc/ImageMagick-7/www/gradient/index.html
++share/doc/ImageMagick-7/www/high-dynamic-range/index.html
++share/doc/ImageMagick-7/www/history/index.html
++share/doc/ImageMagick-7/www/identify/index.html
++share/doc/ImageMagick-7/www/image/affine.png
++share/doc/ImageMagick-7/www/image/annotate.png
++share/doc/ImageMagick-7/www/image/atop.gif
++share/doc/ImageMagick-7/www/image/bitcoin.svg
++share/doc/ImageMagick-7/www/image/black.png
++share/doc/ImageMagick-7/www/image/bluebells_clipped.jpg
++share/doc/ImageMagick-7/www/image/bluebells_darker.jpg
++share/doc/ImageMagick-7/www/image/bluebells_lin.jpg
++share/doc/ImageMagick-7/www/image/bluebells_log.jpg
++share/doc/ImageMagick-7/www/image/button.gif
++share/doc/ImageMagick-7/www/image/color-thresholding-gray.gif
++share/doc/ImageMagick-7/www/image/color-thresholding-hsv-rgb.gif
++share/doc/ImageMagick-7/www/image/color-thresholding-hsv.gif
++share/doc/ImageMagick-7/www/image/color-thresholding-rgb.gif
++share/doc/ImageMagick-7/www/image/color-thresholding.jpg
++share/doc/ImageMagick-7/www/image/convex-hull-barn-closure.jpg
++share/doc/ImageMagick-7/www/image/convex-hull-barn.jpg
++share/doc/ImageMagick-7/www/image/convex-hull-blocks-closure.png
++share/doc/ImageMagick-7/www/image/convex-hull-blocks.png
++share/doc/ImageMagick-7/www/image/convex-hull.png
++share/doc/ImageMagick-7/www/image/cylinder_shaded.png
++share/doc/ImageMagick-7/www/image/donate.png
++share/doc/ImageMagick-7/www/image/examples.jpg
++share/doc/ImageMagick-7/www/image/frame.jpg
++share/doc/ImageMagick-7/www/image/futureweb_red.png
++share/doc/ImageMagick-7/www/image/fuzzy-magick.png
++share/doc/ImageMagick-7/www/image/gaussian-blur.png
++share/doc/ImageMagick-7/www/image/gradients/linear_gradient.png
++share/doc/ImageMagick-7/www/image/gradients/linear_gradient_default.png
++share/doc/ImageMagick-7/www/image/gradients/linear_gradient_east.png
++share/doc/ImageMagick-7/www/image/gradients/radial_gradient.png
++share/doc/ImageMagick-7/www/image/gradients/radial_gradient_diagonal.png
++share/doc/ImageMagick-7/www/image/gradients/radial_gradient_ellipse.png
++share/doc/ImageMagick-7/www/image/gradients/radial_gradient_ellipse_angle45.png
++share/doc/ImageMagick-7/www/image/gradients/radial_gradient_maximum.png
++share/doc/ImageMagick-7/www/image/gradients/radial_gradient_minimum.png
++share/doc/ImageMagick-7/www/image/granite.png
++share/doc/ImageMagick-7/www/image/julia-set.png
++share/doc/ImageMagick-7/www/image/label.gif
++share/doc/ImageMagick-7/www/image/logo-sm-flop.png
++share/doc/ImageMagick-7/www/image/logo-sm-fx.png
++share/doc/ImageMagick-7/www/image/logo-sm.png
++share/doc/ImageMagick-7/www/image/logo.jpg
++share/doc/ImageMagick-7/www/image/logo.png
++share/doc/ImageMagick-7/www/image/montage.jpg
++share/doc/ImageMagick-7/www/image/mountains-clahe.jpg
++share/doc/ImageMagick-7/www/image/mountains-equalize.jpg
++share/doc/ImageMagick-7/www/image/mountains.jpg
++share/doc/ImageMagick-7/www/image/navy.png
++share/doc/ImageMagick-7/www/image/objects.gif
++share/doc/ImageMagick-7/www/image/objects.jpg
++share/doc/ImageMagick-7/www/image/objects.png
++share/doc/ImageMagick-7/www/image/over.gif
++share/doc/ImageMagick-7/www/image/patterns/bricks.png
++share/doc/ImageMagick-7/www/image/patterns/checkerboard.png
++share/doc/ImageMagick-7/www/image/patterns/circles.png
++share/doc/ImageMagick-7/www/image/patterns/crosshatch.png
++share/doc/ImageMagick-7/www/image/patterns/crosshatch30.png
++share/doc/ImageMagick-7/www/image/patterns/crosshatch45.png
++share/doc/ImageMagick-7/www/image/patterns/fishscales.png
++share/doc/ImageMagick-7/www/image/patterns/gray0.png
++share/doc/ImageMagick-7/www/image/patterns/gray10.png
++share/doc/ImageMagick-7/www/image/patterns/gray100.png
++share/doc/ImageMagick-7/www/image/patterns/gray15.png
++share/doc/ImageMagick-7/www/image/patterns/gray20.png
++share/doc/ImageMagick-7/www/image/patterns/gray25.png
++share/doc/ImageMagick-7/www/image/patterns/gray30.png
++share/doc/ImageMagick-7/www/image/patterns/gray35.png
++share/doc/ImageMagick-7/www/image/patterns/gray40.png
++share/doc/ImageMagick-7/www/image/patterns/gray45.png
++share/doc/ImageMagick-7/www/image/patterns/gray5.png
++share/doc/ImageMagick-7/www/image/patterns/gray50.png
++share/doc/ImageMagick-7/www/image/patterns/gray55.png
++share/doc/ImageMagick-7/www/image/patterns/gray60.png
++share/doc/ImageMagick-7/www/image/patterns/gray65.png
++share/doc/ImageMagick-7/www/image/patterns/gray70.png
++share/doc/ImageMagick-7/www/image/patterns/gray75.png
++share/doc/ImageMagick-7/www/image/patterns/gray80.png
++share/doc/ImageMagick-7/www/image/patterns/gray85.png
++share/doc/ImageMagick-7/www/image/patterns/gray90.png
++share/doc/ImageMagick-7/www/image/patterns/gray95.png
++share/doc/ImageMagick-7/www/image/patterns/hexagons.png
++share/doc/ImageMagick-7/www/image/patterns/horizontal.png
++share/doc/ImageMagick-7/www/image/patterns/horizontal2.png
++share/doc/ImageMagick-7/www/image/patterns/horizontal3.png
++share/doc/ImageMagick-7/www/image/patterns/horizontalsaw.png
++share/doc/ImageMagick-7/www/image/patterns/hs_bdiagonal.png
++share/doc/ImageMagick-7/www/image/patterns/hs_cross.png
++share/doc/ImageMagick-7/www/image/patterns/hs_diagcross.png
++share/doc/ImageMagick-7/www/image/patterns/hs_fdiagonal.png
++share/doc/ImageMagick-7/www/image/patterns/hs_horizontal.png
++share/doc/ImageMagick-7/www/image/patterns/hs_vertical.png
++share/doc/ImageMagick-7/www/image/patterns/left30.png
++share/doc/ImageMagick-7/www/image/patterns/left45.png
++share/doc/ImageMagick-7/www/image/patterns/leftshingle.png
++share/doc/ImageMagick-7/www/image/patterns/octagons.png
++share/doc/ImageMagick-7/www/image/patterns/right30.png
++share/doc/ImageMagick-7/www/image/patterns/right45.png
++share/doc/ImageMagick-7/www/image/patterns/rightshingle.png
++share/doc/ImageMagick-7/www/image/patterns/smallfishscales.png
++share/doc/ImageMagick-7/www/image/patterns/vertical.png
++share/doc/ImageMagick-7/www/image/patterns/vertical2.png
++share/doc/ImageMagick-7/www/image/patterns/vertical3.png
++share/doc/ImageMagick-7/www/image/patterns/verticalbricks.png
++share/doc/ImageMagick-7/www/image/patterns/verticalleftshingle.png
++share/doc/ImageMagick-7/www/image/patterns/verticalrightshingle.png
++share/doc/ImageMagick-7/www/image/patterns/verticalsaw.png
++share/doc/ImageMagick-7/www/image/radial-gradient.png
++share/doc/ImageMagick-7/www/image/red-ball.png
++share/doc/ImageMagick-7/www/image/red-circle.png
++share/doc/ImageMagick-7/www/image/right.gif
++share/doc/ImageMagick-7/www/image/rose-over.png
++share/doc/ImageMagick-7/www/image/rose-sigmoidal.png
++share/doc/ImageMagick-7/www/image/rose.jpg
++share/doc/ImageMagick-7/www/image/rose.png
++share/doc/ImageMagick-7/www/image/smile.gif
++share/doc/ImageMagick-7/www/image/wand.ico
++share/doc/ImageMagick-7/www/image/wand.png
++share/doc/ImageMagick-7/www/image/white-highlight.png
++share/doc/ImageMagick-7/www/image/wizard.jpg
++share/doc/ImageMagick-7/www/image/wizard.png
++share/doc/ImageMagick-7/www/import/index.html
++share/doc/ImageMagick-7/www/index-2.html
+ share/doc/ImageMagick-7/www/index.html
+-share/doc/ImageMagick-7/www/install-source.html
+-share/doc/ImageMagick-7/www/jp2.html
+-share/doc/ImageMagick-7/www/license.html
+-share/doc/ImageMagick-7/www/links.html
+-share/doc/ImageMagick-7/www/magick++.html
+-share/doc/ImageMagick-7/www/magick-cache.html
+-share/doc/ImageMagick-7/www/magick-core.html
+-share/doc/ImageMagick-7/www/magick-script.html
+-share/doc/ImageMagick-7/www/magick-vector-graphics.html
+-share/doc/ImageMagick-7/www/magick-wand.html
+-share/doc/ImageMagick-7/www/magick.html
+-share/doc/ImageMagick-7/www/miff.html
+-share/doc/ImageMagick-7/www/mirror.html
+-share/doc/ImageMagick-7/www/mogrify.html
+-share/doc/ImageMagick-7/www/montage.html
+-share/doc/ImageMagick-7/www/motion-picture.html
+-share/doc/ImageMagick-7/www/multispectral-imagery.html
+-share/doc/ImageMagick-7/www/news.html
+-share/doc/ImageMagick-7/www/opencl.html
+-share/doc/ImageMagick-7/www/openmp.html
+-share/doc/ImageMagick-7/www/perl-magick.html
+-share/doc/ImageMagick-7/www/porting.html
+-share/doc/ImageMagick-7/www/privacy-policy.html
+-share/doc/ImageMagick-7/www/quantize.html
+-share/doc/ImageMagick-7/www/resources.html
+-share/doc/ImageMagick-7/www/search.html
+-share/doc/ImageMagick-7/www/security-policy.html
+-share/doc/ImageMagick-7/www/sitemap.html
++share/doc/ImageMagick-7/www/install-source/index.html
++share/doc/ImageMagick-7/www/jp2/index.html
++share/doc/ImageMagick-7/www/license/index.html
++share/doc/ImageMagick-7/www/links/index.html
++share/doc/ImageMagick-7/www/magick/index.html
++share/doc/ImageMagick-7/www/magick++/index.html
++share/doc/ImageMagick-7/www/magick++/tutorial/Magick++_tutorial.odt
++share/doc/ImageMagick-7/www/magick++/tutorial/Magick++_tutorial.pdf
++share/doc/ImageMagick-7/www/magick-cache/index.html
++share/doc/ImageMagick-7/www/magick-core/index.html
++share/doc/ImageMagick-7/www/magick-script/index.html
++share/doc/ImageMagick-7/www/magick-vector-graphics/index.html
++share/doc/ImageMagick-7/www/magick-wand/index.html
++share/doc/ImageMagick-7/www/miff/index.html
++share/doc/ImageMagick-7/www/mirror/index.html
++share/doc/ImageMagick-7/www/mogrify/index.html
++share/doc/ImageMagick-7/www/montage/index.html
++share/doc/ImageMagick-7/www/motion-picture/index.html
++share/doc/ImageMagick-7/www/multispectral-imagery/index.html
++share/doc/ImageMagick-7/www/news/index.html
++share/doc/ImageMagick-7/www/opencl/index.html
++share/doc/ImageMagick-7/www/openmp/index.html
++share/doc/ImageMagick-7/www/perl-magick/index.html
++share/doc/ImageMagick-7/www/porting/index.html
++share/doc/ImageMagick-7/www/privacy-policy/index.html
++share/doc/ImageMagick-7/www/quantize/index.html
++share/doc/ImageMagick-7/www/resources/index.html
++share/doc/ImageMagick-7/www/search/index4840.html
++share/doc/ImageMagick-7/www/security-policy/index.html
++share/doc/ImageMagick-7/www/sitemap/index.html
+ share/doc/ImageMagick-7/www/source/analyze.c
+-share/doc/ImageMagick-7/www/source/coder.xml
+-share/doc/ImageMagick-7/www/source/colors.xml
+-share/doc/ImageMagick-7/www/source/configure.xml
+-share/doc/ImageMagick-7/www/source/contrast.c
+-share/doc/ImageMagick-7/www/source/core.c
+ share/doc/ImageMagick-7/www/source/delegates.xml
+-share/doc/ImageMagick-7/www/source/english.xml
+-share/doc/ImageMagick-7/www/source/examples.pl
+-share/doc/ImageMagick-7/www/source/francais.xml
+-share/doc/ImageMagick-7/www/source/incantation.msl
+-share/doc/ImageMagick-7/www/source/locale.xml
+-share/doc/ImageMagick-7/www/source/log.xml
+-share/doc/ImageMagick-7/www/source/magic.xml
++share/doc/ImageMagick-7/www/source/examples.perl
+ share/doc/ImageMagick-7/www/source/mgk.c
+-share/doc/ImageMagick-7/www/source/mime.xml
+-share/doc/ImageMagick-7/www/source/piechart.mvg
+-share/doc/ImageMagick-7/www/source/piechart.svg
+-share/doc/ImageMagick-7/www/source/policy.xml
+-share/doc/ImageMagick-7/www/source/quantization-table.xml
+-share/doc/ImageMagick-7/www/source/thresholds.xml
+-share/doc/ImageMagick-7/www/source/type-apple.xml
+-share/doc/ImageMagick-7/www/source/type-dejavu.xml
+-share/doc/ImageMagick-7/www/source/type-ghostscript.xml
+-share/doc/ImageMagick-7/www/source/type-urw-base35.xml
+-share/doc/ImageMagick-7/www/source/type-windows.xml
+-share/doc/ImageMagick-7/www/source/type.xml
+-share/doc/ImageMagick-7/www/source/wand.c
+-share/doc/ImageMagick-7/www/stream.html
+-share/doc/ImageMagick-7/www/support.html
+-share/doc/ImageMagick-7/www/vpat.html
+-share/doc/ImageMagick-7/www/wand.png
+-share/doc/ImageMagick-7/www/webp.html
++share/doc/ImageMagick-7/www/source/policy-limited.xml
++share/doc/ImageMagick-7/www/source/policy-open.xml
++share/doc/ImageMagick-7/www/source/policy-secure.xml
++share/doc/ImageMagick-7/www/source/policy-websafe.xml
++share/doc/ImageMagick-7/www/stream/index.html
++share/doc/ImageMagick-7/www/support/index.html
++share/doc/ImageMagick-7/www/vpat/index.html
++share/doc/ImageMagick-7/www/webp/index.html
+
+--- a/graphics/ImageMagick/distinfo
++++ b/graphics/ImageMagick/distinfo
+@@ -1,7 +1,7 @@
+ $NetBSD: distinfo,v 1.318 2026/04/28 06:06:55 wiz Exp $
+ 
+-BLAKE2s (ImageMagick-7.1.2-21.tar.xz) = ea16a1d8ac5fc25bfada2711d2ceae4edb80b1f115056f1eef3141d08d60f71f
+-SHA512 (ImageMagick-7.1.2-21.tar.xz) = 0bd5a54ea5335e195756e3f0117fcaf57ee63b9a0e6f61abac8e9e18b4d41268785927600a8a8efa9366bd4967846813703a8145ea9bc5866da8cad1762d505b
+-Size (ImageMagick-7.1.2-21.tar.xz) = 10798804 bytes
++BLAKE2s (ImageMagick-7.1.2-36.tar.xz) = 4a5cbd9ebb4e1f550b58fda5808e27dca8194a81c23bc2a7df2053be1def3a3b
++SHA512 (ImageMagick-7.1.2-36.tar.xz) = f056988c422e81a61e4ab01e22a180bd9fcf29a970c0a0010212d594b1510c3b5d33d9e403b55c2c524e1740c85219711800bbe0ff7b36bb584a2db230056e10
++Size (ImageMagick-7.1.2-36.tar.xz) = 10315692 bytes
+ SHA1 (patch-MagickCore_random.c) = 56b33395e4bbdffbff5094c40ecf4e2d4be3d813
+ SHA1 (patch-ghostscript-private.h) = ab25d5b565c11b98bf623f9f8afd0fedae9bf1fa
+
+--- a/graphics/p5-PerlMagick/Makefile
++++ b/graphics/p5-PerlMagick/Makefile
+@@ -1,6 +1,5 @@
+ # $NetBSD: Makefile,v 1.236 2026/09/02 19:02:49 wiz Exp $
+ 
+-PKGREVISION= 6
+ .include "../../graphics/ImageMagick/Makefile.common"
+ 
+ PKGNAME=	p5-PerlMagick-${DISTVERSION}
