@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	spacebar-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://invent.kde.org/plasma-mobile/spacebar
@@ -31,6 +32,7 @@ post-install:
 	done
 
 .include "../../comms/libphonenumber/buildlink3.mk"
+BUILDLINK_API_DEPENDS.futuresql+=	futuresql>=0.1.1nb1
 .include "../../databases/futuresql/buildlink3.mk"
 .include "../../devel/kf6-kconfig/buildlink3.mk"
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
