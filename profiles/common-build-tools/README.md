@@ -21,6 +21,12 @@ commands and does not enable executable-relative resolution.
 flags; `tests/bsdinstall-relocation.py` exercises a built native binary after
 relocation, including shell, strip, overrides and missing-provider failures.
 
+The Darwin SDK build of S/Key uses `/etc/skeykeys` for the command-line tools
+and static library clients. The package installs an empty example in
+`share/examples/skey/skeykeys`. The administrator manages the system database
+and its root-only access. A source build can select a different directory with
+`PKG_SYSCONFDIR.skey`.
+
 Native Darwin libgpg-error resolves locale, error descriptions and prefix-local
 system configuration relative to their owning image; an explicitly external
 configuration directory remains unchanged. The moved-prefix runtime fixture
