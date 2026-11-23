@@ -9,7 +9,10 @@ LICENSE=	gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/plasma6.mk"
 
-DEPENDS+=	sassc-[0-9]*:../../www/sassc
+TOOL_DEPENDS+=	sassc-[0-9]*:../../www/sassc
+
+TOOLS_CREATE+=		sassc
+TOOLS_PATH.sassc=	${TOOLBASE}/bin/sassc
 
 USE_TOOLS+=	msgmerge pkg-config
 
