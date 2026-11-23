@@ -24,6 +24,18 @@ PLIST_VARS+=	introspection
 .if ${PKG_OPTIONS:Mdbus}
 PLIST.dbus=	yes
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=		1
+MESON_REQD+=		1.3.0
+DEPENDS+=		gsettings-desktop-schemas-[0-9]*:../../sysutils/gsettings-desktop-schemas
+CPPFLAGS+=		-D_DARWIN_C_SOURCE -DATSPI_DARWIN_RELOCATABLE
+CPPFLAGS+=		-DATSPI_SYSCONF_SUBDIR=\"${PKG_SYSCONFDIR:S,^${PREFIX}/,,}\"
+CPPFLAGS+=		-DATSPI_LOCALE_SUBDIR=\"${PKGLOCALEDIR}/locale\"
+
+post-extract:
+	${CP} ${FILESDIR}/darwin-install-path.h ${WRKSRC}/darwin-install-path.h
+.endif
+
 MESON_ARGS+=			-Duse_systemd=false
 MESON_ARGS+=			-Ddefault_bus=dbus-daemon
 
@@ -46,6 +58,10 @@ post-install:
 	${INSTALL_DATA_DIR} ${DESTDIR}${EGDIR}/xdg/autostart
 	${MV} ${DESTDIR}${PKG_SYSCONFDIR}/xdg/autostart/at-spi-dbus-bus.desktop \
 	      ${DESTDIR}${EGDIR}/xdg/autostart/at-spi-dbus-bus.desktop
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+	${PYTHONBIN} -I -m compileall -q -f -o 0 --invalidation-mode checked-hash \
+	    -s ${DESTDIR}${PREFIX} ${DESTDIR}${PREFIX}/${PYSITELIB}/gi/overrides/Atspi.py
+.endif
 
 .include "../../sysutils/dbus/buildlink3.mk"
 

@@ -1,0 +1,42 @@
+$NetBSD$
+
+Resolve prefix-owned paths from the installed Darwin image.
+
+--- bus/meson.build.orig
++++ bus/meson.build
+@@ -47,9 +47,9 @@
+              '-DDATADIR="@0@"'.format(atspi_datadir),
+            ]
+ 
+-dbus_daemon_arg = ''
++dbus_daemon_path = ''
+ if get_option('dbus_daemon') != 'default'
+-  dbus_daemon_arg = '-DDBUS_DAEMON="@0@"'.format(get_option('dbus_daemon'))
++  dbus_daemon_path = get_option('dbus_daemon')
+ else
+   dbus_daemon = find_program('dbus-daemon',
+                              '/sbin/dbus-daemon',
+@@ -60,7 +60,7 @@
+                              '/usr/pkg/bin/dbus-daemon',
+                              required: false)
+   if dbus_daemon.found()
+-    dbus_daemon_arg = '-DDBUS_DAEMON="@0@"'.format(dbus_daemon.full_path())
++    dbus_daemon_path = dbus_daemon.full_path()
+   endif
+ endif
+ 
+@@ -100,8 +100,12 @@
+   systemd_dep = dependency('', required: false)
+ endif
+ 
+-if dbus_daemon_arg != ''
+-  launcher_args += dbus_daemon_arg
++if dbus_daemon_path != ''
++  if cc.get_define('ATSPI_DARWIN_RELOCATABLE') != '' and dbus_daemon_path.startswith(atspi_prefix + '/')
++    dbus_daemon_path = fs.relative_to(dbus_daemon_path, atspi_prefix)
++    launcher_args += '-DATSPI_PREFIX_DBUS_DAEMON'
++  endif
++  launcher_args += '-DDBUS_DAEMON="@0@"'.format(dbus_daemon_path)
+ endif
+ if dbus_broker_arg != ''
+   launcher_args += dbus_broker_arg

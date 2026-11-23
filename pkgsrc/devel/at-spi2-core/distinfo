@@ -6,3 +6,6 @@ Size (at-spi2-core-2.62.2.tar.xz) = 602156 bytes
 SHA1 (patch-meson-gir-cross.build) = b1642a15e82a2a78c042b2f66737ce1780114a4c
 SHA1 (patch-meson.build) = 09823442683c0eadd7670a4ff06ef040a9e2f396
 SHA1 (patch-registryd_registry.c) = 69d8be4a54af1f3749d38ad4f1d6ad33296765fe
+SHA1 (patch-emberbsd_bus_at-spi-bus-launcher.c) = 2bbdf69048349564b463b39dc55283974fd7d480
+SHA1 (patch-emberbsd_atspi_atspi-misc.c) = c65b02475b9d80a39b5800cbd19d384d512bbf1d
+SHA1 (patch-emberbsd_bus_meson.build) = 391483ac7cb62f1b670ec8e9f17d5a88fd939bf4
