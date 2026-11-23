@@ -44,6 +44,8 @@ BUILDLINK_DEPMETHOD.gobject-introspection=	build
 .  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # The query runner requires the linked target ELF. Libtool normally creates a
 # shell launcher for the temporary scanner program in an uninstalled tree.
+# Vala supplies the make rules that turn the generated GIRs into VAPI files.
+MAKE_FLAGS+= VAPIGEN_MAKEFILE=${TOOLBASE:Q}/share/vala/Makefile.vapigen
 MAKE_FLAGS+= _gir_libtool=--no-libtool
 MAKE_FLAGS+= IBus_1_0_gir_LIBS=ibus-1.0
 MAKE_FLAGS+= IBus_1_0_gir_LDFLAGS=-L${WRKSRC:Q}/src/.libs
