@@ -2,7 +2,7 @@
 
 .include "Makefile.common"
 
-PKGREVISION=	8
+PKGREVISION=	9
 COMMENT=	Wscons(4) and kqueue(2) based port of libinput
 
 USE_TOOLS+=	pkg-config

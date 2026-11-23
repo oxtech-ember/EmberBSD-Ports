@@ -1,10 +1,11 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
 # Extract the vendor scan code table of src/wskbdmap.c and check it:
-# the Micro-Star codes (vendor in any case) of Fn+F5, Fn+F6 and Fn+F7
-# give evdev keys, other vendors keep the plain XT map.  Scan code 0x76
-# (wscons key 118) of the XT map is F24 of scan code set 1: laptops send
-# Control+Super+F24 for the touchpad toggle.
+# the Micro-Star codes (vendor and product in any case) of Fn+F5 and Fn+F7
+# give evdev keys, Fn+F6 only on the Vector 17 HX AI, other vendors keep
+# the plain XT map.  Scan code 0x76 (wscons key 118) of the XT map is F24
+# of scan code set 1: laptops send Control+Super+F24 for the touchpad
+# toggle.
 # Usage: sh tests/vendor-scan-codes.sh PATCHED_WSKBDMAP_C C_COMPILER|-
 set -eu
 
@@ -75,7 +76,7 @@ main(void)
 		wsXtMap[i] = (uint32_t)(1000 + i);
 
 	if (wskbd_xt_quirk_map("Micro-Star International Co., Ltd.",
-	    map, WS_XT_QUIRK_MAP_SIZE) != 3)
+	    "Vector 17 HX AI A2XWJG", map, WS_XT_QUIRK_MAP_SIZE) != 3)
 		return 1;
 	if (map[0x91] != KEY_CONFIG || map[0xd7] != KEY_BLUETOOTH ||
 	    map[0xf1] != KEY_F20)
@@ -85,15 +86,25 @@ main(void)
 	    map[238] != KEY_UNKNOWN || map[255] != KEY_UNKNOWN)
 		return 3;
 
+	/* Fn+F6 only on the verified model; the vendor codes everywhere. */
+	if (wskbd_xt_quirk_map("Micro-Star International Co., Ltd.",
+	    "Katana 15 B13V", map, WS_XT_QUIRK_MAP_SIZE) != 2 ||
+	    map[0xd7] != 1000 + 0xd7 || map[0xf1] != KEY_F20)
+		return 8;
+	if (wskbd_xt_quirk_map("Micro-Star International Co., Ltd.", NULL,
+	    map, WS_XT_QUIRK_MAP_SIZE) != 2 || map[0xd7] != 1000 + 0xd7)
+		return 9;
 	if (wskbd_xt_quirk_map("MICRO-STAR INTERNATIONAL CO., LTD",
-	    map, WS_XT_QUIRK_MAP_SIZE) != 3 || map[0xf1] != KEY_F20)
+	    "VECTOR 17 HX AI A2XWJG", map, WS_XT_QUIRK_MAP_SIZE) != 3 ||
+	    map[0xd7] != KEY_BLUETOOTH)
 		return 7;
-	if (wskbd_xt_quirk_map("Notebook", map, WS_XT_QUIRK_MAP_SIZE) != 0)
+	if (wskbd_xt_quirk_map("Notebook", "Vector 17 HX AI A2XWJG", map,
+	    WS_XT_QUIRK_MAP_SIZE) != 0)
 		return 4;
 	if (map[0x91] != 1000 + 0x91 || map[0xd7] != 1000 + 0xd7 ||
 	    map[0xf1] != KEY_UNKNOWN)
 		return 5;
-	if (wskbd_xt_quirk_map(NULL, map, WS_XT_QUIRK_MAP_SIZE) != 0)
+	if (wskbd_xt_quirk_map(NULL, NULL, map, WS_XT_QUIRK_MAP_SIZE) != 0)
 		return 6;
 	return 0;
 }
