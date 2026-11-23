@@ -24,8 +24,11 @@ ARGS = None
 REFUSAL = 'USE_TOOLS+={} not supported in cross-compilation'
 
 
-def query(recipe, *names, native=False):
+def query(recipe, *names, native=False, host_platform=None):
     command = [ARGS.bmake, '-C', str(ARGS.pkgsrc / recipe), f'MAKECONF={ARGS.makeconf}']
+    if host_platform:
+        opsys, arch = host_platform
+        command.extend((f'NATIVE_OPSYS={opsys}', f'NATIVE_MACHINE_ARCH={arch}'))
     if native:
         command.append('USE_CROSS_COMPILE=no')
     for name in names:
@@ -95,6 +98,31 @@ class CrossRuntimeTools(unittest.TestCase):
                              values['DEPENDS'])
         for name in ('libX11', 'libXaw', 'libXt'):
             self.assertNotIn(name, values['BUILDLINK_TREE'].split())
+
+    def test_cross_pkg_config_runtime_keeps_host_and_target_roles(self):
+        values = query('graphics/ImageMagick', 'USE_TOOLS', 'PKG_FAIL_REASON',
+                       'TOOL_DEPENDS', 'DEPENDS', 'MACHINE_ARCH')
+        self.assertIn('pkg-config:run', values['USE_TOOLS'].split())
+        self.assertNotIn(REFUSAL.format('pkg-config:run'), values['PKG_FAIL_REASON'])
+        for role in ('TOOL_DEPENDS', 'DEPENDS'):
+            self.assertTrue(any(dep.endswith(':../../devel/pkgconf')
+                                for dep in values[role].split()), values[role])
+
+        host_arch = 'aarch64' if values['MACHINE_ARCH'] == 'x86_64' else 'x86_64'
+        same_os = query('graphics/ImageMagick', 'TOOL_DEPENDS', 'DEPENDS',
+                        'NATIVE_OPSYS', 'NATIVE_MACHINE_ARCH', 'MACHINE_ARCH',
+                        host_platform=('NetBSD', host_arch))
+        self.assertEqual(same_os['NATIVE_OPSYS'], 'NetBSD')
+        self.assertEqual(same_os['NATIVE_MACHINE_ARCH'], host_arch)
+        self.assertNotEqual(same_os['MACHINE_ARCH'], host_arch)
+        for role in ('TOOL_DEPENDS', 'DEPENDS'):
+            self.assertTrue(any(dep.endswith(':../../devel/pkgconf')
+                                for dep in same_os[role].split()), same_os[role])
+
+        build_only = query('devel/libffi', 'USE_TOOLS', 'DEPENDS')
+        self.assertIn('pkg-config', build_only['USE_TOOLS'].split())
+        self.assertFalse(any(dep.endswith(':../../devel/pkgconf')
+                             for dep in build_only['DEPENDS'].split()), build_only)
 
     def test_native_builds_keep_runtime_tools(self):
         groff = query('textproc/groff', 'USE_TOOLS', native=True)['USE_TOOLS'].split()

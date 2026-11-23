@@ -464,7 +464,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  _TOOLS_USE_PKGSRC.msgfmt?=	no
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -140,10 +140,89 @@
+@@ -140,10 +140,94 @@
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
  .endfor
 +# A cross target Perl is the lang/perl5 package. It builds from the config.sh
@@ -487,7 +487,13 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +# Standard NetBSD base utilities get the same treatment for packages whose
 +# target scripts use them (for example mozilla-rootcerts' extraction);
 +# permit the verified NetBSD base paths in target package scripts only.
- .  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
+-.  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
++.  if ${_t_} == "pkg-config:run" && ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} == "NetBSD"
++# Installed *-config helpers call the target program. The build uses host pkgconf.
++TOOLS_DEPENDS.pkg-config?=	pkgconf-[0-9]*:../../devel/pkgconf
++TOOL_DEPENDS+=		${TOOLS_DEPENDS.pkg-config}
++DEPENDS+=		${TOOLS_DEPENDS.pkg-config}
++.  elif ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
 +EMBER_CROSS_RUN_OK=	no
 +# Heimdal uses flex only to generate source files during the build. Require
 +# an executable host provider and classify it as a tool dependency below.
@@ -555,7 +561,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:test}
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TEST_DEPENDS
-@@ -535,6 +614,12 @@
+@@ -535,6 +619,12 @@
  TOOLS_DEPENDS.install-info?=	pkg_install-info-[0-9]*:../../pkgtools/pkg_install-info
  TOOLS_CREATE+=			install-info
  TOOLS_PATH.install-info=	${TOOLBASE}/bin/pkg_install-info
@@ -568,7 +574,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .  endif
  .endif
  #
-@@ -978,6 +1062,12 @@
+@@ -978,6 +1067,12 @@
  TOOLS_DEPENDS.${_t_}?=		perl>=${PERL5_REQD}:../../lang/perl5
  TOOLS_CREATE+=			${_t_}
  TOOLS_PATH.${_t_}=		${TOOLBASE}/bin/${_t_}
