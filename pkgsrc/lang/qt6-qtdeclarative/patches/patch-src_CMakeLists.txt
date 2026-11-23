@@ -5,7 +5,7 @@ Only the two installed test-support archives capture these header names.
 
 --- src/CMakeLists.txt.orig
 +++ src/CMakeLists.txt
-@@ -130,6 +130,15 @@
+@@ -130,6 +130,22 @@
      endif()
  endif()
  
@@ -16,6 +16,13 @@ Only the two installed test-support archives capture these header names.
 +                "-fmacro-prefix-map=${PKGSRC_QTTEST_INCLUDE_DIR}/=")
 +        endif()
 +    endforeach()
++    if(TARGET QuickTestUtilsPrivate)
++        # An installed test library locates the caller's test data. The build
++        # directory of Qt itself is of no use in that search after packaging.
++        target_compile_options(QuickTestUtilsPrivate PRIVATE
++            "-fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}/=src/"
++            -UQT_TESTCASE_BUILDDIR)
++    endif()
 +endif()
 +
  if(QT_FEATURE_qml_designsupport)
