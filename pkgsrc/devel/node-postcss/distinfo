@@ -3,3 +3,4 @@ $NetBSD$
 BLAKE2s (postcss-8.5.33.tgz) = 09387eecf8438c21bccc812ad802cf0993a2f758875671333c5829aa81118db0
 SHA512 (postcss-8.5.33.tgz) = 4551c453dfcfa751678ebfcca4026c668003ba408a85f222d793ae9c46221a4b489182e43d5bc2d6c8a85a89460d2ed7072313c7d9bf2066eba3426cd77ce19d
 Size (postcss-8.5.33.tgz) = 53183 bytes
+SHA1 (patch-package.json) = b61c944b3ee9d03e51f30f9092708e2ec6bf735d

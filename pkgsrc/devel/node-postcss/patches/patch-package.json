@@ -1,0 +1,21 @@
+$NetBSD$
+
+Use the common Nano ID and a Node runtime with synchronous require(ESM).
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- package.json.orig
++++ package.json
+@@ -78,11 +78,11 @@
+     "./package.json": "./package.json"
+   },
+   "dependencies": {
+-    "nanoid": "^3.3.20",
++    "nanoid": "^6.0.2",
+     "picocolors": "^1.1.1",
+     "source-map-js": "^1.2.2"
+   },
+   "engines": {
+-    "node": "^10 || ^12 || >=14"
++    "node": "^22.12.0 || ^24 || >=26"
+   }
+ }
