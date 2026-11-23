@@ -44,12 +44,20 @@ BUILDLINK_DEPMETHOD.gobject-introspection=	build
 .  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # The query runner requires the linked target ELF. Libtool normally creates a
 # shell launcher for the temporary scanner program in an uninstalled tree.
-MAKE_FLAGS+= INTROSPECTION_SCANNER_ARGS=--no-libtool
+MAKE_FLAGS+= _gir_libtool=--no-libtool
 MAKE_FLAGS+= IBus_1_0_gir_LIBS=ibus-1.0
 MAKE_FLAGS+= IBus_1_0_gir_LDFLAGS=-L${WRKSRC:Q}/src/.libs
-# The distribution GIR was generated for the release host.
+# Wayland input-method types live in a private convenience archive. Include
+# that archive in the type dumper while recording the public IBus SONAME.
+IBUS_WAYLAND_GIR_FLAGS= -L${WRKSRC}/src/.libs
+IBUS_WAYLAND_GIR_FLAGS+= --extra-library=${WRKSRC}/client/wayland/.libs/libibuswaylandim.a
+IBUS_WAYLAND_GIR_FLAGS+= --pkg=wayland-client --pkg=xkbcommon --extra-library=m
+MAKE_FLAGS+= IBusWaylandIM_1_0_gir_LIBS=ibus-1.0
+MAKE_FLAGS+= IBusWaylandIM_1_0_gir_LDFLAGS=${IBUS_WAYLAND_GIR_FLAGS:Q}
+# The distribution GIR files were generated for the release host.
 post-extract:
-	${RUN} ${RM} -f ${WRKSRC}/src/IBus-1.0.gir
+	${RUN} ${RM} -f ${WRKSRC}/src/IBus-1.0.gir \
+	    ${WRKSRC}/client/wayland/IBusWaylandIM-1.0.gir
 .  endif
 .else
 # Vala clients can use the interface shipped in the same upstream release.
