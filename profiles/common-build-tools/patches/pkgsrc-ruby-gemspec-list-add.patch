@@ -1,0 +1,12 @@
+--- a/lang/ruby/files/update-gemspec.rb
++++ b/lang/ruby/files/update-gemspec.rb
+@@ -149,6 +149,9 @@
+               av.delete(ov)
+               modified = true
+             end
++          elsif !op.include?("=") && !av.include?(op)
++            av.push(op)
++            modified = true
+           end
+         end
+       end
