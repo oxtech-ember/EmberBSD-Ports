@@ -71,9 +71,38 @@ CWRAPPERS_APPEND_LINK.f77+=-Wl,-L${_EMBER_FLANG_RT_LIBDIR}
 FC=flang
 PKG_FC=${WRKDIR}/.flang/bin/flang
 override-tools: ${PKG_FC}
-${PKG_FC}:
+# Flang searches beside its executable for target runtimes. Keep the driver
+# in a private directory with no host libraries on the target link path.
+.if ${NATIVE_OPSYS} == "Darwin"
+_EMBER_FLANG_DRIVER=${WRKDIR}/.flang/isolated/bin/flang
+# The previous launcher was a hard link with the compiler's own timestamp.
+.PHONY: ${PKG_FC} ${_EMBER_FLANG_DRIVER}
+${PKG_FC}: ${_EMBER_FLANG_DRIVER}
 	${RUN}${MKDIR} ${.TARGET:H:Q}
+	${RUN}tmp=${.TARGET:Q}.tmp.$$$$; \
+	    trap '${RM} -f "$$tmp"' 0; \
+	    ${PRINTF} '%s\n' '#!${SH}' \
+	    'export DYLD_FALLBACK_LIBRARY_PATH='${EMBERBSD_FLANG:[*]:H:H:Q:Q}'/lib' \
+	    'exec '${_EMBER_FLANG_DRIVER:Q:Q}' "$$@"' > "$$tmp"; \
+	    ${CHMOD} +x "$$tmp"; \
+	    ${CMP} -s "$$tmp" ${.TARGET:Q} || ${MV} -f "$$tmp" ${.TARGET:Q}
+.else
+_EMBER_FLANG_DRIVER=${PKG_FC}
+.endif
+${_EMBER_FLANG_DRIVER}:
+	${RUN}${MKDIR} ${.TARGET:H:Q}
+# Darwin can report a hard link's most recent name to the dynamic loader,
+# even when the installed compiler is invoked through its original prefix.
+.if ${NATIVE_OPSYS} == "Darwin"
+	${RUN}if [ -f ${.TARGET:Q} ] && [ ! ${.TARGET:Q} -ef ${EMBERBSD_FLANG:Q} ] && \
+	    ${CMP} -s ${EMBERBSD_FLANG:Q} ${.TARGET:Q}; then exit 0; fi; \
+	    tmp=${.TARGET:Q}.tmp.$$$$; \
+	    trap '${RM} -f "$$tmp"' 0; \
+	    ${CP} -p ${EMBERBSD_FLANG:Q} "$$tmp"; \
+	    ${MV} -f "$$tmp" ${.TARGET:Q}
+.else
 	${RUN}${LN} -f ${EMBERBSD_FLANG:Q} ${.TARGET:Q} 2>/dev/null || ${CP} -p ${EMBERBSD_FLANG:Q} ${.TARGET:Q}
+.endif
 _MKPIE_FCFLAGS=${_MKPIE_CFLAGS}
 # Flang has no stack protector; compiler.mk passes the C flag to every
 # language wrapper.

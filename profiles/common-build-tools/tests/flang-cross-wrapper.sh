@@ -51,11 +51,28 @@ major=${v__EMBER_FLANG_RT##*/}
 soname=libflang_rt.runtime.so.$major
 case $ld in /*) [ -x "$ld" ] || fail "LD $ld is not executable";; *) fail "LD $ld is not absolute";; esac
 
+case "$(mk -V NATIVE_OPSYS)" in
+Darwin)
+    mkdir -p "${pkgfc%/*}"
+    # Reproduce an old launcher and its timestamp without hard-linking the live SDK.
+    cp -p "$flang" "$pkgfc"
+    mk "$pkgfc" >/dev/null || fail "cannot migrate the old Flang hard link"
+    cmp -s "$flang" "$pkgfc" && fail "the old Flang hard link survived"
+    ;;
+esac
 mk "$pkgfc" >/dev/null || fail "cannot stage the package Flang driver"
-[ ! -L "$pkgfc" ] || fail "$pkgfc is a symbolic link; the driver would resolve to the host prefix"
-[ "$(ls -i "$pkgfc" | awk '{print $1}')" = "$(ls -i "$flang" | awk '{print $1}')" ] ||
-    cmp -s "$pkgfc" "$flang" || fail "$pkgfc is not the selected Flang"
-[ ! -e "${pkgfc%/bin/*}/lib" ] || fail "the staged driver has a lib directory beside it"
+driver=$(mk -V '${_EMBER_FLANG_DRIVER}')
+[ ! -L "$driver" ] || fail "$driver resolves to the compiler prefix"
+[ "$(ls -i "$driver" | awk '{print $1}')" = "$(ls -i "$flang" | awk '{print $1}')" ] ||
+    cmp -s "$driver" "$flang" || fail "$driver differs from the selected Flang"
+case "$(mk -V NATIVE_OPSYS)" in
+Darwin)
+    [ ! "$driver" -ef "$flang" ] || fail "the SDK driver shares its inode with the staged copy"
+    "$flang" --version >/dev/null || fail "staging broke the installed Darwin driver"
+    ;;
+esac
+[ ! -e "${driver%/bin/*}/lib" ] || fail "the staged driver has a library directory beside it"
+"$pkgfc" --version >/dev/null || fail "the staged Flang cannot load its host libraries"
 mkdir -p "$cfg" "$bin"
 mk WRAPPER_TARGETS= generate-cwrappers >/dev/null || fail "cannot generate the cwrappers"
 # The per-package buildlink targets exist only past the barrier, the same
