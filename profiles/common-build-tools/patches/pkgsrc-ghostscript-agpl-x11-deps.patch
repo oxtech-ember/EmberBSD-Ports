@@ -1,9 +1,8 @@
-ghostscript-agpl declares the X11 libraries it links.
+$NetBSD$
 
-With the x11 option, configure links libgs with "-lXt $X_PRE_LIBS", and
-AC_PATH_XTRA sets X_PRE_LIBS to "-lSM -lICE", but only libX11, libXt and
-libXext were dependencies. The native install
-stopped in check-shlibs: libSM and libICE were not runtime dependencies.
+Use the shared X11, Brotli and IJS providers. Select the build compiler,
+CUPS metadata and pkg-config for their respective cross-build roles.
+The configure fallback compares the complete FreeType version.
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/print/ghostscript-agpl/Makefile
@@ -12,10 +11,59 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  
  DISTNAME=	ghostscript-${GS_VERSION}
  PKGNAME=	${DISTNAME:S/ghostscript/ghostscript-agpl/}
-+PKGREVISION=	1
++PKGREVISION=	2
  CATEGORIES=	print
  MASTER_SITES=	${MASTER_SITE_GITHUB:=ArtifexSoftware/}
  GITHUB_PROJECT=	ghostpdl-downloads
+@@ -33,6 +34,7 @@
+ 
+ CONFIGURE_ARGS+=	--enable-openjpeg
+ CONFIGURE_ARGS+=	--with-system-libtiff
++CONFIGURE_ARGS+=	--without-local-brotli
+ CONFIGURE_ARGS+=	--without-tesseract
+ CONFIGURE_ENV+=		LPLIBDIR=${PREFIX}/lib
+ CONFIGURE_ENV.HPUX+=	ac_cv_func_fopen64=no
+@@ -53,6 +55,12 @@
+ 
+ .include "../../mk/bsd.prefs.mk"
+ .include "../../mk/compiler.mk"
++
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++CONFIGURE_ENV+=		CCAUX=${NATIVE_CC:Q}
++# Autoconf selects the target query by its host triplet.
++TOOLS_ALIASES.pkg-config+=	${MACHINE_GNU_PLATFORM}-pkg-config
++.endif
+ 
+ .if defined(PAPERSIZE) && ${PAPERSIZE} == "A4"
+ BUILD_DEFS+=		PAPERSIZE
+@@ -96,7 +104,9 @@
+ post-extract:
+ 	${MKDIR} ${WRKSRC}/bin
+ 	${MKDIR} ${WRKSRC}/obj
++	${RM} -rf ${WRKSRC}/brotli
+ 	${RM} -rf ${WRKSRC}/freetype
++	${RM} -rf ${WRKSRC}/ijs
+ 	${RM} -rf ${WRKSRC}/jbig2dec
+ 	${RM} -rf ${WRKSRC}/jpeg
+ 	${RM} -rf ${WRKSRC}/lcms2
+@@ -116,6 +126,8 @@
+ 	${LN} -sf gsc ${DESTDIR}${PREFIX}/bin/gs
+ 	${RM} -f  ${DESTDIR}${PREFIX}/share/ghostscript/${PKGVERSION_NOREV}/Resource/Init/gs_ttf.ps.orig
+ 
++BUILDLINK_API_DEPENDS.brotli+=	brotli>=1.1.0
++.include "../../archivers/brotli/buildlink3.mk"
+ .include "../../devel/libidn/buildlink3.mk"
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../graphics/freetype2/buildlink3.mk"
+@@ -125,6 +137,7 @@
+ .include "../../graphics/openjpeg/buildlink3.mk"
+ .include "../../graphics/png/buildlink3.mk"
+ .include "../../graphics/tiff/buildlink3.mk"
++.include "../../print/ijs/buildlink3.mk"
+ .include "../../print/libpaper/buildlink3.mk"
+ .include "../../mk/jpeg.buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
+
 --- a/print/ghostscript-agpl/options.mk
 +++ b/print/ghostscript-agpl/options.mk
 @@ -15,6 +15,9 @@
@@ -28,3 +76,71 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  .else
  CONFIGURE_ARGS+=	--without-x
  .endif
+@@ -31,6 +34,14 @@
+ # SUBST_SED.cupsetc=	-e 's|$$(CUPSSERVERROOT)|${CUPS_EGDIR}|g'
+ 
+ .include "../../print/libcups/buildlink3.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# cups-config is a shell script containing the target installation metadata.
++TOOLS_CREATE+=		cups-config
++TOOLS_PATH.cups-config=	${SH}
++TOOLS_ARGS.cups-config=	${_CROSS_DESTDIR:Q}${BUILDLINK_PREFIX.libcups:Q}/bin/cups-config
++CONFIGURE_ENV+=		CUPSCONFIG=${TOOLS_CMD.cups-config:Q}
++.endif
++
+ .else
+ CONFIGURE_ARGS+=	--disable-cups
+ .endif
+
+--- a/print/ghostscript-agpl/distinfo
++++ b/print/ghostscript-agpl/distinfo
+@@ -10,3 +10,4 @@
+ SHA1 (patch-base_unix-dll.mak) = 8076ce689807872bf94b552daaf9547b646ca249
+ SHA1 (patch-configure) = 0f383a036b81baab9b92921ab327715187bdb818
+ SHA1 (patch-devices_devs.mak) = e9937d401a278cc6d0a6d4cff78c526375bc18ca
++SHA1 (patch-freetype-version) = d661aebc06de2f7d4787c2024a5ffef33bbf10fd
+
+--- /dev/null
++++ b/print/ghostscript-agpl/patches/patch-freetype-version
+@@ -0,0 +1,41 @@
++$NetBSD$
++
++Compare the complete FreeType version in the header-only configure check.
++FreeType 2.15.0 satisfies the required 2.4.2.
++Origin: EmberBSD (AI-assisted); upstream status: not submitted.
++
++--- configure.orig
+++++ configure
++@@ -9648,13 +9648,7 @@
++ main (void)
++ {
++ 
++-                 #if FREETYPE_MAJOR < 2
++-                   FAIL
++-                 #endif
++-                 #if FREETYPE_MINOR < 4
++-                   FAIL
++-                 #endif
++-                 #if FREETYPE_PATCH < 2
+++                 #if FREETYPE_MAJOR < 2 || (FREETYPE_MAJOR == 2 && FREETYPE_MINOR < 4) || (FREETYPE_MAJOR == 2 && FREETYPE_MINOR == 4 && FREETYPE_PATCH < 2)
++                    FAIL
++                  #endif
++                  return(0);
++
++--- configure.ac.orig
+++++ configure.ac
++@@ -1442,13 +1442,7 @@
++             AC_COMPILE_IFELSE(
++               [AC_LANG_PROGRAM([#include "ft2build.h"
++               #include FT_FREETYPE_H], [
++-                 #if FREETYPE_MAJOR < 2
++-                   FAIL
++-                 #endif
++-                 #if FREETYPE_MINOR < 4
++-                   FAIL
++-                 #endif
++-                 #if FREETYPE_PATCH < 2
+++                 #if FREETYPE_MAJOR < 2 || (FREETYPE_MAJOR == 2 && FREETYPE_MINOR < 4) || (FREETYPE_MAJOR == 2 && FREETYPE_MINOR == 4 && FREETYPE_PATCH < 2)
++                    FAIL
++                  #endif
++                  return(0);
