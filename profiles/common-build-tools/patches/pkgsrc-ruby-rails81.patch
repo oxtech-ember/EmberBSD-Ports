@@ -1,6 +1,6 @@
 Origin: EmberBSD, AI-assisted.
 pkgsrc/versions.mk keeps Rails 8.1 only; the EmberBSD recipes add the
-Rails 8.1.4 packages and www/ruby-action_text-trix. rails.mk offers,
+Rails 8.1.4.1 packages and www/ruby-action_text-trix. rails.mk offers,
 accepts and defaults to 81, and a package that accepts only an older
 Rails gets a fail reason instead of a parse error. Move the packages that
 accepted 7.2 or 8.0 onto 8.1: metasploit-model 5.0.6 and
@@ -197,7 +197,7 @@ Not submitted upstream.
  #
 -RUBY_RAILS72_VERSION?=	7.2.3.2
 -RUBY_RAILS80_VERSION?=	8.0.5.1
-+RUBY_RAILS81_VERSION?=	8.1.4
++RUBY_RAILS81_VERSION?=	8.1.4.1
  
  RUBY_RAILS_ACCEPTED?=	# empty
 -RUBY_RAILS_DEFAULT?=	72

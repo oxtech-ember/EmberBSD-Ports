@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (activejob-8.1.4.gem) = 8a8518393bbba6af42cc525da281425fa1e82aad57b803eaf1e1f6464cf6dd3e
-SHA512 (activejob-8.1.4.gem) = 543c8ab669acdb4895af0098f82513d24c4c7a08643caf3a5d7dc817e1d6f1ac66d4916fb5c1beda0f396b773c11e415fa85536ce34b9944575a17968afe020c
-Size (activejob-8.1.4.gem) = 44032 bytes
+BLAKE2s (activejob-8.1.4.1.gem) = 60454e2ecdd9dffd45f0351aa026b1718e2b5f80e2cb04c833d107227a5fc46e
+SHA512 (activejob-8.1.4.1.gem) = 179b109b226f115cc736965fe8b9f75ed9066ae6404bd45fdf72f17f0ce989892e2a02d3d6f87585fdebabd4c9a9203f23f5a84e62c2c7f5913e43c98d10851c
+Size (activejob-8.1.4.1.gem) = 44032 bytes

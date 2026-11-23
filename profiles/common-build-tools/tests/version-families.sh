@@ -59,7 +59,7 @@ grep -Eq '^_BDB_PKGS[?]=[[:space:]]+db1 db18$' "$pkgsrc/mk/bdb.buildlink3.mk" ||
 grep -Eq '^RUBY40_VERSION=[[:space:]]+4[.]0[.]9$' "$pkgsrc/lang/ruby/rubyversion.mk" &&
     grep -Fq 'SHA512 (ruby-4.0.9.tar.xz) = ' "$pkgsrc/lang/ruby40/distinfo" ||
     { echo "lang/ruby40 is not Ruby 4.0.9" >&2; exit 1; }
-# Rails 8.1 only: rails.mk offers 8.1.4, and a package that accepts only an
+# Rails 8.1 only: rails.mk offers 8.1.4.1, and a package that accepts only an
 # older Rails fails instead of selecting one.
 rails81="devel/ruby-activesupport81 devel/ruby-activemodel81 devel/ruby-activejob81
     databases/ruby-activerecord81 www/ruby-actionview81 www/ruby-actionpack81
@@ -77,7 +77,7 @@ for old in www/ruby-rails72 www/ruby-rails80 devel/ruby-railties72 \
     reason "$old" | grep -Fq 'EmberBSD keeps only' ||
         { echo "Guard accepted $old" >&2; exit 1; }
 done
-for line in 'RUBY_RAILS81_VERSION[?]=[[:space:]]+8[.]1[.]4' \
+for line in 'RUBY_RAILS81_VERSION[?]=[[:space:]]+8[.]1[.]4[.]1' \
     'RUBY_RAILS_DEFAULT[?]=[[:space:]]+81' 'RUBY_RAILS_SUPPORTED=[[:space:]]+81' \
     'PKG_FAIL_REASON[+]=[[:space:]]+"EmberBSD keeps only Rails .*'; do
     grep -Eq "^$line\$" "$pkgsrc/lang/ruby/rails.mk" ||
@@ -85,8 +85,8 @@ for line in 'RUBY_RAILS81_VERSION[?]=[[:space:]]+8[.]1[.]4' \
 done
 ! grep -Eq '^RUBY_RAILS(72|80)_VERSION' "$pkgsrc/lang/ruby/rails.mk" ||
     { echo "lang/ruby/rails.mk offers an old Rails" >&2; exit 1; }
-grep -Fq 'SHA512 (rails-8.1.4.gem) = ' "$pkgsrc/www/ruby-rails81/distinfo" ||
-    { echo "www/ruby-rails81 is not Rails 8.1.4" >&2; exit 1; }
+grep -Fq 'SHA512 (rails-8.1.4.1.gem) = ' "$pkgsrc/www/ruby-rails81/distinfo" ||
+    { echo "www/ruby-rails81 is not Rails 8.1.4.1" >&2; exit 1; }
 # with_advisory_lock 7.6.0 runs on Ruby 4.0; its recipe accepted only 3.3 and 3.4.
 wal=databases/ruby-with_advisory_lock
 ! grep -q "^RUBY_VERSIONS_ACCEPTED=" "$pkgsrc/$wal/Makefile" ||

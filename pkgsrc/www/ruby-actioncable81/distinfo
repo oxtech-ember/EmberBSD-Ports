@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (actioncable-8.1.4.gem) = cdb3849bef89acc6b6ad7aac8e41e7dec4029303ad7f674865833cb9d78b517a
-SHA512 (actioncable-8.1.4.gem) = e57b29ce188deeb3b2f55bdfa16870b46c51724942b704bfb8e7cccc66703c19843dad1a6c6df9ea04e24f4dc76d7d4bc7e6bb5e8949d7565c97f9bcadc08a91
-Size (actioncable-8.1.4.gem) = 48128 bytes
+BLAKE2s (actioncable-8.1.4.1.gem) = f23d903a9b5c531ab4a8884e4d994557b7a75fb0f8a6d28d19b8a1d0a43fbae4
+SHA512 (actioncable-8.1.4.1.gem) = 629eec1af7fda0ee5c775691b1432cfa025f9ce964bf3c97bd345a4a146782f002b0d312215d10e9317a7dde67acacc557aa538375c64333d8446fae3ac461c5
+Size (actioncable-8.1.4.1.gem) = 48128 bytes

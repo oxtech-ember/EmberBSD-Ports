@@ -81,6 +81,8 @@ ${GEM_LIBDIR}/lib/active_storage/engine.rb
 ${GEM_LIBDIR}/lib/active_storage/errors.rb
 ${GEM_LIBDIR}/lib/active_storage/fixture_set.rb
 ${GEM_LIBDIR}/lib/active_storage/gem_version.rb
+${GEM_LIBDIR}/lib/active_storage/image_magick.rb
+${GEM_LIBDIR}/lib/active_storage/image_magick/policy.xml
 ${GEM_LIBDIR}/lib/active_storage/log_subscriber.rb
 ${GEM_LIBDIR}/lib/active_storage/previewer.rb
 ${GEM_LIBDIR}/lib/active_storage/previewer/mupdf_previewer.rb
