@@ -18,7 +18,7 @@ import tarfile
 
 sys.dont_write_bytecode = True
 PORTS = Path(__file__).resolve().parents[3]
-ARCHIVE_SHA256 = '91d729aa68bb89e4ec857841300bbe922bcb3e52b1f97566ca83930d3b28343a'
+ARCHIVE_SHA256 = '4e4e438eac7b840a9383988cbb7c08dad8041da544b9319fc26d319fa7348961'
 
 
 def section(source, begin, end):
@@ -54,7 +54,7 @@ def main():
     source = work / 'source'
     source.mkdir()
     with tarfile.open(archive) as bundle:
-        upstream = bundle.extractfile('mesa-26.3.0/meson.build').read().decode()
+        upstream = bundle.extractfile('mesa-26.3.1/meson.build').read().decode()
     (source / 'meson.build').write_text(upstream)
     shared_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
     patch_data = b''.join(line for line in shared_patch.read_bytes().splitlines(keepends=True)

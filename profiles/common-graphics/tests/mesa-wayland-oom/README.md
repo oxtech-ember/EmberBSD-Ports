@@ -8,7 +8,7 @@ This change does not increase GPU memory limits or hide allocation failures.
 
 ```sh
 CC="$HOST_PREFIX/bin/clang" PATCH="$HOST_PREFIX/bin/gpatch" "$HOST_PYTHON315" run.py \
-  /absolute/mesa-26.3.0.tar.xz /absolute/new-output
+  /absolute/mesa-26.3.1.tar.xz /absolute/new-output
 ```
 
 The runner verifies the pinned archive SHA512 and canonical pkgsrc patch SHA1.

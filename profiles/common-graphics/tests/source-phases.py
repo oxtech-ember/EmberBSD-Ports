@@ -19,7 +19,7 @@ def main():
     if any(not value.is_absolute() for value in vars(args).values()) or args.work.exists():
         parser.error('use absolute inputs and a new work directory')
     protocols_archive = 'wayland-protocols-1.50.tar.xz'
-    for name in ('mesa-26.3.0.tar.xz', protocols_archive):
+    for name in ('mesa-26.3.1.tar.xz', protocols_archive):
         if not (args.distdir/name).is_file():
             parser.error('cache the recipe-pinned archive first: '+name)
     args.work.mkdir()

@@ -87,7 +87,7 @@ def main():
         for name in FILES:
             target = before / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(bundle.extractfile("mesa-26.3.0/" + name).read())
+            target.write_bytes(bundle.extractfile("mesa-26.3.1/" + name).read())
     shutil.copytree(before, after)
     for name in PATCHES:
         result = subprocess.run([str(tool), "-f", "-p0", "-F0", "-d", str(after),

@@ -1,5 +1,5 @@
 # $NetBSD$
-# Origin: Mesa 26.3.0 build-host shader generators.
+# Origin: Mesa 26.3.1 build-host shader generators.
 .include "../MesaLib/mesa-source.mk"
 PKGNAME= mesa-generators-${MESA_SOURCE_VERSION}
 PKGREVISION= ${MESA_PORT_REVISION}

@@ -302,7 +302,7 @@ def build(arguments, sdk_root):
                     require(destination.is_file() and sha256_file(str(destination.resolve(strict=True))) == digest, 'Wrong archive SHA256: ' + name)
                 return destination.resolve(strict=True)
 
-            mesa_archive = fetch('mesa-26.3.0.tar.xz', graphics / 'sources.tsv')
+            mesa_archive = fetch('mesa-26.3.1.tar.xz', graphics / 'sources.tsv')
             require(query([tools['llvm-config'], '--version']) == '23.1.6',
                     'Native LLVM must match the shared Mesa dependency')
             llvm_prefix = Path(query([tools['llvm-config'], '--prefix'])).resolve(strict=True)
@@ -311,7 +311,7 @@ def build(arguments, sdk_root):
             extract = work / 'mesa-extract'
             extract.mkdir()
             run([tools['bsdtar'], '-xJf', mesa_archive, '-C', extract], 'mesa-extract')
-            source = extract / 'mesa-26.3.0'
+            source = extract / 'mesa-26.3.1'
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p1', '-d', source, '-i', helpers / 'mesa-26.2.4-pco-bvnc.patch'], 'mesa-bvnc-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
                  '-d', source, '-i', objc_patch], 'mesa-host-objc-patch')

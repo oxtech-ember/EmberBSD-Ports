@@ -24,7 +24,7 @@ passed build, PLIST checks and sysroot installation with PowerVR, V3D and the
 other default drivers retained. These checks do not establish target rendering
 or a complete KiCad session.
 
-Mesa 26.3.0 uses CLC for Iris shaders even when Rusticl is disabled.
+Mesa 26.3.1 uses CLC for Iris shaders even when Rusticl is disabled.
 The default `mesa-clc=auto` selects the target CLC dependency closure.
 Cross builds instead use `mesa-clc=system` and `precomp-compiler=system`.
 Mesa runs native `mesa_clc` and `vtn_bindgen2` through its native file.
@@ -52,7 +52,7 @@ Build these tools and dependencies through the common Ports recipes.
 The native LLVM and Clang libraries and the generators need a compatible host
 C++ runtime. GCC16 remains an explicit host compiler alternative.
 
-The current inputs are Mesa 26.3.0, LLVM/Clang 23.1.4, Translator 23.1.2,
+The current inputs are Mesa 26.3.1, LLVM/Clang 23.1.6, Translator 23.1.3,
 SPIRV-Tools 2026.4 and SPIRV-Headers 1.4.363.0. Use the common Ports patches
 in both modes. `--test` additionally requires GoogleTest 1.18.0 from the external
 provider. The producer checks selected package predicates, Python module origins
@@ -124,7 +124,7 @@ pass `--host-compiler-family gcc`; the default is `clang`.
 python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" \
     --host-prefix "$HOST_PREFIX" --profile intel \
     --pkgdb "$HOST_PKGDB" --lock-directory "$LOCK_DIRECTORY" \
-    /absolute/mesa-26.3.0.tar.xz /absolute/native-mesa-source \
+    /absolute/mesa-26.3.1.tar.xz /absolute/native-mesa-source \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-intel-tools
 ```
 
@@ -157,7 +157,7 @@ BMAKE=/absolute/native/bmake python3 ../tests/amd64-targets.py \
 python3 ../tests/amd64-targets.py --skip-bmake \
     --distfiles /absolute/verified/distfiles
 ruby ../tests/iris-clc-configure.rb /absolute/native/python3.15 \
-    /absolute/meson-1.12.1/meson.py /absolute/mesa-26.3.0
+    /absolute/meson-1.12.1/meson.py /absolute/mesa-26.3.1
 ```
 
 The profile fixture runs the production shell verifier and native-file target.

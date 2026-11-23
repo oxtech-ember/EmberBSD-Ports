@@ -1,6 +1,6 @@
 # Shared source identity and complete Ports patch set for Mesa and its
 # build-host generator package.
-MESA_SOURCE_VERSION= 26.3.0
+MESA_SOURCE_VERSION= 26.3.1
 MESA_PORT_REVISION= 0
 .if ${MESA_PORT_REVISION} == 0
 MESA_GENERATORS_VERSION= ${MESA_SOURCE_VERSION}

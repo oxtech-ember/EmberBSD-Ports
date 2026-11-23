@@ -27,7 +27,7 @@ It does not select a compiler, admit a tool into an SDK, or build Mesa.
 
 ```sh
 "$PYTHON" -B tests/prepare-prime-import.py \
-    /absolute/mesa-26.3.0.tar.xz /absolute/new-prime-work \
+    /absolute/mesa-26.3.1.tar.xz /absolute/new-prime-work \
     --patch-tool /absolute/source-regression/patch
 ```
 
@@ -153,7 +153,7 @@ From the Ports root, run the actual Meson configuration-fragment check:
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B -E profiles/common-graphics/tests/mesa-host-objc.py \
-    /absolute/mesa-26.3.0.tar.xz "$HOST_PREFIX/bin/meson" \
+    /absolute/mesa-26.3.1.tar.xz "$HOST_PREFIX/bin/meson" \
     "$HOST_PREFIX/bin/nbpatch" /absolute/new-test-work
 ```
 
