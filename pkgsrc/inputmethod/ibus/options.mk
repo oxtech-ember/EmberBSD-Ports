@@ -42,6 +42,11 @@ BUILDLINK_DEPMETHOD.gobject-introspection=	build
 .include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../devel/gobject-introspection/autotools.mk"
 .  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# The query runner requires the linked target ELF. Libtool normally creates a
+# shell launcher for the temporary scanner program in an uninstalled tree.
+MAKE_FLAGS+= INTROSPECTION_SCANNER_ARGS=--no-libtool
+MAKE_FLAGS+= IBus_1_0_gir_LIBS=ibus-1.0
+MAKE_FLAGS+= IBus_1_0_gir_LDFLAGS=-L${WRKSRC:Q}/src/.libs
 # The distribution GIR was generated for the release host.
 post-extract:
 	${RUN} ${RM} -f ${WRKSRC}/src/IBus-1.0.gir
