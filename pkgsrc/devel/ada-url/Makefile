@@ -1,12 +1,11 @@
 # $NetBSD$
-DISTNAME= ada-4.0.0
-PKGREVISION= 2
-PKGNAME= ada-url-4.0.0
+DISTNAME= ada-4.1.1
+PKGNAME= ada-url-4.1.1
 WRKSRC= ${WRKDIR}/${DISTNAME}
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=ada-url/}
 GITHUB_PROJECT= ada
-GITHUB_TAG= v4.0.0
+GITHUB_TAG= v4.1.1
 HOMEPAGE= https://github.com/ada-url/ada
 COMMENT= WHATWG URL parser and URLPattern library
 LICENSE= apache-2.0 OR mit
@@ -21,11 +20,11 @@ TEST_TARGET= test
 .if ${OPSYS} == "Darwin"
 ADA_LIB= libada.dylib
 ADA_SOVERSION= libada.4.dylib
-ADA_VERSIONED= libada.4.0.0.dylib
+ADA_VERSIONED= libada.4.1.1.dylib
 .else
 ADA_LIB= libada.so
 ADA_SOVERSION= libada.so.4
-ADA_VERSIONED= libada.so.4.0.0
+ADA_VERSIONED= libada.so.4.1.1
 .endif
 PLIST_SUBST+= ADA_LIB=${ADA_LIB} ADA_SOVERSION=${ADA_SOVERSION} ADA_VERSIONED=${ADA_VERSIONED}
 GENERATE_PLIST+= cd ${DESTDIR}${PREFIX}; ${FIND} lib/cmake/ada -name "ada_targets-*.cmake" -type f -print | ${SORT};

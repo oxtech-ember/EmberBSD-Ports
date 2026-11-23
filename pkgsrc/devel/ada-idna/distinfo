@@ -1,8 +1,8 @@
 $NetBSD$
 
-BLAKE2s (idna-0.7.0.tar.gz) = 117b5c033a72637ab05fdd1b606579a07fbd4f6efb91928970070ab07ba193df
-SHA512 (idna-0.7.0.tar.gz) = e89afa730fa59360f3f50015b85721a9b1920debadaca0b37e07d6b2af01170ba5503a5e6b6b8a6346eee0881480b65e3f49a17e10c5f49fc86db3ad5bda848d
-Size (idna-0.7.0.tar.gz) = 244417 bytes
+BLAKE2s (idna-0.8.0.tar.gz) = eef269bd94b34d8f7a6e178739064219aee982f2076b23950d34b53bb80ad0df
+SHA512 (idna-0.8.0.tar.gz) = 8b5a5adad58f12e911be1ebb8b4cfc447804820086b3bfee451cf2d840011b82d411d9f1feb6998637c6738e8be09ff24d84ef23022249c262b0e32d3e06fa2a
+Size (idna-0.8.0.tar.gz) = 246733 bytes
 SHA1 (patch-CMakeLists.txt) = d933b8ce6d073c67a94c5ffff560c61e5882df5d
 SHA1 (patch-src_CMakeLists.txt) = a32402dc5c8b26f053e440254aaa4099f195f4eb
 SHA1 (patch-tests_CMakeLists.txt) = 74e95e85fb1379f30a8841644027168e832dc4eb

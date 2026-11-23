@@ -1,7 +1,7 @@
 $NetBSD$
 
-BLAKE2s (simdjson-5.1.0.tar.gz) = 41481d2e86122facbec3d35aa43d1b2675e52a61955b02efa2e12f4eb20074f0
-SHA512 (simdjson-5.1.0.tar.gz) = e166657fdb4a80796ff7991c298aeaab0296dc2a4f8bf3a95a8bde2dbf0eda9cf5e967a6d3bfd140fde4458ba8bf2690dd089edefa82b9033b1da325a1173915
-Size (simdjson-5.1.0.tar.gz) = 8887179 bytes
+BLAKE2s (simdjson-5.2.0.tar.gz) = 7e84b63b62e3ec4ebac02ea168f135baca766abbcf88992086574cbdfeba2e83
+SHA512 (simdjson-5.2.0.tar.gz) = 975242f1c84484f7e1c00622ce5a917319d6fd0a021c1acb064ddde9b583d1c559b4f30cc3ce4dc91acf20d38bf224ac14f9f7b82db69c324a5948c5dde5c3a6
+Size (simdjson-5.2.0.tar.gz) = 8970510 bytes
 SHA1 (patch-include_simdjson_portability.h) = 51808a592669bdec6319c6cb27670c5029133534
 SHA1 (patch-singleheader_simdjson.h) = 1b055dff5c3a827362461b58df8b17423baf52eb

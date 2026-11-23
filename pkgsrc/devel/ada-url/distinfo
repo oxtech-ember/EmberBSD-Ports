@@ -1,13 +1,13 @@
 $NetBSD$
 
-BLAKE2s (ada-4.0.0.tar.gz) = 86c636456a2d370e01c60467fa5fab843285e61bc636c6520f03f979a70f4e35
-SHA512 (ada-4.0.0.tar.gz) = 9ced1aedc22298a6393c35575f7d7b452a25b2249c19270987a17d9969c9b821dd9f6b165ee1dcf275741fc7de2e1d83fd8c4780bd87926b1f236ea3f9f7c965
-Size (ada-4.0.0.tar.gz) = 524486 bytes
-SHA1 (patch-CMakeLists.txt) = 304051243a5b485ab3cf98c8437aa9e1863f164a
+BLAKE2s (ada-4.1.1.tar.gz) = 3df182ae1ea98c30d78e1bb458602fe4fa0311a1899db3fb0a5e60b9149ce253
+SHA512 (ada-4.1.1.tar.gz) = a755608c8f4be9116365ee73e1154139c5fd93e441310ace19a5974b2f7a6b9923206fa686f9a9a9c9759fbf2b5b726f08bd8bf8606cb076c7ba335672176538
+Size (ada-4.1.1.tar.gz) = 624569 bytes
+SHA1 (patch-CMakeLists.txt) = eabe7f913d9d500f148c541d600d65fb484dde1b
 SHA1 (patch-ada.pc.in) = 6181ad4667a33cb5d5238ccfb897666ef4f1df22
 SHA1 (patch-cmake_ada-config.cmake.in) = 71e3c73cda87f0f2073fe844cce40dab5bd8da00
 SHA1 (patch-include_ada.h) = 85001b3bc56f60ea6ec2eebd335fa98d7339e49e
-SHA1 (patch-include_ada_unicode.h) = 172abc247aa4063a4144a66ae9268512144b97d7
+SHA1 (patch-include_ada_unicode.h) = fe591c322358f80d86e3f2f941d41c9d2808900c
 SHA1 (patch-singleheader_CMakeLists.txt) = 84b9b1f12a3e7f5aab425ab1646c0ce00f9d895e
 SHA1 (patch-src_CMakeLists.txt) = 43712ebf255c688177c74d213303b962d7ba86bf
 SHA1 (patch-src_unicode.cpp) = 47909995566bfa9921113aaa0c62a42e091cf741

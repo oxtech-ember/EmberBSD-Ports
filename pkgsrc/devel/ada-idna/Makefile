@@ -1,7 +1,6 @@
 # $NetBSD$
-DISTNAME= idna-0.7.0
+DISTNAME= idna-0.8.0
 PKGNAME= ada-${DISTNAME}
-PKGREVISION= 2
 WRKSRC= ${WRKDIR}/${DISTNAME}
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=ada-url/}
@@ -20,11 +19,11 @@ TEST_TARGET= test
 .if ${OPSYS} == "Darwin"
 IDNA_LIB= libada-idna.dylib
 IDNA_SOVERSION= libada-idna.0.dylib
-IDNA_VERSIONED= libada-idna.0.7.0.dylib
+IDNA_VERSIONED= libada-idna.0.8.0.dylib
 .else
 IDNA_LIB= libada-idna.so
 IDNA_SOVERSION= libada-idna.so.0
-IDNA_VERSIONED= libada-idna.so.0.7.0
+IDNA_VERSIONED= libada-idna.so.0.8.0
 .endif
 PLIST_SUBST+= IDNA_LIB=${IDNA_LIB} IDNA_SOVERSION=${IDNA_SOVERSION} IDNA_VERSIONED=${IDNA_VERSIONED}
 BUILDLINK_DEPMETHOD.googletest= build

@@ -11,5 +11,5 @@ Use shared ada-idna and shared test dependencies.
 -#include "ada/ada_idna.h"
 +#include "ada/idna.h"
  
- #include <string>
- #include <string_view>
+ #include <cstddef>
+ #include <cstdint>
