@@ -28,6 +28,12 @@ BUILD_DEFS+=		VARBASE
 .include "../../mk/bsd.prefs.mk"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+# The supported base releases provide different LDAP and TLS ABIs.
+PREFER_PKGSRC+=	openldap-client openssl
+# Python headers and flex input names can reach installed diagnostics.
+CFLAGS+=	-ffile-prefix-map=${WRKDIR}=.
+.endif
 .include "../../devel/talloc/waf-cross.mk"
 TOOL_DEPENDS+=	samba-heimdal-tools-${SAMBA_VERSION}{,nb[0-9]*}:../../security/samba-heimdal-tools
 MAKE_ENV+=	SAMBA_HOST_HEIMDAL_TOOLS=${TOOLBASE}/libexec/samba-heimdal-tools

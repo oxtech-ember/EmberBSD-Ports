@@ -1,10 +1,11 @@
 $NetBSD: patch-dynconfig_wscript,v 1.3 2019/03/20 19:09:10 adam Exp $
 
-Do not check installation prefix.
+Do not check installation prefix. Describe the configured installation paths
+in manuals generated during the build.
 
---- dynconfig/wscript.orig	2019-01-15 10:07:00.000000000 +0000
+--- dynconfig/wscript.orig
 +++ dynconfig/wscript
-@@ -307,9 +307,6 @@ def configure(conf):
+@@ -328,9 +328,6 @@
          flavor = 'FHS-PATH'
      else:
          flavor = 'STD-PATH'
@@ -14,3 +15,14 @@ Do not check installation prefix.
  
      explicit_set ={}
  
+@@ -429,10 +426,6 @@
+         if list and not varname in list:
+             continue
+         value = bld.env[varname]
+-        if not bld.is_install:
+-            override = get_override(bld)
+-            if varname in override:
+-                value = os.path.join(bld.env.srcdir, override[varname])
+         entities.append("<!ENTITY pathconfig.%s   '%s'>" % (varname, value))
+     return entities
+ Build.BuildContext.pathconfig_entities = pathconfig_entities

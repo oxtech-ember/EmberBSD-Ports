@@ -1,0 +1,67 @@
+$NetBSD$
+
+Regenerate the parameter descriptions when the documented installation paths change.
+
+--- docs-xml/wscript_build.orig
++++ docs-xml/wscript_build
+@@ -139,18 +139,19 @@
+     return t
+ 
+ def smbdotconf_generate_parameter_list_file(task):
+-    parameter_all = task.outputs[0].bldpath(task.env)
+-    articles = task.inputs
++    output = task.outputs[0]
++    path_entities, *articles = task.inputs
+ 
+     t = "<!DOCTYPE section [\n" +\
+-        generate_path_entity_list() + \
++        path_entities.read(encoding='utf-8') + \
+         "]>\n" +\
+         "<section>\n" +\
+-        "".join(art.read() for art in articles) +\
++        "".join(art.read(encoding='utf-8') for art in articles) +\
+ 	"</section>\n"
+ 
+ 
+-    save_file(parameter_all, t , create_dir=True)
++    output.parent.mkdir()
++    output.write(t, encoding='utf-8')
+     return 0
+ 
+ # Since nothing really forces sorting in glob, we have to sort by file name
+@@ -161,17 +162,10 @@
+ articles = " ".join(sorted([x.path_from(bld.path) for x in sources],
+                            key=lambda m: m.split(os.sep)[-1]))
+ 
+-bld.SAMBA_GENERATOR(parameter_all,
+-                    source=articles,
+-                    target=parameter_all,
+-                    rule=smbdotconf_generate_parameter_list_file)
+-
+ def generate_path_entity_file(task):
+-    path_entities_file = task.outputs[0].bldpath(task.env)
+-
+-    save_file(path_entities_file,
+-              generate_path_entity_list(),
+-              create_dir=True)
++    output = task.outputs[0]
++    output.parent.mkdir()
++    output.write(generate_path_entity_list(), encoding='utf-8')
+     return 0
+ 
+ path_entities = 'build/DTD/samba.build.pathconfig'
+@@ -180,7 +174,13 @@
+                     source=articles,
+                     target=path_entities,
+                     rule=generate_path_entity_file,
+-                    dep_vars=bld.dynconfig_varnames())
++                    dep_vars=bld.dynconfig_varnames() + ['MIT_KDC_PATH'])
++
++bld.SAMBA_GENERATOR(parameter_all,
++                    source=path_entities + ' ' + articles,
++                    target=parameter_all,
++                    rule=smbdotconf_generate_parameter_list_file)
++
+ 
+ 
+ def SMBDOTCONF_MANPAGE(bld, target):

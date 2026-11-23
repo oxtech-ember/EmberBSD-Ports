@@ -1055,6 +1055,7 @@ libexec/samba/rpcd_winreg
 libexec/samba/samba-bgqd
 libexec/samba/samba-dcerpcd
 ${PLIST.cups}libexec/samba/smbspool_krb5_wrapper
+libexec/samba/tfork.sh
 man/man1/dbwrap_tool.1
 man/man1/gentest.1
 man/man1/ldbadd.1
