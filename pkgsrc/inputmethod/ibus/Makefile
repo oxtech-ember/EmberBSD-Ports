@@ -2,6 +2,7 @@
 
 DISTNAME=	ibus-1.5.35
 PKGNAME=	${DISTNAME:S/-rc/rc/:S/-beta/beta/}
+PKGREVISION=	1
 CATEGORIES=	inputmethod
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ibus/}
 GITHUB_PROJECT=	${PKGBASE}
@@ -13,8 +14,8 @@ LICENSE=	gnu-lgpl-v2.1
 COMMENT=	Intelligent Input Bus
 
 TOOL_DEPENDS+=	cldr-emoji-annotation>=37.0.13.0.0.2:../../textproc/cldr-emoji-annotation
-TOOL_DEPENDS+=	unicode-character-database>=15.0.0:../../textproc/unicode-character-database
-TOOL_DEPENDS+=	unicode-emoji>=15.0:../../textproc/unicode-emoji
+TOOL_DEPENDS+=	unicode-character-database>=18.0.0:../../textproc/unicode-character-database
+TOOL_DEPENDS+=	unicode-emoji>=18.0:../../textproc/unicode-emoji
 
 GNU_CONFIGURE=			yes
 USE_LIBTOOL=			yes
