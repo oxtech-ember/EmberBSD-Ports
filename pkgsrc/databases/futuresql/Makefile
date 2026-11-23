@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	futuresql-0.1.1
+PKGREVISION=	1
 CATEGORIES=	databases
 MASTER_SITES=	https://download.kde.org/stable/futuresql/
 EXTRACT_SUFX=	.tar.xz

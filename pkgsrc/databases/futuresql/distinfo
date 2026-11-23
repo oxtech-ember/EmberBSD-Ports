@@ -4,3 +4,4 @@ BLAKE2s (futuresql-0.1.1.tar.xz) = 4fa5149274564a585dbcce442de6e4834250357f869e9
 SHA512 (futuresql-0.1.1.tar.xz) = ce9cd927c6da3ca7351640cc2c36854c1a728ec5c24517e61772e3571d56bcaa2221cfe05127f78554bd9d2b2d72bd46e911834c9fb1e9b89bd96b84b39bda16
 Size (futuresql-0.1.1.tar.xz) = 27844 bytes
 SHA1 (patch-CMakeLists.txt) = d7c291197ef8a190aee0dff46fbc18ebc5082f77
+SHA1 (patch-src_threadeddatabase__p.h) = dc1146c05f37f14d30d7233cbc83c8529def148e
