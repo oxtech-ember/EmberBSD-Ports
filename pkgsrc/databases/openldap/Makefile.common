@@ -29,6 +29,15 @@ MAKE_ENV+=	LIBMODE=${LIBMODE}
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    ${MACHINE_ARCH} == "aarch64" && ${PKGPATH} == "databases/openldap-client"
+# Keep the client usable with both supported base OpenSSL ABIs.
+PREFER_PKGSRC+=	openssl
+PKGREVISION=	1
+# mkversion embeds the producer identity and build path without a timestamp.
+MAKE_ENV+=	SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:U1:S/^$/1/:Q}
+.endif
+
 OPENLDAP_ETCDIR?=	${PKG_SYSCONFDIR}/openldap
 OPENLDAP_MODULEDIR=	${PREFIX}/lib/openldap
 OPENLDAP_VARDIR?=	${VARBASE}/openldap

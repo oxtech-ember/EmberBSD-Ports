@@ -13,6 +13,7 @@ SHA1 (patch-contrib_slapd-modules_smbk5pwd_smbk5pwd.c) = 3c8c269483678fee34c73d5
 SHA1 (patch-include_ac_unistd.h) = 7441d1d46cf91b97462dbe7ba0be351ec57032d1
 SHA1 (patch-libraries_libldap_cyrus.c) = 1e47cdf4b1f1cc4eef36cf40a6beec1bed167f85
 SHA1 (patch-libraries_libldap_ldap-int.h) = 967499db16d31cbf47deff330d97efd0a360ac7f
+SHA1 (patch-libraries_libldap_ldap.map.in) = a375f01cdfc153c431d02d4695c85a33332f2084
 SHA1 (patch-libraries_libldap_os-local.c) = 7cd4f8638456fae12499de0d36d7802e47d3d688
 SHA1 (patch-libraries_libldap_thr__posix.c) = 21f0efe8f7d2f4c4fecf0a970ce5259ae28e26cb
 SHA1 (patch-libraries_liblutil_sha1.c) = 10deca5c2f0431dd51d9137f14b5070be1264dcd
