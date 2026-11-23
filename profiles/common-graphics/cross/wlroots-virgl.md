@@ -14,7 +14,7 @@ prepared by [prepare-wlroots-drm.rb](prepare-wlroots-drm.rb). The consumer adds
 an explicit renderer policy; the installed library payload is unchanged.
 Every package file, link and recursive runtime provider is verified.
 
-The guest needs the separate [EMBERVIRGL kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/utm-virgl-optin.md)
+The guest needs the separate [VirGL trial kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/utm-virgl-optin.md)
 including OS commit `9c0b92bea0af2b69fbdfcbf633b7c0be74be650c` or its descendant.
 Keep a matched recovery bundle. This commit fixes modern PCI queue disable
 after child teardown; it does not change GPU feature or DMA safety policy.
@@ -47,7 +47,7 @@ From the Ports root, run the public host supervisor:
 ```sh
 ruby probes/utm-virgl-host/qemu/run-guest-draw.rb \
     /absolute/accepted-qemu-work /absolute/accepted-renderer-work \
-    /absolute/netbsd-EMBERVIRGL.img /absolute/private-root.ffs \
+    /absolute/netbsd-VIRGL_TRIAL.img /absolute/private-root.ffs \
     /absolute/ANGLE-frameworks /absolute/new-drm-evidence wlroots-virgl
 ```
 
@@ -75,7 +75,7 @@ This verifies safe teardown for that observed failure, not resumed rendering
 or arbitrary in-flight GPU reset recovery.
 
 The unchanged default CPU policy passed four frames on the original 2D
-EMBERGPU device, with `llvmpipe (LLVM 23.1.2, 128 bits)`. On the VirGL device,
+VirtGPU trial device, with `llvmpipe (LLVM 23.1.2, 128 bits)`. On the VirGL device,
 Mesa may select VirGL despite the CPU policy's software environment flags;
 the actual-renderer check refused that mismatched run before modesetting.
 The CPU mode is an explicit acceptance policy, not a guaranteed force switch
@@ -83,7 +83,7 @@ for every DRM driver.
 
 | Evidence | SHA256 |
 | --- | --- |
-| EMBERVIRGL image | `ddec33e6e1f438bb0223322b5fd37803f870e341ee927ae8f223cf5e95b3ac5f` |
+| VirGL trial image | `ddec33e6e1f438bb0223322b5fd37803f870e341ee927ae8f223cf5e95b3ac5f` |
 | Patched paired QEMU | `8643e589608c24519578c7707b3d2263f4293c4062116a4edbf94f6bb4cbef09` |
 | DRM consumer bundle | `06f75c4bf5426350818af7bfc95bf898948ca34bb833509cc9c4fa400ff92118` |
 | Final VirGL guest log | `7f19532e2ed677f8d698453cf3654bd080eb4ad08529506a6a3e37edfbef23a0` |

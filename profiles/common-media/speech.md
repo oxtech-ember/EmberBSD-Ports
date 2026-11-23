@@ -87,7 +87,7 @@ checks the actual make rules and all three packaged manuals.
 ## Accepted CM5 run, 2026-10-12
 
 CM5 Rev 1.0, BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B; firmware revision unknown.
-Kernel `EMBERV3DRENDER #0`, source `ab6f88f04ca73c6958adb39d0e1c717f629e7901`,
+Kernel V3D render trial, source `ab6f88f04ca73c6958adb39d0e1c717f629e7901`,
 remained unchanged, with the same boot time throughout. The kernel SHA256 is
 `c8600af1c6a31404fe6b3a3995196a910efda594c708194369925adb54ff1886`.
 

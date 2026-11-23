@@ -9,7 +9,7 @@ check, not a general desktop release or physical-board GPU qualification.
 ## Inputs and preparation
 
 Use the [accepted labwc package](labwc.md), shared MesaLib 26.2.4nb2,
-wlroots 0.20.2nb4 and the [matched EMBERVIRGL/QEMU pair](wlroots-virgl.md).
+wlroots 0.20.2nb4 and the [matched VirGL trial/QEMU pair](wlroots-virgl.md).
 Keep the kernel's matched recovery bundle. The target base and rescue tools
 must come from the recorded EmberBSD test root. The helper verifies the known
 fork shared-libc repair, but does not certify the complete base as an SDK.
@@ -36,7 +36,7 @@ ruby cross/prepare-labwc-root.rb /path/to/sysroot /path/to/recorded-base-root \
 /path/to/nbmakefs -t ffs -s 768m -F cross/labwc-root.mtree \
   /path/to/new-root/root.ffs /path/to/new-root/root
 ruby cross/run-labwc-session.rb /path/to/accepted-qemu-work \
-  /path/to/accepted-renderer-work /path/to/netbsd-EMBERVIRGL.img \
+  /path/to/accepted-renderer-work /path/to/netbsd-VIRGL_TRIAL.img \
   /path/to/new-root/root.ffs /path/to/ANGLE-frameworks /path/to/new-evidence
 ruby tests/labwc-session-oracle.rb /path/to/new-evidence/guest.log
 ```

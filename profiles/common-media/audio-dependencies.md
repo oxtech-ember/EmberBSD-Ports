@@ -65,7 +65,7 @@ On 2026-10-12 CM5 Rev 1.0, BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B passed:
   delivers exactly one self-directed SIGUSR1 within the bounded wait.
 - Complete package payloads match the shared sysroot before transfer.
   Installed checks cover 15 TDB and 16 libdaemon regular files.
-- Kernel `EMBERV3DRENDER #0`, source
+- Kernel V3D render trial, source
   `ab6f88f04ca73c6958adb39d0e1c717f629e7901`, stays unchanged. Firmware revision
   is unknown. [The media receipt](ffmpeg-runtime.md) records its kernel hash.
 

@@ -4,8 +4,8 @@ This is the next package stage after the accepted
 [headless GLES2 consumer](wlroots-package.md). It keeps the same canonical
 MesaLib 26.2.4nb2, libdrm 2.4.134nb1, Wayland 1.26.0nb1 and LLVM23 ABI.
 The installed package passes real DRM presentation with llvmpipe in an
-EMBERGPU VM and [VirGL on the paired Metal host](wlroots-virgl.md) with
-EMBERVIRGL. The separate [labwc session check](labwc-session.md) now verifies
+VirtGPU trial VM and [VirGL on the paired Metal host](wlroots-virgl.md) with
+VirGL trial. The separate [labwc session check](labwc-session.md) now verifies
 EGL surfaces, screencopy and real QEMU USB input in two repeated sessions.
 
 ## Selected sources and providers
@@ -170,7 +170,7 @@ sh /absolute/bundle/run-wlroots-drm.sh /absolute/bundle \
     /dev/dri/card0 /absolute/new-virgl-drm-logs virgl
 ```
 
-This requires the separate EMBERVIRGL kernel and the accepted paired QEMU
+This requires the separate VirGL trial kernel and the accepted paired QEMU
 classic profile with ANGLE Metal, as used by the [first guest draw](virgl-draw.md).
 The consumer's own optional argument is `[llvmpipe|virgl]`; omission preserves
 the CPU mode. CPU mode requires its two explicit software flags. VirGL mode
@@ -182,7 +182,7 @@ forced-kill grace period; host supervision remains a separate 120+5-second
 bound. `wlroots-drm-mode.rb` compiles the actual C admission/renderer predicates
 and exercises the real shell invocation functions; its synthetic policy data
 does not establish presentation. The separate [runtime acceptance](wlroots-virgl.md)
-confirms four accelerated DRM frames. CPU regression uses the 2D EMBERGPU
+confirms four accelerated DRM frames. CPU regression uses the 2D VirtGPU trial
 device; on a VirGL-capable node Mesa can still select VirGL despite these
 software flags, and the expected-renderer guard correctly refuses that run.
 
@@ -209,7 +209,7 @@ hardware tests.
 
 ## Accepted target result
 
-On 2026-10-08, the isolated AArch64 QEMU/HVF VM ran the `EMBERGPU` kernel
+On 2026-10-08, the isolated AArch64 QEMU/HVF VM ran the VirtGPU trial kernel
 built that day, with its native 2D virtio DRM driver and QEMU USB keyboard/mouse.
 The exact canonical packages used LLVM 23.1.2nb1 and wlroots 0.20.2nb4 with
 the `drm-gles2` selection. Package payloads, links, recursive ELF dependencies

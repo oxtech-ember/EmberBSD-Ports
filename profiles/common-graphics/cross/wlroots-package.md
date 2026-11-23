@@ -3,7 +3,7 @@
 The canonical `wayland/wlroots` recipe selects upstream 0.20.2 and the same
 installed MesaLib 26.2.4nb2, libdrm 2.4.134nb1, Wayland 1.26.0nb1 and shared
 LLVM23 packages as the [accepted graphics stack](mesa-package.md). The
-[DRM buffer prerequisite](gbm.md) passes in an isolated AArch64 EMBERGPU VM.
+[DRM buffer prerequisite](gbm.md) passes in an isolated AArch64 VirtGPU trial VM.
 The headless consumer below tests a separate wlroots API boundary; it does
 not establish a visible compositor, KMS scanout or physical input support.
 
@@ -209,7 +209,7 @@ It creates a headless output, commits the buffer and requires a presentation
 event before cleanup. No framebuffer stub or alternate renderer can pass.
 
 Normal package checks and the complete guarded nb4 run pass in the isolated
-AArch64 EMBERGPU VM. Four cycles pass both as root and after the explicit
+AArch64 VirtGPU trial VM. Four cycles pass both as root and after the explicit
 drop to UID/GID 65534, with llvmpipe/LLVM23, actual KMS framebuffer handle
 lifetimes, 1024 pixels, headless presentation and matched live providers.
 The same framebuffer oracle against nb3 fails `MAP_DUMB` with `ENOENT`

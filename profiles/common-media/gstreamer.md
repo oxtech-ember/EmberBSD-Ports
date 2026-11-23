@@ -68,7 +68,7 @@ The installed Python helper retains its target interpreter.
 
 The same package and normal GSL dependency were installed on CM5 Rev 1.0,
 BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B. Its experimental EmberBSD kernel was
-`EMBERV3DRENDER #1`, SHA256
+V3D render trial, SHA256
 `6c5aa74d3c33fb6e84ea5c04d6f3df48928deb021cdc908ee972a42df03c7bf5`.
 The following unchanged upstream suites passed against installed shared
 libraries, without loader overrides:

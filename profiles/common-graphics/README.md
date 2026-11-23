@@ -237,7 +237,7 @@ All 131 selected dependency checks pass in the same isolated VM. Actual
 input events, VT switching, application surfaces, labwc and an accelerated
 session remain separate acceptance stages.
 The same installed stack also passes four [offscreen guest VirGL lifecycles](cross/virgl-draw.md)
-with the separate EMBERVIRGL kernel and paired ANGLE Metal host on Apple M3.
+with the separate VirGL trial kernel and paired ANGLE Metal host on Apple M3.
 It now also passes four [accelerated wlroots DRM presentations](cross/wlroots-virgl.md)
 at 1280x800, with pixel checks and clean shutdown. This requires the paired
 Cocoa context repair and the guest PCI queue teardown fix. The CPU consumer

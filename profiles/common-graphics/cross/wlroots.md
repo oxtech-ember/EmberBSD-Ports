@@ -8,7 +8,7 @@ already contains these releases. The older native Wayland probe retains
 
 The installed [Mesa/libepoxy result](epoxy.md) proves surfaceless CPU
 rendering. The subsequent [canonical wlroots package](wlroots-package.md)
-passes four guarded GLES2/GBM headless cycles in the isolated EMBERGPU VM,
+passes four guarded GLES2/GBM headless cycles in the isolated VirtGPU trial VM,
 including a run after dropping UID/GID to 65534. The subsequent
 [DRM/input/color stage](drm-input.md) passes four real DRM presentations and
 131 dependency test invocations in that VM. labwc migration remains pending.
@@ -69,7 +69,7 @@ Missing devices, extensions, allocation/import support or wrong pixels fail;
 they do not count as a successful skipped renderer.
 
 The [guarded target run](gbm.md) passed all four cycles in an isolated AArch64
-VM with the EmberBSD `bd158` EMBERGPU kernel and real virtio GPU GEM/PRIME
+VM with the EmberBSD `bd158` VirtGPU trial kernel and real virtio GPU GEM/PRIME
 support. It reported linear BOs with stride 256 and offset zero. Complete
 package hashes, `ldd` and live-provider checks passed; the runner exited zero.
 This establishes CPU rendering into actual device buffers in that VM.

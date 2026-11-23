@@ -66,7 +66,7 @@ This result does not establish the full upstream suite or Mesa rendering.
 ## CM5: LLVM 23.1.3, 2026-10-12
 
 The complete cross package was upgraded normally on Compute Module 5 Rev 1
-(BCM2712 D0, 4 GiB), running EmberBSD 11.0 `EMBERV3DRENDER #1`.
+(BCM2712 D0, 4 GiB), running EmberBSD 11.0 V3D render trial.
 The prior verified package remains available for rollback. Matching
 `py314-llvm-lit-23.1.3` was installed before LLVM; no forced dependency bypass
 or loader override was used. The boot time was unchanged across acceptance.

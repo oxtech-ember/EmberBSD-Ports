@@ -32,8 +32,8 @@ It neither simulates GPU success nor establishes target rendering.
 
 ## Isolated target execution
 
-Use a matched experimental [EMBERVIRGL kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/utm-virgl-optin.md) with explicit classic VirGL
-negotiation and the existing DMA/ownership checks retained. Ordinary EMBERGPU
+Use a matched experimental [VirGL trial kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/utm-virgl-optin.md) with explicit classic VirGL
+negotiation and the existing DMA/ownership checks retained. Ordinary VirtGPU trial
 still disables VirGL. The selected paired QEMU must use its opt-in classic
 lifecycle profile and the accepted ANGLE Metal renderer. Kernel creation,
 host identity checks and the isolated VM lifecycle are separate from this
@@ -92,7 +92,7 @@ Use simple absolute paths; the evidence parent must be canonical and exist:
 ```sh
 ruby probes/utm-virgl-host/qemu/run-guest-draw.rb \
     /absolute/accepted-qemu-work /absolute/accepted-renderer-work \
-    /absolute/netbsd-EMBERVIRGL.img /absolute/root.ffs \
+    /absolute/netbsd-VIRGL_TRIAL.img /absolute/root.ffs \
     /absolute/ANGLE-frameworks /absolute/new-guest-evidence
 ```
 
@@ -102,7 +102,7 @@ The synthetic root must run the target command above, print exactly one
 and renderer records, rather than accepting this boot marker alone. Keep a
 complete matching base userland, including the verifier utilities above.
 
-On 2026-10-08, EMBERVIRGL built from EmberBSD
+On 2026-10-08, VirGL trial built from EmberBSD
 `103bcbdc2144c5667398ce2de3d65f9759db36e9` negotiated `+virgl -edid` and two
 capsets. The unchanged installed libepoxy consumer completed four real EGL 1.5,
 GLES 3.0 lifecycles with renderer `virgl`, including shader rejection, triangle
@@ -112,7 +112,7 @@ zero; the input filesystem remained byte-identical.
 
 | Evidence | SHA256 |
 | --- | --- |
-| EMBERVIRGL kernel image | `f05248b338cc3078b442111846c6a67a97f3d305eb61cbba4db6a309cf915b44` |
+| VirGL trial kernel image | `f05248b338cc3078b442111846c6a67a97f3d305eb61cbba4db6a309cf915b44` |
 | Unchanged epoxy-render executable | `98130892520393aeb42afbeff9fd1ac9b740dc5d5029b285aebd861e041dcb0f` |
 | Guest serial log | `2792eec2559db30746b663868769a54ec987f4ab8d717dca36d4aa950fd6a47f` |
 | Host provider/Metal log | `7190eabae18d00672eee5a6a1df3ec8b7be99cb3eac978e3bbb54fbdbc0f4b78` |

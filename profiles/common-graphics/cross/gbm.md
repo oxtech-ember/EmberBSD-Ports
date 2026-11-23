@@ -13,7 +13,7 @@ as described in [wlroots.md](wlroots.md#first-gate-actual-drm-buffer-interchange
 Use the complete canonical package payloads, including their exact links,
 and base NetBSD utilities. No private graphics libraries belong in the bundle.
 
-The accepted VM used the [native EMBERGPU configuration](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/virtio/kernel-boot.md),
+The accepted VM used the [native VirtGPU trial configuration](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/virtio/kernel-boot.md),
 cross-built with GCC 16.2 from OS commit
 `bd1581bffc1da287f793e8b9bad02cfadd7b593a`. Its source export was checked
 against all 191,407 tracked blobs after the complete kernel/module build.
@@ -24,7 +24,7 @@ mode with this synthetic root; no existing VM disk was attached.
 ```sh
 qemu-system-aarch64 -machine virt,accel=hvf -cpu host -m 1024 -smp 2 \
     -display none -serial stdio -no-reboot -snapshot \
-    -kernel netbsd-EMBERGPU.img -append 'root=ld4a console=plcom0' \
+    -kernel netbsd-VIRTGPU_TRIAL.img -append 'root=ld4a console=plcom0' \
     -drive file=root.ffs,if=none,format=raw,id=root \
     -device virtio-blk-pci,drive=root -device virtio-gpu-pci \
     -net none -monitor none
@@ -71,8 +71,8 @@ denotes an excluded console handoff, not successful visible output.
 
 | Artifact | SHA256 |
 | --- | --- |
-| EMBERGPU ELF | `196c0577cf341ff58bb8156b55c4b180b7d3cf529512f7b6708143a4f914d761` |
-| EMBERGPU native image | `59fbce3866a96e710c3b11beac6586a1016c17a6ed502b2db92f168cba184db3` |
+| VirtGPU trial ELF | `196c0577cf341ff58bb8156b55c4b180b7d3cf529512f7b6708143a4f914d761` |
+| VirtGPU trial native image | `59fbce3866a96e710c3b11beac6586a1016c17a6ed502b2db92f168cba184db3` |
 | Guarded DMA-BUF bundle | `b904dced781bbf7d4e610e164486aaa7db311904a2cf5ea37356f290792b6f78` |
 | Synthetic FFS root | `ebd1e3e986430f26492e820ff82e7647c9feb817112c515a2df918355c8625c6` |
 | QEMU executable | `8f65b7752ce5f4650f780237daeeffe24fdb86a90bfd9230db55346e92dc9159` |

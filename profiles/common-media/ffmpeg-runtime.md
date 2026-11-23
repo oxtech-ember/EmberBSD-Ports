@@ -85,7 +85,7 @@ ruby profiles/common-media/tests/ffmpeg-audio.rb RESULTS AUDIO_FIXTURES
 ## Accepted bounded run
 
 On 2026-10-12 CM5 Rev 1.0, BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B passed with
-experimental `EMBERV3DRENDER #0`, kernel source
+experimental V3D render trial, kernel source
 `ab6f88f04ca73c6958adb39d0e1c717f629e7901`. Kernel SHA256:
 `c8600af1c6a31404fe6b3a3995196a910efda594c708194369925adb54ff1886`.
 The original firmware revision is unknown. The kernel was not replaced, and

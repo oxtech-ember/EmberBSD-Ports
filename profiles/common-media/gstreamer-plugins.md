@@ -63,7 +63,7 @@ registry, finite timeouts and no loader or typelib path overrides.
 ## Accepted bounded run
 
 On 2026-10-12 CM5 Rev 1.0, BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B passed with
-experimental `EMBERV3DRENDER #0`, source
+experimental V3D render trial, source
 `ab6f88f04ca73c6958adb39d0e1c717f629e7901`. Firmware revision is unknown;
 kernel SHA256 and the same physical board are recorded in the
 [FFmpeg receipt](ffmpeg-runtime.md). Boot time did not change.
