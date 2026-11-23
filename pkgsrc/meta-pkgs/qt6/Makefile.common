@@ -21,6 +21,7 @@ _EMBERBSD_QTVERSION_RECIPES= \
     graphics/qt6-qt3d \
     graphics/qt6-qtcharts \
     graphics/qt6-qtdatavis3d \
+    graphics/qt6-qtgraphs \
     graphics/qt6-qtimageformats \
     graphics/qt6-qtlottie \
     graphics/qt6-qtquick3d \

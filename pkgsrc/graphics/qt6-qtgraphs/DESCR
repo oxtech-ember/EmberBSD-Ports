@@ -1,0 +1,4 @@
+Qt Graphs provides 2D and 3D data visualization for Qt applications.
+It supplies line, bar, scatter, surface and other graph types through
+C++ and QML interfaces, plus integration with Qt Widgets.
+Qt Quick and Qt Quick 3D provide the rendering backends.
