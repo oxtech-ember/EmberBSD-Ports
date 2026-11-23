@@ -1,10 +1,12 @@
 $NetBSD$
 
-BLAKE2s (openvox-9.2.1.gem) = 9da7236ee3a85ce66efa58337a5637c7ca8a5aa868472eb45e2cbff4878f17c3
-SHA512 (openvox-9.2.1.gem) = d9800e71df4126bb55d46220cceccc2e692cd8a4963f6a78d9b4066335ce513bf9cdbed16dfb842802eb160f4e209ee17eec75ae709682a57632a62c86f63cea
-Size (openvox-9.2.1.gem) = 1550336 bytes
+BLAKE2s (openvox-9.5.0.gem) = 7a8abf9219b55c654dff92a523423e352b02caea70fb666ec601500affc69c45
+SHA512 (openvox-9.5.0.gem) = d3f87afe5352a9cf7a6bf3f7e3f38a00af5059d4f5feb91f892179ca764a4b723e2ea942de7ac5e42616a347b7e8e9220308e5dd45b767bc806b1b18726b9e13
+Size (openvox-9.5.0.gem) = 1551360 bytes
 SHA1 (patch-aa) = c273c27cf82f2d022e58955cc0ee3921e233ee51
 SHA1 (patch-ab) = 7b7419d16217f7eec1c0cb056dde48c1934f1ff5
 SHA1 (patch-ac) = c4b00957c526eabc590238312a7492826cd0d62e
-SHA1 (patch-ae) = 70f6c5ea3272a1070a138c2aeb9fad89c08642d9
+SHA1 (patch-ae) = 07330efab548dfc1e23ff226b3d9ac8b5f888707
+SHA1 (patch-lib_puppet_provider_group_groupadd.rb) = 6e6a21e133f93ba5a39c4d4c46258951940ccd6f
+SHA1 (patch-lib_puppet_provider_nameservice_objectadd.rb) = c407201802797726455fadac877b33a397e05963
 SHA1 (patch-lib_puppet_util_command__line.rb) = 9ae6726fa1777bebfd8917f5c66bb56913ff61dd

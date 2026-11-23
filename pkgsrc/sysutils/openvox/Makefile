@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=		openvox-9.2.1
+DISTNAME=		openvox-9.5.0
 CATEGORIES=		sysutils
 
 MAINTAINER=		pkgsrc-users@NetBSD.org
@@ -94,11 +94,16 @@ pre-configure:
 pre-build:
 	cd ${WRKSRC} && \
 		${FIND} lib/puppet -type f -exec ${CHMOD} -x {} \;
-	cd ${WRKSRC} && ${RUBY} -Ilib bin/puppet agent			\
-		--confdir=${PKG_SYSCONFDIR:Q} --rundir=${VARBASE:Q}/run	\
-		--genconfig |						\
-		${SED} -e 's/genconfig = true/# genconfig = false/'	\
-		> examples/puppet.conf
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+	${CP} ${WRKSRC}/conf/puppet.conf ${WRKSRC}/examples/puppet.conf
+.else
+	cd ${WRKSRC} && ${RUBY} -Ilib bin/puppet agent \
+		--confdir=${PKG_SYSCONFDIR:Q} --rundir=${VARBASE:Q}/run \
+		--genconfig > ${WRKDIR}/puppet-defaults.conf
+	${SED} -e 's/genconfig = true/# genconfig = false/' \
+		${WRKDIR}/puppet-defaults.conf > ${WRKSRC}/examples/puppet.conf
+.endif
+	test -s ${WRKSRC}/examples/puppet.conf
 
 post-install:
 	${INSTALL_DATA} ${WRKSRC}/examples/puppet.conf			\
