@@ -1,0 +1,23 @@
+$NetBSD$
+
+Keep QtTest assertion locations meaningful after the native SDK is moved.
+Only the two installed test-support archives capture these header names.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -130,6 +130,15 @@
+     endif()
+ endif()
+ 
++if(PKGSRC_QTTEST_INCLUDE_DIR)
++    foreach(test_module IN ITEMS QuickTestUtilsPrivate QuickControlsTestUtilsPrivate)
++        if(TARGET ${test_module})
++            target_compile_options(${test_module} PRIVATE
++                "-fmacro-prefix-map=${PKGSRC_QTTEST_INCLUDE_DIR}/=")
++        endif()
++    endforeach()
++endif()
++
+ if(QT_FEATURE_qml_designsupport)
+     add_subdirectory(qmldesignsupport)
+ endif()

@@ -5,6 +5,7 @@ SHA512 (qtdeclarative-everywhere-src-6.12.0.tar.xz) = 7de1bc7484e734c34b4f745d95
 Size (qtdeclarative-everywhere-src-6.12.0.tar.xz) = 39221652 bytes
 SHA1 (patch-src_3rdparty_masm_assembler_ARMv7Assembler.h) = 08689530423b3502f27e532737c1cfc9d9aeac09
 SHA1 (patch-src_3rdparty_masm_wtf_Compiler.h) = 8d7e318e0148eea0f262ec13463bc15bd03478dc
+SHA1 (patch-src_CMakeLists.txt) = 7db8f38bb78947a8d9dc1798c2967178003ba1f2
 SHA1 (patch-src_qml_common_qv4alloca__p.h) = bd199e6cc0a7c9f208a3f8180682290ef2efc1f9
 SHA1 (patch-src_qml_jit_qv4assemblercommon__p.h) = 90761bc35eec8adb67c35c335ce7a918281626ce
 SHA1 (patch-src_qml_memory_qv4stacklimits.cpp) = dc86bb49177ce728470367c24fc650b9cf823b5a
