@@ -22,3 +22,117 @@
  	t="${BUILDLINK_DIR}/bin/${cythontool}"; \
  	if ${TEST} -f $$f -a ! -f $$t ; then \
  		${LN} -sf $$f $$t; \
+
+--- a/devel/py-cython/Makefile
++++ b/devel/py-cython/Makefile
+@@ -1,8 +1,7 @@
+ # $NetBSD: Makefile,v 1.122 2026/08/25 10:50:00 wiz Exp $
+ 
+-DISTNAME=	cython-3.3.0
++DISTNAME=	cython-3.3.1
+ PKGNAME=	${PYPKGPREFIX}-${DISTNAME}
+-PKGREVISION=	1
+ CATEGORIES=	devel python
+ MASTER_SITES=	${MASTER_SITE_PYPI:=C/Cython/}
+ 
+
+--- a/devel/py-cython/distinfo
++++ b/devel/py-cython/distinfo
+@@ -1,10 +1,8 @@
+ $NetBSD: distinfo,v 1.102 2026/08/25 10:50:00 wiz Exp $
+ 
+-BLAKE2s (cython-3.3.0.tar.gz) = d316b29046a86d4efc236f5f7b5e77a53303cdafcd2dd62706a516a195b37948
+-SHA512 (cython-3.3.0.tar.gz) = 733892dcdb8a12f5914e46e8d7c83e2429573f292c1ff9817bce83fb18c9183d34956e5b061dbe790d822ca62c85f3e2bfe7b1e7ee38ab9302fcd09351a161be
+-Size (cython-3.3.0.tar.gz) = 3727515 bytes
+-SHA1 (patch-Cython_Utility_ModuleSetupCode.c) = 928f9ba352efe9b33ea82087e4a98579a4a26dc9
+-SHA1 (patch-Cython_Utility_Optimize.c) = 3bff4597c2d191eeadf26f36b4e6ffaa1fdec9e0
++BLAKE2s (cython-3.3.1.tar.gz) = 87c41711ae3e39b13a2016b79047a5cc21b2e3fe9b1814c37bc763f885facaa1
++SHA512 (cython-3.3.1.tar.gz) = ba12683b6faadd6914c0b87fa5cbfbb37453e3030a0ed8080e128d98f8fba6d49387003f62b4f75f3bb00ee20d04db88f7babcda279af96f24df196c3d1a8e0b
++Size (cython-3.3.1.tar.gz) = 3743354 bytes
+ SHA1 (patch-Demos_embed_Makefile) = 67c4f662a8d79d39cbf8808d2e87d91a26ef28b9
+ SHA1 (patch-runtests.py) = b955b089d284f638eb5de85878204c084c550ef5
+ SHA1 (patch-tests_run_test__patma.py) = 9dddc271d45f48f46e1c818a1140df709726a266
+
+--- a/devel/py-cython/PLIST
++++ b/devel/py-cython/PLIST
+@@ -367,6 +367,7 @@
+ ${PYSITELIB}/Cython/Includes/libc/math.pxd
+ ${PYSITELIB}/Cython/Includes/libc/setjmp.pxd
+ ${PYSITELIB}/Cython/Includes/libc/signal.pxd
++${PYSITELIB}/Cython/Includes/libc/stdbool.pxd
+ ${PYSITELIB}/Cython/Includes/libc/stddef.pxd
+ ${PYSITELIB}/Cython/Includes/libc/stdint.pxd
+ ${PYSITELIB}/Cython/Includes/libc/stdio.pxd
+
+--- a/devel/py-cython/patches/patch-Cython_Utility_ModuleSetupCode.c
++++ /dev/null
+@@ -1,22 +0,0 @@
+-$NetBSD: patch-Cython_Utility_ModuleSetupCode.c,v 1.1 2026/08/25 10:50:00 wiz Exp $
+-
+-Use std::isfinite() is C++ and isfinite() in C.
+-https://github.com/cython/cython/pull/7930
+-
+---- Cython/Utility/ModuleSetupCode.c.orig	2026-08-22 04:59:36.771782400 +0000
+-+++ Cython/Utility/ModuleSetupCode.c
+-@@ -1643,6 +1643,14 @@ static CYTHON_INLINE int __Pyx_IsAnySubtype2(PyTypeObj
+- #define __Pyx_truncl truncl
+- #endif
+- 
+-+#if defined(__cplusplus)
+-+  #include <cmath>
+-+  #define __Pyx_isfinite(x)  std::isfinite(x)
+-+#else
+-+  #define __Pyx_isfinite(x)  isfinite(x)
+-+#endif
+-+
+-+
+- /////////////// ForceInitThreads.proto ///////////////
+- //@proto_block: utility_code_proto_before_types
+- 
+
+--- a/devel/py-cython/patches/patch-Cython_Utility_Optimize.c
++++ /dev/null
+@@ -1,43 +0,0 @@
+-$NetBSD: patch-Cython_Utility_Optimize.c,v 1.1 2026/08/25 10:50:00 wiz Exp $
+-
+-Use std::isfinite() is C++ and isfinite() in C.
+-https://github.com/cython/cython/pull/7930
+-
+---- Cython/Utility/Optimize.c.orig	2026-08-22 04:59:36.772782600 +0000
+-+++ Cython/Utility/Optimize.c
+-@@ -1721,7 +1721,7 @@ static {{c_ret_type}} __Pyx_PyObject_CompareFloatInt{{
+-         Py_ssize_t iop2 = __Pyx_PyLong_CompactValue(op2);
+-         if (float_op1 {{c_op}} ((double)iop2)) {{return_true}}; else {{return_false}};
+-     }
+--    if (unlikely(!isfinite(float_op1))) {
+-+    if (unlikely(!__Pyx_isfinite(float_op1))) {
+-         // CPython just compares inf/nan to 0.0
+-         if (float_op1 {{c_op}} 0.0) {{return_true}}; else {{return_false}};
+-     } else {
+-@@ -1738,7 +1738,7 @@ static {{c_ret_type}} __Pyx_PyObject_CompareFloatInt{{
+-         }
+-     }
+-     #else
+--    if (unlikely(!isfinite(float_op1))) {
+-+    if (unlikely(!__Pyx_isfinite(float_op1))) {
+-         // CPython just compares inf/nan to 0.0
+-         if (float_op1 {{c_op}} 0.0) {{return_true}}; else {{return_false}};
+-     } else {
+-@@ -1787,7 +1787,7 @@ static {{c_ret_type}} __Pyx_PyObject_CompareIntFloat{{
+-         Py_ssize_t iop1 = __Pyx_PyLong_CompactValue(op1);
+-         if (((double)iop1) {{c_op}} float_op2) {{return_true}}; else {{return_false}};
+-     }
+--    if (unlikely(!isfinite(float_op2))) {
+-+    if (unlikely(!__Pyx_isfinite(float_op2))) {
+-         // CPython just compares inf/nan to 0.0
+-         if (0.0 {{c_op}} float_op2) {{return_true}}; else {{return_false}};
+-     } else {
+-@@ -1804,7 +1804,7 @@ static {{c_ret_type}} __Pyx_PyObject_CompareIntFloat{{
+-         }
+-     }
+-     #else
+--    if (unlikely(!isfinite(float_op2))) {
+-+    if (unlikely(!__Pyx_isfinite(float_op2))) {
+-         // CPython just compares inf/nan to 0.0
+-         if (0.0 {{c_op}} float_op2) {{return_true}}; else {{return_false}};
+-     } else {
