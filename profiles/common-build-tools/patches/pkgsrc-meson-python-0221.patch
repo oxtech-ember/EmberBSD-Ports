@@ -1,0 +1,76 @@
+Origin: pkgsrc upstream, NetBSD/pkgsrc@03657d7d3924a246d45a8638fdc4b868a6d8efc6.
+Update meson-python and use the upstream pkgsrc ABI tag support.
+
+--- a/devel/py-meson_python/Makefile
++++ b/devel/py-meson_python/Makefile
+@@ -1,6 +1,6 @@
+-# $NetBSD: Makefile,v 1.12 2026/09/08 11:48:18 adam Exp $
++# $NetBSD: Makefile,v 1.15 2026/10/02 04:56:01 adam Exp $
+ 
+-DISTNAME=	meson_python-0.21.0
++DISTNAME=	meson_python-0.22.1
+ PKGNAME=	${PYPKGPREFIX}-${DISTNAME}
+ CATEGORIES=	devel python
+ MASTER_SITES=	${MASTER_SITE_PYPI:=m/meson_python/}
+@@ -17,7 +17,12 @@
+ TEST_DEPENDS+=	${PYPKGPREFIX}-test-cov>=0:../../devel/py-test-cov
+ TEST_DEPENDS+=	${PYPKGPREFIX}-test-mock>=0:../../devel/py-test-mock
+ TEST_DEPENDS+=	${PYPKGPREFIX}-wheel>=0:../../devel/py-wheel
+-TEST_DEPENDS+=	git-base>=0:../../devel/git-base
++TEST_DEPENDS+=	patchelf>=0:../../devel/patchelf
++
++USE_TOOLS+=	git:test
++
++# as of 0.22.0
++# 22 failed, 123 passed, 14 skipped, 9 errors
+ 
+ .include "../../lang/python/pyversion.mk"
+ .if ${PYTHON_VERSION} < 311
+--- a/devel/py-meson_python/distinfo
++++ b/devel/py-meson_python/distinfo
+@@ -1,6 +1,5 @@
+-$NetBSD: distinfo,v 1.11 2026/09/08 19:50:55 adam Exp $
++$NetBSD: distinfo,v 1.14 2026/10/02 04:56:01 adam Exp $
+ 
+-BLAKE2s (meson_python-0.21.0.tar.gz) = 7fd11f20e3326404b9d2aed3b17c6450c9a18d84e1d9c23a5037fb990fc157a5
+-SHA512 (meson_python-0.21.0.tar.gz) = be42607cb7645afab8b32d9565a60d6a7ec2315fcc7167ab14bc5cf81ac8190b3bb25cdf9602d37f4547b5cefd2a328f896eece72dacd4b4339b3314765d012a
+-Size (meson_python-0.21.0.tar.gz) = 113370 bytes
+-SHA1 (patch-mesonpy___tags.py) = 887610adc5c393d445333176fc51f99fcd46215c
++BLAKE2s (meson_python-0.22.1.tar.gz) = ce9996d44d5a5f0e7241024ee823d5b48e1199f46be4fd9af0e41dbfbfbf705a
++SHA512 (meson_python-0.22.1.tar.gz) = 2ea216661b614d6ac22afec5f432335e0a08a9041df9e479bbb0c381e75631cb58b9a054e8c82d2493b01cd651d1f593392fa53c295ffc5b7cc4a7a534e1a7e3
++Size (meson_python-0.22.1.tar.gz) = 121887 bytes
+--- a/devel/py-meson_python/patches/patch-mesonpy___tags.py
++++ /dev/null
+@@ -1,32 +0,0 @@
+-$NetBSD: patch-mesonpy___tags.py,v 1.1 2026/09/08 19:50:55 adam Exp $
+-
+-Restore ABI tag handling from 0.20.0 to fix building certain packages.
+-
+---- mesonpy/_tags.py.orig	2026-09-08 19:43:03.139256199 +0000
+-+++ mesonpy/_tags.py
+-@@ -31,6 +31,11 @@ def get_interpreter_tag() -> str:
+-     return f'{name}{version[0]}{version[1]}'
+- 
+- 
+-+def _get_cpython_abi() -> str:
+-+    version = sys.version_info
+-+    return f'cp{version[0]}{version[1]}'
+-+
+-+
+- def get_abi_tag() -> str:
+-     # The best solution to obtain the Python ABI is to parse the
+-     # $SOABI or $EXT_SUFFIX sysconfig variables as defined in PEP-314.
+-@@ -39,7 +44,12 @@ def get_abi_tag() -> str:
+-     # Using $EXT_SUFFIX will not break when PyPy will fix this.
+-     # See https://foss.heptapod.net/pypy/pypy/-/issues/3816 and
+-     # https://github.com/pypa/packaging/pull/607.
+--    empty, abi, ext = str(sysconfig.get_config_var('EXT_SUFFIX')).split('.')
+-+    try:
+-+        empty, abi, ext = str(sysconfig.get_config_var('EXT_SUFFIX')).split('.')
+-+    except ValueError as exc:
+-+        if sys.implementation.name != 'cpython':
+-+            raise NotImplementedError from exc
+-+        return _get_cpython_abi()
+- 
+-     # The packaging module initially based his understanding of the
+-     # $SOABI variable on the inconsistent value reported by PyPy, and
