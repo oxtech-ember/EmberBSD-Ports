@@ -144,7 +144,7 @@ Descriptor exhaustion in session child services remains a separate unresolved ob
 
 Ordinary kernel profiles retain the passive V3D observer. The manually
 selected native display profile has a separate
-[fixed-mode KMS contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/bcmv3d-kms.md).
+[fixed-mode KMS contract](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/bcmv3d/docs/bcmv3d-kms.md).
 The public [session diagnostic](../tests/plasma-session/README.md) accepts
 `--backend drm` with its fixed 1920x1080 policy. Its source and host controls
 check backend selection and current output fields. The unmodified public

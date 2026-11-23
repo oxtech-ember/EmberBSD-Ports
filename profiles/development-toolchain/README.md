@@ -290,7 +290,7 @@ the complete profile has not passed its acceptance gate.
 The current AArch64 VM kernel starts processes with flush-to-zero and default
 NaN modes. A separate native probe reproduces loss of subnormal results and
 NaN payloads with both base GCC 12.5 and this candidate. Process-local IEEE
-mode produces the expected values. The [EmberBSD kernel correction](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/aarch64-fp-state.md)
+mode produces the expected values. The [EmberBSD kernel correction](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/aarch64/aarch64/docs/aarch64-fp-state.md)
 passes production contracts and native object compilation; its boot/runtime
 acceptance remains required. Compiler flags must not conceal the failure. Nested-function stack
 trampolines also fail with both compilers on this platform. GCC16's current
@@ -299,7 +299,7 @@ during runtime initialization. An unchanged upstream atomic LTO test exposed
 a separate libc CAS1/CAS2 defect: the helper compares untrimmed expected
 register bits against a zero-extended narrow load. The failing executable
 uses the libc helper; the passing variant contains a normalizing libgcc
-helper. The [OS CAS repair](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/aarch64-outlined-cas.md)
+helper. The [OS CAS repair](https://github.com/oxtech-ember/EmberBSD/blob/main/common/lib/libc/arch/aarch64/atomic/docs/aarch64-outlined-cas.md)
 passes 850 native production checks and that unchanged upstream test linked
 explicitly to the corrected objects. On physical Zero 3W the complete corrected
 libc is installed, and the original atomic/binary128 LTO cases pass with and

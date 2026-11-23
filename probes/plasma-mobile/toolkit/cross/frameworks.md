@@ -224,7 +224,7 @@ QML import passes its three assertions with the upstream QML fixture.
 
 KI18n's original country suite first failed because the base libintl applied
 Welsh plural selection to ordinary translations. The
-[EmberBSD libintl fix](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/libintl-validation.md)
+[EmberBSD libintl fix](https://github.com/oxtech-ember/EmberBSD/blob/main/lib/libintl/docs/libintl-validation.md)
 passes 200 shared/static assertions and restores all 22 country checks without
 changing their expectations. Subdivision, timezone and declarative suites
 pass 13, 19 and 15 checks. Legacy KLocalizedContext rows still emit singleton

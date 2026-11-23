@@ -5,17 +5,17 @@ Mesa's open NPU stack. It does not enable GPU/NPU hardware. It helps avoid
 selecting an incompatible userspace or treating a device node as acceleration.
 
 The physical target is Orange Pi Zero 3W with A733. EmberBSD now supplies
-native power and clock providers. The [GPU PLL and identity check](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-identification.md#physical-pll-result)
+native power and clock providers. The [GPU PLL and identity check](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-gpu-identification.md#physical-pll-result)
 reads BVNC `36.56.104.183` after strict CORE ON/Q readiness.
-The [native firmware preflight](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwinfo.md#physical-preflight-result)
+The [native firmware preflight](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-gpu-fwinfo.md#physical-preflight-result)
 reads the matching firmware and validates its metadata on the board.
-The [native memory preparer](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwmem.md#physical-preparation-result)
-also passes on the board. The [native firmware bootstrap](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwboot.md#physical-bootstrap-result)
+The [native memory preparer](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-gpu-fwmem.md#physical-preparation-result)
+also passes on the board. The [native firmware bootstrap](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-gpu-fwboot.md#physical-bootstrap-result)
 now executes firmware on Zero 3W. It reports startup and matching hardware/firmware
-BVNC through direct coherent memory. The [LOGTYPE and MMUCACHE commands](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwprobe.md#physical-command-result)
+BVNC through direct coherent memory. The [LOGTYPE and MMUCACHE commands](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-gpu-fwprobe.md#physical-command-result)
 also complete with verified return words, queue progress and executed-command counters.
 All firmware allocations remain device-owned.
-The [native compute check](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwcompute.md#physical-stages-19-21-result)
+The [native compute check](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-gpu-fwcompute.md#physical-stages-19-21-result)
 now passes stages 1–21 with this Mesa producer. The GPU writes `0x13579bdf`;
 client queue, timeline, and fresh fault checks agree. This is one bounded
 dispatch after a fresh boot. PowerVR DRM, rendering, and accelerated Plasma

@@ -129,7 +129,7 @@ and `struct unpcbid`, as specified by [unix(4)](https://man.netbsd.org/unix.4).
 The new upstream client test compares PID and effective UID/GID with the
 process that created the socket. The old implementation fails this check.
 Use an EmberBSD kernel containing the
-[local-socket fixes](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/local-socket-compatibility.md).
+[local-socket fixes](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/kern/docs/local-socket-compatibility.md).
 Older kernels also omit socketpair peer identity and can block a full-buffer
 send despite `MSG_DONTWAIT`; a library-side identity fallback would hide
 the missing kernel contract.

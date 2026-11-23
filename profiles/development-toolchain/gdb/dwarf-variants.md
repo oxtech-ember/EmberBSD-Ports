@@ -3,7 +3,7 @@
 This suite exercises native GDB 18.1 on NetBSD 11/AArch64. Ports owns the
 GDB adaptation and its debugger tests. The OS repository owns the separate
 CTF converter and its type/symbol association limits, described in the
-[OS CTF guide](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/ctf-external-types.md).
+[OS CTF guide](https://github.com/oxtech-ember/EmberBSD/blob/main/external/cddl/osnet/dist/tools/ctf/cvt/docs/ctf-external-types.md).
 These fixtures and local patches are AI-assisted EmberBSD work.
 
 ## Build and run

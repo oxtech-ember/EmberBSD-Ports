@@ -32,9 +32,9 @@ It neither simulates GPU success nor establishes target rendering.
 
 ## Isolated target execution
 
-Use a matched experimental [VirGL trial kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/utm-virgl-optin.md) with explicit classic VirGL
-negotiation and the existing DMA/ownership checks retained. Ordinary VirtGPU trial
-still disables VirGL. The selected paired QEMU must use its opt-in classic
+Use a matched experimental [VirGL trial kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/virtio/docs/utm-virgl-optin.md) with explicit classic VirGL
+negotiation and the existing DMA/ownership checks retained. Without
+`VIRTGPU_VIRGL` the VirtGPU kernel does not request VirGL. The selected paired QEMU must use its opt-in classic
 lifecycle profile and the accepted ANGLE Metal renderer. Kernel creation,
 host identity checks and the isolated VM lifecycle are separate from this
 target runner; see [the paired host instructions](../../../probes/utm-virgl-host/qemu/README.md).

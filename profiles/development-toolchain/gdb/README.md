@@ -82,7 +82,7 @@ fallback to older dependencies.
 ## Acceptance on the target
 
 First generate the external-object fixtures with the OS repository's
-[CTF/DWARF contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/dtrace-dwarf.md).
+[CTF/DWARF contract](https://github.com/oxtech-ember/EmberBSD/blob/main/external/cddl/osnet/docs/dtrace-dwarf.md).
 Use the complete output directory; `.dwo` and `types.sup` files must remain
 alongside their corresponding objects. Compile the live workload separately:
 

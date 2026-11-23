@@ -33,7 +33,7 @@ to the existing public DRM platform API. It requires no DRM master, primary
 open, global PCI access or fabricated PCI IDs. Older kernels keep their
 existing discovery; malformed metadata never silently falls back.
 
-The matching [native kernel interface](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/bcm2712-v3d-gl.md)
+The matching [native kernel interface](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/bcmv3d/docs/bcm2712-v3d-gl.md)
 provides serialized bin/render jobs and binary synchronization. On 2026-10-11,
 CM5 Rev 1.0 / BCM2712 D0 (4 GiB, 64 GB eMMC), on Waveshare CM5-NANO-B,
 passed actual installed hardware rendering. Existing UEFI was preserved;
@@ -178,7 +178,7 @@ subsequent 1280x800 ordinary render lifecycles pass too. Run the
 The kernel's separate checker passes 80 SCM_RIGHTS/duplicate-import/mmap
 lifecycles in 0.07 seconds. It first exposed native DMA-BUF reference leaks;
 those repairs and actual-source regressions belong to the
-[OS receipt](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/bcm2712-v3d-gl.md#physical-prime-acceptance-2026-10-11).
+[OS receipt](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/bcmv3d/docs/bcm2712-v3d-gl.md#physical-prime-acceptance-2026-10-11).
 This does not establish foreign-device DMA, arbitrary modifiers or remote UI.
 
 DMA-BUF bundle SHA256: `d00a2880ad5dd397eebd4e521ecafb608750b954d81dd4f6bb06c318dace2800`.

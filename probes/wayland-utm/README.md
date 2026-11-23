@@ -222,5 +222,5 @@ base libdrm.so.3 while this private build provides libdrm.so.2. Loading both
 would mix the DRM stacks. wlroots retains its built-in KMS plane handling.
 This probe does not provide a GNOME Wayland port or a new
 display manager. See the OS's
-[VirtIO-GPU design](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/utm-virgl-design.md)
+[VirtIO-GPU design](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/virtio/docs/utm-virgl-design.md)
 for the staged runtime acceptance checks.

@@ -5,7 +5,7 @@ EmberBSD read-only `hw.drm2.identity<minor>` PCI record. It is AI-assisted
 and has not been submitted upstream. The upstream archive/license and
 imported pkgsrc patches remain unchanged; `sources.tsv` pins its original
 URL and SHA256. The matching kernel interface is documented in
-[EmberBSD](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/drm-native-identity.md).
+[EmberBSD](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/drm/docs/drm-native-identity.md).
 
 A metadata-capable device can be discovered without opening its primary
 node, owning DRM master, or opening `/dev/pci` or `/dev/drvctl`. Primary

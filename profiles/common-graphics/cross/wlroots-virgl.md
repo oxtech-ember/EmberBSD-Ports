@@ -14,7 +14,7 @@ prepared by [prepare-wlroots-drm.rb](prepare-wlroots-drm.rb). The consumer adds
 an explicit renderer policy; the installed library payload is unchanged.
 Every package file, link and recursive runtime provider is verified.
 
-The guest needs the separate [VirGL trial kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/utm-virgl-optin.md)
+The guest needs the separate [VirGL trial kernel](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/virtio/docs/utm-virgl-optin.md)
 including OS commit `9c0b92bea0af2b69fbdfcbf633b7c0be74be650c` or its descendant.
 Keep a matched recovery bundle. This commit fixes modern PCI queue disable
 after child teardown; it does not change GPU feature or DMA safety policy.

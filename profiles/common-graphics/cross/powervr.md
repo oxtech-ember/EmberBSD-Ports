@@ -125,10 +125,10 @@ The source-causal ABI proof remains in the
 
 First prepare the native OS driver. The current board kernel acceptance uses
 EmberBSD `f46cd40a5f28`. Its ordinary DTB starts in observe-only mode.
-Follow the OS [render-node procedure](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-pvr-render.md),
+Follow the OS [render-node procedure](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-pvr-render.md),
 including firmware stage 13 before registration. The
-[query contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-pvr-queries.md)
-and [syncobj contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/drm-syncobj.md)
+[query contract](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-pvr-queries.md)
+and [syncobj contract](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/external/bsd/drm2/drm/docs/drm-syncobj.md)
 are required dependencies. Package installation alone does not activate them.
 
 Use the canonical `vulkan-loader` and `vulkan-headers` packages.
@@ -167,7 +167,7 @@ The AArch64 cross package builds with the same common GCC16 and LLVM toolchain.
 This package build does not establish Zink execution on PowerVR.
 The physical results below apply to the earlier nb5 package.
 
-The compute consumer requires the OS [native execution path](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-pvr-execution.md).
+The compute consumer requires the OS [native execution path](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/arch/arm/sunxi/docs/a733-pvr-execution.md).
 Complete its explicit firmware preparation and execution activation first.
 Build the consumer and validate its SPIR-V with the recorded host tools:
 
