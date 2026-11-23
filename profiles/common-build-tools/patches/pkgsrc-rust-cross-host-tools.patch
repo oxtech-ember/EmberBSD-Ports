@@ -8,10 +8,20 @@ Not submitted upstream.
 
 --- a/lang/rust/rust.mk
 +++ b/lang/rust/rust.mk
-@@ -63,6 +63,18 @@
+@@ -63,6 +63,28 @@
  .  include "${RUST_DIR}/buildlink3.mk"
  .endif
  
++# Consumers that invoke rustc or Cargo directly need the target std's exact ABI.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++.  if !empty(EMBERBSD_CROSS_RUST_STD:U)
++_RUST_STD_TARGET_CMD=	${MAKE} -C ${PKGSRCDIR:Q}/lang/${EMBERBSD_CROSS_RUST_STD:Q} -V '$${STD_SUBDIR:T}'
++RUST_SELECTED_TARGET_TRIPLE=	${_RUST_STD_TARGET_CMD:sh}
++.  else
++RUST_SELECTED_TARGET_TRIPLE=	${RUST_TARGET_TRIPLE:U}
++.  endif
++.endif
++
 +# A cross build runs the build-host compiler in native mode. It needs
 +# the host rust-bin and the std of the target, both as tool dependencies.
 +# A native build in native mode, such as a host tool dependency of a cross

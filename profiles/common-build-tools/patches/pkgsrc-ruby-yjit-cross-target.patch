@@ -2,22 +2,16 @@ Origin: EmberBSD, AI-assisted. Compile the Ruby JIT for the selected NetBSD targ
 
 --- a/lang/ruby40/options.mk
 +++ b/lang/ruby40/options.mk
-@@ -18,6 +18,19 @@
+@@ -18,6 +18,13 @@
  CONFIGURE_ARGS+=	--enable-yjit --disable-zjit
  RUST_REQ=		1.58.0
  .include "../../lang/rust/rust.mk"
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 +# The release build invokes rustc directly to generate its static archive.
-+.if !empty(EMBERBSD_CROSS_RUST_STD:U)
-+# Query the selected standard library's installation directory for its exact ABI.
-+_RUBY_STD_TARGET_CMD=	${MAKE} -C ${PKGSRCDIR:Q}/lang/${EMBERBSD_CROSS_RUST_STD:Q} -V '$${STD_SUBDIR:T}'
-+_RUBY_JIT_RUST_TRIPLE=	${_RUBY_STD_TARGET_CMD:sh}
-+.elif !empty(RUST_TARGET_TRIPLE:U)
-+_RUBY_JIT_RUST_TRIPLE=	${RUST_TARGET_TRIPLE}
-+.else
++.if empty(RUST_SELECTED_TARGET_TRIPLE)
 +PKG_FAIL_REASON+=	"Set RUST_TARGET_TRIPLE to the target triple of the selected Rust standard library"
 +.endif
-+MAKE_FLAGS+=	RUBY_JIT_RUST_TARGET=--target=${_RUBY_JIT_RUST_TRIPLE}
++MAKE_FLAGS+=	RUBY_JIT_RUST_TARGET=--target=${RUST_SELECTED_TARGET_TRIPLE}
 +.endif
  .endif
  
