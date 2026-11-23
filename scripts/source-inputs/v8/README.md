@@ -5,10 +5,10 @@ source-only package provides the tree, headers and tools; it does not provide
 a V8 library. Node and Chromium-based consumers build their own ABI-specific
 artifacts from this source.
 
-Electron 45.3.2's complete ordered V8 series is pinned to Electron commit
-`9ee9e7718172287d068cee397097c2d79a137eec`. The numbered patches preserve its
-order and attribution; the separate prepared-source identity patch retains
-EmberBSD's receipt-bound code-cache salt. Verify the series against the pinned
+Electron 45.4.1's complete ordered V8 series is pinned to Electron commit
+`deaded07eebdfe9a3737884933b1acbe65971f64`. The numbered patches preserve its
+order and attribution. Embedded runtimes derive their V8 embedder string from
+the verified prepared tree hash and their upstream runtime identifier. Verify the series against the pinned
 Git object using `test-electron-series.py --git /path/to/git --electron-source
 /path/to/electron`. Other consumers use the same effective V8 tree.
 

@@ -1,8 +1,7 @@
-# Electron 45.3.2 runtime for NetBSD.
+# Electron 45.4.1 runtime for NetBSD.
 # Target execution, GUI and hardware acceptance remain pending.
 
-DISTNAME=	electron-45.3.2
-PKGREVISION=	2
+DISTNAME=	electron-45.4.1
 CATEGORIES=	devel
 # The source owner prepares the complete pinned workspace separately.  The
 # controller verifies it; no prebuilt distribution ZIP is a build input.

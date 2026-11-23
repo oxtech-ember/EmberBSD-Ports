@@ -23,11 +23,11 @@ with TemporaryDirectory() as directory:
         (view / 'protobuf' / name).symlink_to(protobuf / name)
     options = SimpleNamespace(node_source=node, perfetto_source=perfetto, protobuf_source=protobuf)
     args = {'emberbsd_node_source_identity': str(node / 'emberbsd-prepared-source.json'),
-            'v8_prepared_source_receipt': '//v8/emberbsd-prepared-source.json',
-            'v8_version_hash_salt_files': [], 'v8_version_hash_salt': ''}
+            'v8_embedder_string': '-electron.0123456789abcdef'}
     keys = ['EMBERBSD_' + n + '_SOURCE_SHA256' for n in ('NODE', 'V8', 'PERFETTO', 'PROTOBUF')]
     old = dict.fromkeys(keys, 'a' * 64)
     new = dict.fromkeys(keys, 'b' * 64)
+    old['ELECTRON_V8_EMBEDDER_STRING'] = new['ELECTRON_V8_EMBEDDER_STRING'] = '-electron.0123456789abcdef'
     assert m.verified_common_source_refresh(args, args, old, new, options, root / 'work') == set(keys)
     assert not m.verified_common_source_refresh(args, args, old, old, options, root / 'work')
     replacement = root / 'new-node'

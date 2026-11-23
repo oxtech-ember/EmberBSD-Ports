@@ -11,7 +11,7 @@ explicit Git executable for this source operation.
 For example, obtain the pinned Electron source and prepare an arm64 workspace:
 
 ```sh
-/absolute/git clone --depth 1 --branch v45.3.2 \
+/absolute/git clone --depth 1 --branch v45.4.1 \
     https://github.com/electron/electron.git /absolute/electron-pristine
 /absolute/control-python -B \
     pkgsrc/devel/electron44/files/prepare-sources.py \
@@ -21,13 +21,13 @@ For example, obtain the pinned Electron source and prepare an arm64 workspace:
 ```
 
 The checkout's actual commit must equal
-`9ee9e7718172287d068cee397097c2d79a137eec`; a matching tag name is insufficient.
+`deaded07eebdfe9a3737884933b1acbe65971f64`; a matching tag name is insufficient.
 The destination parent must exist and the destination must be new and outside
 the input checkout. `x64` is the other supported source selection. This selects
 dependency source conditions, not the compiler's target ABI.
 
-The helper checks the original Chromium 156.0.8078.100 and Node 24.22.2 DEPS
-values and repository URLs without executing DEPS. The current 45.3.2 recipe
+The helper checks the original Chromium 156.0.8078.100 and Node 24.22.3 DEPS
+values and repository URLs without executing DEPS. The current 45.4.1 recipe
 has an empty recipe-local `patch-*` set; the helper applies any future declared
 patches through Git with full context and in order. Adding a recipe patch without
 adding it to the order is an error.

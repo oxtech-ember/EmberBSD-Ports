@@ -112,7 +112,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n node_inspector_string_traits_header=""\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n enable_swiftshader=false\n enable_swiftshader_vulkan=false\n angle_enable_swiftshader=false\n dawn_use_swiftshader=false\n clang_version=""\n mac_deployment_target=""\n v8_metagen_runtime_inputs=[]\n v8_metagen_host_extra_flags=[]\n v8_metagen_extra_flags=[]\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n node_inspector_string_traits_header=""\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_embedder_string=""\n feature=false\n enable_swiftshader=false\n enable_swiftshader_vulkan=false\n angle_enable_swiftshader=false\n dawn_use_swiftshader=false\n clang_version=""\n mac_deployment_target=""\n v8_metagen_runtime_inputs=[]\n v8_metagen_host_extra_flags=[]\n v8_metagen_extra_flags=[]\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
@@ -199,8 +199,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                perfetto_host_runtime_view=str(new_view), perfetto_host_runtime_inputs=new_runtime_inputs,
                node_module_version=130,
                node_inspector_string_traits_header='third_party/inspector_protocol/crdtp/chromium/protocol_traits.h',
-               v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
-               v8_version_hash_salt_files=[], v8_version_hash_salt='')
+               v8_embedder_string='-electron.0123456789abcdef')
     new.update(emberbsd_node_source_identity=str(new_node_receipt.resolve(strict=True)),
                emberbsd_node_configure_helper=old['emberbsd_node_configure_helper'],
                emberbsd_node_configure_inputs=new_node_configure_inputs,
@@ -234,7 +233,8 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     opt.protobuf_source = root/'protobuf'; opt.protobuf_ports_source = root/'owner'
     opt.protobuf_archive = root/'protobuf.tar'; opt.protobuf_patch = root/'patch'
     opt.boringssl_source = root/'boringssl'; opt.boringssl_archive = root/'boringssl.tar'
-    env.update(EMBERBSD_BORINGSSL_SOURCE_SHA256='a' * 64,
+    env.update(EMBERBSD_EXPAT_SOURCE_SHA256='a' * 64,
+               EMBERBSD_BORINGSSL_SOURCE_SHA256='a' * 64,
                EMBERBSD_COMPRESSION_SOURCE_SHA256='a' * 64,
                EMBERBSD_MEDIA_HEADER_LIBYUV_SHA256='a' * 64,
                EMBERBSD_MEDIA_HEADER_LIBSRTP_SHA256='a' * 64,
@@ -269,6 +269,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
         candidate.v8_metagen_selection = {'version': 1, 'aliases': {'libclang.dylib': 'lib/libclang.dylib'}, 'extra': ['lib/libiconv.2.dylib']}
         bound=b.bind_versioned(sdk, Native(), candidate.work/'target-commands', state['commands'])
         return Native(), {'EMBERBSD_PROTOC_SELECTION_SHA256':'e' * 64, 'EMBERBSD_DEVTOOLS_PROVIDER_SHA256':'a' * 64, 'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'),
+                          'EMBERBSD_EXPAT_SOURCE_SHA256':'a' * 64,
                           'EMBERBSD_BORINGSSL_SOURCE_SHA256':'a' * 64,
                           'EMBERBSD_COMPRESSION_SOURCE_SHA256':'a' * 64,
                           'EMBERBSD_MEDIA_HEADER_LIBYUV_SHA256':'a' * 64,
@@ -276,6 +277,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                           'EMBERBSD_PERFETTO_SOURCE_SHA256':'a' * 64,
                           'EMBERBSD_PROTOBUF_SOURCE_SHA256':'a' * 64,
                           'EMBERBSD_HOST_TYPESCRIPT':'/new', 'EMBERBSD_HOST_NODE':str(host/'bin/node'),
+                          'ELECTRON_V8_EMBEDDER_STRING': '-electron.0123456789abcdef',
                           'EMBERBSD_V8_SOURCE_SHA256':state.get('v8_sha', 'b' * 64),
                           'EMBERBSD_NODE_SOURCE_SHA256':state.get('node_sha', 'b' * 64),
                           'EMBERBSD_ELECTRON_NODE_ABI_HELPER_SHA256':state.get('node_abi_helper_sha', 'c' * 64),
@@ -315,14 +317,13 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     except ValueError as e: assert 'verified common PROTOBUF source identities' in str(e)
     state.pop('extra'); config.write_bytes(before)
     for invalid in (
-        dict(new, v8_prepared_source_receipt='//custom/receipt.json'),
-        dict(new, v8_version_hash_salt_files=['//electron/patches/v8/.patches']),
-        dict(new, v8_version_hash_salt='custom-salt'),
-        {key: value for key, value in new.items() if key != 'v8_prepared_source_receipt'},
+        dict(new, v8_embedder_string='-electron.invalid'),
+        dict(new, v8_embedder_string='-electron.ffffffffffffffff'),
+        {key: value for key, value in new.items() if key != 'v8_embedder_string'},
     ):
         state['values'] = invalid
         try: b.reconfigure(opt); raise AssertionError('accepted noncanonical common V8 cache identity')
-        except ValueError as e: assert 'verified common V8 receipt salt' in str(e)
+        except ValueError as e: assert 'verified common V8 embedder string' in str(e)
         assert config.read_bytes()==before and (out/'build.ninja').read_text()=='old graph' and not (work/'reconfigure-incomplete').exists()
     state['values'] = new; state['v8_sha'] = 'invalid'
     try: b.reconfigure(opt); raise AssertionError('accepted invalid V8 source identity')
@@ -508,8 +509,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert saved_after['arguments']['emberbsd_node_configure_inputs']==new_node_configure_inputs
     assert saved_after['arguments']['emberbsd_node_configure_dependencies']==new_node_configure_dependencies
     gn_args = (out/'args.gn').read_text()
-    assert 'v8_prepared_source_receipt = "//v8/emberbsd-prepared-source.json"\n' in gn_args
-    assert 'v8_version_hash_salt_files = [  ]\n' in gn_args and 'v8_version_hash_salt = ""\n' in gn_args
+    assert 'v8_embedder_string = "-electron.0123456789abcdef"\n' in gn_args
     assert (out/'build.ninja').read_text()!='old graph' and obj.read_bytes()==b'object' and json.loads(binding.read_text())==commands
     log = work/'reconfigure.log'
     assert 'fixture GN invocation 1' in log.read_text() and 'fixture GN invocation 2' in log.read_text()

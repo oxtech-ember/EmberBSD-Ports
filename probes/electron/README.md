@@ -5,7 +5,7 @@ The application uses Electron and needs the native Electron runtime.
 
 ## Update in progress
 
-The recipe selects Electron 45.3.2 (`9ee9e7718172287d068cee397097c2d79a137eec`), Chromium 156.0.8078.100 (`46876a0c2df3492ed67a8846950ba6d37170b58c`) and Node.js 24.22.2 (`f7f273a9bb6445f6f7fb6349105e7532972045fb`). Git dependency acquisition, the complete upstream patch series, and the ordered BSD source layer have been prepared. The selected common Node 26.13.1 and Chromium sources contain all eight revoked RSA keys; this source inventory does not establish TLS runtime behavior. The current build, packaging and target acceptance remain pending. The following 45.2.1 results are historical and do not establish 45.3.2 acceptance.
+The recipe selects Electron 45.4.1 (`deaded07eebdfe9a3737884933b1acbe65971f64`), Chromium 156.0.8078.100 (`46876a0c2df3492ed67a8846950ba6d37170b58c`) and Node.js 24.22.3 (`e63cab040c09d43ceef8cb35508c40044614e906`). Electron 45.4.1 takes upstream backports in its Electron patch series. Target build and execution use the provider versions selected by the Ports producer. The 45.2.1 results below describe that earlier release.
 
 ## Previous source pins (45.2.1)
 

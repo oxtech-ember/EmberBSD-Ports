@@ -22,9 +22,8 @@ with tempfile.TemporaryDirectory() as tmp:
     (work / 'out/args.gn').write_text('')
     registry = root / 'verified-native-registry'; registry.mkdir()
     binding = root / 'binding'; binding.mkdir(); (binding / 'commands.json').write_text('{}')
-    args = {'v8_prepared_source_receipt': '//v8/emberbsd-prepared-source.json',
-            'v8_version_hash_salt_files': [], 'v8_version_hash_salt': ''}
-    env = {'EMBERBSD_PROTOC_SELECTION_SHA256': 'a'*64, 'EMBERBSD_V8_SOURCE_SHA256': 'b'*64,
+    args = {'v8_embedder_string': '-electron.0123456789abcdef'}
+    env = {'ELECTRON_V8_EMBEDDER_STRING': '-electron.0123456789abcdef', 'EMBERBSD_PROTOC_SELECTION_SHA256': 'a'*64, 'EMBERBSD_V8_SOURCE_SHA256': 'b'*64,
            'EMBERBSD_CONTROL_GIT': '/git', 'PATH': '/native',
            'GOCACHE': str(work / 'go-cache'), 'GOPATH': str(work / 'go-path')}
     (work / 'configuration.json').write_text(json.dumps({'source': str(root), 'sdk': str(root),
@@ -55,7 +54,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assert getattr(options, 'source_view_created_files', None) == expected, 'source-view lacks verified created files'
         assert getattr(options, 'source_view_publication', None) is publication, 'source-view lacks selected publication'
         raise ReachedSourceView()
-    noops = ('keep_going_limit','require_common_v8','require_common_node','require_common_perfetto',
+    noops = ('prepare_source_inputs','keep_going_limit','require_common_v8','require_common_node','require_common_perfetto',
              'require_common_dependencies')
     returns = ('minizip_activation_args','xml_activation_args','ots_activation_args','codec_activation_args',
         'pdfium_activation_args','pffft_activation_args','expat_activation_args','cpuinfo_activation_args',

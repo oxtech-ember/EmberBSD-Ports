@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory(prefix='electron-common-sources-') as tmp:
         perfetto_source=root/'perfetto', perfetto_ports_source=perfetto,
         perfetto_archive=root/'perfetto.tar.gz', perfetto_patch=root/'patch',
         v8_source=root/'v8', v8_ports_source=v8_owner, v8_pkgsrc=root/'v8-export')
-    state = {'node': 'first', 'perfetto': 'first', 'v8': 'first'}
+    state = {'node': 'first', 'perfetto': 'first', 'v8': '0123456789abcdef' * 4}
     source_environments = []
     class Process:
         @staticmethod
@@ -48,11 +48,9 @@ with tempfile.TemporaryDirectory(prefix='electron-common-sources-') as tmp:
     assert values['node_inspector_string_traits_header'] == 'third_party/inspector_protocol/crdtp/chromium/protocol_traits.h'
     assert values['node_config_gn_root_target'] == '//electron'
     assert values['node_config_gn_root_pattern'] == '//electron:electron_dist_zip'
-    assert values['v8_prepared_source_receipt'] == '//v8/emberbsd-prepared-source.json'
-    assert values['v8_version_hash_salt_files'] == [] and values['v8_version_hash_salt'] == ''
+    assert values['v8_embedder_string'] == env['ELECTRON_V8_EMBEDDER_STRING'] == '-electron.0123456789abcdef'
     gn = build.gn_arguments(values)
-    assert 'v8_prepared_source_receipt = "//v8/emberbsd-prepared-source.json"\n' in gn
-    assert 'v8_version_hash_salt_files = [  ]\n' in gn and 'v8_version_hash_salt = ""\n' in gn
+    assert 'v8_embedder_string = "-electron.0123456789abcdef"\n' in gn
     assert all(values['node_shared_' + name] for name in build.NODE_SHARED_FEATURES)
     assert values['node_use_ffi'] and values['node_simdutf_include_from_target'] and values['use_system_simdutf']
     before = env.copy(); state['node'] = 'changed'; after = {}
@@ -60,6 +58,9 @@ with tempfile.TemporaryDirectory(prefix='electron-common-sources-') as tmp:
     assert before['EMBERBSD_NODE_SOURCE_SHA256'] != after['EMBERBSD_NODE_SOURCE_SHA256']
     assert before['EMBERBSD_PERFETTO_SOURCE_SHA256'] == after['EMBERBSD_PERFETTO_SOURCE_SHA256']
     assert before['EMBERBSD_V8_SOURCE_SHA256'] == after['EMBERBSD_V8_SOURCE_SHA256']
+    state['v8'] = 'f' * 64
+    changed = build.common_embedder_sources(options, {'process': Process()}, SimpleNamespace(tool=lambda _: '/selected/python'), after)
+    assert changed['v8_embedder_string'] == '-electron.' + 'f' * 16
     options.node_source = options.node_pkgsrc = None
     standalone = build.common_embedder_sources(options, {'process': Process()},
         SimpleNamespace(tool=lambda _: '/selected/python'), {})

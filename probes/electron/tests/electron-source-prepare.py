@@ -58,7 +58,8 @@ class Preparation(unittest.TestCase):
         for name, value in (("CHROMIUM_VERSION", "152.0.7977.167"),
                             ("CHROMIUM_REVISION", "dd78960ccd8a03a2fe1f629543d27783885b78e9"),
                             ("NODE_BEFORE", "v24.22.0"),
-                            ("NODE_VERSION", "v24.22.1")):
+                            ("NODE_VERSION", "v24.22.1"),
+                            ("NODE_REVISION", "f7f273a9bb6445f6f7fb6349105e7532972045fb")):
             setting = patch.object(preparer, name, value)
             setting.start()
             self.addCleanup(setting.stop)
@@ -227,6 +228,6 @@ if __name__ == "__main__":
         with tempfile.TemporaryDirectory(prefix="electron-production-source-") as work:
             root = preparer.prepare(options.electron_source, Path(work) / "prepared", options.git,
                                     "arm64", owner / "patches")
-            preparer.check_deps(root / "DEPS", "v24.22.2")
+            preparer.check_deps(root / "DEPS", preparer.NODE_VERSION)
         print("PASS: production Electron pin and complete recipe-local patch series")
     print("Scope: DEPS input preparation only; no dependency sync, hooks, compilation or target runtime")

@@ -1194,10 +1194,16 @@ def verified_common_source_refresh(old_arguments, new_arguments, old_environment
     if verified_node_source_refresh(old_arguments, new_arguments, old_environment,
                                     new_environment, options.node_source):
         permitted.add('EMBERBSD_NODE_SOURCE_SHA256')
-    require(new_arguments.get('v8_prepared_source_receipt') == '//v8/emberbsd-prepared-source.json' and
-            new_arguments.get('v8_version_hash_salt_files') == [] and
-            new_arguments.get('v8_version_hash_salt') == '',
-            'reconfigure requires the verified common V8 receipt salt')
+    key = 'ELECTRON_V8_EMBEDDER_STRING'
+    embedder = new_environment.get(key)
+    require(isinstance(embedder, str) and re.fullmatch(r'-electron\.[0-9a-f]{16}', embedder)
+            and new_arguments.get('v8_embedder_string') == embedder,
+            'reconfigure requires the verified common V8 embedder string')
+    if old_environment.get(key) != embedder:
+        require(old_environment.get('EMBERBSD_V8_SOURCE_SHA256') !=
+                new_environment.get('EMBERBSD_V8_SOURCE_SHA256'),
+                'V8 embedder string changed for the same verified source')
+        permitted.add(key)
     links = {
         'PERFETTO': (options.perfetto_source, ('src/third_party/perfetto',)),
         'PROTOBUF': (options.protobuf_source, ('src/third_party/protobuf/src',
@@ -1249,12 +1255,6 @@ def common_embedder_sources(options, sdk, native, environment):
         require(owner.is_file(), 'common V8 source owner is missing')
         commands.append(('V8', [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
                                 'verify-source', '--source', str(v8), '--pkgsrc-root', str(v8_export)]))
-        # The selected V8 tree is already the complete common prepared source,
-        # including its effective recipe patches. Key serialized caches to
-        # that verified tree receipt instead of Electron's legacy bundled V8
-        # patch-list salt, which does not describe this selected source tree.
-        values.update(v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
-                      v8_version_hash_salt_files=[], v8_version_hash_salt='')
     if node:
         owner = (getattr(options, 'node_ports_source', None) or options.ports_source) / 'scripts/source-inputs/node/source.py'
         require(owner.is_file(), 'common Node source owner is missing')
@@ -1289,6 +1289,15 @@ def common_embedder_sources(options, sdk, native, environment):
     for name, command in commands:
         result = sdk['process'].capture(command, env=source_owner_environment(environment))
         record = json.loads(result.stdout.decode('utf-8', 'strict'))
+        if name == 'V8':
+            digest = record.get('tree_sha256')
+            require(isinstance(digest, str) and re.fullmatch('[0-9a-f]{64}', digest),
+                    'common V8 receipt lacks its prepared tree hash')
+            # Upstream accepts a packager identity when the prepared sources have no Git checkout.
+            # Include it in args.gn as well so its change triggers an explicit GN regeneration.
+            embedder = '-electron.' + digest[:16]
+            environment['ELECTRON_V8_EMBEDDER_STRING'] = embedder
+            values['v8_embedder_string'] = embedder
         environment['EMBERBSD_' + name + '_SOURCE_SHA256'] = hashlib.sha256(
             json.dumps(record, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return values

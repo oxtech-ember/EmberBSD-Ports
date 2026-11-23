@@ -8,7 +8,7 @@ import subprocess
 p=argparse.ArgumentParser();p.add_argument('--git',required=True);p.add_argument('--electron-source',required=True);a=p.parse_args()
 repo=Path(a.electron_source).resolve(strict=True)
 patchdir=Path(__file__).resolve().parents[3]/'pkgsrc/lang/v8/patches'
-revision='9ee9e7718172287d068cee397097c2d79a137eec'
+revision='deaded07eebdfe9a3737884933b1acbe65971f64'
 def show(path):
     return subprocess.run([a.git,'-C',str(repo),'show',revision+':'+path],check=True,stdout=subprocess.PIPE).stdout
 names=[x for x in show('patches/v8/.patches').decode().splitlines() if x and not x.startswith('#')]

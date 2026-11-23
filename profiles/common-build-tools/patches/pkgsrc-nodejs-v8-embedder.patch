@@ -1,0 +1,213 @@
+Use the common prepared V8 tree fingerprint in the upstream embedder string.
+Origin: EmberBSD (AI-assisted).
+
+--- a/lang/nodejs/Makefile
++++ b/lang/nodejs/Makefile
+@@ -7,7 +7,7 @@
+ USE_CXX_FEATURES=	c++20 charconv
+ USE_LANGUAGES=		c c++
+ TOOL_DEPENDS+=		bsdtar-[0-9]*:../../archivers/bsdtar
+-TOOL_DEPENDS+=		v8-source-15.6.75.57{,nb[0-9]*}:../../lang/v8
++TOOL_DEPENDS+=		v8-source-15.6.75.57nb[1-9]*:../../lang/v8
+ TOOL_DEPENDS+=		inspector-protocol-[0-9]*:../../devel/inspector-protocol
+ TOOL_DEPENDS+=		llvm-libc-source>=23.1.4:../../lang/llvm-libc-source
+ TOOL_DEPENDS+=		clang-python-bindings>=23.1.4:../../lang/clang-python-bindings
+--- a/lang/nodejs/distinfo
++++ b/lang/nodejs/distinfo
+@@ -24,11 +24,12 @@
+ SHA1 (patch-src_node__postmortem__metadata.cc) = 9938482d724ad6636af5dc3fa719ec26ed8539ff
+ SHA1 (patch-tools_inspector__protocol.gyp) = c6beec4944ba02d23ee1815367759589afa0be45
+ SHA1 (patch-tools_install.py) = ac296123fa498c7edee3a5735f2e24c862037813
+-SHA1 (patch-tools_v8__gypfiles_ember__inspector__inputs.py) = 1d70c0a44dadd278ac6a4ad16f8349ae64356e16
++SHA1 (patch-tools_v8__gypfiles_ember__inspector__inputs.py) = 4ed309467a297b0fea8a345f675ffc2140689535
+ SHA1 (patch-tools_v8__gypfiles_inspector.gypi) = 1e607d74b7f56d21a3fc8301e1e05a534b458604
+ SHA1 (patch-tools_v8_gypfiles_abseil.gyp) = 8a8d82421b565bac205e87645a7681aab7df2c8b
+ SHA1 (patch-tools_v8_gypfiles_ember__metagen.py) = c21dbb7ccc4e86599624e096838212f6ca600b96
+-SHA1 (patch-tools_v8_gypfiles_v8.gyp) = f3f4490029f4e3c954c6c4f33a997656bcbe07df
++SHA1 (patch-tools_v8_gypfiles_features.gypi) = d4acb2d9b57eeceae2270122b3fae989a9afbbc1
++SHA1 (patch-tools_v8_gypfiles_v8.gyp) = 4687513c79a21accdbef066b53163ebdef11bb38
+ SHA1 (patch-v8-15.6-object-prototypes) = c836ff0be3ddbec67b511a93e7a0cb1cbea5a259
+ SHA1 (patch-v8-15.6-property-microtasks) = b426939c6a5a9da865be38b4083e9f8890392570
+ SHA1 (patch-v8-15.6-snapshot-callbacks) = 871139cdef5694e1e3fd56b16c647ea43618f430
+--- a/lang/nodejs/patches/patch-tools_v8__gypfiles_ember__inspector__inputs.py
++++ b/lang/nodejs/patches/patch-tools_v8__gypfiles_ember__inspector__inputs.py
+@@ -5,7 +5,7 @@
+ 
+ --- /dev/null
+ +++ tools/v8_gypfiles/ember_inspector_inputs.py
+-@@ -0,0 +1,69 @@
++@@ -0,0 +1,71 @@
+ +# SPDX-License-Identifier: BSD-2-Clause
+ +# Origin: EmberBSD (AI-assisted).
+ +"""Connect the common V8 roll tool to GYP inputs and source identities."""
+@@ -33,6 +33,8 @@
+ +
+ +def DoMain(args):
+ +    mode, *args = args
+++    if mode == 'v8-embedder-fingerprint':
+++        return tree_id(args[0], 'lang/v8')[:16]
+ +    if mode == 'identity':
+ +        return tree_id(args[0], args[1])
+ +    if mode != 'inputs' or len(args) != 2:
+--- /dev/null
++++ b/lang/nodejs/patches/patch-tools_v8_gypfiles_features.gypi
+@@ -0,0 +1,16 @@
++$NetBSD$
++
++Key V8 caches to the selected Node embedder and verified V8 sources.
++Origin: EmberBSD (AI-assisted).
++
++--- tools/v8_gypfiles/features.gypi
+++++ tools/v8_gypfiles/features.gypi
++@@ -340,7 +340,7 @@
++   'target_defaults': {
++     'conditions': [
++       ['v8_embedder_string!=""', {
++-        'defines': ['V8_EMBEDDER_STRING="<(v8_embedder_string)"',],
+++        'defines': ['V8_EMBEDDER_STRING="<(v8_embedder_string)-emberbsd.<!pymod_do_main(ember_inspector_inputs v8-embedder-fingerprint "<(V8_ROOT)/emberbsd-prepared-source.json")"',],
++       }],
++       ['v8_enable_disassembler==1', {
++         'defines': ['ENABLE_DISASSEMBLER',],
+--- a/lang/nodejs/patches/patch-tools_v8_gypfiles_v8.gyp
++++ b/lang/nodejs/patches/patch-tools_v8_gypfiles_v8.gyp
+@@ -93,31 +93,7 @@
+          ],
+          'include_dirs': [
+            '<(SHARED_INTERMEDIATE_DIR)',
+-@@ -558,7 +550,23 @@
+-       'target_name': 'v8_version',
+-       'type': 'none',
+-       'toolsets': ['host', 'target'],
+-+      'hard_dependency': 1,
+-+      'actions': [{
+-+        'action_name': 'generate_v8_source_salt',
+-+        'inputs': [
+-+          '<(V8_ROOT)/emberbsd-prepared-source.json',
+-+          '<(V8_ROOT)/tools/gen-version-hash-salt.py',
+-+        ],
+-+        'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/src/utils/version-hash-salt.inc' ],
+-+        'action': [
+-+          '<(python)', '<(V8_ROOT)/tools/gen-version-hash-salt.py',
+-+          '--header', '<(SHARED_INTERMEDIATE_DIR)/src/utils/version-hash-salt.inc',
+-+          '--build-root', '<(SHARED_INTERMEDIATE_DIR)',
+-+          '--receipt', '<(V8_ROOT)/emberbsd-prepared-source.json',
+-+        ],
+-+      }],
+-       'direct_dependent_settings': {
+-+        'include_dirs': [ '<(SHARED_INTERMEDIATE_DIR)' ],
+-         'sources': [
+-           '<(V8_ROOT)/include/v8-value-serializer-version.h',
+-           '<(V8_ROOT)/include/v8-version-string.h',
+-@@ -1050,7 +1058,35 @@
++@@ -1050,7 +1042,35 @@
+        ],
+      },  # v8_compiler_for_mksnapshot
+      {
+@@ -153,7 +129,7 @@
+        'type': 'none',
+        'toolsets': ['host', 'target'],
+        'hard_dependency': 1,
+-@@ -1091,10 +1127,11 @@
++@@ -1091,10 +1111,11 @@
+            'action': [
+              '<(python)',
+              '<(inspector_protocol_path)/code_generator.py',
+@@ -166,7 +142,7 @@
+              '--inspector_protocol_dir', '<(inspector_protocol_path)',
+            ],
+            'message': 'Generating inspector protocol sources from protocol json',
+-@@ -1105,6 +1142,44 @@
++@@ -1105,6 +1126,44 @@
+        'target_name': 'v8_base_without_compiler',
+        'type': 'static_library',
+        'toolsets': ['host', 'target'],
+@@ -211,7 +187,7 @@
+        'dependencies': [
+          'torque_generated_definitions',
+          'v8_bigint',
+-@@ -1410,6 +1485,12 @@
++@@ -1410,6 +1469,12 @@
+          }],
+          # Platforms that don't have Compare-And-Swap (CAS) support need to link atomic library
+          # to implement atomic memory access.
+@@ -224,7 +200,7 @@
+          # Clang needs it for some atomic operations (https://clang.llvm.org/docs/Toolchain.html#atomics-library).
+          ['(OS=="linux" and clang==1) or (v8_current_cpu in ["mips64", "mips64el", "arm", "riscv64", "loong64"])', {
+            'link_settings': {
+-@@ -1510,6 +1591,27 @@
++@@ -1510,6 +1575,27 @@
+        ],
+  
+        'conditions': [
+@@ -252,7 +228,7 @@
+          ['is_component_build', {
+            'defines': ["BUILDING_V8_BASE_SHARED"],
+          }],
+-@@ -1760,7 +1862,7 @@
++@@ -1760,7 +1846,7 @@
+          'v8_libbase',
+        ],
+        'sources': [
+@@ -261,7 +237,7 @@
+        ],
+        'conditions': [
+          ['component=="shared_library"', {
+-@@ -2115,12 +2217,12 @@
++@@ -2115,12 +2201,12 @@
+        'toolsets': ['host', 'target'],
+        'direct_dependent_settings': {
+          'sources': [
+@@ -276,7 +252,7 @@
+              ],
+            }],
+          ],
+-@@ -2303,6 +2405,7 @@
++@@ -2303,6 +2389,7 @@
+        'variables': {
+          'heapobject_files': [
+            '<(SHARED_INTERMEDIATE_DIR)/torque-generated/instance-types.h',
+@@ -284,7 +260,7 @@
+            '<(V8_ROOT)/src/objects/allocation-site.h',
+            '<(V8_ROOT)/src/objects/allocation-site-inl.h',
+            '<(V8_ROOT)/src/objects/cell.h',
+-@@ -2319,6 +2422,9 @@
++@@ -2319,6 +2406,9 @@
+            '<(V8_ROOT)/src/objects/casting-inl.h',
+            '<(V8_ROOT)/src/objects/code.h',
+            '<(V8_ROOT)/src/objects/code-inl.h',
+@@ -294,7 +270,7 @@
+            '<(V8_ROOT)/src/objects/data-handler.h',
+            '<(V8_ROOT)/src/objects/data-handler-inl.h',
+            '<(V8_ROOT)/src/objects/deoptimization-data.h',
+-@@ -2327,12 +2433,20 @@
++@@ -2327,12 +2417,20 @@
+            '<(V8_ROOT)/src/objects/descriptor-array-inl.h',
+            '<(V8_ROOT)/src/objects/feedback-cell.h',
+            '<(V8_ROOT)/src/objects/feedback-cell-inl.h',
+@@ -315,7 +291,7 @@
+            '<(V8_ROOT)/src/objects/instance-type.h',
+            '<(V8_ROOT)/src/objects/instance-type-checker.h',
+            '<(V8_ROOT)/src/objects/instance-type-inl.h',
+-@@ -2369,10 +2483,12 @@
++@@ -2369,10 +2467,12 @@
+            '<(V8_ROOT)/src/objects/objects-inl.h',
+            '<(V8_ROOT)/src/objects/oddball.h',
+            '<(V8_ROOT)/src/objects/oddball-inl.h',
+@@ -329,7 +305,7 @@
+            '<(V8_ROOT)/src/objects/script.h',
+            '<(V8_ROOT)/src/objects/script-inl.h',
+            '<(V8_ROOT)/src/objects/shared-function-info.cc',
+-@@ -2386,6 +2502,7 @@
++@@ -2386,6 +2486,7 @@
+            '<(V8_ROOT)/src/objects/struct.h',
+            '<(V8_ROOT)/src/objects/struct-inl.h',
+            '<(V8_ROOT)/src/objects/tagged.h',
+@@ -337,7 +313,7 @@
+          ],
+        },
+        'actions': [
+-@@ -2413,64 +2530,85 @@
++@@ -2413,64 +2514,85 @@
+  
+      {
+        'target_name': 'v8_zlib',

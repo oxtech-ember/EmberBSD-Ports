@@ -83,7 +83,7 @@ package omit npm's duplicate GYP backend. `tests/node-gyp-common.py --help` and
 
 `tests/node26-export.py --help` exercises the actual pkgsrc exporter and compares its resulting recipe to the selected expected recipe. `tests/node26-pkgconfig-flags.py --help` describes the selected native inputs for the generated GYP rule regression. `tests/node-darwin-metadata.py --help` covers selected metadata and the Darwin CoreFoundation dependency through static archives, including negative and non-macOS generation cases. These checks do not replace a full package build, installed runtime and target tests.
 
-The GC regression retains the timeout callback and complete collection condition while permitting peer `ECONNRESET`, including aggregate errors only when every child matches. Run `tests/node-gc-net-timeout.py --help` with the installed selected host Node and the release archive. The Electron source recipe selects 45.3.2 and this common Node 26 provider; the new target package and runtime acceptance remain pending.
+The GC regression retains the timeout callback and complete collection condition while permitting peer `ECONNRESET`, including aggregate errors only when every child matches. Run `tests/node-gc-net-timeout.py --help` with the installed selected host Node and the release archive. The Electron source recipe selects 45.4.1 and this common Node 26 provider; the new target package and runtime acceptance remain pending.
 
 On macOS, Node’s `--build-sea` produces an unsigned executable. The host OS signing service must ad-hoc sign it (`codesign --sign -`) before execution, as documented in [Node SEA instructions](https://nodejs.org/api/single-executable-applications.html); the signer does not select the compiler or linker.
 
