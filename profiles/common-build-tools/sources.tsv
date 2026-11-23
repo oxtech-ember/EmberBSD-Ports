@@ -16,7 +16,8 @@ binutils-2.47.tar.xz	154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811
 mako-1.4.3.tar.gz	cd6537fe88d5fec315c55c2f8529bc4ce7a9a352ad7db3eeaa6a66e2dd4ec37a	https://files.pythonhosted.org/packages/5a/09/e07c4b5579a79f4b16f8d4f29f6c54514ac787c4ad506b8c4f28a0e6b0bf/mako-1.4.3.tar.gz
 markupsafe-3.0.4.tar.gz	2e9ad7dd851bf45fab9f75cbff4cb493fee9979e8d8c7c9c3ee119022518edd6	https://files.pythonhosted.org/packages/38/9b/e422a865e1d5d57d0e509b4e0bf1c1a70a7f6382c29a5aa428df994c8bc8/markupsafe-3.0.4.tar.gz
 pyyaml-6.0.3.tar.gz	d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f	https://files.pythonhosted.org/packages/05/8e/961c0007c59b8dd7729d542c61a4d537767a59645b82a0b521206e1e25c2/pyyaml-6.0.3.tar.gz
-cargo-c-0.10.25.tar.gz	8054b12ae8b64259e7b63e40368406dd6b6510d5d92b658152b361c5d816a5de	https://github.com/lu-zero/cargo-c/archive/refs/tags/v0.10.25.tar.gz
+cargo-c-0.10.26.tar.gz	57700786539a322a50f1848332e3465bf15efa5af2fd8b6113f36cbfce46c830	https://github.com/lu-zero/cargo-c/archive/refs/tags/v0.10.26.tar.gz
+cargo-c-0.10.26.patch	0465eeb71cca9645eb84602c174af2f25f46d1245b32af4fa7ec26b13749f9e9	https://github.com/NetBSD/pkgsrc/commit/7a88a16d545a7e13b349f1659083ea286aafb1c2.patch
 rustc-1.100.0-src.tar.xz	90dab90b8084eb57c35ae2b1d0b70c8e5138ace6023b22c60a5a400f586f63b2	https://static.rust-lang.org/dist/rustc-1.100.0-src.tar.xz
 rust-std-1.100.0-x86_64-unknown-netbsd.tar.xz	f274668780745dac102794b90aaa787ce6ea0e65909b27324280245ca6cd365e	https://static.rust-lang.org/dist/2026-11-12/rust-std-1.100.0-x86_64-unknown-netbsd.tar.xz
 perl-5.44.0.tar.gz	3b855066b92491cb40e86affb1ca57d1a388aa43e51b91c7806a32c2f65f96c3	https://www.cpan.org/authors/id/L/LE/LEONT/perl-5.44.0.tar.gz
