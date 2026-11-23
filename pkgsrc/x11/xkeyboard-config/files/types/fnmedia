@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: MIT
+// Key type for a laptop function row with the printed actions as level 1
+// (symbols/fnmedia).  No modifier or Shift gives the action (Shift+volume
+// is the fine volume step in Plasma).  Control, Alt or Super give the
+// F-key; the modifiers stay in the state, so Alt+F4 and Ctrl+F4 reach
+// applications as such.  Control+Alt switches the console, as in the
+// CTRL+ALT type.  Each option of symbols/fnmedia has a section here.
+partial xkb_types "common" {
+    virtual_modifiers Alt, Super;
+    type "FNMEDIA" {
+        modifiers = Shift + Control + Alt + Super;
+        map[None] = Level1;
+        map[Shift] = Level1;
+        preserve[Shift] = Shift;
+        map[Control] = Level2;
+        preserve[Control] = Control;
+        map[Alt] = Level2;
+        preserve[Alt] = Alt;
+        map[Super] = Level2;
+        preserve[Super] = Super;
+        map[Shift+Control] = Level2;
+        preserve[Shift+Control] = Shift+Control;
+        map[Shift+Alt] = Level2;
+        preserve[Shift+Alt] = Shift+Alt;
+        map[Shift+Super] = Level2;
+        preserve[Shift+Super] = Shift+Super;
+        map[Control+Alt] = Level3;
+        map[Control+Super] = Level2;
+        preserve[Control+Super] = Control+Super;
+        map[Alt+Super] = Level2;
+        preserve[Alt+Super] = Alt+Super;
+        map[Shift+Control+Alt] = Level2;
+        preserve[Shift+Control+Alt] = Shift+Control+Alt;
+        map[Shift+Control+Super] = Level2;
+        preserve[Shift+Control+Super] = Shift+Control+Super;
+        map[Shift+Alt+Super] = Level2;
+        preserve[Shift+Alt+Super] = Shift+Alt+Super;
+        map[Control+Alt+Super] = Level2;
+        preserve[Control+Alt+Super] = Control+Alt+Super;
+        map[Shift+Control+Alt+Super] = Level2;
+        preserve[Shift+Control+Alt+Super] = Shift+Control+Alt+Super;
+        level_name[Level1] = "Media";
+        level_name[Level2] = "Function";
+        level_name[Level3] = "Console";
+    };
+};
+
+partial xkb_types "qbook15" {
+    include "fnmedia(common)"
+};
+
+partial xkb_types "msi_vector" {
+    include "fnmedia(common)"
+};

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.62 2026/06/22 19:27:18 wiz Exp $
 
 DISTNAME=		xkeyboard-config-2.48
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=		x11
 MASTER_SITES=		${MASTER_SITE_XORG:=data/${PKGBASE}/}
 EXTRACT_SUFX=		.tar.xz
@@ -10,6 +10,12 @@ MAINTAINER=		pkgsrc-users@NetBSD.org
 HOMEPAGE=		https://www.freedesktop.org/wiki/Software/XKeyboardConfig
 COMMENT=		X Keyboard Configuration Database
 LICENSE=		xkeyboard-config-2.48
+
+# Origin: EmberBSD (AI-assisted). Options fnmedia:* swap the layers of a
+# laptop function row whose firmware has no Fn lock (patch-rules_base.xml).
+post-extract:
+	${CP} ${FILESDIR}/symbols/fnmedia ${WRKSRC}/symbols/fnmedia
+	${CP} ${FILESDIR}/types/fnmedia ${WRKSRC}/types/fnmedia
 
 post-install:
 	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}

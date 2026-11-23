@@ -228,6 +228,7 @@ share/xkeyboard-config-2/symbols/eu
 share/xkeyboard-config-2/symbols/eurosign
 share/xkeyboard-config-2/symbols/fi
 share/xkeyboard-config-2/symbols/fkeys
+share/xkeyboard-config-2/symbols/fnmedia
 share/xkeyboard-config-2/symbols/fo
 share/xkeyboard-config-2/symbols/fr
 share/xkeyboard-config-2/symbols/fujitsu_vndr/jp
@@ -386,6 +387,7 @@ share/xkeyboard-config-2/types/caps
 share/xkeyboard-config-2/types/complete
 share/xkeyboard-config-2/types/default
 share/xkeyboard-config-2/types/extra
+share/xkeyboard-config-2/types/fnmedia
 share/xkeyboard-config-2/types/iso9995
 share/xkeyboard-config-2/types/level5
 share/xkeyboard-config-2/types/mousekeys

@@ -1,0 +1,34 @@
+$NetBSD$
+
+* Register the fnmedia options (files/symbols/fnmedia and
+  files/types/fnmedia, copied in post-extract): laptop function rows
+  with the printed actions as the primary layer.  The rules generator
+  derives the symbols and types rules from these entries.
+
+--- rules/base.xml.orig
++++ rules/base.xml
+@@ -8418,6 +8418,24 @@
+         </configItem>
+       </option>
+     </group>
++    <group allowMultipleSelection="false">
++      <configItem>
++        <name>fnmedia</name>
++        <description>Laptop function row with media actions as the primary layer</description>
++      </configItem>
++      <option>
++        <configItem>
++          <name>fnmedia:qbook15</name>
++          <description>QBOOK15: media keys without Fn; F-keys with Ctrl, Alt, Super or Fn</description>
++        </configItem>
++      </option>
++      <option>
++        <configItem>
++          <name>fnmedia:msi_vector</name>
++          <description>MSI Vector 17: media keys without Fn; F-keys with Ctrl, Alt or Super</description>
++        </configItem>
++      </option>
++    </group>
+   </optionList>
+ 
+ </xkbConfigRegistry>
