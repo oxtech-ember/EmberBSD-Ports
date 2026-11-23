@@ -1,10 +1,8 @@
 # Network diagnostics profile
 
-Cross-built CLI capture, analysis and load tools for EmberBSD boards.
-This profile owns the first stage of the network diagnostics kit:
+Cross-built CLI capture, analysis and load tools for EmberBSD boards:
 basic packet capture and analysis, a load generator and a native HCI
-recorder. Scope and acceptance criteria live in the EmberBSD knowledge
-base (registry item R10).
+recorder.
 
 ## Contents
 

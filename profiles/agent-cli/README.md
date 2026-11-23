@@ -1,7 +1,7 @@
 # Agent CLI toolchain profile
 
-Console toolchain for AI agents driving EmberBSD devices (registry
-item E17, first stage: search, data, repositories, transport).
+Console toolchain for AI agents driving EmberBSD devices: search,
+data, repositories and transport.
 Everything cross-builds on the development host and installs as
 packages or static binaries on the board.
 
