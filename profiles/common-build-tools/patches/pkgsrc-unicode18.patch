@@ -1,0 +1,128 @@
+Origin: EmberBSD, AI-assisted.
+Install the final Unicode 18 character database and emoji data.
+
+--- a/textproc/unicode-character-database/PLIST
++++ b/textproc/unicode-character-database/PLIST
+@@ -11,6 +11,7 @@
+ share/unicode/ucd/DerivedAge.txt
+ share/unicode/ucd/DerivedCoreProperties.txt
+ share/unicode/ucd/DerivedNormalizationProps.txt
++share/unicode/ucd/DoNotEmit.txt
+ share/unicode/ucd/EastAsianWidth.txt
+ share/unicode/ucd/EmojiSources.txt
+ share/unicode/ucd/EquivalentUnifiedIdeograph.txt
+@@ -19,6 +20,7 @@
+ share/unicode/ucd/IndicPositionalCategory.txt
+ share/unicode/ucd/IndicSyllabicCategory.txt
+ share/unicode/ucd/Jamo.txt
++share/unicode/ucd/JurchenSources.txt
+ share/unicode/ucd/LineBreak.txt
+ share/unicode/ucd/NameAliases.txt
+ share/unicode/ucd/NamedSequences.txt
+@@ -34,6 +36,7 @@
+ share/unicode/ucd/ReadMe.txt
+ share/unicode/ucd/ScriptExtensions.txt
+ share/unicode/ucd/Scripts.txt
++share/unicode/ucd/SealSources.txt
+ share/unicode/ucd/SpecialCasing.txt
+ share/unicode/ucd/StandardizedVariants.txt
+ share/unicode/ucd/TangutSources.txt
+@@ -51,6 +54,7 @@
+ share/unicode/ucd/Unihan_RadicalStrokeCounts.txt
+ share/unicode/ucd/Unihan_Readings.txt
+ share/unicode/ucd/Unihan_Variants.txt
++share/unicode/ucd/Unikemet.txt
+ share/unicode/ucd/VerticalOrientation.txt
+ share/unicode/ucd/auxiliary/GraphemeBreakProperty.txt
+ share/unicode/ucd/auxiliary/GraphemeBreakTest.html
+--- a/textproc/unicode-character-database/Makefile
++++ b/textproc/unicode-character-database/Makefile
+@@ -1,12 +1,13 @@
+ # $NetBSD: Makefile,v 1.8 2023/11/03 21:27:40 wiz Exp $
+ 
+-UCD_VERSION=	15.1.0
++UCD_VERSION=	18.0.0
+ DISTNAME=	unicode-character-database-${UCD_VERSION}
+ CATEGORIES=	textproc
+-MASTER_SITES=	http://www.unicode.org/Public/zipped/${UCD_VERSION}/
++MASTER_SITES=	https://www.unicode.org/Public/${UCD_VERSION}/ucd/
+ DIST_SUBDIR=	${PKGNAME_NOREV}
+ DISTFILES=	UCD.zip
+-DISTFILES+=	Unihan.zip
++DISTFILES+=	Unihan.zip USourceGlyphs.pdf USourceRSChart.pdf
++EXTRACT_ONLY=	UCD.zip Unihan.zip
+ 
+ MAINTAINER=	tsutsui@NetBSD.org
+ HOMEPAGE=	https://www.unicode.org/ucd/
+--- a/textproc/unicode-character-database/distinfo
++++ b/textproc/unicode-character-database/distinfo
+@@ -1,8 +1,14 @@
+ $NetBSD: distinfo,v 1.9 2023/11/03 21:27:40 wiz Exp $
+ 
+-BLAKE2s (unicode-character-database-15.1.0/UCD.zip) = 568e70d74f663e002fe17b116ed7181a5e63ff9580c6ed416876208e206f08ee
+-SHA512 (unicode-character-database-15.1.0/UCD.zip) = 6285b78d5765092d04632f2bdf23f43fe4c3d8acc28700ff941b5a647bf86aba348ea280cee54f5761e534070439cd5628cb25cb7cd9d7dca08e05000f434f54
+-Size (unicode-character-database-15.1.0/UCD.zip) = 8248819 bytes
+-BLAKE2s (unicode-character-database-15.1.0/Unihan.zip) = e9e7addc6761c240f7e7783f9a689dd4e2e17bcc20727c11c3206466d3c6d167
+-SHA512 (unicode-character-database-15.1.0/Unihan.zip) = fc1a32fc68b3e1d2d358fca91c2cd6c1103557405e91ff558585f18a2e9b1ee6f8af89e7ee922ff36cade67a5cf4f5b4042ba97d350af7b92b18f161eef5ec78
+-Size (unicode-character-database-15.1.0/Unihan.zip) = 7999959 bytes
++BLAKE2s (unicode-character-database-18.0.0/UCD.zip) = c93dd31faf198d0066720529ca35b75091d769f55368cba9a4e2c0b036bf0348
++SHA512 (unicode-character-database-18.0.0/UCD.zip) = f1bf22ea9dda762e5b8effdc9d98aaf0b651e6038d0f76d6d37313e7f92092dc06bc36213592ee0ac2f4b06d3550d4918684050a2d8b8480e6964b6cc3f30198
++Size (unicode-character-database-18.0.0/UCD.zip) = 5657953 bytes
++BLAKE2s (unicode-character-database-18.0.0/Unihan.zip) = c9a1762d303c6f57c15ad34a134f80d535f1305e637c7eac09b0687b454bf2f8
++SHA512 (unicode-character-database-18.0.0/Unihan.zip) = 9d35179d4906a119928bab9c8a28ae487cb3c90f19b3e8c7d704d24c081a3f67697c400e3e48989dd66184542e5a2334ff5c8a9ea72455360935dfd1965c0b53
++Size (unicode-character-database-18.0.0/Unihan.zip) = 8340649 bytes
++BLAKE2s (unicode-character-database-18.0.0/USourceGlyphs.pdf) = bcae9f7c139aef9208aa4cda1563d20a9dc3e45dc8eed7ab6b00268e9d147d74
++SHA512 (unicode-character-database-18.0.0/USourceGlyphs.pdf) = dcdf784153ee753a23edf4d3f886d9e47316788e8205921a809f2c1ea7abc4ef255a6abff83ed8429aa3b415a42906da004f567ccc66ffc9dd9d692d3fa3090f
++Size (unicode-character-database-18.0.0/USourceGlyphs.pdf) = 2183570 bytes
++BLAKE2s (unicode-character-database-18.0.0/USourceRSChart.pdf) = 999da466e78ac2796d11f799e65660977922c868b151039d00f50d6e2ee305d9
++SHA512 (unicode-character-database-18.0.0/USourceRSChart.pdf) = 2f639749cafcb3d7894c321411dfa356cd31720ee7f83841a8ca86ff93d1a40c5d0260c7cdf2da818decaa1d9935262087c511371993f3c635c911c8ab846d3a
++Size (unicode-character-database-18.0.0/USourceRSChart.pdf) = 2070072 bytes
+--- a/textproc/unicode-emoji/Makefile
++++ b/textproc/unicode-emoji/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	unicode-emoji-${EMOJI_VERSION}
+ CATEGORIES=	textproc
+-MASTER_SITES=	https://www.unicode.org/Public/emoji/${EMOJI_VERSION}/
++MASTER_SITES=	https://www.unicode.org/Public/${EMOJI_VERSION}.0/emoji/
+ DIST_SUBDIR=	${PKGNAME_NOREV}
+ DISTFILES=	${EMOJI_FILES}
+ EXTRACT_SUFX=	# none
+@@ -19,7 +19,7 @@
+ WRKSRC=		${WRKDIR}
+ EMOJIDIR=	${PREFIX}/share/unicode/emoji
+ 
+-EMOJI_VERSION=	15.1
++EMOJI_VERSION=	18.0
+ EMOJI_FILES=	ReadMe.txt
+ EMOJI_FILES+=	emoji-sequences.txt
+ EMOJI_FILES+=	emoji-test.txt
+--- a/textproc/unicode-emoji/distinfo
++++ b/textproc/unicode-emoji/distinfo
+@@ -1,14 +1,14 @@
+ $NetBSD: distinfo,v 1.9 2024/02/28 11:53:31 tsutsui Exp $
+ 
+-BLAKE2s (unicode-emoji-15.1/ReadMe.txt) = b208bcac9183e8ac426463d52014974b4641448bbe5d012309d9ecfa89e65fbb
+-SHA512 (unicode-emoji-15.1/ReadMe.txt) = e2add01f310c61adff877a9e38ab75663a908b79aa43a684952ebb8aec6bb4b738e61929a21d3fbfd9d033957271cbfc94cd3e8140d12118b93c7940fbc02b13
+-Size (unicode-emoji-15.1/ReadMe.txt) = 578 bytes
+-BLAKE2s (unicode-emoji-15.1/emoji-sequences.txt) = 303466323417d9fb7a8ad3d0d456032262dea8ac58d1c43acb9ac34e9b54e2e0
+-SHA512 (unicode-emoji-15.1/emoji-sequences.txt) = 19cf9b366a76d472d35e3e5d2adcb70e962397bce60a65e7685e9b203310dab2b63ee45fae8691c06dc6fedfac4e5c3730f9aadde119e3a7f4560c9ff325fd8a
+-Size (unicode-emoji-15.1/emoji-sequences.txt) = 191562 bytes
+-BLAKE2s (unicode-emoji-15.1/emoji-test.txt) = 69db874467a64ec446f74a08d574d792389f36b2732ddad59d9c8f21ea49b504
+-SHA512 (unicode-emoji-15.1/emoji-test.txt) = 1e267845f2cc72aed60455a60e7cb8774433e0a1d0a9be98de6169304047184c8a7d5919117dd085dccfc4a7b507cb8938a3a6e34fd6fd9216fda27f8c126e5e
+-Size (unicode-emoji-15.1/emoji-test.txt) = 639405 bytes
+-BLAKE2s (unicode-emoji-15.1/emoji-zwj-sequences.txt) = dd497c734163852c3d933d741db4666f33d90fe3182ad9c94fe7099e0074ee56
+-SHA512 (unicode-emoji-15.1/emoji-zwj-sequences.txt) = b9be3543cb44b8b394be12f06b9d3a27aa7da134cc5060d51681e2759c2aa0ce2604edf9f8782f8d3606e9765f2703b35807a932d36914b24261e59a07fffed1
+-Size (unicode-emoji-15.1/emoji-zwj-sequences.txt) = 251595 bytes
++BLAKE2s (unicode-emoji-18.0/ReadMe.txt) = 2558c5002a874441d323bfbb9b14cae5b42ef4a2abb64907153fe468a1b19fd5
++SHA512 (unicode-emoji-18.0/ReadMe.txt) = cb34e65ccaa94557f018c4947c6efa8a55d1def632c1e675248f7e95d5304671c502bfd2e3e266dfb76c97f43971fe40882ae0134c4726c40e39d7b6ccc76911
++Size (unicode-emoji-18.0/ReadMe.txt) = 590 bytes
++BLAKE2s (unicode-emoji-18.0/emoji-sequences.txt) = 72fdd1f6268e2a15ba9fbe5ca1cf2a348dc0e420f4939c462dca6f80c6bf7e33
++SHA512 (unicode-emoji-18.0/emoji-sequences.txt) = d9a37198a58093dac60a7de7329706faa49f063349e9849b2d86d3902beee4ae7c8d65f7fcb66f6fd2a265a79e63b5a6953a53387285bf019bbff853955020f2
++Size (unicode-emoji-18.0/emoji-sequences.txt) = 197000 bytes
++BLAKE2s (unicode-emoji-18.0/emoji-test.txt) = b9bf3923899e61634ac291809d12468bca5dca648efd3576a94ac9714c72fbd3
++SHA512 (unicode-emoji-18.0/emoji-test.txt) = c4d1a38ddcfe9ed6036865a0494ca9a49fa06ffdf66029b8af6300862137c47c0d96ab8dcfe73b55c670af5de55726a9269682b529ca9b9804b3bb1ed8e30b40
++Size (unicode-emoji-18.0/emoji-test.txt) = 671655 bytes
++BLAKE2s (unicode-emoji-18.0/emoji-zwj-sequences.txt) = 06d53bd465471b04b70f8c7f3bb22c24393d5adba77a363894d2173a501cbdd4
++SHA512 (unicode-emoji-18.0/emoji-zwj-sequences.txt) = 31981420a37d05c859310b2e0666fc60e50fee2161f434d32dfaad0b91ca05b4a607a2a0ef567eed82afa43d2ecd055d287c09a21f05fa5a1ceb31ca56e2b423
++Size (unicode-emoji-18.0/emoji-zwj-sequences.txt) = 277215 bytes
