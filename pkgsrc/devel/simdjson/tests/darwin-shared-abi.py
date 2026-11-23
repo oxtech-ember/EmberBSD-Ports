@@ -23,9 +23,8 @@ flags = shlex.split(subprocess.check_output(
 assert '-DSIMDJSON_THREADS_ENABLED=1' in flags
 with tempfile.TemporaryDirectory(prefix='simdjson-abi-') as d:
     root = Path(d)
-    library = root / 'libsimdjson.34.dylib'
-    shutil.copyfile(stage / 'lib/libsimdjson.34.0.0.dylib', library)
-    (root / 'libsimdjson.dylib').symlink_to(library.name)
+    library = root / 'libsimdjson.dylib'
+    shutil.copyfile(stage / 'lib' / library.name, library)
     subprocess.run([str(a.install_name_tool), '-id', str(library), str(library)], check=True)
     flags = ['-L' + str(root) if flag.startswith('-L') else flag for flag in flags]
     results = []
