@@ -1,0 +1,14 @@
+Origin: EmberBSD, AI-assisted.
+Require the packaging version specified by upstream metadata.
+
+--- a/devel/py-project-metadata/Makefile
++++ b/devel/py-project-metadata/Makefile
+@@ -11,7 +11,7 @@
+ LICENSE=	mit
+ 
+ TOOL_DEPENDS+=	${PYPKGPREFIX}-flit_core>=3.11:../../devel/py-flit_core
+-DEPENDS+=	${PYPKGPREFIX}-packaging>=19.0:../../devel/py-packaging
++DEPENDS+=	${PYPKGPREFIX}-packaging>=23.2:../../devel/py-packaging
+ TEST_DEPENDS+=	${PYPKGPREFIX}-test-cov-[0-9]*:../../devel/py-test-cov
+ 
+ USE_LANGUAGES=	# none
