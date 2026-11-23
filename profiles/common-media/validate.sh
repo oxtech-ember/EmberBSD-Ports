@@ -12,10 +12,10 @@ for file in Makefile Makefile.common DESCR ALTERNATIVES PLIST distinfo options.m
     [ -f "$pkg/$file" ] || { echo "Incomplete FFmpeg recipe: $file" >&2; exit 2; }
 done
 required=$(awk '/^SHA1 \(patch-/ {gsub(/[()]/,"",$2); print $2}' "$pkg/distinfo")
-[ "$(printf '%s\n' "$required" | wc -l | tr -d ' ')" = 21 ] || {
+[ "$(printf '%s\n' "$required" | wc -l | tr -d ' ')" = 28 ] || {
     echo 'Incomplete FFmpeg patch manifest.' >&2; exit 2;
 }
-[ "$(find "$pkg/patches" -type f -name 'patch-*' | wc -l | tr -d ' ')" = 21 ] || {
+[ "$(find "$pkg/patches" -type f -name 'patch-*' | wc -l | tr -d ' ')" = 28 ] || {
     echo 'FFmpeg patch inventory differs.' >&2; exit 2;
 }
 for name in $required; do
@@ -61,7 +61,7 @@ expected='audio/pulseaudio pulseaudio-17.0.tar.xz 053794d6671a3e397d849e478a80b8
 actual=$(awk '$1=="audio/pulseaudio" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
 [ "$actual" = "$expected" ] || { echo 'Incorrect PulseAudio source pin.' >&2; exit 2; }
 
-expected='multimedia/libvpx libvpx-1.16.0.tar.gz 7a479a3c66b9f5d5542a4c6a1b7d3768a983b1e5c14c60a9396edc9b649e015c https://github.com/webmproject/libvpx/archive/v1.16.0.tar.gz'
+expected='multimedia/libvpx libvpx-1.17.0.tar.gz 1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a https://github.com/webmproject/libvpx/archive/v1.17.0.tar.gz'
 actual=$(awk '$1=="multimedia/libvpx" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
 [ "$actual" = "$expected" ] || { echo 'Incorrect libvpx source pin.' >&2; exit 2; }
 

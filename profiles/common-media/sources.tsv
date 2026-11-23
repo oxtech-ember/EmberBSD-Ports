@@ -13,7 +13,7 @@ audio/lame	lame-4.0.tar.gz	3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e3
 multimedia/x265	x265_4.2.tar.gz	40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210	https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.2.tar.gz
 multimedia/libaom	libaom-3.15.2.tar.gz	67bb54b245f33ed98600e08269e6139986e48114e14042474ddd8885801dfddc	https://storage.googleapis.com/aom-releases/libaom-3.15.2.tar.gz
 audio/pulseaudio	pulseaudio-17.0.tar.xz	053794d6671a3e397d849e478a80b82a63cb9d8ca296bd35b73317bb5ceb87b5	https://freedesktop.org/software/pulseaudio/releases/pulseaudio-17.0.tar.xz
-multimedia/libvpx	libvpx-1.16.0.tar.gz	7a479a3c66b9f5d5542a4c6a1b7d3768a983b1e5c14c60a9396edc9b649e015c	https://github.com/webmproject/libvpx/archive/v1.16.0.tar.gz
+multimedia/libvpx	libvpx-1.17.0.tar.gz	1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a	https://github.com/webmproject/libvpx/archive/v1.17.0.tar.gz
 devel/libdaemon	libdaemon-0.14.tar.gz	fd23eb5f6f986dcc7e708307355ba3289abe03cc381fc47a80bca4a50aa6b834	https://0pointer.de/lennart/projects/libdaemon/libdaemon-0.14.tar.gz
 databases/tdb	tdb-1.4.15.tar.gz	fba09d8df1f1b9072aeae8e78b2bd43c5afef20b2f6deefa633aa14a377a8dd2	https://www.samba.org/ftp/tdb/tdb-1.4.15.tar.gz
 audio/sonic	sonic-0.3.0.20260314-b93885dcb70aae50c6f76b0fe4e0868f029a077e.tar.gz	b76d832649306b53e716c271014c0b8f89f6bcefc43e5068a2eca3cf1946324c	https://github.com/waywardgeek/sonic/archive/b93885dcb70aae50c6f76b0fe4e0868f029a077e.tar.gz
