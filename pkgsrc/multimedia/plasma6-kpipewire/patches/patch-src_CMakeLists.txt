@@ -1,0 +1,23 @@
+$NetBSD$
+
+Keep the producer's PipeWire header paths in the build tree.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -70,13 +70,13 @@
+ # these are features pipewire use extensively and make it hard to look at compile logs
+ target_compile_options(KPipeWire PUBLIC -Wno-zero-as-null-pointer-constant -Wno-missing-field-initializers -Wno-cast-align -Wno-pedantic)
+ 
+-target_link_libraries(KPipeWire PRIVATE Qt::Quick Qt::GuiPrivate Qt::OpenGL KF6::I18n
++target_link_libraries(KPipeWire PUBLIC Qt::Quick PRIVATE Qt::GuiPrivate Qt::OpenGL KF6::I18n
+     KF6::CoreAddons PkgConfig::PipeWire epoxy::epoxy PkgConfig::GBM Libdrm::Libdrm PkgConfig::LIBVA PkgConfig::LIBVA-drm)
+ 
+ target_link_libraries(KPipeWire PRIVATE EGL::EGL)
+ 
+ target_include_directories(KPipeWire PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+-                                     PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>" ${PipeWire_INCLUDE_DIRS}
++                                     PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>" "$<BUILD_INTERFACE:${PipeWire_INCLUDE_DIRS}>"
+                                      INTERFACE "$<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/KPipeWire>")
+ set_target_properties(KPipeWire PROPERTIES
+                              VERSION ${PROJECT_VERSION}

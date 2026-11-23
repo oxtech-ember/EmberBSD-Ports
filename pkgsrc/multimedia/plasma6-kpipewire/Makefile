@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	kpipewire-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	multimedia
 
 HOMEPAGE=	https://invent.kde.org/plasma/kpipewire
