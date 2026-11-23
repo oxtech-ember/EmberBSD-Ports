@@ -25,8 +25,8 @@ if len(result) != 1 or not re.fullmatch(r'undici-[A-Za-z0-9._+-]+', result[0]):
     raise SystemExit('selected Undici package missing or ambiguous')
 package = a.pkgdb / result[0]
 info = (package / '+BUILD_INFO').read_text().splitlines()
-if 'PKGPATH=www/undici' not in info or f'EMBERBSD_UNDICI_RUNTIME_PREFIX={a.runtime_prefix}' not in info:
-    raise SystemExit('selected Undici owner or runtime prefix differs')
+if 'PKGPATH=www/undici' not in info:
+    raise SystemExit('selected Undici owner differs')
 metadata = {}
 for line in (package / '+BUILD_VERSION').read_text().splitlines():
     name, separator, digest = line.partition(': ')
@@ -49,9 +49,6 @@ if not match or loader.is_symlink() or not loader.is_file() or not loader.resolv
 data = loader.read_bytes()
 if hashlib.md5(data, usedforsecurity=False).hexdigest() != match.group(1):
     raise SystemExit('selected Undici loader checksum differs')
-logical = a.runtime_prefix / relative
-if ('createRequire("' + str(logical) + '")').encode() not in data:
-    raise SystemExit('selected Undici loader runtime path differs')
 wasi = subprocess.run([str(a.pkg_info), '-K', str(a.pkgdb), '-E', 'llhttp-wasi>=9.4.4'], check=True, capture_output=True, text=True).stdout.splitlines()
 if len(wasi) != 1 or not re.fullmatch(r'llhttp-wasi-[A-Za-z0-9._+-]+', wasi[0]):
     raise SystemExit('selected llhttp-wasi package missing or ambiguous')
@@ -70,16 +67,25 @@ for name in ('llhttp.wasm', 'llhttp_simd.wasm'):
             not wasm.resolve().is_relative_to(a.prefix.resolve()) or
             hashlib.md5(wasm.read_bytes(), usedforsecurity=False).hexdigest() != checksum.group(1)):
         raise SystemExit('selected llhttp-wasi content differs: ' + name)
-with tempfile.TemporaryDirectory(prefix='node-undici-generator-') as temporary:
-    temporary = Path(temporary)
-    generated = temporary / 'loader.js'
-    subprocess.run([str(a.python), '-B', '-I', '-S', str(a.recipe / 'files/generate-wasm.py'),
-                    '--wasm-dir', str(a.prefix / 'share/llhttp-wasi'),
-                    '--output-dir', str(temporary), '--loader', str(generated),
-                    '--install-dir', str(a.prefix / 'lib/node_modules/undici')], check=True)
-    data = generated.read_bytes()
-if ('createRequire("' + str(a.prefix / relative) + '")').encode() not in data:
-    raise SystemExit('generated build loader has incorrect provider path')
+
+
+def generate_loader(prefix):
+    with tempfile.TemporaryDirectory(prefix='node-undici-generator-') as temporary:
+        temporary = Path(temporary)
+        generated = temporary / 'loader.js'
+        subprocess.run([str(a.python), '-B', '-I', '-S', str(a.recipe / 'files/generate-wasm.py'),
+                        '--wasm-dir', str(a.prefix / 'share/llhttp-wasi'),
+                        '--output-dir', str(temporary), '--loader', str(generated),
+                        '--install-dir', str(prefix / relative.parent)], check=True)
+        return generated.read_bytes()
+
+
+# A relocated package retains the producer's custom BUILD_DEFS. Verify the
+# installed loader against its recorded recipe at the selected runtime prefix.
+if data != generate_loader(a.runtime_prefix):
+    raise SystemExit('selected Undici loader differs from its recipe at the runtime prefix')
+if a.prefix != a.runtime_prefix:
+    data = generate_loader(a.prefix)
 if a.out.is_symlink() or not a.out.is_dir() or a.out.resolve() != a.out:
     raise SystemExit('build output must be an existing canonical real directory')
 parent = a.out
