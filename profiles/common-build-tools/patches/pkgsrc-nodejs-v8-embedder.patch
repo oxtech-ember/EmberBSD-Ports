@@ -22,7 +22,7 @@ Origin: EmberBSD (AI-assisted).
 +SHA1 (patch-tools_v8__gypfiles_ember__inspector__inputs.py) = 4ed309467a297b0fea8a345f675ffc2140689535
  SHA1 (patch-tools_v8__gypfiles_inspector.gypi) = 1e607d74b7f56d21a3fc8301e1e05a534b458604
  SHA1 (patch-tools_v8_gypfiles_abseil.gyp) = 8a8d82421b565bac205e87645a7681aab7df2c8b
- SHA1 (patch-tools_v8_gypfiles_ember__metagen.py) = c21dbb7ccc4e86599624e096838212f6ca600b96
+ SHA1 (patch-tools_v8_gypfiles_ember__metagen.py) = 89b5f2552f165c3cf5565cbdd853c3c1f72e948b
 -SHA1 (patch-tools_v8_gypfiles_v8.gyp) = f3f4490029f4e3c954c6c4f33a997656bcbe07df
 +SHA1 (patch-tools_v8_gypfiles_features.gypi) = d4acb2d9b57eeceae2270122b3fae989a9afbbc1
 +SHA1 (patch-tools_v8_gypfiles_v8.gyp) = 4687513c79a21accdbef066b53163ebdef11bb38
