@@ -1,15 +1,27 @@
 $NetBSD$
 
-Keep QtTest assertion locations meaningful after the native SDK is moved.
-Only the two installed test-support archives capture these header names.
+Keep installed Qt diagnostics and test data independent of the native build tree.
 
 --- src/CMakeLists.txt.orig
 +++ src/CMakeLists.txt
-@@ -130,6 +130,22 @@
+@@ -130,6 +130,35 @@
      endif()
  endif()
  
 +if(PKGSRC_QTTEST_INCLUDE_DIR)
++    # Keep source names useful in installed QML diagnostics.
++    function(pkgsrc_map_qt_source target source_file)
++        if(TARGET ${target})
++            set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}"
++                TARGET_DIRECTORY ${target} APPEND PROPERTY COMPILE_OPTIONS
++                "-fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}/=src/" ${ARGN})
++        endif()
++    endfunction()
++    pkgsrc_map_qt_source(QmlDomPrivate qmldom/qqmldomastcreator.cpp)
++    pkgsrc_map_qt_source(Quick quick/designer/qquickdesignersupport.cpp)
++    pkgsrc_map_qt_source(QuickTest qmltest/quicktestevent.cpp
++        "-fmacro-prefix-map=${PKGSRC_QTTEST_INCLUDE_DIR}/=")
++
 +    foreach(test_module IN ITEMS QuickTestUtilsPrivate QuickControlsTestUtilsPrivate)
 +        if(TARGET ${test_module})
 +            target_compile_options(${test_module} PRIVATE
