@@ -1,0 +1,11 @@
+--- a/x11/gtk2/options.mk
++++ b/x11/gtk2/options.mk
+@@ -4,7 +4,7 @@
+ PKG_SUPPORTED_OPTIONS=		cups debug introspection
+ PKG_OPTIONS_REQUIRED_GROUPS=	gdk-target
+ PKG_OPTIONS_GROUP.gdk-target=	x11
+-.if exists(/System/Library/Frameworks/Quartz.framework)
++.if ${OPSYS} == "Darwin" && exists(${_CROSS_DESTDIR:U}/System/Library/Frameworks/Quartz.framework)
+ PKG_OPTIONS_GROUP.gdk-target+=	quartz
+ PKG_SUGGESTED_OPTIONS=		quartz
+ .else
