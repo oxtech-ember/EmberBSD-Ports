@@ -820,3 +820,13 @@ GN package floor, package owner, and executable ownership before configuration.
 integrity, ELF/NetBSD ABI and saved diagnostic identity.
 `electron-sanitizer-symbolizer-gn.py` tests real GN/Ninja runtime-dependency
 selection and target-tool copying using an explicitly supplied prepared source.
+
+## Desktop audio output
+
+On a target with a running PulseAudio session, run
+`python3 probes/electron/tests/pulse-playback.py` with the installed Electron,
+`pactl` and `parec` on PATH. The probe uses a temporary Electron profile and
+a private monitor sink. It requires at least eight 100 ms windows containing
+the 523 Hz tone produced by Web Audio. The MSI with electron-45.2.1nb2
+completed playback with zero matching windows. Use the same check after the
+package rebuild, then play media in Ember Browser through the selected output.

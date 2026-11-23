@@ -420,6 +420,8 @@ def arguments(options, native, tools, rust_version, launcher, providers=None):
         use_custom_libcxx_for_host=False, use_custom_libunwind=False,
         use_lld=options.compiler_family == 'clang', use_thin_lto=False,
         use_system_libdrm=True, use_system_libffi=True, use_bundled_fontconfig=False,
+        # The BSD media factory otherwise has only its fake output.
+        use_pulseaudio=True, link_pulseaudio=True, use_audioio=False,
         # Electron's wrappable_pointer_tags.h and node cppgc_helpers.h need the
         # Node cppgc tag when V8_ENABLE_SANDBOX is on (Electron patch: 0x5000).
         node_embedder_cppheap_pointer_tag='0x5000',

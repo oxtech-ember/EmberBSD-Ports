@@ -2,7 +2,7 @@
 # Target execution, GUI and hardware acceptance remain pending.
 
 DISTNAME=	electron-45.3.2
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 # The source owner prepares the complete pinned workspace separately.  The
 # controller verifies it; no prebuilt distribution ZIP is a build input.

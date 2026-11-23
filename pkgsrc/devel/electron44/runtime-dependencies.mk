@@ -29,6 +29,7 @@ BUILDLINK_DEPMETHOD.fp16= build
 
 .include "../../archivers/brotli/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
+.include "../../audio/pulseaudio/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/abseil/buildlink3.mk"
 .include "../../devel/ada-idna/buildlink3.mk"
