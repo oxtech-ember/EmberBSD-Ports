@@ -1,6 +1,6 @@
 $NetBSD$
 
-Use the shared current common JavaScript dependencies.
+Use the common terminal-width implementation and its supported Node.js runtime.
 
 --- package.json.orig
 +++ package.json
@@ -9,10 +9,18 @@ Use the shared current common JavaScript dependencies.
    "license": "ISC",
    "dependencies": {
 -    "string-width": "^7.2.0",
-+    "string-width": "^8.3.0",
++    "string-width": "^9.0.0",
      "strip-ansi": "^7.1.0",
 -    "wrap-ansi": "^9.0.0"
 +    "wrap-ansi": "^10.0.2"
    },
    "devDependencies": {
      "@types/node": "^22.13.10",
+@@ -67,6 +67,6 @@
+     "!*.d.ts"
+   ],
+   "engines": {
+-    "node": ">=20"
++    "node": ">=22"
+   }
+ }

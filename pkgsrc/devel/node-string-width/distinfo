@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (string-width-8.3.0.tgz) = 15dc4f46ad28dadb2780279c77f8102b1da6ceee7bbe36ac98d6a259ee2725cc
-SHA512 (string-width-8.3.0.tgz) = 65b9993342428a140df757569f1a22a53d8a384c87a84c9f4575328ee4615bc6ffc67a8f0e8ab88161150294d56bd75bdb037c9a6a229201416e387bd7e70679
-Size (string-width-8.3.0.tgz) = 4510 bytes
+BLAKE2s (string-width-9.0.0.tgz) = f2b0c5676cfd02fd436756e10062aabf11e8e18830ded7d6f41e4a1f74f62313
+SHA512 (string-width-9.0.0.tgz) = d8c39ba0021122ccd519954f03666ac23d2e8ddd28fb1019e72d9fb7839c0f892e550e29859c6ad12bfb61363cc9a0c0d8248c5dc8751164e4270fad4c9653cc
+Size (string-width-9.0.0.tgz) = 6438 bytes

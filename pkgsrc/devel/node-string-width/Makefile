@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream string-width JavaScript module.
-DISTNAME= string-width-8.3.0
-PKGNAME= node-string-width-8.3.0
+DISTNAME= string-width-9.0.0
+PKGNAME= node-string-width-9.0.0
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/string-width/-/
 EXTRACT_SUFX= .tgz
