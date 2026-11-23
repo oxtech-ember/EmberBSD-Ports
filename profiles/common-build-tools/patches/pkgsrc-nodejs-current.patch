@@ -360,7 +360,7 @@
 +SHA1 (patch-tools_v8__gypfiles_ember__inspector__inputs.py) = 1d70c0a44dadd278ac6a4ad16f8349ae64356e16
 +SHA1 (patch-tools_v8__gypfiles_inspector.gypi) = 1e607d74b7f56d21a3fc8301e1e05a534b458604
 +SHA1 (patch-tools_v8_gypfiles_abseil.gyp) = 8a8d82421b565bac205e87645a7681aab7df2c8b
-+SHA1 (patch-tools_v8_gypfiles_ember__metagen.py) = 487fb92e471e5b8786e3dc7645872b2dcfbb8ef4
++SHA1 (patch-tools_v8_gypfiles_ember__metagen.py) = 89b5f2552f165c3cf5565cbdd853c3c1f72e948b
 +SHA1 (patch-tools_v8_gypfiles_v8.gyp) = f3f4490029f4e3c954c6c4f33a997656bcbe07df
 +SHA1 (patch-v8-15.6-object-prototypes) = c836ff0be3ddbec67b511a93e7a0cb1cbea5a259
 +SHA1 (patch-v8-15.6-property-microtasks) = b426939c6a5a9da865be38b4083e9f8890392570
@@ -3295,7 +3295,7 @@
 ++
 ++
 ++def main(args):
-++    (v8, output, stamp_name, libclang, bindings, resource, compiler, expected_wrapper,
+++    (v8, output, stamp_name, libclang, bindings, resource_dir, compiler, expected_wrapper,
 ++     sdk_source, host_record, target_record, selected_clang, host_mode, toolset, cross, make_cwd, gyp_flags, tool_flags) = args
 ++    if toolset not in ("host", "target") or cross not in ("0", "1") or host_mode not in ("wrapper", "direct"):
 ++        raise ValueError("invalid GYP toolset or cross flag")
@@ -3359,7 +3359,7 @@
 ++    subprocess.run([sys.executable, '-B', str(root / 'tools/metagen/metagen.py'),
 ++                    '--v8-root', str(root), '--driver', driver, '--out', str(out.parent),
 ++                    '--depfile', str(out) + '.d', '--compile-commands', str(commands),
-++                    '--clang-resource-dir', resource, '--libclang-so', libclang,
+++                    '--clang-resource-dir', resource_dir, '--libclang-so', libclang,
 ++                    '--libclang-bindings-dir', bindings], env=env, check=True)
 ++    depfile = Path(str(out) + '.d')
 ++    deps = depfile.read_text()
