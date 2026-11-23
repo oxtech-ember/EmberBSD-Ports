@@ -35,6 +35,26 @@
  CATEGORIES=	devel python
  MASTER_SITES=	${MASTER_SITE_PYPI:=C/Cython/}
  
+@@ -14,9 +13,19 @@
+ TOOL_DEPENDS+=	${PYPKGPREFIX}-setuptools>=78:../../devel/py-setuptools
+ TEST_DEPENDS+=	${PYPKGPREFIX}-numpy-[0-9]*:../../math/py-numpy
+ 
++.include "../../mk/bsd.prefs.mk"
++
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++# The wheel installs all three as module data. Keep their upstream shebang
++# so they can travel with the versioned console scripts in a native SDK.
++PKGREVISION=	1
++# Generated C uses __FILE__ for diagnostics in compiled module code.
++CFLAGS+=	-fmacro-prefix-map=${WRKSRC:Q}/=
++.else
+ REPLACE_PYTHON+=	Cython/Debugger/Cygdb.py
+ REPLACE_PYTHON+=	Cython/Debugger/libpython.py
+ REPLACE_PYTHON+=	cython.py
++.endif
+ 
+ PY_RENAME_BINARIES=	cython cythonize cygdb
+ 
 
 --- a/devel/py-cython/distinfo
 +++ b/devel/py-cython/distinfo
