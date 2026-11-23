@@ -360,7 +360,7 @@
 +SHA1 (patch-tools_v8__gypfiles_ember__inspector__inputs.py) = 1d70c0a44dadd278ac6a4ad16f8349ae64356e16
 +SHA1 (patch-tools_v8__gypfiles_inspector.gypi) = 1e607d74b7f56d21a3fc8301e1e05a534b458604
 +SHA1 (patch-tools_v8_gypfiles_abseil.gyp) = 8a8d82421b565bac205e87645a7681aab7df2c8b
-+SHA1 (patch-tools_v8_gypfiles_ember__metagen.py) = c21dbb7ccc4e86599624e096838212f6ca600b96
++SHA1 (patch-tools_v8_gypfiles_ember__metagen.py) = 487fb92e471e5b8786e3dc7645872b2dcfbb8ef4
 +SHA1 (patch-tools_v8_gypfiles_v8.gyp) = f3f4490029f4e3c954c6c4f33a997656bcbe07df
 +SHA1 (patch-v8-15.6-object-prototypes) = c836ff0be3ddbec67b511a93e7a0cb1cbea5a259
 +SHA1 (patch-v8-15.6-property-microtasks) = b426939c6a5a9da865be38b4083e9f8890392570
@@ -3257,7 +3257,7 @@
 +             '<(ABSEIL_ROOT)/absl/time/internal/cctz/src/time_zone_name_win.h',
 --- /dev/null
 +++ b/lang/nodejs/patches/patch-tools_v8_gypfiles_ember__metagen.py
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,121 @@
 +$NetBSD$
 +
 +Run upstream V8 metagen with selected toolset compiler flags.
@@ -3265,7 +3265,7 @@
 +
 +--- /dev/null
 ++++ tools/v8_gypfiles/ember_metagen.py
-+@@ -0,0 +1,100 @@
++@@ -0,0 +1,113 @@
 ++# SPDX-License-Identifier: BSD-2-Clause
 ++# Origin: EmberBSD (AI-assisted).
 ++"""Run upstream V8 metagen using the selected compiler's effective argv."""
@@ -3343,11 +3343,24 @@
 ++    command = [{'directory': os.getcwd(), 'file': driver, 'arguments': arguments}]
 ++    commands = out.parent / 'compile_commands.json'
 ++    commands.write_text(json.dumps(command))
+++    env = os.environ.copy()
+++    if sys.platform == 'darwin':
+++        import resource
+++
+++        # libclang's 8 MiB parsing thread can overflow on the V8 headers.
+++        # Run the isolated generator on its main stack, within the host limit.
+++        env['LIBCLANG_NOTHREADS'] = '1'
+++        soft, hard = resource.getrlimit(resource.RLIMIT_STACK)
+++        wanted = 64 * 1024 * 1024
+++        if hard != resource.RLIM_INFINITY:
+++            wanted = min(wanted, hard)
+++        if soft != resource.RLIM_INFINITY and soft < wanted:
+++            resource.setrlimit(resource.RLIMIT_STACK, (wanted, hard))
 ++    subprocess.run([sys.executable, '-B', str(root / 'tools/metagen/metagen.py'),
 ++                    '--v8-root', str(root), '--driver', driver, '--out', str(out.parent),
 ++                    '--depfile', str(out) + '.d', '--compile-commands', str(commands),
 ++                    '--clang-resource-dir', resource, '--libclang-so', libclang,
-++                    '--libclang-bindings-dir', bindings], check=True)
+++                    '--libclang-bindings-dir', bindings], env=env, check=True)
 ++    depfile = Path(str(out) + '.d')
 ++    deps = depfile.read_text()
 ++    header_target = os.path.relpath(out).replace(' ', r'\ ') + ':'
