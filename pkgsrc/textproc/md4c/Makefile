@@ -16,4 +16,9 @@ PKGCONFIG_OVERRIDE+=	src/md4c-html.pc.in
 PKGCONFIG_OVERRIDE+=	src/md4c.pc.in
 
 .include "../../devel/cmake/build.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

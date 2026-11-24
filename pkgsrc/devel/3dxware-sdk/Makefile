@@ -30,4 +30,9 @@ post-install:
 	${INSTALL_DATA} ${WRKDIR}/kicad-10.0.8/LICENSE.GPLv3 ${DESTDIR}${PREFIX}/share/licenses/3dxware-sdk/LICENSE.GPLv3
 
 .include "../../devel/cmake/build.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

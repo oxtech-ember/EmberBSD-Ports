@@ -25,4 +25,8 @@ post-extract:
 .include "../../devel/scintilla-core/buildlink3.mk"
 .include "../../mk/emberbsd-native-cxx-runtime.mk"
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

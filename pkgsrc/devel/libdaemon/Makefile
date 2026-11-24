@@ -29,6 +29,10 @@ INSTALLATION_DIRS=	share/doc/libdaemon
 post-install:
 	${INSTALL_DATA} ${WRKSRC}/doc/README ${DESTDIR}${PREFIX}/share/doc/libdaemon
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	4	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"
 
 .if (${OPSYS} == "NetBSD" && ${OPSYS_VERSION} < 050000) || ${OPSYS} == "OpenBSD"
