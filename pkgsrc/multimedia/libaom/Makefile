@@ -30,9 +30,12 @@ CMAKE_CONFIGURE_ARGS+=	-DENABLE_WERROR:BOOL=OFF
 .include "../../mk/bsd.prefs.mk"
 
 .if !empty(MACHINE_PLATFORM:MNetBSD-*-*arm*) \
-  || !empty(MACHINE_PLATFORM:MNetBSD-*-powerpc*) \
-  || !empty(MACHINE_PLATFORM:MDarwin-*-aarch64)
+  || !empty(MACHINE_PLATFORM:MNetBSD-*-powerpc*)
 CMAKE_CONFIGURE_ARGS+=	-DCONFIG_RUNTIME_CPU_DETECT=0
+.elif !empty(MACHINE_PLATFORM:MDarwin-*-aarch64)
+PKGREVISION=	1
+# Select Arm extensions at runtime for the current Apple CPU.
+CMAKE_CONFIGURE_ARGS+=	-DCONFIG_RUNTIME_CPU_DETECT=1
 .endif
 
 .if !empty(MACHINE_ARCH:Mmips64*)
