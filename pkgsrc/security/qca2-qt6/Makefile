@@ -6,6 +6,14 @@ PKGREVISION=	1
 
 COMMENT=	Cross-platform crypto API for Qt6
 
+.include "../../mk/bsd.prefs.mk"
+# The OSSL plugin must also load on images with the older base libcrypto ABI.
+.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	3
+PREFER.openssl=	pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
+.endif
+
 .include "Makefile.common"
 
 DEPENDS+=	mozilla-rootcerts-[0-9]*:../../security/mozilla-rootcerts
@@ -19,11 +27,7 @@ CMAKE_CONFIGURE_ARGS+=	-DQCA_MAN_INSTALL_DIR=${PREFIX}/${PKGMANDIR}
 .include "../../security/openssl/buildlink3.mk"
 .include "../../devel/qt6-qt5compat/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
-.include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.if ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
-PKGREVISION=	2 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
-.endif
 # Native qmake describes the build host, not the target Qt prefix.
 CMAKE_CONFIGURE_ARGS+= -DQCA_INSTALL_IN_QT_PREFIX=OFF
 CMAKE_CONFIGURE_ARGS+= -DQCA_PREFIX_INSTALL_DIR=${PREFIX}
