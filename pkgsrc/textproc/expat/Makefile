@@ -34,4 +34,9 @@ post-install:
 	${INSTALL_DATA} ${WRKSRC}/doc/reference.html ${DESTDIR}${DOCDIR}
 	${INSTALL_DATA} ${WRKSRC}/doc/style.css ${DESTDIR}${DOCDIR}
 
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	2	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

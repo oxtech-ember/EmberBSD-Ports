@@ -34,4 +34,9 @@ PREFER.openssl=		pkgsrc
 .include "../../archivers/bzip2/buildlink3.mk"
 .include "../../archivers/xz/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	2	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"
