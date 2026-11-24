@@ -33,12 +33,8 @@ feature while retaining upstream's existing platform features and global
 allocator. No private mimalloc C builder or copy of its portability patches is
 maintained here.
 
-The selected mimalloc package must have `malloc-override` disabled. For a native
-Darwin configuration, select it explicitly in MAKECONF:
-
-```make
-PKG_OPTIONS.mimalloc= -malloc-override
-```
+Darwin uses the `libmimalloc-embed.3.dylib` supplied by mimalloc 3.7.0nb1
+and later. Mold can use the default overriding library from the same package.
 
 ELF addon configurations require `dynamic-tls`; non-Apple AArch64 also requires
 `generic-arch`, preserving Rollup's baseline CPU requirement. For that case:
@@ -47,11 +43,9 @@ ELF addon configurations require `dynamic-tls`; non-Apple AArch64 also requires
 PKG_OPTIONS.mimalloc= -malloc-override dynamic-tls generic-arch
 ```
 
-Changing allocator configuration requires rebuilding that shared provider and
-incompatible consumers. An already installed package with unsuitable options
-is rejected at configure; source fetch/checksum remain independent. In
-particular, the pinned C++ Mold 2.42.1 consumer requires override mode and is not
-accepted with the same embedding artifact. This recipe does not migrate Mold.
+On ELF, changing allocator configuration requires rebuilding that shared
+provider and incompatible consumers. Configure checks the installed options.
+Source fetch and checksum run independently.
 
 Use normal pkgsrc commands with the selected native or cross MAKECONF:
 
@@ -129,7 +123,7 @@ unverified.
 
 `tests/mimalloc-cargo.py` exercises the actual pinned `mimalloc-safe` and
 `libmimalloc-sys2` crates with the recipe-generated standard Cargo override and
-an ordinary shared mimalloc 3.6.0 embedding library. The selected native Rust
+the Darwin embedding library from the mimalloc package. The selected native Rust
 allocator executes allocation, ownership and cross-thread free checks,
 while ordinary C malloc remains with the process allocator. A deliberately
 unavailable CMake proves the bundled allocator build script is skipped; removing

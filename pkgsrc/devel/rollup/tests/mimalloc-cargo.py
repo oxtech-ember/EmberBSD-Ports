@@ -50,7 +50,7 @@ def main():
     args.work.mkdir(parents=True, exist_ok=False)
     overrides = args.work / 'mimalloc-links.toml'
     target = subprocess.check_output([str(prefix / 'bin/rustc'), '-vV'], text=True).split('host: ', 1)[1].splitlines()[0]
-    prepare.prepare(args.rollup_source, '4.65.1', target, 'darwin-arm64', args.mimalloc_libdir, overrides)
+    prepare.prepare(args.rollup_source, '4.65.1', target, 'darwin-arm64', args.mimalloc_libdir, overrides, 'mimalloc-embed')
     flags = ['-isysroot', str(args.sdk_root), '-mmacosx-version-min=' + args.deployment_target,
              '--start-no-unused-arguments', '--ld-path=' + str(prefix / 'bin/ld64.lld'), '--end-no-unused-arguments']
     env = dict(os.environ, PATH=str(args.utility_path), SDKROOT=str(args.sdk_root),

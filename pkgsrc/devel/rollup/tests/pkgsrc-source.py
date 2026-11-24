@@ -50,6 +50,8 @@ def main():
         runtime=run('rollup','-V','${DEPENDS}')
         assert 'rust-bin>=' in tools and 'python315' in tools,tools
         assert 'rust-bin' not in build,build
+        assert 'mimalloc>=3.7.0nb1' in runtime,runtime
+        assert run('rollup','-V','${MIMALLOC_EMBED_LIBRARY}') == 'mimalloc-embed'
         assert all(name in runtime for name in ('mimalloc>=3.6.0','node-types-estree>=1.0.9','nodejs>=26.12.1')),runtime
         native_target=run('rollup','-V','${EMBER_CARGO_TARGET}');native_base=run('rollup','-V','${ROLLUP_NAPI_BASE}')
         assert native_target in ('aarch64-apple-darwin','x86_64-apple-darwin'),native_target
@@ -66,9 +68,11 @@ def main():
             assert output.splitlines()==[rust,node],output
             required=run('rollup',*cross,'CROSS_MACHINE_ARCH='+arch,'-V','${MIMALLOC_REQUIRE_OVERRIDE}','-V','${MIMALLOC_REQUIRE_DYNAMIC_TLS}','-V','${MIMALLOC_REQUIRE_GENERIC_ARCH:Uno}',native=False)
             assert required.splitlines()==['no','yes','yes' if arch=='aarch64' else 'no'],required
-        # Source acquisition still passes with a provider mode configure rejects.
+        # Darwin's distinct embedding library works alongside the ordinary override.
         run('rollup','PKG_BUILD_OPTIONS.mimalloc=malloc-override','fetch','checksum')
-        run('rollup','PKG_BUILD_OPTIONS.mimalloc=malloc-override','ember-mimalloc-consumer-options',success=False)
+        run('rollup','PKG_BUILD_OPTIONS.mimalloc=malloc-override','ember-mimalloc-consumer-options')
+        run('rollup',*cross,'CROSS_MACHINE_ARCH=aarch64','PKG_BUILD_OPTIONS.mimalloc=malloc-override',
+            'ember-mimalloc-consumer-options',native=False,success=False)
         run('node-types-estree','fetch','checksum')
         extract=root/'estree-source';extract.mkdir()
         with tarfile.open(args.distdir/'estree-1.0.9.tgz') as archive:archive.extractall(extract,filter='data')
