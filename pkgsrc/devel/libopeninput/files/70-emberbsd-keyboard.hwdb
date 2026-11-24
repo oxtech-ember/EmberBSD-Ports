@@ -1,0 +1,32 @@
+# $NetBSD$
+# SPDX-License-Identifier: MIT
+#
+# EmberBSD keyboard scan code mappings for libopeninput, in the format of
+# systemd hwdb(7).  libopeninput reads the *.hwdb files of this directory
+# in name order; this file comes after 60-keyboard.hwdb of systemd and
+# replaces its properties.  Then it reads the local *.hwdb files of
+# etc/libinput/hwdb.d in the package prefix (/usr/pkg/etc/libinput/hwdb.d),
+# which replace the package properties.  Put local records there: a
+# package update replaces the files of this directory.
+#
+# Each property gives the scan code of the PC keyboard, in hexadecimal,
+# and the key name of input-event-codes.h in lower case without "key_".
+# The scan code is the wscons key number: an escaped (e0) code has bit 7
+# set.  The match lines use the DMI strings of sysctl machdep.dmi without
+# spaces and colons; an unknown field is empty.  libopeninput reads the
+# files once, so restart the compositor after a change.
+
+###########################################################
+# MSI (Micro-Star)
+###########################################################
+
+# 60-keyboard.hwdb gives micmute (KEY_MICMUTE, code 248) for Fn+F5.  Its
+# XKB key code 256 is not available to X11 clients, and the fnmedia
+# options of xkeyboard-config use <FK20> for this key: keep KEY_F20.
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnMICRO-STAR*:pn*:*
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnMicro-Star*:pn*:*
+ KEYBOARD_KEY_f1=f20                                    # Fn+F5 microphone mute
+
+# Vector 17 HX AI A2XWJG: Fn+F6 toggles Bluetooth.
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnMicro-Star*:pnVector17HXAI*:*
+ KEYBOARD_KEY_d7=bluetooth                              # Fn+F6

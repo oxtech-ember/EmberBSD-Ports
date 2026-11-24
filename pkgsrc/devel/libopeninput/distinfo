@@ -3,10 +3,14 @@ $NetBSD: distinfo,v 1.2 2026/05/27 17:14:19 kikadf Exp $
 BLAKE2s (libopeninput-1.31.3-10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz) = 1bb9295eb9bf288dd512d09e94d318241a820f5fb8d1d39f094df2c3794e0ece
 SHA512 (libopeninput-1.31.3-10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz) = 4957ef42cfc6868546225d0b690acf51bc2a2fb799161a603fd3560c3d2b13af298161f4682f11e909aeaf443106b65cc4625a0afbc2b3fbd7fa27f61d34ef47
 Size (libopeninput-1.31.3-10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz) = 1203451 bytes
+BLAKE2s (systemd-262.2-60-keyboard.hwdb) = 1ad8eb26d31f3200ae38454c1d97ff138bad5ef0f4ec0fd0946ef746dd7a7609
+SHA512 (systemd-262.2-60-keyboard.hwdb) = c5721e6b0a0de8984b026ebca7e8a68e9afe9f144b752d3ad151219b12a18e41bc76706d52c0791d784edbd6667ac87b43b3dbc8346f8a5922a9e9b031f9061a
+Size (systemd-262.2-60-keyboard.hwdb) = 120318 bytes
+SHA1 (patch-meson.build) = 97c775744450352dfedfc52793deeb94de911cc8
 SHA1 (patch-src_libinput_openbsd.c) = a9734de9b027e55080e33604a413c68ac03123f5
 SHA1 (patch-src_wscons.c) = a7f723ab75c96644391330ad4221a85e8172b2a6
 SHA1 (patch-src_wscons.h) = a0ae65e1c8735b85f19d15fa4dfad99c059f5663
-SHA1 (patch-src_wskbdmap.c) = 74f50aeafa8facbe1a2a604c276e613798d27d3c
+SHA1 (patch-src_wskbdmap.c) = 8ff939f0dde6eb2225a37f06875a480cee0cf4b9
 SHA1 (patch-wscons-absolute-pointer) = 7988d71e4641c787597253969c7b85629a2068b8
 SHA1 (patch-wscons-send-events-udev) = 35972eb53acbc6a004c319a4c2a5a0cc5df8ff4e
 SHA1 (patch-wscons-swipe-gestures) = c0f5487503c5afbc0253e69cbd7bac5e1c739f08

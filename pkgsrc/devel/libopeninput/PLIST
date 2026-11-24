@@ -79,4 +79,6 @@ share/libinput/50-system-starlabs.quirks
 share/libinput/50-system-system76.quirks
 share/libinput/50-system-toshiba.quirks
 share/libinput/50-system-wareus.quirks
+share/libinput/hwdb.d/60-keyboard.hwdb
+share/libinput/hwdb.d/70-emberbsd-keyboard.hwdb
 share/zsh/site-functions/_libinput

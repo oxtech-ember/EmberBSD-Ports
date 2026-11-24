@@ -1,0 +1,25 @@
+$NetBSD$
+
+* Build wskbd-hwdb.c (from FILESDIR) and give the directories of the
+  package and local hwdb files for the scan code mappings; see
+  patch-src_wskbdmap.c.
+
+--- meson.build.orig
++++ meson.build
+@@ -415,6 +415,8 @@
+ config_h.set_quoted('LIBINPUT_QUIRKS_OVERRIDE_FILE', libinput_data_override_path)
+ 
+ config_h.set_quoted('LIBINPUT_QUIRKS_SRCDIR', dir_src_quirks)
++config_h.set_quoted('WSKBD_HWDB_DIR', dir_data / 'hwdb.d')
++config_h.set_quoted('WSKBD_HWDB_ETCDIR', dir_overrides / 'hwdb.d')
+ install_subdir('quirks',
+ 	       exclude_files: ['README.md'],
+ 	       install_dir : dir_data,
+@@ -453,6 +455,7 @@
+ 	'src/libinput_openbsd.c',
+ 	'src/libinput-private-config.c',
+ 	'src/timer.c',
++	'src/wskbd-hwdb.c',
+ 	'src/wskbdmap.c',
+ 	'src/wscons.c'
+ ]
