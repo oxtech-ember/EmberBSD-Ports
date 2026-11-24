@@ -1,6 +1,7 @@
 # $NetBSD$
 DISTNAME= idna-0.8.0
 PKGNAME= ada-${DISTNAME}
+PKGREVISION= 1 # Rebuild for the simdutf 9.5.0 ABI.
 WRKSRC= ${WRKDIR}/${DISTNAME}
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=ada-url/}
