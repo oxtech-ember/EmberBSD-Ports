@@ -8,18 +8,22 @@ LCMS2_BUILDLINK3_MK:=
 BUILDLINK_API_DEPENDS.lcms2+=	lcms2>=2.2
 BUILDLINK_PKGSRCDIR.lcms2?=	../../graphics/lcms2
 
+USE_TOOLS+=		readlink
 BUILDLINK_TARGETS+=	buildlink-include-lcms2
 
 .PHONY: buildlink-include-lcms2
 buildlink-include-lcms2:
-.for h_ in lcms2.h
-	${RUN}								\
-	if [ ! -f ${BUILDLINK_DIR}/include/lcms2/${h_} ]; then		\
-		${MKDIR} ${BUILDLINK_DIR}/include/lcms2;		\
-		${ECHO_BUILDLINK_MSG} "Linking lcms2/${h_} to ${h_} in ${BUILDLINK_DIR}/include"; \
-		${LN} -s ${BUILDLINK_PREFIX.lcms2}/include/${h_} ${BUILDLINK_DIR}/include/lcms2/${h_}; \
-	fi
-.endfor
+	${RUN} link=${BUILDLINK_DIR:Q}/include/lcms2/lcms2.h; \
+	if [ -L "$$link" ]; then \
+		target=$$(${TOOLS_CMDLINE.readlink} "$$link"); \
+		[ "$$target" != ../lcms2.h ] || exit 0; \
+		${RM} -f "$$link"; \
+	elif [ -e "$$link" ]; then \
+		exit 0; \
+	fi; \
+	${MKDIR} ${BUILDLINK_DIR:Q}/include/lcms2; \
+	${ECHO_BUILDLINK_MSG} "Linking lcms2/lcms2.h to lcms2.h in ${BUILDLINK_DIR}/include"; \
+	${LN} -s ../lcms2.h "$$link"
 .endif # LCMS2_BUILDLINK3_MK
 
 BUILDLINK_TREE+=	-lcms2
