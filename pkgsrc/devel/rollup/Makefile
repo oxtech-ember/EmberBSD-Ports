@@ -3,8 +3,10 @@
 DISTNAME=	rollup-4.65.1
 .include "../../mk/bsd.prefs.mk"
 PKGREVISION=	5
-.if ${OPSYS} == "Darwin" || (${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U)))
+.if ${OPSYS} == "Darwin"
+PKGREVISION=	7
+.elif ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
 PKGREVISION=	6
 .endif
 CATEGORIES=	devel
@@ -85,6 +87,7 @@ RUSTFLAGS+=	-C link-arg=-Wl,-rpath,${PREFIX}/lib
 RUSTFLAGS+=	--remap-path-prefix=${WRKDIR}=.
 EMBER_CARGO_CONFIGURE_ARGS+=	--build-script-overrides ${WRKDIR:Q}/mimalloc-links.toml
 
+EMBER_CARGO_INSTALLED_CDYLIB=	lib/node_modules/rollup/dist/rollup.${ROLLUP_NAPI_BASE}.node
 INSTALLATION_DIRS=	bin lib/node_modules/rollup share/licenses/rollup
 GENERATE_PLIST+=	cd ${DESTDIR}${PREFIX}; ${FIND} share/licenses/rollup -type f -print | ${SORT};
 
@@ -113,7 +116,7 @@ do-install:
 	${INSTALL_SCRIPT} ${WRKSRC}/npm/package/dist/bin/rollup \
 	    ${DESTDIR}${PREFIX}/lib/node_modules/rollup/dist/bin/rollup
 	${INSTALL_LIB} ${EMBER_CARGO_OUTPUT}/${EMBER_CARGO_TARGET}/release/libbindings_napi.${ROLLUP_DYLIB_SUFFIX} \
-	    ${DESTDIR}${PREFIX}/lib/node_modules/rollup/dist/rollup.${ROLLUP_NAPI_BASE}.node
+	    ${DESTDIR:Q}${PREFIX:Q}/${EMBER_CARGO_INSTALLED_CDYLIB:Q}
 	${LN} -sf ../lib/node_modules/rollup/dist/bin/rollup ${DESTDIR}${PREFIX}/bin/rollup
 	${TOOL_PYTHONBIN} -B -I -S ${FILESDIR:Q}/install-notices.py \
 	    --lock ${CARGO_WRKSRC:Q}/Cargo.lock --vendor ${CARGO_VENDOR_DIR:Q} \

@@ -72,6 +72,17 @@ ember-cargo-configure: ember-cargo-patches
 	    --target-linker-launcher=${EMBER_CARGO_TARGET_LINKER_LAUNCHER:Q} \
 	    --rustflags=${RUSTFLAGS:Q} ${_EMBER_CARGO_TARGET_ARGS} ${EMBER_CARGO_CONFIGURE_ARGS}
 
+# Rust cdylibs installed under a new name need that name as their Darwin ID.
+# The package supplies a path relative to PREFIX and installs the file itself.
+.if ${OPSYS} == "Darwin" && defined(EMBER_CARGO_INSTALLED_CDYLIB)
+TOOL_DEPENDS+=	llvm-[0-9]*:../../lang/llvm
+post-install: ember-cargo-darwin-install-id
+.PHONY: ember-cargo-darwin-install-id
+ember-cargo-darwin-install-id:
+	${TOOLBASE:Q}/bin/llvm-install-name-tool -id @rpath/${EMBER_CARGO_INSTALLED_CDYLIB:T:Q} \
+	    ${DESTDIR:Q}${PREFIX:Q}/${EMBER_CARGO_INSTALLED_CDYLIB:Q}
+.endif
+
 # Keep pkgsrc's normal Cargo targets, job count, environment and exit status.
 CARGO=	${TOOL_PYTHONBIN} -B -I -S ${_EMBER_CARGO_HELPER:Q} run \
 	--cargo ${EMBER_CARGO_PREFIX:Q}/bin/cargo --config ${EMBER_CARGO_CONFIG:Q} \
