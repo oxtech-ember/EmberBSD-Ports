@@ -6,6 +6,11 @@ GITHUB_TAG= v${PKGVERSION_NOREV}
 HOMEPAGE= https://github.com/cisco/libsrtp/
 COMMENT= Secure real-time transport protocol library
 LICENSE= modified-bsd
+
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin"
+PKGREVISION=	1
+.endif
 USE_LANGUAGES= c
 CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON -DLIBSRTP_TEST_APPS=OFF
 CMAKE_CONFIGURE_ARGS+= -DENABLE_OPENSSL=ON -DENABLE_WARNINGS_AS_ERRORS=OFF

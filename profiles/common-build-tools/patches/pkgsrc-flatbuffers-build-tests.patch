@@ -1,7 +1,12 @@
 --- a/devel/flatbuffers/Makefile
 +++ b/devel/flatbuffers/Makefile
-@@ -16,6 +16,8 @@
+@@ -16,6 +16,13 @@
  
++.include "../../mk/bsd.prefs.mk"
++.if ${OPSYS} == "Darwin"
++PKGREVISION=	1
++.endif
++
  CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
  CMAKE_CONFIGURE_ARGS+=	-DFLATBUFFERS_BUILD_SHAREDLIB=ON
 +# Tests and samples are selected separately; target flatc cannot run on the host.

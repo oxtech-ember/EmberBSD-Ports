@@ -7,6 +7,11 @@ GITHUB_TAG= ${PKGVERSION_NOREV}
 HOMEPAGE= https://github.com/google/crc32c/
 COMMENT= CRC32C checksums with CPU acceleration
 LICENSE= modified-bsd
+
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin"
+PKGREVISION=	2
+.endif
 USE_LANGUAGES= c c++
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON

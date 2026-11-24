@@ -7,6 +7,11 @@ MASTER_SITES= -https://gitlab.com/chromiumsrc/libyuv/-/archive/d2a64963531e80a32
 HOMEPAGE= https://chromium.googlesource.com/libyuv/libyuv/
 COMMENT= Image conversion and scaling library
 LICENSE= modified-bsd
+
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin"
+PKGREVISION=	2
+.endif
 USE_LANGUAGES= c c++
 CMAKE_CONFIGURE_ARGS+= -DUNIT_TEST=OFF
 INSTALLATION_DIRS+= include/libyuv lib share/licenses/libyuv
