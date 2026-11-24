@@ -1,0 +1,19 @@
+$NetBSD$
+
+Replace only the .ec suffix when mkerr.pl derives the state file name.
+The unescaped pattern also matched an earlier "ec" with any character
+before it in a directory name, such as a hash, so the build could not
+open the error configuration file.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- util/mkerr.pl.orig
++++ util/mkerr.pl
+@@ -196,7 +196,7 @@
+ 
+ if ( ! $statefile ) {
+     $statefile = $config;
+-    $statefile =~ s/.ec/.txt/;
++    $statefile =~ s/\.ec$/.txt/;
+ }
+ 
+ # Unless a rewrite or a report was explicitly requested, skip the run
