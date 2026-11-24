@@ -75,7 +75,9 @@ def main():
             'ember-mimalloc-consumer-options',native=False,success=False)
         run('node-types-estree','fetch','checksum')
         extract=root/'estree-source';extract.mkdir()
-        with tarfile.open(args.distdir/'estree-1.0.9.tgz') as archive:archive.extractall(extract,filter='data')
+        distfile=run('node-types-estree','-V','${DISTNAME}${EXTRACT_SUFX}')
+        version=run('node-types-estree','-V','${PKGVERSION_NOREV}')
+        with tarfile.open(args.distdir/distfile) as archive:archive.extractall(extract,filter='data')
         package_prefix=Path(run('node-types-estree','-V','${PREFIX}'))
         stage=root/'stage'
         directories=run('node-types-estree','-V','${INSTALLATION_DIRS}').split()
@@ -84,7 +86,7 @@ def main():
         installed=stage/package_prefix.relative_to('/')/'lib/node_modules/@types/estree'
         for name in ('LICENSE','README.md','flow.d.ts','index.d.ts','package.json'):
             assert (installed/name).read_bytes()==(extract/'estree'/name).read_bytes(),name
-        assert json.loads((installed/'package.json').read_text())['version']=='1.0.9'
+        assert json.loads((installed/'package.json').read_text())['version']==version
         print(json.dumps({'pkgsrc_checks':count,'estree_payload_files':5,'scope':'actual source/checksum, native/cross metadata and data-only staged install; no Rust/C/C++ build or target execution'}))
 
 
