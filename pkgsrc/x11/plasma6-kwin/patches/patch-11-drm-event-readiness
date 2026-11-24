@@ -1,0 +1,20 @@
+$NetBSD$
+
+Check DRM event readiness when the page-flip watchdog invokes dispatch.
+
+--- src/backends/drm/drm_gpu.cpp.orig
++++ src/backends/drm/drm_gpu.cpp
+@@ -625,6 +625,13 @@
+ 
+ void DrmGpu::dispatchEvents()
+ {
++    // The commit timeout also calls this without a socket notification.
++    // Session devices can be blocking. Only the GUI thread reads this fd.
++    pollfd eventFd{.fd = m_fd, .events = POLLIN, .revents = 0};
++    if (poll(&eventFd, 1, 0) <= 0 || !(eventFd.revents & POLLIN)) {
++        return;
++    }
++
+     drmEventContext context = {};
+     context.version = 3;
+     context.page_flip_handler2 = pageFlipHandler;
