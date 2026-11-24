@@ -17,6 +17,10 @@ def main():
     parser.add_argument('--js2c', type=Path, required=True, help='selected native node_js2c')
     parser.add_argument('--node', type=Path, required=True, help='selected native Node runtime')
     parser.add_argument('--config', type=Path, required=True, help='real configure-produced config.gypi')
+    parser.add_argument('--check-installed', action='store_true',
+                        help='also test the installed Node, its workers, and user snapshots')
+    parser.add_argument('--restore-node', type=Path,
+                        help='restore with the same package installed in another prefix')
     args = parser.parse_args()
     source = args.source.resolve()
     node = args.node.resolve()
@@ -30,7 +34,7 @@ def main():
         input_dir = root / 'out/pkgsrc-runtime'
         input_dir.mkdir(parents=True)
         original = config['target_defaults']['include_dirs']
-        original.extend([prefix + '-neighbor/include', '/usr/pkg/include', 'text ' + prefix,
+        original.extend([prefix + '/sub/../../external', prefix + '-neighbor/include', '/usr/pkg/include', 'text ' + prefix,
                          prefix + '/space and "quote"', 'pkgsrc_node_path'])
         config['target_defaults']['libraries'].append('-F' + prefix + '/Frameworks')
         config['variables']['test_external_object'] = {'pkgsrc_node_path': [prefix + '-other', 'unrelated']}
@@ -79,6 +83,7 @@ set(relocated);
 assert.equal(target.config.variables.node_prefix, relocated);
 const include = target.config.target_defaults.include_dirs;
 assert(include.includes(producer + '-neighbor/include'));
+assert(include.includes(producer + '/sub/../../external'));
 assert(include.includes('/usr/pkg/include'));
 assert(include.includes('text ' + producer));
 assert(include.includes(relocated + '/space and "quote"'));
@@ -91,6 +96,38 @@ assert.equal(target.config.variables.node_prefix, relocated);
         module = source / 'lib/internal/process/pkgsrc_config.js'
         for flags in ([], ['--no-node-snapshot']):
             subprocess.run([node, *flags, script, module, prefix], cwd=root, check=True)
+        if args.check_installed:
+            probe = root / 'check-installed.cjs'
+            probe.write_text("""'use strict';
+const assert = require('node:assert/strict');
+const { dirname } = require('node:path');
+const { isMainThread, Worker } = require('node:worker_threads');
+assert.equal(process.config.variables.node_prefix, dirname(dirname(process.execPath)));
+assert(Object.isFrozen(process.config.variables));
+if (isMainThread) {
+  const worker = new Worker(__filename);
+  worker.on('exit', code => assert.equal(code, 0));
+}
+""")
+            for flags in ([], ['--no-node-snapshot']):
+                subprocess.run([node, *flags, probe], cwd=root, check=True)
+            build = root / 'make-snapshot.cjs'
+            build.write_text("""'use strict';
+const assert = require('node:assert/strict');
+const { dirname } = require('node:path');
+const { startupSnapshot } = require('node:v8');
+function check() {
+  assert.equal(process.config.variables.node_prefix, dirname(dirname(process.execPath)));
+}
+check();
+startupSnapshot.addSerializeCallback(check);
+startupSnapshot.addDeserializeCallback(check);
+startupSnapshot.setDeserializeMainFunction(check);
+""")
+            blob = '--snapshot-blob=' + str(root / 'runtime.blob')
+            subprocess.run([node, blob, '--build-snapshot', build], cwd=root, check=True)
+            restored = args.restore_node.resolve() if args.restore_node else node
+            subprocess.run([restored, blob], cwd=root, check=True)
         print('Verified', len(paths), 'package-owned config paths and the full js2c output')
 
 

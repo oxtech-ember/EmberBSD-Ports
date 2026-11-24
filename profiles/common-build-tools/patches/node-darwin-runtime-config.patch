@@ -1,7 +1,7 @@
 # Origin: EmberBSD contributors (AI-assisted); relative Darwin package metadata.
 --- configure.py.orig
 +++ configure.py
-@@ -3164,6 +3164,28 @@
+@@ -3164,6 +3164,30 @@
  write('config.gypi', do_not_edit +
        json.dumps(output, indent=2) + '\n')
  
@@ -16,8 +16,10 @@
 +    for flag in ('', '-I', '-L', '-F'):
 +      base = flag + prefix
 +      if value == base or value.startswith(base + '/'):
-+        paths.append([keys, flag])
-+        return value[len(base):]
++        tail = value[len(base):]
++        if '..' not in tail.split('/'):
++          paths.append([keys, flag])
++          return tail
 +  return value
 +
 +runtime_config_dir = Path('out/pkgsrc-runtime')
@@ -87,7 +89,15 @@
  
 --- lib/internal/process/pre_execution.js.orig
 +++ lib/internal/process/pre_execution.js
-@@ -336,6 +336,11 @@
+@@ -41,6 +41,7 @@
+     addSerializeCallback,
+     isBuildingSnapshot,
+   },
++  addAfterUserSerializeCallback,
+   runDeserializeCallbacks,
+ } = require('internal/v8/startup_snapshot');
+ 
+@@ -336,6 +337,11 @@
  function patchProcessObject(expandArgv1) {
    const binding = internalBinding('process_methods');
    binding.patchProcessObject(process);
@@ -95,7 +105,7 @@
 +  const { setConfig } = require('internal/process/pkgsrc_config');
 +  const { dirname } = require('path');
 +  setConfig(dirname(dirname(process.execPath)));
-+  if (isBuildingSnapshot()) addSerializeCallback(() => setConfig());
++  if (isBuildingSnapshot()) addAfterUserSerializeCallback(() => setConfig());
  
    // Since we replace process.argv[0] below, preserve the original value in case the user needs it.
    ObjectDefineProperty(process, 'argv0', {
