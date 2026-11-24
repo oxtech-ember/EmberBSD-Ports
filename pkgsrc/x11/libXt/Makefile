@@ -53,4 +53,8 @@ BUILDLINK_API_DEPENDS.libX11+= libX11>=1.8.14nb1
 pre-configure:
 	cd ${WRKSRC} && aclocal -I m4 && autoheader && autoconf
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	3	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"
