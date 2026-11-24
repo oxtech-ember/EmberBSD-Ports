@@ -2,7 +2,9 @@
 DISTNAME= dprint-node-1.0.8
 .include "../../mk/bsd.prefs.mk"
 PKGREVISION= 1
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+.if ${OPSYS} == "Darwin"
+PKGREVISION= 3
+.elif ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
 PKGREVISION= 2
 .endif
@@ -25,6 +27,7 @@ EMBER_CARGO_PATCH_SET= yes
 CARGO_ARGS= build --release --locked ${DEFAULT_CARGO_ARGS}
 MACHO_USE_LOAD_COMMANDS= yes
 RUSTFLAGS+= --remap-path-prefix=${WRKDIR}=.
+EMBER_CARGO_INSTALLED_CDYLIB= lib/node_modules/dprint-node/dprint-node.node
 INSTALLATION_DIRS= lib/node_modules/dprint-node share/licenses/dprint-node
 GENERATE_PLIST+= cd ${DESTDIR}${PREFIX}; ${FIND} share/licenses/dprint-node -type f -print | ${SORT};
 
@@ -67,7 +70,7 @@ do-test:
 
 do-install:
 	${INSTALL_DATA} ${WRKSRC}/index.js ${WRKSRC}/package.json ${WRKSRC}/index.d.ts ${WRKSRC}/options.d.ts ${DESTDIR}${PREFIX}/lib/node_modules/dprint-node
-	${INSTALL_LIB} ${EMBER_CARGO_OUTPUT}/${EMBER_CARGO_TARGET}/release/libdprint_node.${_DPRINT_SUFFIX} ${DESTDIR}${PREFIX}/lib/node_modules/dprint-node/dprint-node.node
+	${INSTALL_LIB} ${EMBER_CARGO_OUTPUT}/${EMBER_CARGO_TARGET}/release/libdprint_node.${_DPRINT_SUFFIX} ${DESTDIR:Q}${PREFIX:Q}/${EMBER_CARGO_INSTALLED_CDYLIB:Q}
 	${INSTALL_DATA} ${WRKSRC}/LICENSE ${DESTDIR}${PREFIX}/share/licenses/dprint-node/LICENSE
 	${INSTALL_DATA} ${TS_SOURCE}/LICENSE ${DESTDIR}${PREFIX}/share/licenses/dprint-node/LICENSE.typescript
 	${MKDIR} ${DESTDIR}${PREFIX}/share/licenses/dprint-node/crates
