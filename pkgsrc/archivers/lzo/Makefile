@@ -15,4 +15,9 @@ GNU_CONFIGURE=		yes
 TEST_TARGET=		test
 PKGCONFIG_OVERRIDE=	lzo2.pc.in
 
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	3	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

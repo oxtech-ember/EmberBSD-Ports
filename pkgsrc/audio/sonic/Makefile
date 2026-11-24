@@ -19,4 +19,9 @@ MAKE_FLAGS+=		PREFIX=${PREFIX}
 # Upstream's uname describes the host, not the cross-built shared library.
 MAKE_FLAGS+=		UNAME=${OPSYS} CC=${CC:Q} AR=${AR:Q} CFLAGS=${CFLAGS:Q}
 
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"
