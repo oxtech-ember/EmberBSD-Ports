@@ -13,7 +13,7 @@ def write_override(libdir, output, library="mimalloc"):
     if library not in ('mimalloc', 'mimalloc-embed'):
         raise ValueError('unknown shared mimalloc library')
     if not any((libdir / ('lib' + library + suffix)).is_file() for suffix in ('.so', '.dylib')):
-        raise ValueError('selected shared library is missing from buildlink: ' + library)
+        raise ValueError('selected shared mimalloc library is missing from buildlink: ' + library)
     output.write_text('[mimalloc_sys2]\nrustc-link-lib = ' + json.dumps(['dylib=' + library]) +
                       '\nrustc-link-search = ' + json.dumps([str(libdir)], ensure_ascii=False) + '\n')
 
