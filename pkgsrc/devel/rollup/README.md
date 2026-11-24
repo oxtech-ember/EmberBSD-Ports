@@ -90,7 +90,7 @@ python3 -B -I -S pkgsrc/devel/rollup/tests/source.py \
   --license-root /absolute/pkgsrc/licenses --work /absolute/new-source-check
 python3 -B -I -S pkgsrc/devel/rollup/tests/pkgsrc-source.py \
   --pkgsrc /absolute/completed-pkgsrc --bmake /absolute/native/bin/bmake \
-  --makeconf /absolute/native-mk.conf --shell /absolute/native/bin/mksh \
+  --makeconf /absolute/native-mk.conf --native-sdk --shell /absolute/native/bin/mksh \
   --distdir /absolute/distfiles
 python3 -B -I -S pkgsrc/devel/rollup/tests/native-loader.py \
   --node /absolute/native/bin/node \

@@ -17,6 +17,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ('pkgsrc','bmake','makeconf','shell','distdir'):
         parser.add_argument('--'+name,type=Path,required=True)
+    parser.add_argument('--native-sdk', action='store_true',
+        help='use the installed native SDK makeconf instead of the Darwin bootstrap producer')
     args=parser.parse_args()
     recipe=Path(__file__).resolve().parents[1];ports=recipe.parents[2]
     with tempfile.TemporaryDirectory(prefix='rollup-pkgsrc-') as temporary:
@@ -33,14 +35,16 @@ def main():
         for source,destination in (('cargo.mk','emberbsd-cargo.mk'),('cargo-config.py','emberbsd-cargo-config.py')):
             shutil.copyfile(ports/'profiles/common-build-tools'/source,view/'lang/rust'/destination)
         base=[str(args.bmake),'-m',str(args.bmake.parent.parent/'share/mk'),'SHELL='+str(args.shell),
-              'MAKECONF='+str(args.makeconf),'EMBERBSD_DARWIN_BOOTSTRAP=yes','DISTDIR='+str(args.distdir),
+              'MAKECONF='+str(args.makeconf),'DISTDIR='+str(args.distdir),
               'WRKOBJDIR='+str(root/'objects')]
+        if not args.native_sdk:
+            base.append('EMBERBSD_DARWIN_BOOTSTRAP=yes')
         count=0
         def run(package,*extra,native=True,success=True):
             nonlocal count
             command=base if native else [word for word in base if not word.startswith('EMBERBSD_DARWIN_BOOTSTRAP=')]
             env=os.environ.copy()
-            if not native:env.pop('EMBERBSD_DARWIN_BOOTSTRAP',None)
+            if not native or args.native_sdk:env.pop('EMBERBSD_DARWIN_BOOTSTRAP',None)
             result=subprocess.run([*command,*extra],cwd=view/'devel'/package,text=True,capture_output=True,env=env)
             assert (result.returncode==0)==success,(package,extra,result.stdout,result.stderr)
             count+=1
