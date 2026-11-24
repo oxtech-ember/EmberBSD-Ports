@@ -3,8 +3,8 @@
 DISTNAME=	rollup-4.65.1
 .include "../../mk/bsd.prefs.mk"
 PKGREVISION=	5
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
+.if ${OPSYS} == "Darwin" || (${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U)))
 PKGREVISION=	6
 .endif
 CATEGORIES=	devel
@@ -75,8 +75,6 @@ ROLLUP_DYLIB_SUFFIX=	so
 .endif
 PLIST_SUBST+=	ROLLUP_NAPI_BASE=${ROLLUP_NAPI_BASE:Q}
 
-# The native addon uses mi_* and must not interpose the Node process allocator.
-MIMALLOC_REQUIRE_OVERRIDE=	no
 .if ${OPSYS} == "Linux" || ${OPSYS} == "FreeBSD" || ${OPSYS} == "NetBSD"
 MIMALLOC_REQUIRE_DYNAMIC_TLS=	yes
 .endif
@@ -96,7 +94,8 @@ rollup-source-inputs:
 	${RUN} ${TOOL_PYTHONBIN} -B -I -S ${FILESDIR:Q}/prepare.py \
 	    --source ${WRKSRC:Q} --version ${PKGVERSION_NOREV:Q} \
 	    --rust-target=${EMBER_CARGO_TARGET:Q} --napi-base=${ROLLUP_NAPI_BASE:Q} \
-	    --mimalloc-libdir ${BUILDLINK_DIR:Q}/lib --output ${WRKDIR:Q}/mimalloc-links.toml
+	    --mimalloc-libdir ${BUILDLINK_DIR:Q}/lib --mimalloc-library ${MIMALLOC_EMBED_LIBRARY:Q} \
+	    --output ${WRKDIR:Q}/mimalloc-links.toml
 
 do-test:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
@@ -124,6 +123,6 @@ do-install:
 
 .include "cargo-depends.mk"
 .include "../../lang/rust/emberbsd-cargo.mk"
-.include "../../devel/mimalloc/buildlink3.mk"
+.include "../../devel/mimalloc/embedding.mk"
 .include "../../lang/nodejs/application.mk"
 .include "../../mk/bsd.pkg.mk"

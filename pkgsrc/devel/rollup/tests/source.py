@@ -38,6 +38,15 @@ class InputsTest(unittest.TestCase):
         library=self.root/'buildlink/lib';library.mkdir(parents=True);(library/'libmimalloc.so.3').touch();(library/'libmimalloc.so').symlink_to('libmimalloc.so.3')
         self.args=dict(source=self.source,version='4.65.1',rust_target='aarch64-apple-darwin',napi_base='darwin-arm64',mimalloc_libdir=library,output=self.root/'links.toml')
 
+    def test_darwin_embedding_library(self):
+        selected = dict(self.args, mimalloc_library='mimalloc-embed')
+        with self.assertRaisesRegex(ValueError, 'mimalloc-embed'):
+            prepare.prepare(**selected)
+        (self.args['mimalloc_libdir']/'libmimalloc-embed.dylib').touch()
+        prepare.prepare(**selected)
+        flags = tomllib.loads(self.args['output'].read_text())['mimalloc_sys2']
+        self.assertEqual(flags['rustc-link-lib'], ['dylib=mimalloc-embed'])
+
     def test_shared_override(self):
         prepare.prepare(**self.args)
         data=tomllib.loads(self.args['output'].read_text())
