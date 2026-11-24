@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import subprocess
@@ -45,6 +46,9 @@ def main():
     for crate, version in (('mimalloc-safe', '0.1.67'), ('libmimalloc-sys2', '0.1.63')):
         manifest = tomllib.loads((args.vendor / (crate + '-' + version) / 'Cargo.toml').read_text())
         assert manifest['package']['name'] == crate and manifest['package']['version'] == version
+    header = (args.mimalloc_libdir.parent / 'include/mimalloc.h').read_text()
+    version = re.search(r'^#define\s+MI_MALLOC_VERSION\s+(\d+)\b', header, re.MULTILINE)
+    assert version, 'selected mimalloc.h must define MI_MALLOC_VERSION'
     build_script = args.vendor / 'libmimalloc-sys2-0.1.63/build.rs'
     before = hashlib.sha256(build_script.read_bytes()).hexdigest()
     args.work.mkdir(parents=True, exist_ok=False)
@@ -80,7 +84,8 @@ extern "C" {
     fn free(p: *mut std::ffi::c_void);
 }
 fn main() {
-    assert_eq!(unsafe { mi_version() }, 30600);
+    let expected: i32 = std::env::args().nth(1).unwrap().parse().unwrap();
+    assert_eq!(unsafe { mi_version() }, expected);
     let value = Box::new(17u64);
     assert!(unsafe { mi_check_owned((&*value as *const u64).cast()) });
     unsafe { let p = malloc(91); assert!(!p.is_null()); assert!(!mi_check_owned(p)); free(p); }
@@ -116,7 +121,7 @@ fn main() {
             # Restrict runtime library selection to the consumer, not Cargo and
             # its compiler/build-script subprocesses.
             executable = directory / 'out' / target / 'debug/shared-mimalloc-consumer'
-            runtime = subprocess.run([str(executable)], env=dict(env, DYLD_LIBRARY_PATH=str(args.mimalloc_libdir)),
+            runtime = subprocess.run([str(executable), version.group(1)], env=dict(env, DYLD_LIBRARY_PATH=str(args.mimalloc_libdir)),
                                      capture_output=True, text=True)
             (directory / 'runtime.log').write_text(runtime.stdout + runtime.stderr)
             assert runtime.returncode == 0 and 'real mimalloc-safe v3 shared allocator' in runtime.stdout, runtime.stdout + runtime.stderr
