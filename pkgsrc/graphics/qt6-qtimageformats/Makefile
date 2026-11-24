@@ -18,4 +18,9 @@ CMAKE_CONFIGURE_ARGS+=	-DFEATURE_jasper:BOOL=ON -DFEATURE_mng:BOOL=ON
 .include "../../graphics/libwebp/buildlink3.mk"
 .include "../../mk/jpeg.buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	2	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

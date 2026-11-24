@@ -19,4 +19,9 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6ShaderTools.pc
 # Shader remapping links SPIRV-Tools statically and needs the fixed validator.
 BUILDLINK_ABI_DEPENDS.spirv-tools+=	spirv-tools>=2026.4nb3
 .include "../../parallel/spirv-tools/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	3	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

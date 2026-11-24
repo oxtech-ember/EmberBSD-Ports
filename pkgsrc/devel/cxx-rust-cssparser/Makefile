@@ -72,4 +72,8 @@ ember-css-build-bridge: ember-cargo-configure ember-css-check-cross
 .include "../../devel/extra-cmake-modules/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	6	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

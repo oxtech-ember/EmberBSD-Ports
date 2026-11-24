@@ -55,4 +55,8 @@ BUILDLINK_API_DEPENDS.glib2+=   glib2>=2.14.0
 BUILDLINK_API_DEPENDS.pixman+=	pixman>=0.40.0
 .include "../../x11/pixman/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	4	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

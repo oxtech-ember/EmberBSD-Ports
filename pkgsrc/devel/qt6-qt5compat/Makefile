@@ -15,4 +15,9 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Core5Compat.pc
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../graphics/qt6-qtshadertools/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	2	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

@@ -58,4 +58,9 @@ MESON_CROSS.emberbsd_vapi_dirs= ['${CROSS_DESTDIR}${CROSS_LOCALBASE}/share/vala/
 .include "../../devel/pcre2/buildlink3.mk"
 .include "../../x11/gtk4/buildlink3.mk"
 .include "../../devel/meson/build.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"
