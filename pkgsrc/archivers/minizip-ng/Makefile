@@ -44,6 +44,9 @@ post-install:
 CFLAGS.NetBSD+=	-D_NETBSD_SOURCE
 
 .include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
+PKGREVISION=	3 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
+.endif
 .if ${OPSYS} == "Darwin"
 # Resolve the selected prefix's shared dependencies in the installed dylib.
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
