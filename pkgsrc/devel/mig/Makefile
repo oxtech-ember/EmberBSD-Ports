@@ -3,6 +3,7 @@
 
 DISTNAME=	bootstrap_cmds-138
 PKGNAME=	mig-138
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=apple-oss-distributions/}
 GITHUB_PROJECT=	bootstrap_cmds
@@ -16,6 +17,8 @@ LICENSE=	apple-public-source-license AND apple-public-source-license-1.0 AND cmu
 
 ONLY_FOR_PLATFORM=	Darwin-*-*
 USE_LANGUAGES=		c
+# Flex selects POSIX declarations. MIG also requires Darwin types such as u_int.
+CPPFLAGS.Darwin+=	-D_DARWIN_C_SOURCE
 USE_TOOLS+=		bash:run bison flex gm4
 REPLACE_BASH+=		migcom.tproj/mig.sh
 INSTALLATION_DIRS=	bin libexec ${PKGMANDIR}/man1 share/doc/mig
