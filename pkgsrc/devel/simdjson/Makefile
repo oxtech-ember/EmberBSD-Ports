@@ -1,5 +1,5 @@
 # $NetBSD$
-DISTNAME= simdjson-5.2.0
+DISTNAME= simdjson-5.3.0
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=simdjson/}
 GITHUB_TAG= v${PKGVERSION_NOREV}
@@ -13,12 +13,12 @@ CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON -DSIMDJSON_DEVELOPER_MODE=OFF -DSI
 .include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin"
 SIMDJSON_LIB= libsimdjson.dylib
-SIMDJSON_SOVERSION= libsimdjson.37.dylib
-SIMDJSON_VERSIONED= libsimdjson.37.0.0.dylib
+SIMDJSON_SOVERSION= libsimdjson.38.dylib
+SIMDJSON_VERSIONED= libsimdjson.38.0.0.dylib
 .else
 SIMDJSON_LIB= libsimdjson.so
-SIMDJSON_SOVERSION= libsimdjson.so.37
-SIMDJSON_VERSIONED= libsimdjson.so.37.0.0
+SIMDJSON_SOVERSION= libsimdjson.so.38
+SIMDJSON_VERSIONED= libsimdjson.so.38.0.0
 .endif
 PLIST_SUBST+= SIMDJSON_LIB=${SIMDJSON_LIB} SIMDJSON_SOVERSION=${SIMDJSON_SOVERSION} SIMDJSON_VERSIONED=${SIMDJSON_VERSIONED}
 GENERATE_PLIST+= cd ${DESTDIR}${PREFIX}; ${FIND} lib/cmake/simdjson -name "simdjsonTargets-*.cmake" -type f -print | ${SORT};
