@@ -1,0 +1,39 @@
+# $NetBSD: Makefile,v 1.59 2026/09/02 19:02:45 wiz Exp $
+
+DISTNAME=	Kvantum-1.1.8
+PKGNAME=	${DISTNAME:tl}
+PKGREVISION=	1
+CATEGORIES=	graphics
+MASTER_SITES=	${MASTER_SITE_GITHUB:=tsujan/}
+GITHUB_TAG=	V${PKGVERSION_NOREV}
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://github.com/tsujan/Kvantum/
+COMMENT=	SVG-based theme engine for Qt and KDE
+LICENSE=	gnu-gpl-v3
+
+WRKSRC=		${WRKDIR}/${DISTNAME}/Kvantum
+USE_TOOLS+=	gmake
+USE_LANGUAGES=	c c++
+
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_PREFIX=${PREFIX}
+
+TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
+
+# qmake -query answers with the build host Qt in a cross build. Install the
+# style plugin into the target Qt plugin directory (the native answer too).
+SUBST_CLASSES+=		styledir
+SUBST_STAGE.styledir=	pre-configure
+SUBST_MESSAGE.styledir=	Setting the Qt style plugin directory.
+SUBST_FILES.styledir=	style/CMakeLists.txt
+SUBST_SED.styledir=	-e 's|"$${_Qt6_PLUGIN_INSTALL_DIR}/styles/"|"$${CMAKE_INSTALL_PREFIX}/qt6/plugins/styles/"|'
+
+.include "options.mk"
+
+.include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../graphics/qt6-qtsvg/buildlink3.mk"
+.include "../../x11/libX11/buildlink3.mk"
+.include "../../x11/libXext/buildlink3.mk"
+.include "../../graphics/hicolor-icon-theme/buildlink3.mk"
+.include "../../devel/cmake/build.mk"
+.include "../../mk/bsd.pkg.mk"

@@ -96,6 +96,7 @@ graphics/OpenJPH
 graphics/cairo
 graphics/freeimage
 graphics/freeimageplus
+graphics/kvantum
 graphics/freetype2
 graphics/gdk-pixbuf2
 graphics/jbigkit
