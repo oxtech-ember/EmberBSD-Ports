@@ -26,7 +26,8 @@ try {
     fs.symlinkSync(installed, path.join(temporary, 'node_modules', name), 'dir');
   }
   const rolldown = await import(pathToFileURL(path.join(moduleRoot, 'dist', 'index.mjs')));
-  assert.equal(rolldown.VERSION, '1.2.16');
+  const manifest = JSON.parse(fs.readFileSync(path.join(moduleRoot, 'package.json'), 'utf8'));
+  assert.equal(rolldown.VERSION, manifest.version);
   fs.writeFileSync(path.join(temporary, 'dependency.ts'), 'export function half(n: number): number { return n / 2; }\n');
   fs.writeFileSync(path.join(temporary, 'entry.ts'), "import { half } from './dependency.ts'; export const value = half(84);\n");
   const bundle = await rolldown.rolldown({ input: path.join(temporary, 'entry.ts'), cwd: temporary });

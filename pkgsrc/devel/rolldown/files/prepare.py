@@ -10,7 +10,7 @@ import re
 import tomllib
 
 
-def prepare(source, version, rust_target, napi_base, mimalloc_libdir, output):
+def prepare(source, version, rust_target, napi_base, mimalloc_libdir, output, mimalloc_library="mimalloc"):
     if not re.fullmatch(r'[A-Za-z0-9_]+(?:-[A-Za-z0-9_.]+){2,}',rust_target):
         raise ValueError('select an explicit supported EMBER_CARGO_TARGET')
     if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)+',napi_base):
@@ -30,7 +30,7 @@ def prepare(source, version, rust_target, napi_base, mimalloc_libdir, output):
     spec = importlib.util.spec_from_file_location('mimalloc_cargo_overrides', helper)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    module.write_override(mimalloc_libdir, output)
+    module.write_override(mimalloc_libdir, output, mimalloc_library)
 
 
 
@@ -40,6 +40,7 @@ def main():
         parser.add_argument('--'+name,type=Path,required=True)
     for name in ('version','rust-target','napi-base'):
         parser.add_argument('--'+name,required=True)
+    parser.add_argument('--mimalloc-library', default='mimalloc')
     try:
         prepare(**vars(parser.parse_args()))
     except (ValueError,OSError,KeyError) as error:

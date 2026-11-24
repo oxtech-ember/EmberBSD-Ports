@@ -1,15 +1,9 @@
 # $NetBSD$
 # Origin: EmberBSD (AI-assisted); upstream Rolldown with a source-built N-API binding.
 
-DISTNAME=	rolldown-1.2.16
-.include "../../mk/bsd.prefs.mk"
-PKGREVISION=	1
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-    (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
-PKGREVISION=	2
-.endif
+DISTNAME=	rolldown-1.3.3
 CATEGORIES=	devel
-ROLLDOWN_REVISION=	de6facf2228279718e042b801dd6b60dd6503918
+ROLLDOWN_REVISION=	8a576d2fb72eab5374059b5cb216ee35412ca019
 DISTFILES=	rolldown-${ROLLDOWN_REVISION}.tar.gz ${DISTNAME}.tgz
 SITES.rolldown-${ROLLDOWN_REVISION}.tar.gz=	-https://github.com/rolldown/rolldown/archive/${ROLLDOWN_REVISION}.tar.gz
 SITES.${DISTNAME}.tgz=	https://registry.npmjs.org/rolldown/-/
@@ -23,17 +17,18 @@ COMMENT=	JavaScript bundler with source-built native Rust core
 LICENSE=	mit AND apache-2.0 AND isc AND zlib AND mpl-2.0 AND modified-bsd AND \
 		2-clause-bsd AND boost-license AND cc0-1.0-universal AND unicode-v3
 
-DEPENDS+=	node-oxc-project-types-0.156.0:../../devel/node-oxc-project-types
+DEPENDS+=	node-oxc-project-types-0.159.0{,nb[0-9]*}:../../devel/node-oxc-project-types
 DEPENDS+=	node-rolldown-pluginutils>=1.0.0<2:../../devel/node-rolldown-pluginutils
 DEPENDS+=	nodejs>=26.12.1<27:../../lang/nodejs
 
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pax pkg-config
-RUST_REQ=	1.99.0
+RUST_REQ=	1.100.0
 CARGO_WRKSRC=	${WRKSRC}
 CARGO_ARGS=	build --release --locked --package rolldown_binding ${DEFAULT_CARGO_ARGS}
 MACHO_USE_LOAD_COMMANDS=	yes
 
+.include "../../mk/bsd.prefs.mk"
 
 .if ${MACHINE_ARCH} == "aarch64"
 _ROLLDOWN_RUST_ARCH=	aarch64
@@ -60,12 +55,13 @@ ROLLDOWN_DYLIB_SUFFIX=	so
 .endif
 PLIST_SUBST+=	ROLLDOWN_NAPI_BASE=${ROLLDOWN_NAPI_BASE:Q}
 
-# The native addon uses mi_* and must not interpose the Node process allocator.
-MIMALLOC_REQUIRE_OVERRIDE=	no
+.if ${OPSYS} != "Darwin"
 RUSTFLAGS+=	-C link-arg=-Wl,-rpath,${PREFIX}/lib
+.endif
 RUSTFLAGS+=	--remap-path-prefix=${WRKDIR}=.
 EMBER_CARGO_CONFIGURE_ARGS+=	--build-script-overrides ${WRKDIR:Q}/mimalloc-links.toml
 
+EMBER_CARGO_INSTALLED_CDYLIB=	lib/node_modules/rolldown/dist/shared/rolldown-binding.${ROLLDOWN_NAPI_BASE}.node
 INSTALLATION_DIRS=	lib/node_modules/rolldown share/licenses/rolldown
 GENERATE_PLIST+=	cd ${DESTDIR}${PREFIX}; ${FIND} share/licenses/rolldown -type f -print | ${SORT};
 
@@ -75,7 +71,8 @@ rolldown-source-inputs:
 	${RUN} ${TOOL_PYTHONBIN} -B -I -S ${FILESDIR:Q}/prepare.py \
 	    --source ${WRKSRC:Q} --version ${PKGVERSION_NOREV:Q} \
 	    --rust-target=${EMBER_CARGO_TARGET:Q} --napi-base=${ROLLDOWN_NAPI_BASE:Q} \
-	    --mimalloc-libdir ${BUILDLINK_DIR:Q}/lib --output ${WRKDIR:Q}/mimalloc-links.toml
+	    --mimalloc-libdir ${BUILDLINK_DIR:Q}/lib --mimalloc-library ${MIMALLOC_EMBED_LIBRARY:Q} \
+	    --output ${WRKDIR:Q}/mimalloc-links.toml
 
 do-test:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
@@ -90,7 +87,13 @@ do-test:
 do-install:
 	cd ${WRKSRC}/npm/package && ${PAX} -rw . ${DESTDIR}${PREFIX}/lib/node_modules/rolldown
 	${INSTALL_LIB} ${EMBER_CARGO_OUTPUT}/${EMBER_CARGO_TARGET}/release/librolldown_binding.${ROLLDOWN_DYLIB_SUFFIX} \
-	    ${DESTDIR}${PREFIX}/lib/node_modules/rolldown/dist/shared/rolldown-binding.${ROLLDOWN_NAPI_BASE}.node
+	    ${DESTDIR:Q}${PREFIX:Q}/${EMBER_CARGO_INSTALLED_CDYLIB:Q}
+.if ${OPSYS} == "Darwin"
+	${TOOLBASE:Q}/bin/llvm-install-name-tool \
+	    -change @rpath/libmimalloc-embed.3.dylib \
+	    '@loader_path/../../../../libmimalloc-embed.3.dylib' \
+	    ${DESTDIR:Q}${PREFIX:Q}/${EMBER_CARGO_INSTALLED_CDYLIB:Q}
+.endif
 	${TOOL_PYTHONBIN} -B -I -S ${PKGSRCDIR:Q}/devel/rollup/files/install-notices.py \
 	    --lock ${CARGO_WRKSRC:Q}/Cargo.lock --vendor ${CARGO_VENDOR_DIR:Q} \
 	    --output ${DESTDIR:Q}${PREFIX:Q}/share/licenses/rolldown \
@@ -98,6 +101,6 @@ do-install:
 
 .include "cargo-depends.mk"
 .include "../../lang/rust/emberbsd-cargo.mk"
-.include "../../devel/mimalloc/buildlink3.mk"
+.include "../../devel/mimalloc/embedding.mk"
 .include "../../lang/nodejs/application.mk"
 .include "../../mk/bsd.pkg.mk"
