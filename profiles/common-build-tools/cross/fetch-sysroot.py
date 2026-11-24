@@ -42,8 +42,9 @@ def fetch_sysroot(revision, expected_manifest, work):
     check(sha256_file(manifest_path) == expected_manifest, 'Pinned manifest SHA256 differs')
     manifest = read_json(manifest_path)
     schema = manifest.get('schema')
-    modern = schema in ('emberbsd.aarch64.sysroot.v2', 'emberbsd.aarch64.sysroot.v3')
-    check(schema in ('emberbsd.aarch64.sysroot.v1', 'emberbsd.aarch64.sysroot.v2', 'emberbsd.aarch64.sysroot.v3') and
+    modern = schema in ('emberbsd.aarch64.sysroot.v2', 'emberbsd.aarch64.sysroot.v3', 'emberbsd.aarch64.sysroot.v4')
+    tree_kit = schema == 'emberbsd.aarch64.sysroot.v4'
+    check((schema == 'emberbsd.aarch64.sysroot.v1' or modern) and
           [manifest.get(k) for k in ('repository', 'source_commit', 'release_tag', 'architecture', 'machine')] ==
           ['oxtech-ember/EmberBSD', revision, tag, 'aarch64', 'evbarm'], 'Wrong source, schema or architecture')
     qualification = manifest['qualification']
@@ -70,13 +71,20 @@ def fetch_sysroot(revision, expected_manifest, work):
     profile = read_json(downloads + '/build-profile.json')
     check(profile == manifest['build_profile'] and profile['source_commit'] == revision and profile['status'] == 'built' and profile['source_repository'] == 'https://github.com/oxtech-ember/EmberBSD', 'Build provenance differs')
     if modern:
+        from emberbsd_sdk.os_release import SOURCE_TREE_SCHEMAS
         from emberbsd_sdk.os_release_builder import validate_profile
         check(type(profile.get('schema')) is int and profile['schema'] in
-              ((2, 3) if schema == 'emberbsd.aarch64.sysroot.v2' else (4, 5)),
+              ((2, 3) if schema == 'emberbsd.aarch64.sysroot.v2' else (4, 5) if schema == 'emberbsd.aarch64.sysroot.v3'
+               else SOURCE_TREE_SCHEMAS),
               'Manifest and build profile schema differ')
         validate_profile(profile, revision, 'aarch64')
         check(manifest.get('product_version') == profile['product_version'], 'Product version provenance differs')
-        check(manifest.get('source_archive_sha256') == profile['source_sha256'], 'Source export provenance differs')
+        if tree_kit:
+            # v4 names the OS source by its Git tree; it has no source export.
+            check(manifest.get('source_tree') == profile['source_tree'] and 'source_archive_sha256' not in manifest,
+                  'Source tree provenance differs')
+        else:
+            check(manifest.get('source_archive_sha256') == profile['source_sha256'], 'Source export provenance differs')
         kernel_digest = next(file['sha256'] for file in files if file['name'] == 'netbsd-EMBER64.gz')
         check(profile['output_sha256']['netbsd-EMBER64.gz'] == kernel_digest == qualification['kernel_gzip_sha256'],
               'Mixed kernel provenance: netbsd-EMBER64.gz')

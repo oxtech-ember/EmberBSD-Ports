@@ -55,14 +55,20 @@ python3 -B profiles/common-build-tools/cross/fetch-sysroot.py \
 
 The importer verifies the manifest pin, repository, architecture, source
 identity, set hashes, build profile, and required target qualification.
-It accepts historical `emberbsd.aarch64.sysroot.v1` and modern v2 and v3.
+It accepts historical `emberbsd.aarch64.sysroot.v1` and modern v2, v3 and v4.
 Version 1 keeps its original checks. Version 2 selects GCC build profiles 2/3;
-version 3 selects Clang build profiles 4/5. Both modern versions use the
-selected SDK build and qualification validators, including compiler and runtime
-identity, source and output bindings, target execution and evidence hashes.
+version 3 selects Clang build profiles 4/5. Version 4 selects the SDK source
+tree profiles 6/7/8. It names the OS source by its Git tree, so the manifest
+and the build profile must have the same `source_tree`. The manifest must not
+have a source export hash.
+All modern versions use the selected SDK build and qualification validators,
+including compiler and runtime identity, source and output bindings, target
+execution and evidence hashes.
 The v2 target corpus additionally identifies its test sources and verifies
 ordinary libm and setjmp checks. An older SDK lacking these validators cannot
-import a newer profile.
+import a newer profile. The current SDK refuses a profile that has the old
+`HOST_*FLAGS` producer flags. For a release built before EmberBSD-SDK
+`1972b15`, select an SDK revision before that commit with `--sdk-source`.
 
 It extracts `base.tar.xz` and `comp.tar.xz` into `new-sdk-work/sysroot`.
 It records the selected inputs in `receipt.json` and file identities in

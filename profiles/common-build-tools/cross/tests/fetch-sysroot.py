@@ -209,7 +209,7 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
             p['output_sha256']['netbsd-EMBER64.gz'] = '0' * 64
             p['sdk_receipt']['outputs']['netbsd-EMBER64.gz'] = '0' * 64
         elif label == 'v2-source': m['repository'] = 'foreign/OS'
-        elif label == 'unknown-schema': m['schema'] = 'emberbsd.aarch64.sysroot.v4'
+        elif label == 'unknown-schema': m['schema'] = 'emberbsd.aarch64.sysroot.v5'
         elif label == 'v2-changed-set':
             with (served / 'base.tar.xz').open('ab') as out: out.write(b'changed')
         write_json(served / 'build-profile.json', p)
@@ -245,28 +245,46 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
             assert result.returncode and reason in result.stdout and not (work / 'receipt.json').exists(), label + ': ' + result.stdout
     # Real SDK validators consume frozen synthetic profile data: no compiler or VM.
     profiles = json.loads((HERE / 'tests/fetch-sysroot-v3-profiles.json').read_text())
+    # v4 kits carry the same Clang profiles as schemas 7 and 8, named by the
+    # OS Git tree instead of a source export.
+    kits = []
     for original in profiles:
+        kits.append(('v3', original))
+        tree = copy.deepcopy(original)
+        tree['schema'] = tree['sdk_receipt']['version'] = {4: 7, 5: 8}[original['schema']]
+        del tree['source_sha256']
+        tree['source_tree'] = 'd' * 40
+        kits.append(('v4', tree))
+    for outer, original in kits:
         revision = original['source_commit']
         tag = 'build-' + revision + '-aarch64-sysroot'
         prefix = 'https://github.com/oxtech-ember/EmberBSD/releases/download/' + tag + '/'
-        for label in ('valid', 'outer', 'profile', 'runtime', 'compiler', 'set', 'kernel', 'missing', 'corpus'):
-            served = root / ('v3-' + str(original['schema']) + '-' + label)
+        labels = ['valid', 'outer', 'profile', 'runtime', 'compiler', 'set', 'kernel', 'missing', 'corpus']
+        labels += ['tree', 'export'] if outer == 'v4' else []
+        for label in labels:
+            served = root / (outer + '-' + str(original['schema']) + '-' + label)
             shutil.copytree(template, served)
             p = copy.deepcopy(original)
             p['output_sha256'].update(profile['output_sha256'])
             p['output_sha256']['netbsd-EMBER64.gz'] = 'f' * 64
             p['sdk_receipt']['outputs'] = copy.deepcopy(p['output_sha256'])
             m = copy.deepcopy(modern_manifest)
-            m.update(schema='emberbsd.aarch64.sysroot.v3', source_commit=revision,
-                     release_tag=tag, source_archive_sha256=p['source_sha256'], build_profile=p)
+            del m['source_archive_sha256']
+            m.update(schema='emberbsd.aarch64.sysroot.' + outer, source_commit=revision, release_tag=tag, build_profile=p)
+            if outer == 'v4':
+                m['source_tree'] = p['source_tree']
+            else:
+                m['source_archive_sha256'] = p['source_sha256']
             q = m['qualification']
             q.update(source_commit=revision, consumer_compiler_family='clang',
                      consumer_compiler='fixture clang version 23.1.4', corpus='target-runtime-v2',
                      os_test_source_commit=revision, ports_source_commit='b' * 40,
                      test_source_inventory_sha256='c' * 64)
             q['checks'].update(libm_valid=True, setjmp_valid=True)
-            if label == 'outer': m['schema'] = 'emberbsd.aarch64.sysroot.v2'
-            elif label == 'profile': p['schema'] = 2
+            if label == 'outer': m['schema'] = 'emberbsd.aarch64.sysroot.v3' if outer == 'v4' else 'emberbsd.aarch64.sysroot.v2'
+            elif label == 'profile': p['schema'] = 4 if outer == 'v4' else 2
+            elif label == 'tree': m['source_tree'] = '0' * 40
+            elif label == 'export': m['source_archive_sha256'] = '0' * 64
             elif label == 'runtime': p['sdk_receipt']['signature']['runtime']['manifest']['llvm_version'] = '22.1.0'
             elif label == 'compiler': q['consumer_compiler'] = 'fixture clang version 22.1.0'
             elif label == 'set': q['base_sha256'] = '0' * 64
@@ -276,11 +294,13 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
             write_json(served / 'build-profile.json', p)
             m['files'] = [record(served, 'build-profile.json') if f['name'] == 'build-profile.json' else f for f in m['files']]
             write_json(served / 'manifest.json', m)
-            work = root / ('import-v3-' + str(original['schema']) + '-' + label)
+            work = root / ('import-' + outer + '-' + str(original['schema']) + '-' + label)
             result = invoke(served, work, digest(served / 'manifest.json'))
             if label == 'valid':
-                assert result.returncode == 0, label + ': ' + result.stdout
-                assert json.loads((work / 'receipt.json').read_text())['manifest_schema'] == 'emberbsd.aarch64.sysroot.v3'
+                assert result.returncode == 0, outer + ' ' + label + ': ' + result.stdout
+                assert json.loads((work / 'receipt.json').read_text())['manifest_schema'] == 'emberbsd.aarch64.sysroot.' + outer
             else:
-                assert result.returncode and not (work / 'receipt.json').exists(), label + ': ' + result.stdout
-print('PASS: v1/v2/v3 importer CLI fixtures; HTTPS and target execution remain outside the fixture')
+                assert result.returncode and not (work / 'receipt.json').exists(), outer + ' ' + label + ': ' + result.stdout
+            if label in ('tree', 'export'):
+                assert 'Source tree provenance differs' in result.stdout, outer + ' ' + label + ': ' + result.stdout
+print('PASS: v1/v2/v3/v4 importer CLI fixtures; HTTPS and target execution remain outside the fixture')
