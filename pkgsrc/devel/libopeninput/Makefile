@@ -2,7 +2,7 @@
 
 .include "Makefile.common"
 
-PKGREVISION=	11
+PKGREVISION=	12
 COMMENT=	Wscons(4) and kqueue(2) based port of libinput
 # The keyboard scan code mappings of systemd hwdb are LGPL-2.1-or-later.
 LICENSE=	mit AND gnu-lgpl-v2.1

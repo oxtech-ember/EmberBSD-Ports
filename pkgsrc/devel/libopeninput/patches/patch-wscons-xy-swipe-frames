@@ -67,7 +67,7 @@ made every swipe horizontal, so four-finger swipes up did not work.
  /*
   * Disabling the device ends a running swipe as cancelled: events that the
   * disabled device drains afterwards (END, CANCEL) cannot leave it active.
-@@ -490,6 +530,11 @@
+@@ -497,6 +537,11 @@
  	if (wsevent->type != WSCONS_EVENT_MOUSE_ABSOLUTE_X &&
  	    wsevent->type != WSCONS_EVENT_MOUSE_ABSOLUTE_Y)
  		wscons_flush_absolute(device, time);
@@ -79,7 +79,7 @@ made every swipe horizontal, so four-finger swipes up did not work.
  
  #ifdef WSCONS_HAVE_PINCH
  	if (wsevent->type == WSCONS_EVENT_GESTURE_PINCH_BEGIN && dev->pinches)
-@@ -621,13 +666,15 @@
+@@ -628,13 +673,15 @@
  	case WSCONS_EVENT_GESTURE_SWIPE_UPDATE_Y:
  		if (!dev->gestures || !wscons_swipe_update(&dev->swipe))
  			break;
@@ -102,7 +102,7 @@ made every swipe horizontal, so four-finger swipes up did not work.
  		break;
  
  	case WSCONS_EVENT_GESTURE_SWIPE_END:
-@@ -706,6 +753,9 @@
+@@ -713,6 +760,9 @@
  		wscons_process(device, &wsevents[i]);
  	}
  	wscons_flush_absolute(device, usec_from_timespec(&wsevents[count - 1].time));
