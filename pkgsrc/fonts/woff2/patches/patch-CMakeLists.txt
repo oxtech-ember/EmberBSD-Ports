@@ -1,10 +1,27 @@
 $NetBSD: patch-CMakeLists.txt,v 1.1 2020/07/26 07:54:45 maya Exp $
 
-always install woff2* binaries.
+Always install the woff2 tools. Use an absolute Darwin install run path.
 
 --- CMakeLists.txt.orig	2017-11-13 18:31:28.000000000 +0000
 +++ CMakeLists.txt
-@@ -260,12 +260,10 @@ generate_pkg_config ("${CMAKE_CURRENT_BI
+@@ -26,9 +26,14 @@
+ set(CMAKE_SKIP_BUILD_RPATH FALSE)
+ set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+-list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_LIBDIR}" isSystemDir)
++# Darwin install run paths must use a full directory.
++set(woff2_rpath "${CMAKE_INSTALL_LIBDIR}")
++if(APPLE)
++  set(woff2_rpath "${CMAKE_INSTALL_FULL_LIBDIR}")
++endif()
++list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${woff2_rpath}" isSystemDir)
+ if ("${isSystemDir}" STREQUAL "-1")
+-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_LIBDIR}")
++  set(CMAKE_INSTALL_RPATH "${woff2_rpath}")
+ endif()
+ 
+ # Find Brotli dependencies
+@@ -260,12 +265,10 @@ generate_pkg_config ("${CMAKE_CURRENT_BI
    LIBRARIES woff2enc)
  
  # Installation

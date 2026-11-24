@@ -16,6 +16,11 @@ USE_LANGUAGES=	c c++
 CMAKE_CONFIGURE_ARGS+=	-DCANONICAL_PREFIXES=ON
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin"
+PKGREVISION=	5
+.endif
+
 PKGCONFIG_OVERRIDE=		libwoff2common.pc
 PKGCONFIG_OVERRIDE+=		libwoff2dec.pc
 PKGCONFIG_OVERRIDE+=		libwoff2enc.pc
