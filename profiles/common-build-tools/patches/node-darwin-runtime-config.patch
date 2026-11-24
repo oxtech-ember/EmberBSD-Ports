@@ -1,0 +1,137 @@
+# Origin: EmberBSD contributors (AI-assisted); relative Darwin package metadata.
+--- configure.py.orig
++++ configure.py
+@@ -3164,6 +3164,28 @@
+ write('config.gypi', do_not_edit +
+       json.dumps(output, indent=2) + '\n')
+ 
++# Keep the full compiler configuration for GYP and the installed developer
++# headers. Only the copy linked into the executable needs relative paths.
++def runtime_config(value, prefix, paths, keys=()):
++  if isinstance(value, dict):
++    return {k: runtime_config(v, prefix, paths, (*keys, k)) for k, v in value.items()}
++  if isinstance(value, list):
++    return [runtime_config(v, prefix, paths, (*keys, i)) for i, v in enumerate(value)]
++  if isinstance(value, str):
++    for flag in ('', '-I', '-L', '-F'):
++      base = flag + prefix
++      if value == base or value.startswith(base + '/'):
++        paths.append([keys, flag])
++        return value[len(base):]
++  return value
++
++runtime_config_dir = Path('out/pkgsrc-runtime')
++runtime_config_dir.mkdir(parents=True, exist_ok=True)
++prefix_paths = []
++runtime_values = runtime_config(output, variables['node_prefix'], prefix_paths)
++write(runtime_config_dir / 'config.gypi', do_not_edit +
++      json.dumps({'config': runtime_values, 'prefix_paths': prefix_paths}, indent=2) + '\n')
++
+ write('config.status', '#!/bin/sh\nset -x\nexec ./configure ' +
+       ' '.join([shlex.quote(arg) for arg in original_argv]) + '\n')
+ Path('config.status').chmod(0o775)
+--- node.gyp.orig
++++ node.gyp
+@@ -1073,7 +1073,7 @@
+             '<@(ember_host_runtime_inputs)',
+             '<@(library_files)',
+             '<@(deps_files)',
+-            'config.gypi'
++            'out/pkgsrc-runtime/config.gypi'
+           ],
+           'conditions': [
+             [ 'node_builtin_modules_path!=""', {
+@@ -1094,7 +1094,7 @@
+             '<(node_js2c_exec)',
+             '<@(_outputs)',
+             'lib',
+-            'config.gypi',
++            'out/pkgsrc-runtime/config.gypi',
+             '<@(deps_files)',
+             '<@(linked_module_files)',
+           ],
+--- lib/internal/bootstrap/node.js.orig
++++ lib/internal/bootstrap/node.js
+@@ -55,11 +55,9 @@
+ 
+ const {
+   FunctionPrototypeCall,
+-  JSONParse,
+   Number,
+   NumberIsNaN,
+   ObjectDefineProperty,
+-  ObjectFreeze,
+   ObjectGetPrototypeOf,
+   ObjectSetPrototypeOf,
+   SymbolToStringTag,
+@@ -132,19 +130,7 @@
+ // process.config is serialized config.gypi
+ const binding = internalBinding('builtins');
+ 
+-const processConfig = JSONParse(binding.config, (_key, value) => {
+-  // The `reviver` argument of the JSONParse method will visit all the values of
+-  // the parsed config, including the "root" object, so there is no need to
+-  // explicitly freeze the config outside of this method
+-  return ObjectFreeze(value);
+-});
+-
+-ObjectDefineProperty(process, 'config', {
+-  __proto__: null,
+-  enumerable: true,
+-  configurable: true,
+-  value: processConfig,
+-});
++require('internal/process/pkgsrc_config').setConfig();
+ 
+ require('internal/worker/js_transferable').setup();
+ 
+--- lib/internal/process/pre_execution.js.orig
++++ lib/internal/process/pre_execution.js
+@@ -336,6 +336,11 @@
+ function patchProcessObject(expandArgv1) {
+   const binding = internalBinding('process_methods');
+   binding.patchProcessObject(process);
++
++  const { setConfig } = require('internal/process/pkgsrc_config');
++  const { dirname } = require('path');
++  setConfig(dirname(dirname(process.execPath)));
++  if (isBuildingSnapshot()) addSerializeCallback(() => setConfig());
+ 
+   // Since we replace process.argv[0] below, preserve the original value in case the user needs it.
+   ObjectDefineProperty(process, 'argv0', {
+--- /dev/null
++++ lib/internal/process/pkgsrc_config.js
+@@ -0,0 +1,33 @@
++'use strict';
++
++const { JSONParse, ObjectDefineProperty, ObjectFreeze, ObjectKeys } = primordials;
++
++function freezeConfig(value) {
++  if (value !== null && typeof value === 'object') {
++    const keys = ObjectKeys(value);
++    for (let i = 0; i < keys.length; i++) freezeConfig(value[keys[i]]);
++    ObjectFreeze(value);
++  }
++  return value;
++}
++
++// Bootstrapping may run while generating a snapshot. The installed prefix is
++// known once the native process object supplies the current executable path.
++function setConfig(prefix = '@executable_path/..') {
++  const { config, prefix_paths: paths } = JSONParse(internalBinding('builtins').config);
++  for (let n = 0; n < paths.length; n++) {
++    const keys = paths[n][0];
++    let parent = config;
++    for (let i = 0; i < keys.length - 1; i++) parent = parent[keys[i]];
++    const last = keys[keys.length - 1];
++    parent[last] = paths[n][1] + prefix + parent[last];
++  }
++  ObjectDefineProperty(process, 'config', {
++    __proto__: null,
++    configurable: true,
++    enumerable: true,
++    value: freezeConfig(config),
++  });
++}
++
++module.exports = { setConfig };
