@@ -19,6 +19,12 @@ EMBERBSD_SDK_SOURCE?=
 EMBER_LLVM_CXX_PYTHON?=
 .include "../../mk/bsd.prefs.mk"
 
+# The updated AArch64 sysroot supplies new shared libraries and libc++.a.
+.if ${MACHINE_ARCH} == "aarch64" && (!defined(EMBER_LLVM_CXX_DEVEL) || \
+    ${EMBER_LLVM_CXX_COMPONENT} == "libcxx")
+PKGREVISION= 1
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD" || \
     (${MACHINE_ARCH} != "x86_64" && ${MACHINE_ARCH} != "aarch64")
 PKG_FAIL_REASON+= "LLVM C++ stage packages require NetBSD amd64 or aarch64 cross build"
