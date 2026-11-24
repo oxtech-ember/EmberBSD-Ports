@@ -170,7 +170,7 @@ PKGNAME?=	kf6-${DISTNAME}
 
 # Upstream KF_DEP_VERSION follows the Frameworks release. An installed sibling
 # must satisfy find_package(KF6 ...) before it can serve a Frameworks build.
-.for _kf6_library in ${_EMBERBSD_KF6VER_RECIPES:M*/kf6-*:T}
+.for _kf6_library in ${_EMBERBSD_KF6VER_RECIPES:M*/kf6-*:T} breeze-icons
 BUILDLINK_API_DEPENDS.${_kf6_library}+= ${_kf6_library}>=${KF6VER}
 .endfor
 
