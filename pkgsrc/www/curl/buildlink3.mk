@@ -12,6 +12,11 @@ BUILDLINK_PKGSRCDIR.curl?=	../../www/curl
 pkgbase:= curl
 .include "../../mk/pkg-build-options.mk"
 .if ${PKG_BUILD_OPTIONS.curl:Mopenssl}
+# Reuse the OpenSSL provider selected by the installed curl.
+.  if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PREFER.openssl=	pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+= openssl>=4.1.0
+.  endif
 BUILDLINK_API_DEPENDS.openssl+= openssl>=3.0
 .  include "../../security/openssl/buildlink3.mk"
 .endif

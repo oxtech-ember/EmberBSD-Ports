@@ -32,9 +32,6 @@ PREFER.gettext=	pkgsrc
 PREFER.iconv=	pkgsrc
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.if ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
-PKGREVISION=	2 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
-.endif
 .if empty(EMBERBSD_CROSS_BUILD_CXX:U) || empty(EMBERBSD_CROSS_BUILD_CXX:M/*)
 PKG_FAIL_REASON+= "Set EMBERBSD_CROSS_BUILD_CXX to the selected native C++ compiler"
 .endif
@@ -52,5 +49,20 @@ pre-configure:
 .include "../../textproc/icu/buildlink3.mk"
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"
+
+# qalc also links the TLS libraries recorded in libcurl.la.
+.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+.  if !empty(PKG_BUILD_OPTIONS.curl:Mopenssl)
+.    include "../../security/openssl/buildlink3.mk"
+.    if ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	3
+.    else
+PKGREVISION=	2
+.    endif
+.  elif ${MACHINE_ARCH} == "aarch64" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+PKGREVISION=	2
+.  endif
+.endif
+
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
