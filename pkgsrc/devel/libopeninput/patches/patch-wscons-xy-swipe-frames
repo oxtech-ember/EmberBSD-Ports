@@ -1,0 +1,114 @@
+$NetBSD$
+
+Send the X and Y of one wscons swipe step as one libinput update.
+Compositors pick the swipe axis from the first update; a lone X step
+made every swipe horizontal, so four-finger swipes up did not work.
+
+--- src/wscons.h.orig
++++ src/wscons.h
+@@ -49,6 +49,11 @@
+ 	/* The device can produce swipes (WSMOUSEIO_GGESTURE); see wscons.c. */
+ 	bool gestures;
+ 	struct wscons_swipe swipe;
++	/* X and Y of one kernel frame, sent as one libinput swipe update. */
++	struct {
++		struct normalized_coords delta;
++		bool has_x, has_y;
++	} swipe_motion;
+ 	bool pinches;
+ 	struct wscons_pinch pinch;
+ 	struct {
+--- src/wscons.c.orig
++++ src/wscons.c
+@@ -388,6 +388,46 @@
+ }
+ /* wscons-swipe-state end */
+ 
++#ifdef WSCONS_HAVE_GESTURES
++/*
++ * The kernel sends the X and Y of one swipe step as two events. Pass them
++ * on as one libinput update: compositors pick the swipe axis from the
++ * first update, and a lone X step would make every swipe horizontal.
++ */
++static void
++wscons_flush_swipe(struct libinput_device *device, usec_t time)
++{
++	struct wscons_device *dev = wscons_device(device);
++	struct normalized_coords delta = dev->swipe_motion.delta;
++	bool pending = dev->swipe_motion.has_x || dev->swipe_motion.has_y;
++
++	dev->swipe_motion.delta.x = 0;
++	dev->swipe_motion.delta.y = 0;
++	dev->swipe_motion.has_x = false;
++	dev->swipe_motion.has_y = false;
++	if (!pending || !dev->gestures || !wscons_swipe_update(&dev->swipe))
++		return;
++	gesture_notify_swipe(device, time, LIBINPUT_EVENT_GESTURE_SWIPE_UPDATE,
++	    dev->swipe.fingers, &delta, &delta);
++}
++
++/* wscons-swipe-frame begin: no libinput dependencies, tested on the host. */
++/*
++ * An event ends the pending swipe step unless it adds the missing axis:
++ * any other event, or a second X or Y, starts the next step.
++ */
++static bool
++wscons_swipe_step_ends(unsigned int type, bool has_x, bool has_y)
++{
++	if (type == WSCONS_EVENT_GESTURE_SWIPE_UPDATE_X)
++		return has_x;
++	if (type == WSCONS_EVENT_GESTURE_SWIPE_UPDATE_Y)
++		return has_y;
++	return true;
++}
++/* wscons-swipe-frame end */
++#endif
++
+ /*
+  * Disabling the device ends a running swipe as cancelled: events that the
+  * disabled device drains afterwards (END, CANCEL) cannot leave it active.
+@@ -490,6 +530,11 @@
+ 	if (wsevent->type != WSCONS_EVENT_MOUSE_ABSOLUTE_X &&
+ 	    wsevent->type != WSCONS_EVENT_MOUSE_ABSOLUTE_Y)
+ 		wscons_flush_absolute(device, time);
++#ifdef WSCONS_HAVE_GESTURES
++	if (wscons_swipe_step_ends(wsevent->type, dev->swipe_motion.has_x,
++	    dev->swipe_motion.has_y))
++		wscons_flush_swipe(device, time);
++#endif
+ 
+ #ifdef WSCONS_HAVE_PINCH
+ 	if (wsevent->type == WSCONS_EVENT_GESTURE_PINCH_BEGIN && dev->pinches)
+@@ -621,13 +666,15 @@
+ 	case WSCONS_EVENT_GESTURE_SWIPE_UPDATE_Y:
+ 		if (!dev->gestures || !wscons_swipe_update(&dev->swipe))
+ 			break;
+-		if (wsevent->type == WSCONS_EVENT_GESTURE_SWIPE_UPDATE_X)
+-			delta.x = wsevent->value * WSCONS_SWIPE_SCALE;
+-		else
+-			delta.y = -wsevent->value * WSCONS_SWIPE_SCALE;
+-		gesture_notify_swipe(device, time,
+-		    LIBINPUT_EVENT_GESTURE_SWIPE_UPDATE, dev->swipe.fingers,
+-		    &delta, &delta);
++		if (wsevent->type == WSCONS_EVENT_GESTURE_SWIPE_UPDATE_X) {
++			dev->swipe_motion.delta.x =
++			    wsevent->value * WSCONS_SWIPE_SCALE;
++			dev->swipe_motion.has_x = true;
++		} else {
++			dev->swipe_motion.delta.y =
++			    -wsevent->value * WSCONS_SWIPE_SCALE;
++			dev->swipe_motion.has_y = true;
++		}
+ 		break;
+ 
+ 	case WSCONS_EVENT_GESTURE_SWIPE_END:
+@@ -706,6 +753,9 @@
+ 		wscons_process(device, &wsevents[i]);
+ 	}
+ 	wscons_flush_absolute(device, usec_from_timespec(&wsevents[count - 1].time));
++#ifdef WSCONS_HAVE_GESTURES
++	wscons_flush_swipe(device, usec_from_timespec(&wsevents[count - 1].time));
++#endif
+ }
+ 
+ static void

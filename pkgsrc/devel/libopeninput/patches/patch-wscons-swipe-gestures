@@ -241,9 +241,9 @@ $NetBSD$
 +	/*
 +	 * Three/four-finger swipes of the touchpad driver. The kernel sends
 +	 * no pointer motion for them. UPDATE_X and UPDATE_Y arrive as
-+	 * separate events (pointer units, Y positive upwards) and are passed
-+	 * on one by one; libinput deltas are about ten times a pointer unit
-+	 * for this pad (1000 dpi against 8 contact units per pointer unit).
++	 * separate events (pointer units, Y positive upwards). libinput
++	 * deltas are about ten times a pointer unit for this pad (1000 dpi
++	 * against 8 contact units per pointer unit).
 +	 */
 +	case WSCONS_EVENT_GESTURE_SWIPE_BEGIN: {
 +#ifdef WSCONS_HAVE_PINCH

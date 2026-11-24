@@ -13,5 +13,6 @@ SHA1 (patch-src_wscons.h) = a0ae65e1c8735b85f19d15fa4dfad99c059f5663
 SHA1 (patch-src_wskbdmap.c) = 8ff939f0dde6eb2225a37f06875a480cee0cf4b9
 SHA1 (patch-wscons-absolute-pointer) = 7988d71e4641c787597253969c7b85629a2068b8
 SHA1 (patch-wscons-send-events-udev) = 35972eb53acbc6a004c319a4c2a5a0cc5df8ff4e
-SHA1 (patch-wscons-swipe-gestures) = c0f5487503c5afbc0253e69cbd7bac5e1c739f08
+SHA1 (patch-wscons-swipe-gestures) = 2d31a559f9032e2f58010207e00a08c7bd0e57ce
 SHA1 (patch-wscons-unpaired-buttons) = 6db286517d36ffb436fadef3d22e4c4614ff648a
+SHA1 (patch-wscons-xy-swipe-frames) = 7575c25e3e2bc259479d41e5e305c2ef5cbc25e2
