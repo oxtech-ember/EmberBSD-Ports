@@ -1,0 +1,11 @@
+--- a/devel/cmake/build.mk
++++ b/devel/cmake/build.mk
+@@ -135,7 +135,7 @@
+ do-build: cmake-build
+ cmake-build:
+ .  for d in ${BUILD_DIRS}
+-	${RUN} cd ${WRKSRC}/${CONFIGURE_DIR}/${CMAKE_BUILD_DIR}/${d} && \
++	${RUN}${_ULIMIT_CMD} cd ${WRKSRC}/${CONFIGURE_DIR}/${CMAKE_BUILD_DIR}/${d} && \
+ 		${SETENV} ${MAKE_ENV} \
+ 		${_CMAKE_BUILD_TOOL} ${CMAKE_BUILD_ARGS} ${BUILD_TARGET}
+ .  endfor

@@ -42,6 +42,11 @@ CHECK_PORTABILITY_SKIP+=	src/google/protobuf/compiler/zip_output_unittest.sh
 
 .include "../../mk/bsd.prefs.mk"
 
+# Clang needs more than the default Darwin stack to compile descriptor.cc.
+.if ${NATIVE_OPSYS} == "Darwin"
+UNLIMIT_RESOURCES+=	stacksize
+.endif
+
 .include "../../mk/emberbsd-native-cxx-runtime.mk"
 
 .if defined(EMBERBSD_PROTOBUF_DEVEL)
