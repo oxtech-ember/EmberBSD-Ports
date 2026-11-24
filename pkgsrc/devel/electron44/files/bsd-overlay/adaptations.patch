@@ -232,3 +232,24 @@
 +   return libgdk_pixbuf;
 + }
 + 
+--- a/patch-third__party_blink_renderer_core_page_context__menu__controller.cc
++++ b/patch-third__party_blink_renderer_core_page_context__menu__controller.cc
+@@ -4,12 +4,14 @@
+ * Based on OpenBSD's chromium patches, and
+   pkgsrc's qt5-qtwebengine patches
+ 
+---- third_party/blink/renderer/core/page/context_menu_controller.cc.orig	2026-10-19 20:07:21.000000000 +0000
++* Keep the upstream canvas origin check when selecting the BSD WebGPU path.
++
++--- third_party/blink/renderer/core/page/context_menu_controller.cc.orig
+ +++ third_party/blink/renderer/core/page/context_menu_controller.cc
+-@@ -721,7 +721,7 @@ bool ContextMenuController::ShowContextM
+-     if (potential_image_node != nullptr &&
+-         IsA<HTMLCanvasElement>(potential_image_node)) {
++@@ -723,7 +723,7 @@
+        data.media_type = mojom::blink::ContextMenuDataMediaType::kCanvas;
++       const auto* canvas = To<HTMLCanvasElement>(potential_image_node);
++       data.has_image_contents = canvas->OriginClean();
+ -#if BUILDFLAG(IS_LINUX)
+ +#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+        // TODO(crbug.com/40902474): Support reading from the WebGPU front buffer

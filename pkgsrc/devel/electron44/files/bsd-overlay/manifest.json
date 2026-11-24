@@ -16,6 +16,11 @@
       "target": "net/dns/dns_config_service_posix.cc"
     },
     {
+      "patch": "patch-third__party_blink_renderer_core_page_context__menu__controller.cc",
+      "source_sha256": "9d01a1f2ac0c29973eae8bf531ca20928902d8a5d32c5eaaffd8c38afe179182",
+      "target": "third_party/blink/renderer/core/page/context_menu_controller.cc"
+    },
+    {
       "patch": "patch-ui_gtk_gtk__compat.cc",
       "source_sha256": "9782a56a576d4c522a16686ab71527e26ea77919cabcd82e08de0c05a1e588dd",
       "target": "ui/gtk/gtk_compat.cc"
