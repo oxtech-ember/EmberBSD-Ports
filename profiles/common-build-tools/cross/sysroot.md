@@ -114,6 +114,10 @@ python3 -B profiles/common-build-tools/cross/tests/sysroot-archive.py
 python3 -B profiles/common-build-tools/cross/tests/fetch-sysroot.py
 ```
 
+Set `EMBERBSD_HISTORICAL_SDK_SOURCE` to an SDK source before EmberBSD-SDK
+`230bf7d`, such as `f8fd4d1`, to also import the v2 fixture with that SDK.
+An SDK of that age has no v4 schema constants.
+
 The regressions cover archive mechanics, hostile inputs, and CLI refusal
 controls with a local download fixture. They do not establish HTTPS behavior
 or target execution. Actual set and target acceptance belongs to the selected

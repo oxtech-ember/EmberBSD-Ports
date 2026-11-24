@@ -71,11 +71,15 @@ def fetch_sysroot(revision, expected_manifest, work):
     profile = read_json(downloads + '/build-profile.json')
     check(profile == manifest['build_profile'] and profile['source_commit'] == revision and profile['status'] == 'built' and profile['source_repository'] == 'https://github.com/oxtech-ember/EmberBSD', 'Build provenance differs')
     if modern:
-        from emberbsd_sdk.os_release import SOURCE_TREE_SCHEMAS
         from emberbsd_sdk.os_release_builder import validate_profile
-        check(type(profile.get('schema')) is int and profile['schema'] in
-              ((2, 3) if schema == 'emberbsd.aarch64.sysroot.v2' else (4, 5) if schema == 'emberbsd.aarch64.sysroot.v3'
-               else SOURCE_TREE_SCHEMAS),
+        if tree_kit:
+            # Only an SDK that produces v4 kits has this constant; an older SDK
+            # selected for a v2 or v3 release must import without it.
+            from emberbsd_sdk.os_release import SOURCE_TREE_SCHEMAS
+            schemas = SOURCE_TREE_SCHEMAS
+        else:
+            schemas = (2, 3) if schema == 'emberbsd.aarch64.sysroot.v2' else (4, 5)
+        check(type(profile.get('schema')) is int and profile['schema'] in schemas,
               'Manifest and build profile schema differ')
         validate_profile(profile, revision, 'aarch64')
         check(manifest.get('product_version') == profile['product_version'], 'Product version provenance differs')

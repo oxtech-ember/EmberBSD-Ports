@@ -87,10 +87,10 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
     curl.chmod(0o755)
     calls = root / 'calls'
 
-    def invoke(served, work, pin):
+    def invoke(served, work, pin, sdk_source=None):
         calls.write_text('')
         env = dict(os.environ, PATH=str(commands) + ':' + os.environ['PATH'], FIXTURE_PREFIX=prefix, FIXTURE_WORK=str(work), FIXTURE_CALLS=str(calls), FIXTURE_SERVED=str(served), PYTHONDONTWRITEBYTECODE='1')
-        return subprocess.run([sys.executable, '-B', str(HERE / 'fetch-sysroot.py'), '--sdk-source', sdk, revision, pin, str(work)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        return subprocess.run([sys.executable, '-B', str(HERE / 'fetch-sysroot.py'), '--sdk-source', sdk_source or sdk, revision, pin, str(work)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
     accepted = root / 'accepted'
     result = invoke(template, accepted, digest(template / 'manifest.json'))
@@ -220,6 +220,7 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
         work = root / ('import-' + label)
         result = invoke(served, work, pin)
         if label == 'accepted-v2':
+            accepted_v2 = (served, pin, revision, prefix)
             assert result.returncode == 0, label + ': ' + result.stdout
             assert (work / 'sysroot/usr/lib/libc.so').read_bytes() == elf
             assert json.loads((work / 'receipt.json').read_text())['manifest_schema'] == 'emberbsd.aarch64.sysroot.v2'
@@ -303,4 +304,15 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
                 assert result.returncode and not (work / 'receipt.json').exists(), outer + ' ' + label + ': ' + result.stdout
             if label in ('tree', 'export'):
                 assert 'Source tree provenance differs' in result.stdout, outer + ' ' + label + ': ' + result.stdout
-print('PASS: v1/v2/v3/v4 importer CLI fixtures; HTTPS and target execution remain outside the fixture')
+    # A release built before EmberBSD-SDK 1972b15 needs an older SDK, which can
+    # predate the v4 schema constants. Run when such an SDK is selected.
+    historical = os.environ.get('EMBERBSD_HISTORICAL_SDK_SOURCE')
+    if historical:
+        served, pin, revision, prefix = accepted_v2
+        work = root / 'import-v2-historical-sdk'
+        result = invoke(served, work, pin, historical)
+        assert result.returncode == 0, 'historical SDK v2: ' + result.stdout
+        assert json.loads((work / 'receipt.json').read_text())['manifest_schema'] == 'emberbsd.aarch64.sysroot.v2'
+        assert (work / 'sysroot/usr/lib/libc.so').read_bytes() == elf
+print('PASS: v1/v2/v3/v4 importer CLI fixtures' + (', v2 with the historical SDK' if historical else '') +
+      '; HTTPS and target execution remain outside the fixture')
