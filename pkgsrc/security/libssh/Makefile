@@ -23,11 +23,6 @@ BUILDLINK_TRANSFORM+=	rm:-Werror=strict-overflow
 
 .include "options.mk"
 
-# Origin: EmberBSD contributors (AI-assisted).
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD" && !empty(PKG_OPTIONS:Mopenssl)
-PKGREVISION=	1 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
-.endif
-
 .include "../../devel/cmake/build.mk"
 # for examples only
 BUILDLINK_DEPMETHOD.argp=  build

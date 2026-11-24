@@ -8,6 +8,13 @@ PKG_SUGGESTED_OPTIONS=		gssapi openssl
 
 .include "../../mk/bsd.options.mk"
 
+# Several supported base images expose a different OpenSSL SONAME.
+.if !empty(PKG_OPTIONS:Mopenssl) && ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	2
+PREFER.openssl=	pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
+.endif
+
 .if !empty(PKG_OPTIONS:Mgssapi)
 CMAKE_CONFIGURE_ARGS+=		-DWITH_GSSAPI:BOOL=ON
 .include "../../mk/krb5.buildlink3.mk"
