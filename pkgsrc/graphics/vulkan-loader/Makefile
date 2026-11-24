@@ -40,6 +40,7 @@ PKGCONFIG_OVERRIDE+=	loader/vulkan.pc.in
 PLIST_VARS+=	darwin elf
 .if ${OPSYS} == "Darwin"
 PLIST.darwin=	yes
+PKGREVISION=	2
 CMAKE_CONFIGURE_ARGS+=	-DLOADER_BUILD_FRAMEWORK=OFF
 .else
 PLIST.elf=	yes

@@ -1,0 +1,46 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Make only prefix-owned Darwin search directories relative to the installed library.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -318,13 +318,37 @@
+ endif()
+ 
+ if(UNIX)
++    # Keep external search directories absolute. Resolve installed directories from the dylib.
++    if(APPLE)
++        function(loader_relocate_dirs variable)
++            string(REPLACE ":" ";" directories "${${variable}}")
++            set(paths)
++            foreach(directory IN LISTS directories)
++                cmake_path(IS_PREFIX CMAKE_INSTALL_PREFIX "${directory}" NORMALIZE in_prefix)
++                if(in_prefix)
++                    file(RELATIVE_PATH suffix "${CMAKE_INSTALL_FULL_LIBDIR}" "${directory}")
++                    set(directory "@loader_path/${suffix}")
++                endif()
++                list(APPEND paths "${directory}")
++            endforeach()
++            list(JOIN paths ":" locations)
++            set(${variable} "${locations}" PARENT_SCOPE)
++        endfunction()
++        loader_relocate_dirs(FALLBACK_CONFIG_DIRS)
++        loader_relocate_dirs(FALLBACK_DATA_DIRS)
++    endif()
+     target_compile_definitions(loader_common_options INTERFACE FALLBACK_CONFIG_DIRS="${FALLBACK_CONFIG_DIRS}" FALLBACK_DATA_DIRS="${FALLBACK_DATA_DIRS}")
+ 
++    set(loader_system_dir "${CMAKE_INSTALL_FULL_SYSCONFDIR}")
++    if(APPLE)
++        loader_relocate_dirs(loader_system_dir)
++        loader_relocate_dirs(SYSCONFDIR)
++    endif()
+     if(NOT (SYSCONFDIR STREQUAL ""))
+         # SYSCONFDIR is specified, use it and do not force /etc.
+         target_compile_definitions(loader_common_options INTERFACE SYSCONFDIR="${SYSCONFDIR}")
+     else()
+-        target_compile_definitions(loader_common_options INTERFACE SYSCONFDIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}")
++        target_compile_definitions(loader_common_options INTERFACE SYSCONFDIR="${loader_system_dir}")
+ 
+         # Make sure /etc is searched by the loader
+         if(NOT (CMAKE_INSTALL_FULL_SYSCONFDIR STREQUAL "/etc"))
