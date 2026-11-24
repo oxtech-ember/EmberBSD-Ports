@@ -1,6 +1,10 @@
 # $NetBSD: Makefile,v 1.18 2026/08/06 19:20:58 adam Exp $
 
 DISTNAME=	mimalloc-3.7.0
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin"
+PKGREVISION=	1
+.endif
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=microsoft/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -31,7 +35,29 @@ post-extract:
 
 INSTALLATION_DIRS+=	lib/cmake/mimalloc
 
+PLIST_VARS+=	darwin-embed
+.if ${OPSYS} == "Darwin"
+PLIST.darwin-embed=	yes
+_MIMALLOC_EMBED_BUILD=	${WRKDIR}/cmake-embed
+
+# Reuse the selected SDK and upstream's complete MI_OVERRIDE=OFF configuration.
+post-configure:
+	cd ${WRKSRC} && ${SETENV} ${CONFIGURE_ENV} cmake \
+	    --install-prefix ${PREFIX:Q} -B ${_MIMALLOC_EMBED_BUILD:Q} \
+	    -G ${_CMAKE_BUILD_SYSTEM:Q} ${CMAKE_CONFIGURE_ARGS} \
+	    -DMI_EMBED_LIBRARY=ON -DMI_OVERRIDE=OFF -DMI_BUILD_SHARED=ON \
+	    -DMI_BUILD_STATIC=OFF -DMI_BUILD_OBJECT=OFF -DMI_BUILD_TESTS=OFF
+
+post-build:
+	${SETENV} ${MAKE_ENV} cmake --build ${_MIMALLOC_EMBED_BUILD:Q} \
+	    --target mimalloc --parallel ${_MAKE_JOBS_N:U1}
+.endif
+
 post-install:
+.if ${OPSYS} == "Darwin"
+	${SETENV} ${INSTALL_ENV} DESTDIR=${DESTDIR:Q} cmake \
+	    --install ${_MIMALLOC_EMBED_BUILD:Q} --component mimalloc-embed
+.endif
 	${RM} -f ${DESTDIR}${PREFIX}/lib/mimalloc.o
 
 .include "options.mk"

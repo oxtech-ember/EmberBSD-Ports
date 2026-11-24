@@ -15,5 +15,5 @@ Size (rustversion-1.0.23.crate) = 21013 bytes
 BLAKE2s (shlex-2.0.1.crate) = 5b5a3bb8700bbe3e169d6cf5b7a115324435d22823055086a533c4a8b8778fd7
 SHA512 (shlex-2.0.1.crate) = d1bf35e2c5a93c718d3cc395fc4b06cc0c42d4891c0f37247de7e179492478020f0c57ae74c461d5bb1f833b071fd5c036d8d6d6ab8b61be6140cb64ae525921
 Size (shlex-2.0.1.crate) = 19332 bytes
-SHA1 (patch-CMakeLists.txt) = 4e9c0ec63067839b5ad0ee26d5cb9e93e0b39f05
+SHA1 (patch-CMakeLists.txt) = 7f43a13888c4ccd37c5fbb1fa1ed8ecb50d0ad1f
 SHA1 (patch-test_test-pprof.c) = 36134e3cbaa9eab6716ca60284299605dac6a0cf

@@ -1,6 +1,6 @@
 $NetBSD$
 
-Use the selected Cargo command and its offline build options.
+Use the selected Cargo command and install the optional embedding library.
 Origin: EmberBSD (AI-assisted).
 
 --- CMakeLists.txt.orig
@@ -27,3 +27,16 @@ Origin: EmberBSD (AI-assisted).
      set_tests_properties(test-rust PROPERTIES ENVIRONMENT "${mi_cargo_env}")
    endif()
  endif()
+@@ -1457,3 +1461,12 @@
+     target_compile_definitions(mimalloc-obj PRIVATE MI_MALLOC_OVERRIDE)
+   endif()
+ endif()
++
++# A separately configured embedding library keeps the process allocator intact.
++if(MI_EMBED_LIBRARY)
++  if(MI_OVERRIDE OR NOT MI_BUILD_SHARED)
++    message(FATAL_ERROR "MI_EMBED_LIBRARY requires MI_BUILD_SHARED and MI_OVERRIDE=OFF")
++  endif()
++  set_target_properties(mimalloc PROPERTIES OUTPUT_NAME mimalloc-embed)
++  install(TARGETS mimalloc LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT mimalloc-embed)
++endif()

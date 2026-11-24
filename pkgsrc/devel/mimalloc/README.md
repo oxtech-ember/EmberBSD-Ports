@@ -9,7 +9,11 @@ with the archive checksums in `distinfo`.
 the existing package behavior. It selects `MI_OVERRIDE=ON`. The explicit
 `-malloc-override` configuration selects `MI_OVERRIDE=OFF`, retaining the
 `mi_*` API without replacing the process's ordinary malloc/free entry points.
-Each mode has a distinct package configuration.
+Darwin packages also install `libmimalloc-embed.3.dylib` from the same source
+using `MI_OVERRIDE=OFF`. Plugins include `embedding.mk` and link the selected
+`MIMALLOC_EMBED_LIBRARY`. The separate install name lets them coexist with
+clients of the default library. On other platforms that interface selects
+the provider configured with `-malloc-override`.
 
 The `dynamic-tls` option selects `MI_TLS_MODEL=LOCAL_DYNAMIC` for libraries
 loaded after startup. The default preserves upstream's `DEFAULT` selection.

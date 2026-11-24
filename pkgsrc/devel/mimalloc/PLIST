@@ -7,6 +7,9 @@ lib/cmake/mimalloc/mimalloc-config-version.cmake
 lib/cmake/mimalloc/mimalloc-config.cmake
 lib/cmake/mimalloc/mimalloc-release.cmake
 lib/cmake/mimalloc/mimalloc.cmake
+${PLIST.darwin-embed}lib/libmimalloc-embed.so
+${PLIST.darwin-embed}lib/libmimalloc-embed.so.3
+${PLIST.darwin-embed}lib/libmimalloc-embed.so.3.7
 lib/libmimalloc.a
 lib/libmimalloc.so
 lib/libmimalloc.so.3
