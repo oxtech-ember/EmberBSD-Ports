@@ -50,12 +50,17 @@ TOOL_DEPENDS+=	p5-XML-Parser>=2.31nb1:../../textproc/p5-XML-Parser
 
 
 .include "../../mk/bsd.prefs.mk"
+# Supported EmberBSD images have different base libcrypto ABIs.
+.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	12
+PREFER.openssl=	pkgsrc
+BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
+MESON_ARGS+=	-Dopenssl=enabled
+.endif
+
 # git-version-gen runs on the build host; installed helpers use target Bash.
 REPLACE_BASH+= git-version-gen
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.if ${MACHINE_ARCH} == "aarch64" && ${OPSYS} == "NetBSD"
-PKGREVISION=	11 # Rebuild for the base OpenSSL 4 ABI (SONAME 17).
-.endif
 USE_TOOLS+= bash:build
 # One map.ver serves libpulse, libpulse-simple and libpulse-mainloop-glib;
 # ld.lld rejects its entries for symbols in the other libraries.
@@ -158,8 +163,5 @@ BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,-version-script=${WRKSRC}/src/pulse/map-file
 .include "../../security/openssl/buildlink3.mk"
 .include "../../sysutils/dbus/buildlink3.mk"
 .include "../../mk/oss.buildlink3.mk"
-.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
-PKGREVISION=	11
-.endif
 
 .include "../../mk/bsd.pkg.mk"
