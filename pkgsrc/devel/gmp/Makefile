@@ -79,4 +79,8 @@ CONFIGURE_ARGS+=	--enable-fat
 pre-configure:
 	cd ${WRKSRC} && autoconf
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

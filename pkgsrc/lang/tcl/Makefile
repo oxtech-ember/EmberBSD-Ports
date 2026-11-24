@@ -149,4 +149,9 @@ BUILDLINK_API_DEPENDS.sqlite3+=	sqlite3>=${TCL_SQLITE3_VERSION}
 .include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	4	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

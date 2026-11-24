@@ -69,4 +69,8 @@ post-install:
 USE_BUILTIN.bzip2=	no
 .include "../../archivers/bzip2/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	4	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"
