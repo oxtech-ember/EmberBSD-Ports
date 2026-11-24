@@ -348,6 +348,9 @@ ember-icu-cross-metadata:
 .endif
 
 .include "../../mk/atomic64.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64" && !defined(EMBERBSD_ICU_DEVEL)
+PKGREVISION= 2	# Require the libc SONAME on AArch64.
+.endif
 .include "../../mk/bsd.pkg.mk"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"

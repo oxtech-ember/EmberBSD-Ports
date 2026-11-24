@@ -39,4 +39,8 @@ SUBST_VARS.rpathfix=	COMPILER_RPATH_FLAG
 SUBST_STAGE.rpathfix=	post-build
 
 .include "../../devel/zlib/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.endif
+
 .include "../../mk/bsd.pkg.mk"
