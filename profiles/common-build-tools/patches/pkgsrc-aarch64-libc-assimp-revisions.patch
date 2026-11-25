@@ -1,12 +1,13 @@
 --- a/archivers/bzip2/Makefile
 +++ b/archivers/bzip2/Makefile
-@@ -55,4 +55,9 @@
+@@ -55,4 +55,10 @@
  	${LN} -s bzgrep.1 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man1/bzegrep.1
  	${LN} -s bzgrep.1 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man1/bzfgrep.1
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
