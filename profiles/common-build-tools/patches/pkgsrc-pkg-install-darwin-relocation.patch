@@ -1,0 +1,202 @@
+Keep Darwin pkg_install binaries independent of the producer prefix.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -26,6 +26,8 @@
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR}
+ CONFIGURE_ARGS+=	--with-pkgdbdir=${PKG_DBDIR}
++CONFIGURE_ARGS.Darwin+=	--sysconfdir=/usr/pkg/etc
++CONFIGURE_ARGS.Darwin+=	--with-pkgdbdir=/usr/pkg/pkgdb
+ 
+ USE_FEATURES=		nbcompat
+ 
+@@ -56,6 +58,10 @@
+ 
+ .include "../../mk/bsd.prefs.mk"
+ 
++.if ${OPSYS} == "Darwin"
++PKGREVISION=		26	# Use stable defaults in relocatable host tools.
++.endif
++
+ .if ${OS_VARIANT} == "SCOOSR5"
+ # SCO OpenServer 5.0.7/3.2's strings.h defines strcasecmp with
+ # "unsigned size_t". We cannot use -Werror for net/libfetch.
+
+--- a/pkgtools/pkg_install/files/add/perform.c
++++ b/pkgtools/pkg_install/files/add/perform.c
+@@ -1416,9 +1416,16 @@
+ 		    Destdir ? "-P": "", Destdir ? Destdir : "",
+ 		    pkg->other_version, NULL);
+ 		if (result != 0) {
++#ifdef __APPLE__
++			warnx("command failed: %s %s -K %s -p %s%s%s %s",
++			      PkgDeletePath, skip_scripts, delete_dbdir, pkg->prefix,
++			      Destdir ? " -P " : "", Destdir ? Destdir : "",
++			      pkg->other_version);
++#else
+ 			warnx("command failed: %s/pkg_delete %s -K %s -p %s %s%s%s",
+ 			      BINDIR, skip_scripts, delete_dbdir, pkg->prefix, Destdir ? "-P" : " ",
+ 			      Destdir ? Destdir : "", pkg->other_version);
++#endif
+ 		}
+ 	}
+ 
+
+--- a/pkgtools/pkg_install/files/add/main.c
++++ b/pkgtools/pkg_install/files/add/main.c
+@@ -70,11 +70,16 @@
+ static void
+ init_pkg_delete_path(const char *argv0)
+ {
++	const char *bindir = pkg_install_sbindir();
+ 	char resolved[PATH_MAX + 1];
+ 	char *candidate = NULL, *slash;
+ 	const char *path, *start, *end;
+ 	struct stat st;
+ 
++	if (bindir != NULL) {
++		PkgDeletePath = xasprintf("%s/pkg_delete", bindir);
++		return;
++	}
+ 	if (strchr(argv0, '/') != NULL) {
+ 		candidate = xstrdup(argv0);
+ 	} else if ((path = getenv("PATH")) != NULL) {
+@@ -126,6 +131,7 @@
+ 	lpkg_head_t pkgs;
+ 
+ 	setprogname(argv[0]);
++	pkg_install_init_paths();
+ 	init_pkg_delete_path(argv[0]);
+ 	while ((ch = getopt(argc, argv, Options)) != -1) {
+ 		switch (ch) {
+
+--- a/pkgtools/pkg_install/files/admin/main.c
++++ b/pkgtools/pkg_install/files/admin/main.c
+@@ -685,6 +685,7 @@
+ 	int		 ch, rv;
+ 
+ 	setprogname(argv[0]);
++	pkg_install_init_paths();
+ 
+ 	if (argc < 2)
+ 		usage();
+
+--- a/pkgtools/pkg_install/files/create/main.c
++++ b/pkgtools/pkg_install/files/create/main.c
+@@ -74,6 +74,7 @@
+ 	int     ch;
+ 
+ 	setprogname(argv[0]);
++	pkg_install_init_paths();
+ 	while ((ch = getopt(argc, argv, Options)) != -1)
+ 		switch (ch) {
+ 		case 'v':
+
+--- a/pkgtools/pkg_install/files/delete/pkg_delete.c
++++ b/pkgtools/pkg_install/files/delete/pkg_delete.c
+@@ -657,6 +657,7 @@
+ 	TAILQ_INIT(&sorted_pkgs);
+ 
+ 	setprogname(argv[0]);
++	pkg_install_init_paths();
+ 	while ((ch = getopt(argc, argv, "ADFfK:kNnOP:p:RrVv")) != -1) {
+ 		switch (ch) {
+ 		case 'A':
+
+--- a/pkgtools/pkg_install/files/info/main.c
++++ b/pkgtools/pkg_install/files/info/main.c
+@@ -72,6 +72,7 @@
+ 	int	rc;
+ 
+ 	setprogname(argv[0]);
++	pkg_install_init_paths();
+ 	while ((ch = getopt(argc, argv, Options)) != -1)
+ 		switch (ch) {
+ 		case '.':	/* for backward compatibility */
+
+--- a/pkgtools/pkg_install/files/lib/lib.h
++++ b/pkgtools/pkg_install/files/lib/lib.h
+@@ -398,6 +398,8 @@
+ 
+ /* Parse configuration file */
+ void pkg_install_config(void);
++void pkg_install_init_paths(void);
++const char *pkg_install_sbindir(void);
+ /* Print configuration variable */
+ void pkg_install_show_variable(const char *);
+ 
+
+--- a/pkgtools/pkg_install/files/lib/parse-config.c
++++ b/pkgtools/pkg_install/files/lib/parse-config.c
+@@ -42,6 +42,12 @@
+ #include <err.h>
+ #endif
+ #include <errno.h>
++#include <stdlib.h>
++#include <limits.h>
++#include <unistd.h>
++#ifdef __APPLE__
++#include <mach-o/dyld.h>
++#endif
+ #if HAVE_STRING_H
+ #include <string.h>
+ #endif
+@@ -55,7 +61,54 @@
+ static int cache_connections = 16;
+ static int cache_connections_host = 4;
+ 
+-const char     *config_file = SYSCONFDIR"/pkg_install.conf";
++static const char config_file_default[] = SYSCONFDIR "/pkg_install.conf";
++const char     *config_file = config_file_default;
++static const char *pkg_install_bindir;
++
++void
++pkg_install_init_paths(void)
++{
++#ifdef __APPLE__
++	uint32_t size = 0;
++	char *path, resolved[PATH_MAX + 1];
++	char *slash, *bindir;
++	const char *prefix;
++	const char *separator;
++
++	(void)_NSGetExecutablePath(NULL, &size);
++	if (size == 0)
++		errx(1, "cannot resolve executable path for pkg_install defaults");
++	path = xmalloc(size);
++	if (_NSGetExecutablePath(path, &size) != 0 ||
++	    realpath(path, resolved) == NULL) {
++		free(path);
++		errx(1, "cannot resolve executable path for pkg_install defaults");
++	}
++	free(path);
++	slash = strrchr(resolved, '/');
++	if (slash == NULL)
++		return;
++	*slash = '\0';
++	bindir = strrchr(resolved, '/');
++	if (bindir == NULL || strcmp(bindir + 1, "sbin") != 0)
++		return;
++	pkg_install_bindir = xstrdup(resolved);
++	*bindir = '\0';
++	prefix = resolved[0] == '\0' ? "/" : resolved;
++	separator = strcmp(prefix, "/") == 0 ? "" : "/";
++	if (strcmp(config_file, config_file_default) == 0)
++		config_file = xasprintf("%s%setc/pkg_install.conf", prefix, separator);
++	path = xasprintf("%s%spkgdb", prefix, separator);
++	pkgdb_set_dir(path, 0);
++	free(path);
++#endif
++}
++
++const char *
++pkg_install_sbindir(void)
++{
++	return pkg_install_bindir;
++}
+ 
+ char fetch_flags[10] = ""; /* Workaround Mac OS X linker issues with BSS */
+ static const char *active_ftp;
