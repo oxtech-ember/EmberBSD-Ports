@@ -31,7 +31,7 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
  # Explicit replacement host inputs require a separate pkgsrc work directory.
 @@ -86,11 +92,6 @@
  .else
- _NODE_METAGEN_LIBCLANG?= ${TOOLBASE}/lib/libclang.so
+ _NODE_METAGEN_LIBCLANG?= ${_NODE_METAGEN_COMPILER_PREFIX}/lib/libclang.so
  .endif
 -CONFIGURE_ARGS+= -Dember_v8_cxx_wrapper=${TOOLBASE:Q}/libexec/cwrappers/c++-wrapper
 -CONFIGURE_ARGS+= -Dember_v8_selected_clang=${_NODE_METAGEN_CLANG:Q}

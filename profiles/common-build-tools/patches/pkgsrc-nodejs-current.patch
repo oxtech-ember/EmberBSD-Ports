@@ -3,7 +3,7 @@
 
 --- a/lang/nodejs/Makefile
 +++ b/lang/nodejs/Makefile
-@@ -1,23 +1,231 @@
+@@ -1,23 +1,236 @@
  # $NetBSD: Makefile,v 1.360.2.1 2026/10/25 09:16:50 bsiegert Exp $
  
 -DISTNAME=	node-v26.12.1
@@ -92,16 +92,21 @@
 +	${PATCH} ${PATCH_FUZZ_FACTOR} ${PATCH_ARGS} < ${FILESDIR:Q}/darwin-runtime-config.patch
 +.endif
 +
-+# Metagen runs on the host, but parses each toolset's exact compiler flags.
-+_NODE_METAGEN_CLANG?= ${TOOLBASE}/bin/clang++
++# Metagen uses an executable host Clang in native and cross builds.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++_NODE_METAGEN_COMPILER_PREFIX?= ${TOOLBASE}
++.else
++_NODE_METAGEN_COMPILER_PREFIX?= ${CLANGBASE:U${TOOLBASE}}
++.endif
++_NODE_METAGEN_CLANG?= ${_NODE_METAGEN_COMPILER_PREFIX}/bin/clang++
 +_NODE_METAGEN_RESOURCE_CMD= ${_NODE_METAGEN_CLANG:Q} -print-resource-dir
 +_NODE_METAGEN_RESOURCE= ${_NODE_METAGEN_RESOURCE_CMD:sh}
 +.if ${NATIVE_OPSYS} == "Darwin"
 +# Compiling generated V8 code exceeds Darwin's default compiler stack.
 +UNLIMIT_RESOURCES+=	stacksize
-+_NODE_METAGEN_LIBCLANG?= ${TOOLBASE}/lib/libclang.dylib
++_NODE_METAGEN_LIBCLANG?= ${_NODE_METAGEN_COMPILER_PREFIX}/lib/libclang.dylib
 +.else
-+_NODE_METAGEN_LIBCLANG?= ${TOOLBASE}/lib/libclang.so
++_NODE_METAGEN_LIBCLANG?= ${_NODE_METAGEN_COMPILER_PREFIX}/lib/libclang.so
 +.endif
 +CONFIGURE_ARGS+= -Dember_v8_cxx_wrapper=${TOOLBASE:Q}/libexec/cwrappers/c++-wrapper
 +CONFIGURE_ARGS+= -Dember_v8_selected_clang=${_NODE_METAGEN_CLANG:Q}
