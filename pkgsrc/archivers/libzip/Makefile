@@ -18,6 +18,8 @@ TEST_DEPENDS+=		${PYPKGPREFIX}-nihtest-[0-9]*:../../devel/py-nihtest
 TEST_TARGET=		test
 # for tests
 CMAKE_CONFIGURE_ARGS+=	-DNIHTEST=${PREFIX}/bin/nihtest-${PYVERSSUFFIX}
+# Use the shipped man-page sources. Host tool discovery is not deterministic.
+CMAKE_CONFIGURE_ARGS+=	-DDOCUMENTATION_FORMAT=man
 MAKE_ENV+=		LD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/lib
 # for Darwin
 MAKE_ENV+=		DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/lib
