@@ -1,0 +1,11 @@
+--- a/archivers/xz/Makefile
++++ b/archivers/xz/Makefile
+@@ -48,4 +48,8 @@
+ PKGREVISION=	2	# Record the base libc SONAME.
+ .endif
+ 
++.if ${OPSYS} == "Darwin"
++PKGREVISION=	2	# Rebuild the native package with portable metadata.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"

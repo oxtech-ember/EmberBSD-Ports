@@ -6,6 +6,16 @@ PKGNAME=	${DISTNAME:S/-/-lib-/}
 PKGREVISION=	2
 COMMENT=	Internationalized Message Handling Library (libintl)
 
+.if ${OPSYS} == "Darwin"
+PKGREVISION=	3	# Build a relocatable native libintl.
+CONFIGURE_ARGS+=	--enable-relocatable
+BUILD_MAKE_FLAGS+=	localedir=/usr/pkg/share/locale
+SUBST_CLASSES+=	darwin-libdir
+SUBST_STAGE.darwin-libdir=	pre-configure
+SUBST_FILES.darwin-libdir=	gettext-runtime/intl/Makefile.in
+SUBST_SED.darwin-libdir=	-e 's|-DLIBDIR=\\"[$$][(]libdir[)]\\"|-DLIBDIR=\\"/usr/pkg/lib\\"|'
+.endif
+
 USE_LANGUAGES=		c
 CONFIGURE_ARGS+=	--with-included-gettext
 CONFIGURE_ARGS+=	--with-included-libintl
