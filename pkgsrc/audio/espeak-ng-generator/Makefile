@@ -3,6 +3,7 @@
 
 DISTNAME=	espeak-ng-1.52.0
 PKGNAME=	${DISTNAME:S/espeak-ng/espeak-ng-generator/}
+PKGREVISION=	1
 CATEGORIES=	audio
 MASTER_SITES=	${MASTER_SITE_GITHUB:=espeak-ng/}
 GITHUB_PROJECT=	espeak-ng
@@ -27,6 +28,7 @@ USE_LANGUAGES=	c c++
 CONFIGURE_ARGS+=	--without-pcaudiolib --without-sonic --with-mbrola
 CONFIGURE_ARGS+=	--disable-shared --disable-rpath
 BUILD_TARGET=	src/espeak-ng
+MAKE_FLAGS+=	DATADIR=espeak-ng-data
 INSTALLATION_DIRS=	libexec
 
 .include "../../mk/bsd.prefs.mk"
