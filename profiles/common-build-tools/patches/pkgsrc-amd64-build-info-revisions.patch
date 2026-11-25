@@ -1,0 +1,39 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Reserve fresh AMD64 package names for producer metadata with private paths removed.
+
+--- a/archivers/bzip2/Makefile
++++ b/archivers/bzip2/Makefile
+@@ -60,6 +60,9 @@
+ .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+ PKGREVISION=	1	# Record the base libc SONAME.
++.if ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2
++.endif
+ .endif
+ 
+ .include "../../mk/bsd.pkg.mk"
+--- a/graphics/jbigkit/Makefile
++++ b/graphics/jbigkit/Makefile
+@@ -42,6 +42,9 @@
+ .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+ PKGREVISION=	2	# Record the base libc SONAME.
++.if ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	3
++.endif
+ .endif
+ 
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/dav1d/Makefile
++++ b/multimedia/dav1d/Makefile
+@@ -36,6 +36,9 @@
+ .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+ PKGREVISION=	1	# Record the base libc SONAME.
++.if ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2
++.endif
+ .endif
+ 
+ .include "../../mk/bsd.pkg.mk"
