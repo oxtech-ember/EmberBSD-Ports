@@ -32,7 +32,12 @@ Versionless discovery and `5.0.1 EXACT` also work. OCCT's versionless discovery
 requires no compatibility alias or falsified version metadata.
 
 The complete upstream header and unsupported-header installation is retained.
-Upstream's BLAS, LAPACK, demos and testing options remain enabled.
+Upstream's BLAS, LAPACK and demos remain enabled. The ordinary package build
+disables Eigen's large test graph. On a clean native work tree, run
+`bmake test` to configure tests and invoke Eigen's `check` target. Set
+`PKGSRC_RUN_TEST=yes` on a package build command to include the test stage.
+For a work tree configured with tests off, run `bmake clean` before the
+explicit test or package command.
 Whether the common package keeps the BLAS and LAPACK libraries is an open
 decision.
 The package includes `libeigen_blas.so`, `libeigen_lapack.so` and their two

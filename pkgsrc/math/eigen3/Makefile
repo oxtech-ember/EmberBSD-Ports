@@ -35,6 +35,15 @@ CMAKE_CONFIGURE_ARGS+=	-DEIGEN_BUILD_PKGCONFIG=ON
 # Upstream CMake otherwise supplies "dev" instead of reading that identifier.
 CMAKE_CONFIGURE_ARGS+=	-DEIGEN_PRERELEASE_VERSION=
 
+# Keep Eigen's large test graph out of ordinary package builds.  pkgsrc's
+# explicit test target uses Eigen's upstream "check" target.
+.if !empty(PKGSRC_RUN_TEST:M[yY][eE][sS]) || make(test) || make(retest)
+CMAKE_CONFIGURE_ARGS+=	-DEIGEN_BUILD_TESTING=ON
+.else
+CMAKE_CONFIGURE_ARGS+=	-DEIGEN_BUILD_TESTING=OFF
+.endif
+TEST_TARGET=	check
+
 INSTALLATION_DIRS+=	share/licenses/eigen3
 
 post-install:
