@@ -23,6 +23,10 @@ post-install:
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	5	# Rebuild the public package with portable build metadata.
+.endif
+
 # Origin: EmberBSD (AI-assisted). Meson uses xkbcomp only in the optional
 # tests/test_xkb_symbols.py suite; cross data generation does not execute it.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
