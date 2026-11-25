@@ -1,0 +1,25 @@
+Use new Darwin package revisions for canonical relocation metadata.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/devel/readline/Makefile
++++ b/devel/readline/Makefile
+@@ -32,4 +32,8 @@
+ PKGREVISION=	2	# Record the base libc SONAME.
+ .endif
+ 
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	2	# Use public paths in native package metadata.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/math/mpdecimal/Makefile
++++ b/math/mpdecimal/Makefile
+@@ -33,4 +33,8 @@
+ PKGREVISION=	1	# Record the base libc SONAME.
+ .endif
+ 
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	1	# Use public paths in native package metadata.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
