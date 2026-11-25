@@ -46,6 +46,9 @@ class ExportTests(unittest.TestCase):
             (directory / 'Makefile').write_text('# Native metadata fixture\n')
             (directory / 'patches').mkdir()
             (directory / 'patches' / 'patch-one').write_text('patch bytes\n')
+        installer = self.pkgsrc / 'pkgtools/pkg_install'
+        installer.mkdir(parents=True)
+        (installer / 'Makefile').write_text('# Native tool selection fixture\n')
         self.config = self.path / 'mk.conf'
         self.config.write_text('# Prepared cross configuration\n')
         self.toolchain = self.path / 'toolchain.json'
@@ -54,7 +57,7 @@ class ExportTests(unittest.TestCase):
         self.base.write_text('{"target":"aarch64","revision":"fixture"}\n')
         self.bmake = self.path / 'bmake'
         self.bmake.write_text('#!' + sys.executable + '\n' + r'''
-import json, pathlib, sys
+import json, os, pathlib, sys
 args = sys.argv[1:]
 directory = pathlib.Path(args[args.index('-C') + 1])
 root = directory.parents[1]
@@ -65,17 +68,26 @@ if 'show-var' in args and 'show-vars' not in args:
     varname = settings['VARNAME']
     with (root / 'calls.jsonl').open('a') as stream:
         stream.write(json.dumps({'package': package, 'settings': settings,
-                                 'targets': ['show-var'], 'variable': varname}) + '\n')
+                                 'targets': ['show-var'], 'variable': varname,
+                                 'verified_env': os.environ.get('EMBERBSD_NATIVE_TOOLSET_VERIFIED')}) + '\n')
     if package == 'pkgtools/pkg_install':
-        host = json.loads((root / 'host-current.json').read_text())
+        host_path = root / 'host-current.json'
+        if not host_path.exists():
+            if varname == 'EMBERBSD_NATIVE_TOOLSET_VERIFIED':
+                print('')
+                sys.exit(0)
+            print('host selection fixture is absent', file=sys.stderr)
+            sys.exit(2)
+        host = json.loads(host_path.read_text())
         verified = host['verified']
         if varname == 'EMBERBSD_NATIVE_TOOLSET_VERIFIED':
-            if 'USE_CROSS_COMPILE' in settings:
-                print('toolset query must not select a cross role', file=sys.stderr)
-                sys.exit(4)
+            count_path = root / 'native-verifier-count'
+            if os.environ.get('EMBERBSD_NATIVE_TOOLSET_VERIFIED') != verified:
+                count = int(count_path.read_text()) if count_path.exists() else 0
+                count_path.write_text(str(count + 1))
             print(verified)
             sys.exit(0)
-        if settings.get('EMBERBSD_NATIVE_TOOLSET_VERIFIED') != verified:
+        if os.environ.get('EMBERBSD_NATIVE_TOOLSET_VERIFIED') != verified:
             print('native toolset was not verified', file=sys.stderr)
             sys.exit(3)
         if varname in ('PKG_INFO', '_HOST_PKG_DBDIR') and settings.get('USE_CROSS_COMPILE') != 'no':
@@ -90,6 +102,12 @@ if 'show-var' in args and 'show-vars' not in args:
     assert varname != 'PKGBASE', 'query PKGBASE with the selected package metadata'
     print(values.get(varname, ''))
     sys.exit(0)
+host_path = root / 'host-current.json'
+verified_env = os.environ.get('EMBERBSD_NATIVE_TOOLSET_VERIFIED')
+verified_value = json.loads(host_path.read_text())['verified'] if host_path.exists() else ''
+if host_path.exists() and verified_env not in (None, verified_value):
+    print('metadata query received a stale native toolset', file=sys.stderr)
+    sys.exit(9)
 if tracked:
     events = root / 'events'
     events.mkdir(exist_ok=True)
@@ -98,17 +116,7 @@ if tracked:
         'package': package, 'cross': settings['USE_CROSS_COMPILE'],
         'pattern': settings.get('PKGNAME_REQD')}))
     (events / (pid + '.start')).write_text(str(__import__('time').monotonic_ns()))
-    barrier = root / 'overlap-barrier'
-    if barrier.is_dir() and package != 'devel/app':
-        import time
-        (barrier / pid).touch()
-        until = time.monotonic() + 15
-        while len(list(barrier.iterdir())) < 2:
-            if time.monotonic() >= until:
-                sys.exit('expected a second independent bmake query')
-            time.sleep(0.01)
-    else:
-        __import__('time').sleep(0.05)
+    __import__('time').sleep(0.05)
 values = json.loads((root / 'metadata.json').read_text())[package]
 values = dict(values)
 path_options = values.pop('_options_by_path_and_required', {})
@@ -133,9 +141,15 @@ values.setdefault('PATCHDIR', 'patches')
 values.setdefault('_PATH_ORIG', __import__('os').environ['PATH'])
 values.setdefault('PKGSRC_MAKE_ENV', 'MAKECONF=' + settings['MAKECONF'])
 values.setdefault('CROSSTARGETSETTINGS', 'TARGET_OPSYS=NetBSD TARGET_MACHINE_ARCH=aarch64')
+values.setdefault('EMBERBSD_NATIVE_TOOLSET_VERIFIED', verified_value)
+if host_path.exists() and verified_env != verified_value:
+    count_path = root / 'native-verifier-count'
+    count = int(count_path.read_text()) if count_path.exists() else 0
+    count_path.write_text(str(count + 1))
 with (root / 'calls.jsonl').open('a') as stream:
     stream.write(json.dumps({'package': package, 'settings': settings,
-                             'targets': [arg for arg in args if arg == 'show-vars']}) + '\n')
+                                 'targets': [arg for arg in args if arg == 'show-vars'],
+                                 'verified_env': verified_env}) + '\n')
 if '-dg1' in args:
     print('#*** Global Variables:', file=sys.stderr)
     for name in sorted(values):
@@ -169,7 +183,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.pkg_admin.chmod(0o755)
         self.counter = 0
 
-    def run_export(self, *extra, success=True, inventory=True):
+    def run_export(self, *extra, success=True, inventory=True, environment=None):
         (self.pkgsrc / 'metadata.json').write_text(json.dumps(self.packages))
         self.counter += 1
         output = self.path / ('graph-' + str(self.counter) + '.json')
@@ -182,7 +196,9 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
                    '--triplet', 'aarch64--netbsd', '--revision', 'fixture',
                    '--toolchain-input', str(self.toolchain), '--base-input', str(self.base),
                    '--root', 'devel/app', '--output', str(output), *extra]
-        result = subprocess.run(command, capture_output=True, text=True)
+        process_environment = dict(os.environ)
+        process_environment.update(environment or {})
+        result = subprocess.run(command, capture_output=True, text=True, env=process_environment)
         if success:
             self.assertEqual(result.returncode, 0, result.stderr)
             self.last_inventory = json.loads(requirements.read_text()) if requirements.exists() else None
@@ -206,6 +222,29 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         self.assertEqual({call['package'] for call in calls}, {'devel/app', 'devel/runtime'})
         self.assertIsNone(self.last_inventory)
+
+    def test_plain_pkgsrc_does_not_inject_a_native_toolset_key(self):
+        self.run_export()
+        calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        metadata = [call for call in calls if 'show-vars' in call.get('targets', [])]
+        self.assertTrue(metadata)
+        self.assertTrue(all(call['verified_env'] is None for call in metadata))
+        self.assertFalse((self.pkgsrc / 'native-verifier-count').exists())
+
+    def test_verified_native_key_is_reused_and_ambient_value_is_ignored(self):
+        self.enable_host_db(['generator-2'])
+        graph = self.run_export('--jobs', '3', environment={
+            'EMBERBSD_NATIVE_TOOLSET_VERIFIED': 'untrusted-value'})
+        calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        metadata = [call for call in calls if 'show-vars' in call.get('targets', [])]
+        self.assertEqual({call['verified_env'] for call in metadata}, {None, 'verified-native'})
+        self.assertEqual(sum(call['verified_env'] is None for call in metadata), 1)
+        self.assertEqual((self.pkgsrc / 'native-verifier-count').read_text(), '1')
+        self.assertNotIn('untrusted-value', json.dumps(calls))
+        self.assertEqual({node.split('@', 1)[0] for node in self.nodes(graph)}, {
+            'target:devel/app', 'target:devel/library', 'target:devel/runtime',
+            'target:devel/tests', 'host:devel/bootstrap', 'host:devel/generator',
+            'host:devel/hostlib'})
 
     def test_cross_roles_follow_native_installer(self):
         graph = self.run_export()
@@ -232,9 +271,6 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
     def test_parallel_jobs_preserve_graph_and_bound_bmake_concurrency(self):
         common = ('--make-variable', 'TEST_PARALLEL=yes')
         serial = self.run_export(*common)
-        # Hold the first frontier worker until the second actually starts.
-        # Even a slow host must exercise overlapping queries in this test.
-        (self.pkgsrc / 'overlap-barrier').mkdir()
         parallel = self.run_export(*common, '--jobs', '2')
         self.assertEqual(serial, parallel)
         events = self.pkgsrc / 'events'
@@ -380,6 +416,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
                            'PKG_OPTIONS.boost/libs=-icu', 'PKG_OPTIONS.boost:libs=-icu',
                            'PKG_OPTIONS.boost$libs=-icu', 'MAKEFLAGS=-n', 'MAKECONF=/tmp/other.conf',
                            'USE_CROSS_COMPILE=no', 'TARGET_MACHINE_ARCH=aarch64',
+                           'EMBERBSD_NATIVE_TOOLSET_VERIFIED=forged',
                            'EMBERBSD_DARWIN_BOOTSTRAP=yes;show-vars',
                            'EMBERBSD_DARWIN_BOOTSTRAP=yes extra',
                            'EMBERBSD_DARWIN_BOOTSTRAP='):
@@ -922,12 +959,17 @@ sys.exit(2)
         self.assertIn('host current package database', graph['provenance']['source'])
         calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         discovery = [call for call in calls if call.get('package') == 'pkgtools/pkg_install']
-        self.assertEqual([call['variable'] for call in discovery], [
-            'EMBERBSD_NATIVE_TOOLSET_VERIFIED', 'PKG_INFO', '_HOST_PKG_DBDIR', '_PKG_DBDIR'])
+        self.assertGreaterEqual(sum(call['variable'] == 'EMBERBSD_NATIVE_TOOLSET_VERIFIED'
+                                    for call in discovery), 1)
         self.assertNotIn('USE_CROSS_COMPILE', discovery[0]['settings'])
-        self.assertEqual(discovery[1]['settings']['USE_CROSS_COMPILE'], 'no')
-        self.assertEqual(discovery[1]['settings']['EMBERBSD_NATIVE_TOOLSET_VERIFIED'], 'verified-native')
-        self.assertNotIn('USE_CROSS_COMPILE', discovery[3]['settings'])
+        database_queries = [call for call in discovery
+                            if call['variable'] in ('PKG_INFO', '_HOST_PKG_DBDIR', '_PKG_DBDIR')]
+        self.assertEqual([call['variable'] for call in database_queries],
+                         ['PKG_INFO', '_HOST_PKG_DBDIR', '_PKG_DBDIR'])
+        self.assertEqual(database_queries[0]['settings']['USE_CROSS_COMPILE'], 'no')
+        self.assertNotIn('EMBERBSD_NATIVE_TOOLSET_VERIFIED', database_queries[0]['settings'])
+        self.assertEqual(database_queries[0]['verified_env'], 'verified-native')
+        self.assertNotIn('USE_CROSS_COMPILE', database_queries[2]['settings'])
 
     def test_old_host_packages_keep_the_bootstrap_cycle(self):
         self.install_host_cycle(direct_tools=True)

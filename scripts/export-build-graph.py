@@ -35,6 +35,7 @@ DEPENDENCIES = {
 RESERVED_MAKE_VARIABLES = {
     'MAKECONF', 'USE_CROSS_COMPILE', 'MAKEFLAGS', 'MFLAGS', '.MAKEFLAGS',
     'MAKEFILE', 'MAKEOBJDIR', 'MAKEOBJDIRPREFIX', 'PKGNAME_REQD', '_MAKEVARS_MK',
+    'EMBERBSD_NATIVE_TOOLSET_VERIFIED',
 }
 
 
@@ -146,6 +147,8 @@ class Exporter:
         self.host_names = None
         self.host_providers = {}
         self.using_installed = set()
+        self.native_toolset_seed = None
+        self.native_toolset_initialized = False
 
     def run(self, command, **kwargs):
         completed = subprocess.run(command, text=True, capture_output=True,
@@ -165,6 +168,11 @@ class Exporter:
         return relative.as_posix()
 
     def query(self, package, cross, settings, environment, pattern):
+        query_environment = dict(environment)
+        query_environment.pop('EMBERBSD_NATIVE_TOOLSET_VERIFIED', None)
+        native = self.native_toolset_seed
+        if native:
+            query_environment['EMBERBSD_NATIVE_TOOLSET_VERIFIED'] = native
         command = [str(self.bmake), '-C', str(self.root / package),
                    'MAKECONF=' + str(self.makeconf),
                    'USE_CROSS_COMPILE=' + cross, '_MAKEVARS_MK=defined']
@@ -179,13 +187,14 @@ class Exporter:
         # pkgsrc's phony metadata goal keeps .TARGETS out of the default build phase.
         command.append('show-vars')
         queries = []
-        variables = VARIABLES + (('PKGBASE',) if self.host_current and cross == 'no' else ())
+        variables = VARIABLES + (('PKGBASE',) if self.host_current and cross == 'no' else ()) + (
+            'EMBERBSD_NATIVE_TOOLSET_VERIFIED',)
         for variable in variables:
             queries += ['-V', '${' + variable + '}']
         # bmake has no GNU .VARIABLES inventory. Its native input graph lists
         # defined names. Query their expanded values separately through -V.
         try:
-            completed = self.run(command + ['-dg1'] + queries, env=environment)
+            completed = self.run(command + ['-dg1'] + queries, env=query_environment)
         except ExportError:
             role = 'target' if cross == 'yes' else 'native'
             raise ExportError(f'bmake variable inventory query failed: {package} ({role})') from None
@@ -199,11 +208,19 @@ class Exporter:
         if len(values) != len(variables):
             raise ExportError('unexpected bmake metadata line count for ' + package)
         result = dict(zip(variables, values))
+        verified = result.pop('EMBERBSD_NATIVE_TOOLSET_VERIFIED')
+        if verified and any(character.isspace() for character in verified):
+            raise ExportError('invalid EMBERBSD_NATIVE_TOOLSET_VERIFIED from bmake metadata')
+        result['_VERIFIED_NATIVE_TOOLSET'] = verified
+        if verified:
+            query_environment['EMBERBSD_NATIVE_TOOLSET_VERIFIED'] = verified
+        else:
+            query_environment.pop('EMBERBSD_NATIVE_TOOLSET_VERIFIED', None)
         if extra_trees:
             queries = []
             for variable in extra_trees:
                 queries += ['-V', '${' + variable + '}']
-            values = self.run(command + queries, env=environment).stdout.splitlines()
+            values = self.run(command + queries, env=query_environment).stdout.splitlines()
             if len(values) != len(extra_trees):
                 raise ExportError('unexpected bmake FILESDIR line count for ' + package)
             result.update(zip(extra_trees, values))
@@ -386,7 +403,9 @@ class Exporter:
     def query_result(self, package, cross, settings, environment, pattern):
         key = self.query_key(package, cross, settings, environment, pattern)
         if key not in self.query_results:
-            return self.query(package, cross, settings, environment, pattern)
+            metadata = self.query(package, cross, settings, environment, pattern)
+            self.accept_native_toolset(metadata)
+            return metadata
         return self.query_results[key]
 
     def dependency_requests(self, parent):
@@ -458,12 +477,23 @@ class Exporter:
                 unique.append(request)
         if not unique:
             return
+        # Get the verified selection from the first required metadata query
+        # for each context. Later queries reuse that bmake-produced key.
+        if not self.native_toolset_initialized:
+            first, *remaining = unique
+            metadata = self.query(*first)
+            self.accept_native_toolset(metadata)
+            self.query_results[self.query_key(*first)] = metadata
+        else:
+            remaining = unique
         if self.args.jobs == 1:
-            results = [self.query(*request) for request in unique]
+            results = [self.query(*request) for request in remaining]
+        elif not remaining:
+            results = []
         else:
             results = []
-            with ThreadPoolExecutor(max_workers=min(self.args.jobs, len(unique))) as pool:
-                futures = [pool.submit(self.query, *request) for request in unique]
+            with ThreadPoolExecutor(max_workers=min(self.args.jobs, len(remaining))) as pool:
+                futures = [pool.submit(self.query, *request) for request in remaining]
                 try:
                     # Consume in request order so graph mutation and failures stay deterministic.
                     results = [future.result() for future in futures]
@@ -471,7 +501,8 @@ class Exporter:
                     for future in futures:
                         future.cancel()
                     raise
-        for request, metadata in zip(unique, results):
+        for request, metadata in zip(remaining, results):
+            self.accept_native_toolset(metadata)
             self.query_results[self.query_key(*request)] = metadata
 
     def parallel_frontier(self):
@@ -498,20 +529,33 @@ class Exporter:
     def frozen_show_var(self, variable, *, native=None, cross=None):
         command = [str(self.bmake), '-C', str(self.root / 'pkgtools/pkg_install'),
                    'MAKECONF=' + str(self.makeconf), '_MAKEVARS_MK=defined']
-        if native is not None:
-            command.append('EMBERBSD_NATIVE_TOOLSET_VERIFIED=' + native)
+        command += [key + '=' + value for key, value in self.make_variables.items()]
         if cross is not None:
             command.append('USE_CROSS_COMPILE=' + cross)
+        if cross == 'no':
+            command += [key + '=' + value for key, value in self.native_make_variables.items()]
         command += ['show-var', 'VARNAME=' + variable]
-        lines = self.run(command, env=self.environment).stdout.splitlines()
+        query_environment = dict(self.environment)
+        query_environment.pop('EMBERBSD_NATIVE_TOOLSET_VERIFIED', None)
+        if native:
+            query_environment['EMBERBSD_NATIVE_TOOLSET_VERIFIED'] = native
+        lines = self.run(command, env=query_environment).stdout.splitlines()
         if len(lines) != 1 or lines[0] == '':
             raise ExportError('invalid ' + variable + ' from frozen MAKECONF')
         return lines[0]
+
+    def accept_native_toolset(self, metadata):
+        verified = metadata.pop('_VERIFIED_NATIVE_TOOLSET')
+        self.native_toolset_initialized = True
+        if verified:
+            self.native_toolset_seed = verified
 
     def discover_host_pkg_info(self):
         native = self.frozen_show_var('EMBERBSD_NATIVE_TOOLSET_VERIFIED')
         if any(character.isspace() for character in native):
             raise ExportError('invalid EMBERBSD_NATIVE_TOOLSET_VERIFIED from frozen MAKECONF')
+        self.native_toolset_seed = native
+        self.native_toolset_initialized = True
         info = self.frozen_show_var('PKG_INFO', native=native, cross='no')
         host_db = self.frozen_show_var('_HOST_PKG_DBDIR', native=native, cross='no')
         target_db = self.frozen_show_var('_PKG_DBDIR', native=native)
