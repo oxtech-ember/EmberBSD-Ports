@@ -90,12 +90,16 @@ def rollback_copy(destination, preserve_root):
             shutil.rmtree(destination)
 
 
+def portable_inventory(rows):
+    # A copy can set only the link mode that the destination OS supports.
+    return {name: dict(row, mode=0) if row["kind"] == "link" else row
+            for name, row in rows.items()}
+
+
 def copy_complete(source, destination, lists, *, allow_empty=False):
     from emberbsd_sdk import inventory, paths
 
     full, runtime, devel = check_policy(*map(manifest, lists))
-    if not callable(getattr(inventory, "transfer_inventory_equal", None)):
-        raise ValueError("the selected SDK must provide inventory transfer validation")
     source = paths.path_string(source)
     destination = paths.path_string(destination)
     if paths.canonical_existing(source) != source or paths.canonical_new(destination) != destination:
@@ -117,7 +121,7 @@ def copy_complete(source, destination, lists, *, allow_empty=False):
     try:
         shutil.copytree(source, destination, symlinks=True, dirs_exist_ok=existing)
         copied = inventory.snapshot_tree(destination)
-        if (not inventory.transfer_inventory_equal(before, copied)
+        if (portable_inventory(before) != portable_inventory(copied)
                 or inventory.snapshot_tree(source) != before):
             raise ValueError("ICU stage changed or differs during handoff")
     except Exception:
