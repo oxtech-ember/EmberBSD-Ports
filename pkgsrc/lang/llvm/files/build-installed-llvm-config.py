@@ -21,6 +21,18 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def native_cxx_command(host_prefix):
+    value = os.environ.get('NATIVE_CXX', str(host_prefix / 'bin/clang++'))
+    # A selected executable can also be a literal path that contains spaces.
+    command = [value] if Path(value).is_file() else shlex.split(value)
+    require(command and Path(command[0]).is_absolute(), 'NATIVE_CXX must select an absolute compiler')
+    driver = Path(command[0])
+    require(driver.is_file() and driver.resolve(strict=True).is_relative_to(host_prefix)
+            and os.access(driver, os.X_OK),
+            'NATIVE_CXX must come from the selected host prefix')
+    return command
+
+
 def capture(argv):
     result = subprocess.run(argv, check=True, capture_output=True, text=True)
     return result.stdout.strip()
@@ -86,8 +98,7 @@ def compile_helper(config, work, sysroot, host_prefix):
     host_config = host_prefix / 'bin/llvm-config'
     require(host_config.is_file() and os.access(host_config, os.X_OK), 'native llvm-config is missing')
     require(capture([str(host_config), '--version']) == VERSION, 'native LLVM version mismatch')
-    cxx = Path(os.environ.get('NATIVE_CXX', str(host_prefix / 'bin/clang++'))).resolve(strict=True)
-    require(cxx.is_relative_to(host_prefix) and os.access(cxx, os.X_OK), 'NATIVE_CXX must come from the selected host prefix')
+    cxx = native_cxx_command(host_prefix)
     native_ld = Path(os.environ.get('EMBERBSD_NATIVE_LD', '')).resolve(strict=True)
     require(native_ld.is_relative_to(host_prefix) and os.access(native_ld, os.X_OK),
             'EMBERBSD_NATIVE_LD must come from the selected host prefix')
@@ -146,7 +157,7 @@ def compile_helper(config, work, sysroot, host_prefix):
     else:
         host_ldflags.append('-B' + str(native_ld.parent) + os.sep)
     output = work / 'helper/bin/llvm-config'
-    command = [str(cxx), '-I' + str(work / 'host-config'),
+    command = [*cxx, '-I' + str(work / 'host-config'),
                '-I' + str(work / 'metadata'),
                *host_flags, '-DLLVM_BUILD_STATIC', '-O2', '-DNDEBUG',
                str(source), *host_ldflags, *libraries, *system_libraries, '-o', str(output)]
@@ -205,7 +216,7 @@ def cache_key(sysroot, host_prefix):
     sysroot = Path(sysroot).resolve(strict=True)
     host_prefix = Path(host_prefix).resolve(strict=True)
     target = sysroot / 'usr/pkg'
-    compiler = Path(os.environ.get('NATIVE_CXX', str(host_prefix / 'bin/clang++'))).resolve(strict=True)
+    cxx = native_cxx_command(host_prefix)
     linker = Path(os.environ['EMBERBSD_NATIVE_LD']).resolve(strict=True)
     paths = [target / 'lib/cmake/llvm/LLVMConfig.cmake',
              target / 'include/llvm/Config/llvm-config.h', target / 'lib/libLLVM-23.so',
@@ -213,7 +224,7 @@ def cache_key(sysroot, host_prefix):
              target / 'lib/cmake/llvm/emberbsd/LibraryDependencies.inc',
              target / 'lib/cmake/llvm/emberbsd/ExtensionDependencies.inc',
              target / 'lib/cmake/llvm/emberbsd/llvm-config.cpp',
-             host_prefix / 'bin/llvm-config', compiler, linker, host_prefix / 'include/llvm/Config/llvm-config.h',
+             host_prefix / 'bin/llvm-config', Path(cxx[0]), linker, host_prefix / 'include/llvm/Config/llvm-config.h',
              *[host_prefix / 'lib' / ('lib' + name + '.a') for name in
                ('LLVMSupport', 'LLVMTargetParser', 'LLVMDemangle')]]
     identities = []
@@ -226,7 +237,7 @@ def cache_key(sysroot, host_prefix):
         identities.append(dict(path=str(path.resolve()), dev=stat.st_dev, ino=stat.st_ino,
                                 size=stat.st_size, mtime_ns=stat.st_mtime_ns, ctime_ns=stat.st_ctime_ns))
     return dict(version=VERSION, sysroot=str(sysroot), host_prefix=str(host_prefix),
-                native_cxx=str(compiler), native_ld=str(linker),
+                native_cxx=cxx, native_ld=str(linker),
                 native_runtime_flags=native_runtime_flags(host_prefix),
                 native_cxxflags=os.environ.get('NATIVE_CXXFLAGS', ''),
                 native_ldflags=os.environ.get('NATIVE_LDFLAGS', ''), inputs=identities)

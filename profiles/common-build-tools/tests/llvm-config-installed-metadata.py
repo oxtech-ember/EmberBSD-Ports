@@ -7,6 +7,7 @@ import os
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -195,7 +196,9 @@ def main():
         sys.path.insert(0, str(producer.parent))
         installed_producer = module_from_spec(spec)
         spec.loader.exec_module(installed_producer)
-        os.environ['NATIVE_CXX'] = str(host_cpp)
+        compiler_argv = [str(host_cpp), '-isysroot', str(root / 'host ABI SDK'),
+                         '-mmacosx-version-min=27.0']
+        os.environ['NATIVE_CXX'] = shlex.join(compiler_argv)
         os.environ['EMBERBSD_NATIVE_LD'] = str(native_ld)
         # Exercise the producer's real compile invocation with a recording compiler.
         (metadata / 'llvm-config.cpp').write_text(
@@ -216,11 +219,19 @@ def main():
         installed_producer.subprocess.run = fake_run
         installed_producer.validate_llvm_config = lambda *args: None
         installed_producer.compile_helper(str(root / 'unused'), str(root / 'compile-work'), str(target), str(host_prefix))
+        if recorded[-1][:len(compiler_argv)] != compiler_argv:
+            print('FAIL: the native compiler command lost its driver or its ABI arguments')
+            return 1
         expected_flags = ['-Xlinker', '-rpath', '-Xlinker', str(host_prefix.resolve() / 'lib')]
         if not any(command[i:i+4] == expected_flags for command in recorded for i in range(len(command))):
             print('FAIL: compiler invocation lacks selected native runtime path')
             return 1
         first_key = installed_producer.cache_key(target, host_prefix)
+        os.environ['NATIVE_CXX'] = shlex.join([*compiler_argv, '-DCHANGED_HOST_ABI'])
+        if first_key == installed_producer.cache_key(target, host_prefix):
+            print('FAIL: changed native compiler arguments reused the cached helper')
+            return 1
+        os.environ['NATIVE_CXX'] = shlex.join(compiler_argv)
         expected_flags = ['-Xlinker', '-rpath', '-Xlinker', str(host_prefix.resolve() / 'lib')]
         if installed_producer.native_runtime_flags(host_prefix.resolve()) != expected_flags or first_key['native_runtime_flags'] != expected_flags:
             print('FAIL: helper runtime path missing from link flags or cache key')
