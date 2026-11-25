@@ -68,9 +68,14 @@ PLIST_VARS+=	runtime_split
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-PKGREVISION=	6
-.if ${PKGREVISION} != 6
-PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires package revision 6"
+.if ${MACHINE_ARCH} == "aarch64"
+_PROTOBUF_SPLIT_REVISION=	7
+.else
+_PROTOBUF_SPLIT_REVISION=	6
+.endif
+PKGREVISION=	${_PROTOBUF_SPLIT_REVISION}
+.if ${PKGREVISION} != ${_PROTOBUF_SPLIT_REVISION}
+PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires package revision ${_PROTOBUF_SPLIT_REVISION}"
 .endif
 PLIST.runtime_split=	yes
 PROTOBUF_FULL_PLIST_SRC=	${EMBERBSD_PROTOBUF_PKGDIR}/PLIST
@@ -82,8 +87,8 @@ PROTOBUF_PACKAGE_PART=	devel
 PKG_FAIL_REASON+= "The protobuf SDK recipe must select the devel partition"
 .endif
 PLIST_SRC=	${PROTOBUF_DEVEL_PLIST_SRC}
-DEPENDS+=	protobuf-${PROTOBUF_VERSION}nb6:../../devel/protobuf
-CONFLICTS+=	protobuf<${PROTOBUF_VERSION}nb6
+DEPENDS+=	protobuf-${PROTOBUF_VERSION}nb${_PROTOBUF_SPLIT_REVISION}:../../devel/protobuf
+CONFLICTS+=	protobuf<${PROTOBUF_VERSION}nb${_PROTOBUF_SPLIT_REVISION}
 .else
 PROTOBUF_PACKAGE_PART=	runtime
 .if ${PROTOBUF_PACKAGE_PART} != "runtime"
@@ -102,9 +107,6 @@ BUILDLINK_API_DEPENDS.zlib+=	zlib>=1.3.2
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../mk/atomic64.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	7	# Require the libc SONAME on AArch64.
-.endif
 
 .include "../../mk/bsd.pkg.mk"
 
