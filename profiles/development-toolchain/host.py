@@ -10,7 +10,7 @@ import sys
 import tempfile
 import urllib.request
 
-from emberbsd_sdk import inventory, jsonio, paths, process
+from emberbsd_sdk import cpu_capacity, inventory, jsonio, paths, process
 from emberbsd_sdk.errors import SDKError, CommandError, ProcessOwnershipError
 from emberbsd_sdk.stream import PRODUCER_STREAM_API, PRODUCER_INPUT_API, capture_streamed
 from sdk_source import PRODUCER_QUARANTINE
@@ -80,10 +80,8 @@ def new_path(value):
     return path
 
 
-def jobs(default=None):
-    value = os.environ.get('CROSS_JOBS', str(default if default else os.cpu_count() or ''))
-    require(re.fullmatch(r'[0-9]+', value) and int(value) > 0, 'CROSS_JOBS must be positive')
-    return str(int(value))
+def jobs():
+    return str(cpu_capacity.resolve_jobs(os.environ.get('CROSS_JOBS'), option='CROSS_JOBS'))
 
 
 def environment(values=None):

@@ -261,8 +261,8 @@ build logs in the work directory. It never writes `/usr/bin`, `/usr/pkg`,
 `/etc/mk.conf` or a board. Keep the work directory and sysroot at their
 recorded paths. `HOST_CC`/`HOST_CXX` default to `gcc-16` and `g++-16`.
 Explicit overrides must also select GCC 16;
-`CROSS_JOBS` optionally overrides concurrency. Both recipes default to the
-host's online CPU count from `getconf`, with `sysctl` as a fallback.
+The SDK selects the number of CPUs available to the build.
+Set `CROSS_JOBS` to override this value.
 A failed stage returns nonzero.
 
 The installed prefix includes GCC's `<triplet>/bin` tool-search
@@ -580,7 +580,7 @@ Native contracts, boot, and hardware acceptance remain separate.
 
 On 2026-10-07, the rebuilt GCC 16.2.0 passed host compilation and target
 acceptance with GMP 6.3.0, MPFR 4.2.2 and MPC 1.4.1. That build explicitly used
-four jobs; the recipe's current default uses the detected host CPU count.
+four jobs. The SDK now selects the CPUs available to the build.
 GMP's upstream test groups
 had no failures. MPFR passed 195 tests with three skips; MPC passed all 75.
 The reserved-register regression established the following on Apple Silicon:

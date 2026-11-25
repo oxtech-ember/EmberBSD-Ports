@@ -47,7 +47,7 @@ class Bootstrap:
         self.sysroot = Path(paths.canonical_existing(self.sysroot))
         if self.external:
             self.kernel = Path(paths.canonical_existing(self.kernel))
-        self.count = jobs(4)
+        self.count = jobs()
         self.origin = os.environ.get('EMBERBSD_SYSROOT_SOURCE', '')
         require(re.fullmatch(r'[0-9a-f]{40}', self.origin), 'Set EMBERBSD_SYSROOT_SOURCE to verified full EmberBSD source commit')
         provenance = os.environ.get('EMBERBSD_SYSROOT_PROVENANCE')

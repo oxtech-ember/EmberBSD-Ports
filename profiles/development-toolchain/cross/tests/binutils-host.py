@@ -150,6 +150,14 @@ class BinutilsHostTests(unittest.TestCase):
         self.assertEqual(load.call_args.kwargs['abi_flags'],
                          {name: expected for name in flag_names})
 
+    def test_jobs_uses_sdk_capacity_and_accepts_a_caller_budget(self):
+        with patch('emberbsd_sdk.cpu_capacity.available_cpu_count', return_value=7):
+            self.assertEqual(pipeline.jobs(), '7')
+            with patch.dict(os.environ, {'CROSS_JOBS': '3'}):
+                self.assertEqual(pipeline.jobs(), '3')
+            with patch.dict(os.environ, {'CROSS_JOBS': '0'}):
+                self.assertRaisesRegex(SDKError, 'CROSS_JOBS', pipeline.jobs)
+
     def test_rv32_tools_do_not_enable_compiler_or_runtime_producers(self):
         for options, flags in (({}, []), ({'kernel_allowed': True}, ['--kernel']),
                                ({'kernel_target_allowed': True}, [])):

@@ -37,7 +37,7 @@ class FortranRuntime:
         for path in (self.pkgsrc, self.archive, self.compiler, self.sysroot, self.base):
             paths.reject_overlap(path, self.work)
         self.triplet, self.machine, _, self.flags = TARGETS[self.target]
-        self.count = int(jobs(4))
+        self.count = int(jobs())
         self.inputs = {}
 
     def record(self, value):

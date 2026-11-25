@@ -58,7 +58,8 @@ Use a clean Ports revision and absolute paths without whitespace:
    existing `../cross/host-math.py` prepares them. The builder also executes
    that workflow's GMP long-loop and periodic-signal contracts.
 6. A new work directory (builds must work on case-insensitive volumes), host C/C++ compilers,
-   GNU make, tar, patch and Python3.15 with the explicit SDK API1 source. Set `CROSS_JOBS` explicitly.
+   GNU make, tar, patch and Python3.15 with the explicit SDK API1 source. The SDK uses
+   the CPUs available to the build. Set `CROSS_JOBS` to select a smaller or larger budget.
 
 The seed checks reject the wrong ELF architecture, missing base inputs and
 ELF links escaping the supplied sysroot. Use relative symlinks in the seed.

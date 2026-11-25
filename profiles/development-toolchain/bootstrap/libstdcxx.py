@@ -27,7 +27,7 @@ class LibstdcxxRebuild:
         self.pkgsrc, self.old_pkgsrc, self.archive, self.compiler, self.sysroot, self.old_work, self.work = [build_path(value) for value in args[1:]]
         new_path(self.work)
         self.triplet, self.machine, _, self.target_flags = TARGETS[self.target]
-        self.count = jobs(2)
+        self.count = jobs()
         self.make = os.environ.get('GNU_MAKE', '/usr/bin/make')
         require(Path(self.make).is_absolute() and os.access(self.make, os.X_OK), 'GNU_MAKE must be absolute executable')
         self.env = {'PATH': str(self.compiler / 'bin') + ':' + os.environ.get('PATH', '')}
