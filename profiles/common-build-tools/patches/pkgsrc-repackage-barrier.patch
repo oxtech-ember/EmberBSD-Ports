@@ -74,6 +74,35 @@
  .  if ${MAKE_JOBS_METHOD} == "make-j"
  _MAKE_JOBS=	-j${MAKE_JOBS}
  .  endif
+--- a/mk/package/package.mk
++++ b/mk/package/package.mk
+@@ -18,7 +18,25 @@
+ 
+ .PHONY: package
+ .if !target(package)
+-.  if exists(${_COOKIE.package}) && !${_CLEANING}
++# Check a resumed ordinary package before using its build or package cookies.
++# Metadata recovery checks its selected identity at install time.
++.  if make(package) && !defined(_PKGSRC_BARRIER) && !${_CLEANING} && \
++      !defined(_EMBER_REPACKAGE_IDENTITY) && !defined(_EMBER_STAGE_LOCAL_PACKAGE_INSTALL) && \
++      exists(${_COOKIE.extract})
++.    if exists(${_COOKIE.package})
++_PACKAGE_IDENTITY_COOKIE= ${_COOKIE.package}
++.    else
++_PACKAGE_IDENTITY_COOKIE= ${_COOKIE.extract}
++.    endif
++_PACKAGE_STALE!= \
++	name=; IFS= read -r name < ${_PACKAGE_IDENTITY_COOKIE:Q} || :; \
++	if [ -n "$$name" ] && [ "$$name" != ${PKGNAME:Q} ]; then echo yes; else echo no; fi
++.  endif
++.  if ${_PACKAGE_STALE:Uno} == yes
++package:
++	${RUN} ${RECURSIVE_MAKE} ${MAKEFLAGS} CLEANDEPENDS=no clean && \
++	    ${RECURSIVE_MAKE} ${MAKEFLAGS} package
++.  elif exists(${_COOKIE.package}) && !${_CLEANING}
+ package:
+ 	@${DO_NADA}
+ .  elif defined(_PKGSRC_BARRIER)
 --- a/mk/install/install.mk
 +++ b/mk/install/install.mk
 @@ -159,8 +159,11 @@

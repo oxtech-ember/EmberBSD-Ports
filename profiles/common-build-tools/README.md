@@ -83,8 +83,10 @@ its hooks, and performs normal PLIST, metadata and package checks. Stage-local
 recovery refreshes the same metadata when the package revision changes. A failed
 install or package leaves the build objects available for a retry; a partial
 stage or failed package is not a result. The
-installed package is not replaced by this target. Ordinary `repackage` continues
-to rebuild when package identity changes.
+installed package is not replaced by this target. For an ordinary `package`
+with existing work, pkgsrc checks the recorded package name before compilation.
+A changed revision starts a clean build of that package. A completed build of
+the same revision keeps its archive.
 
 `tests/pkgsrc-repackage-metadata.py` combines the prepared export with its
 pristine upstream pkgsrc source, applies the barrier and metadata patches in a

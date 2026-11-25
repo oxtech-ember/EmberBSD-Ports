@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-repackage-metadata-') as td:
     overlay(source / 'mk/pkgformat', tree / 'mk/pkgformat', {'pkg'})
     overlay(source / 'mk/pkgformat/pkg', tree / 'mk/pkgformat/pkg', {'depends.mk'})
     (tree / 'mk/pkgformat/pkg/depends.mk').write_bytes((upstream / 'mk/pkgformat/pkg/depends.mk').read_bytes())
-    for part, changed in [('package', {'bsd.package.mk', 'repackage-metadata-check.py'}),
+    for part, changed in [('package', {'bsd.package.mk', 'package.mk', 'repackage-metadata-check.py'}),
                           ('install', {'install.mk'})]:
         overlay(source / 'mk' / part, tree / 'mk' / part, changed)
         for filename in changed:
@@ -234,10 +234,19 @@ reenter:
             'empty MAKE_JOBS produced a bare -j option')
     require(query_var('_MAKE_JOBS', 'MAKE_JOBS=2') == '-j2',
             'positive MAKE_JOBS no longer produces the expected -j option')
-    r = run('package', 'PKGREVISION=1'); require(r.returncode == 0, 'initial package failed', r)
+    r = run('configure', 'PKGREVISION=0', 'MAKE_JOBS=2')
+    require(r.returncode == 0, 'could not configure the previous revision', r)
     work = query_wrkdir(fixture, root / 'work')
+    require((work / '.extract_done').read_text().strip() == 'ember-repackage-fixture-1.0',
+            'fixture did not prepare the previous revision')
+    require(not record.exists(), 'configure compiled the package')
+    r = run('package', 'PKGREVISION=1'); require(r.returncode == 0, 'initial package failed', r)
     require(not any(x in r.stdout for x in ('unexpected operator', 'missing ]', 'unknown operand')), 'ordinary install emitted shell diagnostic', r)
-    require(record.read_text().splitlines() == ['build'], 'initial build count')
+    require(record.read_text().splitlines() == ['build'],
+            'package compiled the stale configured revision before rebuilding')
+    r = run('package', 'PKGREVISION=1')
+    require(r.returncode == 0 and record.read_text().splitlines() == ['build'],
+            'unchanged package rebuilt', r)
     def archive_contents(name):
         archive = root / 'packages/All' / (name + '.tgz')
         with tarfile.open(archive, 'r:*') as tar:
@@ -364,6 +373,12 @@ reenter:
             'removed dependency remained in package +CONTENTS')
     require(record.read_text().splitlines() == ['build', 'build', 'build'],
             'dependency removal recovery changed established build count')
+    previous_package = (work / '.package_done').read_text().strip()
+    r = run('package', 'PKGREVISION=7')
+    require(r.returncode == 0 and previous_package != 'ember-repackage-fixture-1.0nb7'
+            and record.read_text().splitlines() == ['build'] * 4
+            and '@name ember-repackage-fixture-1.0nb7\n' in archive_contents('ember-repackage-fixture-1.0nb7'),
+            'package accepted a completed archive for a previous revision', r)
     regression = Path(__file__).with_name('pkgsrc-repackage-revision.py')
     r = subprocess.run([sys.executable, '-B', str(regression), '--pkgsrc', str(tree),
                         '--makeconf', str(a.makeconf), '--bmake', str(a.bmake)],
