@@ -15,6 +15,9 @@ It selects `USE_CROSS_COMPILE?=yes` before the shared package defaults,
 so their Darwin native block (Mach-O load commands, graphviz without gd)
 stays with native builds; `tests/cross-darwin-native-defaults.sh BMAKE
 NEW_DIRECTORY` checks this.
+Target packages use `X11_TYPE=modular` by default. Ports supplies the X11
+libraries when a selected package needs them. A target sysroot that includes
+base X11 can select `X11_TYPE=native` in its make configuration.
 It uses the selected native Ports prefix for host tools and the SDK's prepared
 Clang application toolchain plus completed target sysroot for target tools.
 GCC 16.2 remains an explicit profile choice documented in GCC-specific

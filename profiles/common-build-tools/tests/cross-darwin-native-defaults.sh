@@ -83,6 +83,9 @@ read_vars() { "$bmake" -f "$work/Makefile" "$@" -v USE_CROSS_COMPILE -v MACHO_US
 getvar() { variable=$1; shift; "$bmake" -f "$work/Makefile" "$@" -v "$variable"; }
 target=$(read_vars) || fail "the target parse failed: $target"
 [ "$target" = 'yes   ' ] || fail "a target build takes the Darwin native defaults (USE_CROSS_COMPILE MACHO_USE_LOAD_COMMANDS PKG_OPTIONS.graphviz: $target)"
+[ "$(getvar X11_TYPE)" = modular ] || fail 'target packages must use Ports X11 by default'
+[ "$(getvar X11_TYPE X11_TYPE=native)" = native ] || fail 'the target X11 provider override was lost'
+[ -z "$(getvar X11_TYPE USE_CROSS_COMPILE=no)" ] || fail 'the cross X11 default escaped into the host profile'
 target_expat=$(getvar PREFER.expat) || fail 'the target expat preference query failed'
 [ -z "$target_expat" ] || fail "native expat preference leaked into target: $target_expat"
 native_expat=$(getvar PREFER.expat USE_CROSS_COMPILE=no) || fail 'the native expat preference query failed'
@@ -119,7 +122,7 @@ case "$target_ld" in *host-ld*) fail "cross LDFLAGS inherited host flags despite
 case "$target_ld" in *package-ld*) ;; *) fail "cross package LDFLAGS assignment after helper was lost: $target_ld" ;; esac
 [ "$target_ld_after_host" = no ] || fail "cross helper did not restore originally undefined LDFLAGS: $target_ld_after_host"
 native_flags=$($bmake -f "$work/Makefile" USE_CROSS_COMPILE=no -v CPPFLAGS -v CFLAGS -v CXXFLAGS -v LDFLAGS | tr '\n' '|')
-[ "$native_flags" = 'host-cpp package-cpp|host-c|host-cxx|host-ld package-ld|' ] || fail "native build did not retain host flags/package additions: $native_flags"
+[ "$native_flags" = 'host-cpp package-cpp|host-c|host-cxx|host-ld -Wl,-headerpad_max_install_names package-ld|' ] || fail "native build did not retain host flags/package additions: $native_flags"
 clang_family=$(getvar EMBERBSD_RUST_TARGET_COMPILER_FAMILY USE_CROSS_COMPILE=no) || fail 'the native Clang family query failed'
 clang_prefix=$(getvar EMBERBSD_RUST_COMPILER_PREFIX USE_CROSS_COMPILE=no) || fail 'the native Clang prefix query failed'
 clang_sysroot=$(getvar EMBERBSD_RUST_TARGET_SYSROOT USE_CROSS_COMPILE=no) || fail 'the native Clang sysroot query failed'
