@@ -1,7 +1,8 @@
 # FFmpeg 9 software media on EmberBSD
 
-The full FFmpeg 9.0.2 package cross-builds with GCC 16.2 and installs into the
-common EmberBSD sysroot. Normal external codecs, filters, tools, headers and
+The full FFmpeg 9.0.2 package uses the selected SDK target compiler and
+installs into the common EmberBSD sysroot. The AArch64 package uses Clang.
+Normal external codecs, filters, tools, headers and
 libraries remain enabled. CM5 acceptance covers short file-based software
 encoding and decoding; it does not establish hardware video codecs, sound
 output, Qt Multimedia playback or an accelerated Plasma session.
@@ -118,3 +119,13 @@ boot time stayed unchanged throughout these checks.
 The [separate x265 check](x265.md) also decodes NEON/scalar H.265 output with
 an independent host FFmpeg. None of these short CPU-codec tests is a GPU
 performance measurement or long-running playback acceptance.
+## Public build configuration
+
+`ffmpeg -buildconf` and the `av*_configuration()` functions report the
+selected features, architecture, CPU, target OS, toolchain name and program
+suffix. The build directory retains the full invocation in
+`ffbuild/config.mak`, including compiler commands and search paths.
+
+Run `profiles/common-media/tests/ffmpeg-public-configuration.py` with the SDK
+Python interpreter. Pass the configured build directory and
+`--forbid-prefix` with its private producer directory.

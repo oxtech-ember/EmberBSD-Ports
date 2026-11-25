@@ -4,10 +4,7 @@
 
 DISTNAME=	ffmpeg-9.0.2
 # nb8: the libav*.pc files no longer name the build sysroot (target-pkgconfig.sh).
-PKGREVISION=	10
-.if ${PKGPATH} == "multimedia/ffmpeg9" && ${OPSYS} == "NetBSD" && !empty(PKG_OPTIONS:Mgnutls)
-PKGREVISION=	11	# Updated GnuTLS shared-library requirement.
-.endif
+PKGREVISION=	12	# Report public feature and target options.
 # Both ffmpeg9 and ffplay9 include this after their early MAKECONF parsing.
 .if ${DISTNAME} != "ffmpeg-9.0.2"
 PKG_FAIL_REASON+= "The common media profile requires the FFmpeg 9.0.2 recipe"
