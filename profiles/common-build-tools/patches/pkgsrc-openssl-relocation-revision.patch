@@ -1,4 +1,4 @@
-Bump for the portable native package with repaired shared-library install IDs.
+Build native Darwin library defaults from public paths. Keep the install layout.
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/security/openssl/Makefile
@@ -12,7 +12,7 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  CATEGORIES=	security
  MASTER_SITES=	${MASTER_SITE_GITHUB:=openssl/}
  GITHUB_RELEASE=	${DISTNAME}
-@@ -34,6 +34,12 @@
+@@ -34,6 +34,20 @@
  MAKE_FLAGS+=		MANDIR=${PREFIX}/${PKGMANDIR}
  
  .include "../../mk/bsd.prefs.mk"
@@ -21,7 +21,15 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 +SUBST_CLASSES+=		ember-prefix
 +SUBST_STAGE.ember-prefix=	pre-configure
 +SUBST_FILES.ember-prefix=	crypto/defaults.c
++.if ${OPSYS} == "Darwin"
++PKGREVISION=		4
++# libcrypto resolves the standard paths relative to its installed image.
++BUILD_MAKE_FLAGS+=	MODULESDIR=/usr/pkg/lib/ossl-modules
++BUILD_MAKE_FLAGS+=	OPENSSLDIR=${PKG_SYSCONFDIR:S,^${PREFIX}/etc/openssl$,/usr/pkg/etc/openssl,}
++SUBST_SED.ember-prefix=	-e 's,@PREFIX@,/usr/pkg,g'
++.else
 +SUBST_VARS.ember-prefix=	PREFIX
++.endif
  
  .if ${OPSYS} == "NetBSD" && \
  	((${MACHINE_ARCH} == "hppa") || \
