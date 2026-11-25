@@ -58,9 +58,6 @@ MAKE_ENV+= CXX_${_EMBER_GLYCIN_CC_KEY}=${WRAPPER_BINDIR}/c++
 MAKE_ENV+= AR_${_EMBER_GLYCIN_CC_KEY}=${TOOLDIR}/bin/${_EMBER_GLYCIN_TRIPLET:Uunsupported}-ar
 MAKE_ENV+= PKG_CONFIG_ALLOW_CROSS=1
 RUSTFLAGS+= -C link-arg=-Wl,-rpath,${PREFIX}/lib
-# Panic locations must not retain private source/vendor paths.
-RUSTFLAGS+= --remap-path-prefix=${WRKDIR}=.
-
 pre-configure: emberbsd-glycin-rust
 .PHONY: emberbsd-glycin-rust
 emberbsd-glycin-rust:

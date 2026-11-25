@@ -1,0 +1,27 @@
+--- a/mk/compiler/gcc-style-args.mk
++++ b/mk/compiler/gcc-style-args.mk
+@@ -15,6 +15,13 @@
+ # ready.
+ _WRAP_EXTRA_ARGS.cc+=	-fcommon
+ CWRAPPERS_PREPEND.cc+=	-fcommon
++
++# Use package-relative source locations in diagnostics and binaries.
++_PKG_SOURCE_MAP=	-ffile-prefix-map=${WRKDIR}/=./
++CWRAPPERS_PREPEND.cc+=	${_PKG_SOURCE_MAP}
++CWRAPPERS_PREPEND.cxx+=	${_PKG_SOURCE_MAP}
++_WRAP_EXTRA_ARGS.CC+=	${_PKG_SOURCE_MAP}
++_WRAP_EXTRA_ARGS.CXX+=	${_PKG_SOURCE_MAP}
+ 
+ 
+ #
+--- a/lang/rust/cargo.mk
++++ b/lang/rust/cargo.mk
+@@ -107,6 +107,8 @@
+ CARGO_ARGS?=		build --release ${DEFAULT_CARGO_ARGS}
+ CARGO_INSTALL_ARGS?=	install --path . --root ${DESTDIR}${PREFIX} ${DEFAULT_CARGO_ARGS}
+ 
++# Keep crate and vendor source locations relative to the package.
++RUSTFLAGS+=		--remap-path-prefix=${WRKDIR}=.
+ MAKE_ENV+=		RUSTFLAGS=${RUSTFLAGS:Q}
+ ALL_ENV+=		CARGO_HOME=${WRKDIR}
+ 

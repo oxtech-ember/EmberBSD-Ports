@@ -77,9 +77,6 @@ MAKE_ENV+= PKG_CONFIG_ALLOW_CROSS=1
 # through the declared .buildlink and cross-compiler mappings.
 MAKE_ENV+= PKG_CONFIG_SYSROOT_DIR=
 RUSTFLAGS+= -C link-arg=-Wl,-rpath,${PREFIX}/lib
-# Panic locations must not retain private source/vendor paths in the package.
-RUSTFLAGS+= --remap-path-prefix=${WRKDIR}=.
-
 pre-configure: emberbsd-librsvg-rust
 .PHONY: emberbsd-librsvg-rust
 emberbsd-librsvg-rust:
