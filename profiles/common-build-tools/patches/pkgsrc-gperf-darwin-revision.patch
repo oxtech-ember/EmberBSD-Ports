@@ -1,0 +1,8 @@
+--- a/devel/gperf/Makefile
++++ b/devel/gperf/Makefile
+@@ -17,2 +17,5 @@
+ .include "../../mk/bsd.prefs.mk"
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	1	# Use relocatable package hooks.
++.endif
+ .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
