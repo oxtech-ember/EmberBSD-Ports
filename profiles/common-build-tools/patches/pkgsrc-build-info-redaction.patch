@@ -1,0 +1,11 @@
+# Keep package metadata useful for package identity and dependency tooling.
+# Do not publish recipe environment values or the producer hostname.
+
+--- a/mk/pkgformat/pkg/metadata.mk
++++ b/mk/pkgformat/pkg/metadata.mk
+@@ -24 +24 @@
+-_BUILD_HOST_cmd=	${UNAME} -a
++_BUILD_HOST_cmd=	${UNAME} -sm
+@@ -40 +40 @@
+-		(${_BUILD_DEFS:NPATH:@v@				\
++		(${_BUILD_DEFS:NPATH:NCONFIGURE_ENV:NCONFIGURE_ARGS:NCMAKE_CONFIGURE_ARGS:@v@ \
