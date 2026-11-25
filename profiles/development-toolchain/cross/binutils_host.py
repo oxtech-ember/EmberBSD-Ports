@@ -29,9 +29,10 @@ def require(condition, message):
         raise SDKError(message)
 
 
-def native_selection(prefix, family):
+def native_selection(prefix, family, abi_flags=None):
     require(prefix, 'Select --host-prefix or EMBERBSD_HOST_PREFIX for native Binutils')
-    selected = load_host_prefix(prefix, required_roles=ROLES, compiler_family=family)
+    selected = load_host_prefix(prefix, required_roles=ROLES, compiler_family=family,
+                                abi_flags=abi_flags)
     root = Path(selected.bundle_root)
     header = root / 'include/zlib.h'
     libraries = [root / 'lib' / name for name in ('libz.a', 'libz.dylib', 'libz.so')]

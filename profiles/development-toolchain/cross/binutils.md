@@ -17,6 +17,12 @@ components and script interpreters use the shared SDK native-prefix API.
 The controller sets a prefix-only `PATH` and selects its shell, GNU make,
 archive tools and patch tool. Optional `HOST_CC`, `HOST_CXX` and `GMAKE`
 aliases must agree with that selection.
+Use the same host ABI flags as the OS build. On Darwin, select the macOS SDK
+and deployment target with `--host-abi-cppflags`, `--host-abi-cflags`,
+`--host-abi-cxxflags`, and `--host-abi-ldflags`. For example, set
+`--host-abi-ldflags="-isysroot /path/to/MacOSX.sdk -mmacosx-version-min=27.0"`.
+These options apply to programs that run on the host.
+The producer records the effective flag tokens in `inputs.txt` for object reuse.
 The Ports-owned `binutils-native-tools` roster uses the shared SDK command
 mapping publisher. Nested configure and make commands resolve names such as
 `awk`, `make` and `tar` to the selected `nawk`, GNU make and `bsdtar` paths.

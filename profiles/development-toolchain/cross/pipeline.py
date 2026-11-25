@@ -2,9 +2,11 @@
 # Origin: EmberBSD; Python host controllers for the shared GCC16 toolchain.
 import os
 import argparse
+import json
 from pathlib import Path
 import platform
 import re
+import shlex
 import shutil
 import sys
 import urllib.request
@@ -77,10 +79,15 @@ def host_math_main(args):
 
 
 def binutils_main(args, make_override=None):
+    from emberbsd_sdk.host_prefix import ABI_FLAG_NAMES, parse_host_abi_flags
+
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument('--host-prefix', action='append')
     parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), action='append')
+    for name in ABI_FLAG_NAMES:
+        parser.add_argument('--host-abi-' + name)
     options, args = parser.parse_known_args(args)
+    abi_flags = parse_host_abi_flags(vars(options))
     for values in (options.host_prefix, options.host_compiler_family):
         require(values is None or len(values) == 1, 'Duplicate native Binutils selection')
     target, _, args = parse(args, kernel_target_allowed=True, binutils_target_allowed=True)
@@ -89,11 +96,11 @@ def binutils_main(args, make_override=None):
     native = None
     # The enclosing explicit GCC and firmware producers keep their existing
     # host compiler selection. Standalone Binutils uses the shared prefix API.
-    if make_override is None or options.host_prefix or options.host_compiler_family:
+    if make_override is None or options.host_prefix or options.host_compiler_family or abi_flags:
         from binutils_host import native_selection
         prefix = (options.host_prefix or [os.environ.get('EMBERBSD_HOST_PREFIX')])[0]
         family = (options.host_compiler_family or [os.environ.get('EMBERBSD_HOST_COMPILER_FAMILY', 'clang')])[0]
-        native = native_selection(prefix, family)
+        native = native_selection(prefix, family, abi_flags)
     return _build_binutils(target, args[0], make_override, native=native)
 
 
@@ -172,6 +179,9 @@ def _build_binutils(target, new_work, make_override=None, native=None):
     receipt += digest_rows(policy_sources() + sorted(HERE.glob('*.py')))
     if native is not None:
         from binutils_host import CONTRACT
+        host_flags = {name: shlex.split(env[name])
+                      for name in ('CPPFLAGS', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS')}
+        receipt += 'host_flags=' + json.dumps(host_flags, sort_keys=True) + '\n'
         receipt += digest_rows([CONTRACT])
     (work / 'inputs.txt').write_text(receipt)
     if native is not None:

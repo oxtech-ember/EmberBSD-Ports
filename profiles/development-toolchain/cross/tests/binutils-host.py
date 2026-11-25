@@ -6,7 +6,9 @@ import sys
 sys.dont_write_bytecode = True
 from pathlib import Path
 import hashlib
+import json
 import os
+import shlex
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -122,11 +124,11 @@ class BinutilsHostTests(unittest.TestCase):
         with patch.object(binutils_host, 'native_selection', return_value='native') as select, \
                 patch.object(pipeline, '_build_binutils') as build:
             pipeline.binutils_main(['--target', 'amd64', '--host-prefix', '/native', str(self.work)])
-            select.assert_called_once_with('/native', 'clang')
+            select.assert_called_once_with('/native', 'clang', None)
             build.assert_called_with('amd64', str(self.work), None, native='native')
             select.reset_mock()
             pipeline.binutils_main(['--target', 'riscv32', '--host-prefix', '/native', str(self.work)])
-            select.assert_called_once_with('/native', 'clang')
+            select.assert_called_once_with('/native', 'clang', None)
             build.assert_called_with('riscv32', str(self.work), None, native='native')
             select.reset_mock()
             pipeline.binutils_main(['--target', 'earmv7hf', str(self.work)], make_override='/gcc/nbgmake')
@@ -134,6 +136,19 @@ class BinutilsHostTests(unittest.TestCase):
             build.assert_called_with('earmv7hf', str(self.work), '/gcc/nbgmake', native=None)
         self.assertRaisesRegex(SDKError, 'Duplicate', pipeline.binutils_main,
             ['--host-prefix', '/one', '--host-prefix', '/two', str(self.work)])
+
+    def test_cli_passes_explicit_abi_to_host_tools(self):
+        flags = '-isysroot "/SDKs/Mac OS X.sdk" -mmacosx-version-min=27.0'
+        expected = ('-isysroot', '/SDKs/Mac OS X.sdk', '-mmacosx-version-min=27.0')
+        arguments = ['--host-prefix', self.selected.bundle_root]
+        flag_names = ('cppflags', 'cflags', 'cxxflags', 'ldflags')
+        for name in flag_names:
+            arguments.append('--host-abi-' + name + '=' + flags)
+        with patch.object(binutils_host, 'load_host_prefix', return_value=self.selected) as load, \
+                patch.object(pipeline, '_build_binutils'):
+            pipeline.binutils_main([*arguments, '--target', 'aarch64', str(self.work)])
+        self.assertEqual(load.call_args.kwargs['abi_flags'],
+                         {name: expected for name in flag_names})
 
     def test_rv32_tools_do_not_enable_compiler_or_runtime_producers(self):
         for options, flags in (({}, []), ({'kernel_allowed': True}, ['--kernel']),
@@ -257,6 +272,12 @@ class BinutilsHostTests(unittest.TestCase):
         self.assertIn('--target=' + triplet, calls[2][0])
         self.assertIn('--with-system-zlib', calls[2][0])
         self.assertTrue((self.work / 'host-bfd.mk').is_file())
+        receipt = dict(line.split('=', 1) for line in
+                       (self.work / 'inputs.txt').read_text().splitlines()
+                       if line.startswith('host_flags='))
+        self.assertEqual(json.loads(receipt['host_flags']),
+                         {key: shlex.split(env[key])
+                          for key in ('CPPFLAGS', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS')})
         # The existing enclosing GCC producer never promised BFD developer
         # outputs. Its old output set must still suffice without new checks.
         self.work = self.root / 'legacy'
