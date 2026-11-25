@@ -3,9 +3,30 @@
 
 --- a/mk/pkgformat/pkg/metadata.mk
 +++ b/mk/pkgformat/pkg/metadata.mk
-@@ -24 +24 @@
+@@ -21,7 +21,7 @@
+ ###
+ _BUILD_INFO_FILE=	${PKG_DB_TMPDIR}/+BUILD_INFO
+ _BUILD_DATE_cmd=	${DATE} "+%Y-%m-%d %H:%M:%S %z"
 -_BUILD_HOST_cmd=	${UNAME} -a
 +_BUILD_HOST_cmd=	${UNAME} -sm
-@@ -40 +40 @@
+ _METADATA_TARGETS+=	${_BUILD_INFO_FILE}
+ 
+ #
+@@ -37,8 +37,15 @@
+ 	${RUN}								\
+ 	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
+ 	{								\
 -		(${_BUILD_DEFS:NPATH:@v@				\
+-			${ECHO} ${v}=${_BUILD_DEFS.${v}:Q:U${${v}:Q}};	\
++		public_build_def() {					\
++			case "$${1%%=*}" in				\
++			*FLAGS) case "$$1" in				\
++				*${WRKDIR:Q}*) return 0 ;;			\
++				esac ;;					\
++			esac;						\
++			${ECHO} "$$1"; };				\
 +		(${_BUILD_DEFS:NPATH:NCONFIGURE_ENV:NCONFIGURE_ARGS:NCMAKE_CONFIGURE_ARGS:@v@ \
++			public_build_def ${v}=${_BUILD_DEFS.${v}:Q:U${${v}:Q}}; \
+ 		@});							\
+ 		if [ -n "${USE_LANGUAGES}" ]; then			\
+ 			${ECHO} "CC_VERSION=${CC_VERSION}";		\
