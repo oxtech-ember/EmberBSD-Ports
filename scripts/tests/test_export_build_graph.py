@@ -270,7 +270,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
 
     def test_parallel_jobs_preserve_graph_and_bound_bmake_concurrency(self):
         common = ('--make-variable', 'TEST_PARALLEL=yes')
-        serial = self.run_export(*common)
+        serial = self.run_export(*common, '--jobs', '1')
         parallel = self.run_export(*common, '--jobs', '2')
         self.assertEqual(serial, parallel)
         events = self.pkgsrc / 'events'
@@ -289,6 +289,52 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         parallel = self.run_export(*common, '--jobs', '2', '--dependency-phase', 'build')
         self.assertEqual(serial, parallel)
         self.assertEqual(serial_inventory, self.last_inventory)
+
+    def test_default_jobs_use_available_cpus_and_unavailable_jobserver_stays_serial(self):
+        sys.path.insert(0, str(Path(self.sdk_source) / 'src'))
+        from emberbsd_sdk import jobserver
+        from emberbsd_sdk.cpu_capacity import available_cpu_count
+
+        common = ('--make-variable', 'TEST_PARALLEL=yes')
+        graph = self.run_export(*common, environment={'MAKEFLAGS': ''})
+        events = self.pkgsrc / 'events'
+
+        def peak_concurrency():
+            intervals = []
+            for start in events.glob('*.start'):
+                end = events / (start.name[:-6] + '.end')
+                self.assertTrue(end.is_file(), f'query process did not finish: {start.name}')
+                intervals.extend(((int(start.read_text()), 1), (int(end.read_text()), -1)))
+            active = peak = 0
+            for _, delta in sorted(intervals):
+                active += delta
+                peak = max(peak, active)
+            return peak
+
+        if available_cpu_count() > 1:
+            self.assertGreater(peak_concurrency(), 1)
+
+        for event in events.iterdir():
+            event.unlink()
+        parallel = self.run_export(*common, '--jobs', '4', environment={
+            'MAKEFLAGS': '-j8 --jobserver-auth=99,100'})
+        self.assertEqual(graph, parallel)
+        self.assertEqual(peak_concurrency(), 1)
+
+        for event in events.iterdir():
+            event.unlink()
+        fifo = self.path / 'parent-jobserver'
+        with jobserver.serve(fifo, 4) as makeflags:
+            descriptor = os.open(fifo, os.O_RDWR | os.O_NONBLOCK)
+            held = os.read(descriptor, 2)
+            try:
+                parallel = self.run_export(*common, '--jobs', '4', environment={
+                    'MAKEFLAGS': makeflags})
+            finally:
+                os.write(descriptor, held)
+                os.close(descriptor)
+        self.assertEqual(graph, parallel)
+        self.assertEqual(peak_concurrency(), 2)
 
     def test_parallel_frontier_coalesces_exact_requests(self):
         self.packages['devel/app']['DEPENDS'] = 'library>=1:../../devel/library'

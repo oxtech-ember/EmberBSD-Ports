@@ -68,8 +68,13 @@ for a native source graph. `--target` must match evaluated `MACHINE_ARCH`;
 the SDK name `amd64` also accepts pkgsrc's `x86_64`. Repeat `--shared-input NAME=FILE` to bind additional
 prepared input receipts. Output creation is exclusive. Each metadata subprocess
 has a timeout; `--max-nodes` bounds the selected closure.
-Use `--jobs N` to bound concurrent bmake metadata queries; it defaults to 1
-and does not schedule package builds or change graph contents.
+The exporter defaults to the SDK's available CPU count for concurrent bmake
+metadata queries. It uses the SDK jobserver API to reserve currently available
+slots from an inherited MAKEFLAGS jobserver. An inherited serial make or an
+unavailable jobserver limits the exporter to one query at a time. Pass
+`--jobs N` to set a smaller or explicit query limit; `--jobs 1` keeps the
+serial path. This option does not schedule package builds or change graph
+contents.
 
 Pass an early MAKECONF policy input as a repeatable `--make-variable NAME=VALUE`
 option, for example `--make-variable EMBERBSD_DARWIN_BOOTSTRAP=yes`. The

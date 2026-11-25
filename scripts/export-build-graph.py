@@ -687,13 +687,13 @@ def main():
     parser.add_argument('--host-current', action='store_true',
                         help='ask the frozen MAKECONF host pkg_info which native packages are current')
     parser.add_argument('--max-nodes', type=int, default=1000)
-    parser.add_argument('--jobs', type=int, default=1,
-                        help='maximum concurrent bmake metadata queries (default: 1)')
+    parser.add_argument('--jobs', type=int,
+                        help='maximum concurrent bmake metadata queries (default: available CPUs)')
     parser.add_argument('--timeout', type=int, default=120, help='seconds per metadata command')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.max_nodes < 1 or args.jobs < 1 or args.timeout < 1:
+        if args.max_nodes < 1 or (args.jobs is not None and args.jobs < 1) or args.timeout < 1:
             raise ExportError('limits must be positive')
         if (args.dependency_phase == 'build') != bool(args.test_requirements_output):
             raise ExportError('build phase requires --test-requirements-output; other phases forbid it')
@@ -709,14 +709,19 @@ def main():
             raise ExportError('--sdk-source must contain the SDK Ports planner')
         sys.path.insert(0, str(sdk_source))
         from emberbsd_sdk import ports_plan as sdk
+        from emberbsd_sdk import jobserver
+        from emberbsd_sdk.cpu_capacity import resolve_jobs
         from emberbsd_sdk.errors import SDKError
         from emberbsd_sdk.inventory import sha256_file
         from emberbsd_sdk.jsonio import json_bytes, write_json
         if getattr(sdk, 'PORTS_PLAN_API', None) != 1:
             raise ExportError('unsupported SDK PORTS_PLAN_API; expected 1')
         try:
-            exporter = Exporter(args, sha256_file)
-            graph = exporter.export()
+            args.jobs = resolve_jobs(args.jobs)
+            with jobserver.slots(os.environ.get('MAKEFLAGS'), args.jobs) as active_jobs:
+                args.jobs = active_jobs
+                exporter = Exporter(args, sha256_file)
+                graph = exporter.export()
             try:
                 sdk.lock_graph(graph)
             except SDKError:
