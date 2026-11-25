@@ -75,6 +75,15 @@ PKGREVISION= 1
 TEST_MAKE_FLAGS+= ICU_TEST_PYTHON=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
 .endif
 
+# The cross SDK requires the exact runtime revision for its architecture.
+.if ${MACHINE_ARCH} == "aarch64"
+ICU_RUNTIME_REVISION= 2
+ICU_DEVEL_REVISION= 3
+.else
+ICU_RUNTIME_REVISION= 1
+ICU_DEVEL_REVISION= 2
+.endif
+
 .if defined(EMBERBSD_ICU_DEVEL)
 .if ${EMBERBSD_ICU_DEVEL} != "yes" || ${PKGPATH} != "textproc/icu-devel"
 PKG_FAIL_REASON+= "The ICU SDK role belongs to textproc/icu-devel"
@@ -84,17 +93,18 @@ COMMENT= ICU target SDK for the development-host sysroot
 DISTINFO_FILE= ${EMBERBSD_ICU_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_ICU_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_ICU_PKGDIR}/files
-DEPENDS+= icu-${PKGVERSION_NOREV}nb1:../../textproc/icu
-CONFLICTS+= icu<${PKGVERSION_NOREV}nb1
+DEPENDS+= icu-${PKGVERSION_NOREV}nb${ICU_RUNTIME_REVISION}:../../textproc/icu
+CONFLICTS+= icu<${PKGVERSION_NOREV}nb${ICU_RUNTIME_REVISION}
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
 PKG_FAIL_REASON+= "The ICU SDK requires a NetBSD cross build; native builds keep the full package"
 .endif
 .endif
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-PKGREVISION= 1
 .if defined(EMBERBSD_ICU_DEVEL)
-PKGREVISION= 2
+PKGREVISION= ${ICU_DEVEL_REVISION}
+.else
+PKGREVISION= ${ICU_RUNTIME_REVISION}
 .endif
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The ICU split requires a common AArch64 or amd64 target"
@@ -348,9 +358,6 @@ ember-icu-cross-metadata:
 .endif
 
 .include "../../mk/atomic64.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64" && !defined(EMBERBSD_ICU_DEVEL)
-PKGREVISION= 2	# Require the libc SONAME on AArch64.
-.endif
 .include "../../mk/bsd.pkg.mk"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
