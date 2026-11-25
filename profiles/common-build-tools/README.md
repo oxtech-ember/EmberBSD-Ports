@@ -613,6 +613,17 @@ and compiler-query doubles, checks conflicting/foreign inputs and a stale mappin
 and performs no package build or prefix writes. Installed compiler execution,
 runtime ABI and host package acceptance remain separate checks.
 
+Check the optional host `msgfmt` selection in the generated native include:
+
+```sh
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
+    /absolute/native-prefix/bin/python3.15 -B \
+    profiles/common-build-tools/tests/native-msgfmt-selection.py
+```
+
+The test verifies that the profile pins `EMBERBSD_BUILD_MSGFMT` only when the
+selected host prefix contains `bin/msgfmt`.
+
 With the Clang family the profile sets `CPP` to the `clang-cpp` wrapper name,
 as pkgsrc does for `CC` and `CXX`; the absolute `clang-cpp` stays `PKG_CPP`,
 which the cpp wrapper runs with the buildlink include transforms. A package

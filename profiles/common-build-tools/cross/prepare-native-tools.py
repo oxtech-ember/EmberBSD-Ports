@@ -40,9 +40,12 @@ ROLE_VARIABLES = {
     'gcut': 'TOOLS_PLATFORM.cut', 'gdirname': 'TOOLS_PLATFORM.dirname',
     'gbasename': 'TOOLS_PLATFORM.basename',
 }
-# These generators are required only by their respective consumers.
+# Optional host tools are selected only when present in the prefix.
 OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
                   'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
+                  # pkgsrc's gettext tool contract derives its ITS lookup
+                  # data directory from this selected host executable.
+                  'msgfmt': 'EMBERBSD_BUILD_MSGFMT',
                   'flex': 'TOOLS_PLATFORM.flex', 'bison': 'TOOLS_PLATFORM.bison',
                   'yacc': 'TOOLS_PLATFORM.yacc', 'rpcgen': 'TOOLS_PATH.rpcgen',
                   'gcmp': 'TOOLS_PLATFORM.cmp', 'gchgrp': 'TOOLS_PLATFORM.chgrp',
