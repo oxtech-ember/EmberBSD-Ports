@@ -1,6 +1,7 @@
 --- a/security/libgcrypt/Makefile
 +++ b/security/libgcrypt/Makefile
-@@ -53,3 +53,14 @@
+@@ -52,6 +52,17 @@
+ CONFIGURE_ARGS+=	GPG_ERROR_CONFIG=${CROSS_DESTDIR:Q}${PREFIX}/bin/gpg-error-config
  .endif
  
 +# gost-s-box is compiled during make, after configure has read its environment.
@@ -15,3 +16,5 @@
 +.endif
 +
  .if ${OPSYS} == "Darwin"
+ # Their ASM is broken on Darwin and leads to undefined symbols at runtime.
+ CONFIGURE_ARGS+=	--disable-asm
