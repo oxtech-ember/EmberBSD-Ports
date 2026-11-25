@@ -1,6 +1,6 @@
 $NetBSD$
 
-Use the validated common current dependencies.
+Use the undici-types package from Ports.
 
 --- package.json.orig
 +++ package.json
@@ -9,7 +9,7 @@ Use the validated common current dependencies.
      "scripts": {},
      "dependencies": {
 -        "undici-types": "~8.9.0"
-+        "undici-types": "~8.12.3"
++        "undici-types": "~8.13.1"
      },
      "peerDependencies": {},
-     "typesPublisherContentHash": "53beb6693c262ca57af67f961a0fd8dbb7ffa495737a63f1676f34d45ddaa189",
+     "typesPublisherContentHash": "2a076da122503d39fe16ca3fa4236b6a47fe9b8829007bb1286ba5d287578531",

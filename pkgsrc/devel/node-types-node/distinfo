@@ -1,6 +1,6 @@
 $NetBSD$
 
-BLAKE2s (node-26.6.6.tgz) = 297f86ff326f8800bef587e8c5442bf5c7bc7234053de7e549f9664cc99865f7
-SHA512 (node-26.6.6.tgz) = 333423fbc2b1dd7238d0e994004e90a21e7c64c36cb4d34cc27da77dddea5ac7deee70cd4aa24dcdeb389e3873e801f0ad21ce7df48bc1753ac9be3be10e1aa2
-Size (node-26.6.6.tgz) = 480378 bytes
-SHA1 (patch-package.json) = ed59b5994627a7901fa40025ce6772ad34922b39
+BLAKE2s (node-26.6.10.tgz) = 476cc6dc7142ae149e637af745e1cb56c8fbf53eccd2eaeafc748b25619443e1
+SHA512 (node-26.6.10.tgz) = 589b8f1e8181f16350b9392c345ed2390a671f4d8f5de0d8cf88ae7966c14fafe14d69d2858e45dd3fe1a090377d8f7eb9845e0d9ee9c9328ac7cde341aeda1a
+Size (node-26.6.10.tgz) = 480442 bytes
+SHA1 (patch-package.json) = c8d964e2ec58e3383167436416e78b2b8dd14b13
