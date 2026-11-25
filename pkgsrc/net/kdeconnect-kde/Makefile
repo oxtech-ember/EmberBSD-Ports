@@ -77,4 +77,9 @@ post-install:
 .include "../../x11/libxkbcommon/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../devel/qt6-qtwayland/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

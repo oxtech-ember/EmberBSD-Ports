@@ -101,8 +101,9 @@ PLIST.opengl=	yes
 .endif
 .include "../../x11/qt6-qtbase/full-tools-required.mk"
 .include "../../mk/bsd.prefs.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	8	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	8	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

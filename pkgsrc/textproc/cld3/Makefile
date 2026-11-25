@@ -18,4 +18,9 @@ post-install:
 	${INSTALL_DATA} ${WRKSRC}/LICENSE ${DESTDIR}${PREFIX}/share/licenses/cld3/LICENSE
 .include "../../devel/protobuf/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

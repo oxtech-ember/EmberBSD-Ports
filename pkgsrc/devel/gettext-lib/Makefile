@@ -26,8 +26,9 @@ CONFIGURE_DIRS=		gettext-runtime
 BUILD_DIRS=		gettext-runtime/intl
 
 .include "../../converters/libiconv/buildlink3.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	3	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	3	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

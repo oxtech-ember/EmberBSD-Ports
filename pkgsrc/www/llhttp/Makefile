@@ -16,4 +16,8 @@ LLHTTP_VERSIONED= libllhttp.so.9.4.4
 PLIST_SUBST+= LLHTTP_LIB=${LLHTTP_LIB} LLHTTP_SOVERSION=${LLHTTP_SOVERSION} LLHTTP_VERSIONED=${LLHTTP_VERSIONED}
 GENERATE_PLIST+= cd ${DESTDIR}${PREFIX}; ${FIND} lib/cmake/llhttp -name "llhttp-targets-*.cmake" -type f -print | ${SORT};
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

@@ -27,4 +27,8 @@ ONLY_FOR_PLATFORM+=	DragonFly-*-*
 .if ${OPSYS} == "NetBSD"
 .include "../../sysutils/ndevd/buildlink3.mk"
 .endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	5	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

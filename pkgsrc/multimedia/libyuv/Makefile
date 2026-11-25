@@ -22,4 +22,8 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/LICENSE ${WRKSRC}/AUTHORS ${WRKSRC}/PATENTS ${DESTDIR}${PREFIX}/share/licenses/libyuv/
 .include "../../mk/jpeg.buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

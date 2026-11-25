@@ -21,4 +21,8 @@ INSTALLATION_DIRS+= share/licenses/crc32c
 post-install:
 	${INSTALL_DATA} ${WRKSRC}/LICENSE ${WRKSRC}/AUTHORS ${DESTDIR}${PREFIX}/share/licenses/crc32c/
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

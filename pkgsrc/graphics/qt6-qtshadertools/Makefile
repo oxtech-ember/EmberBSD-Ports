@@ -20,8 +20,9 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6ShaderTools.pc
 BUILDLINK_ABI_DEPENDS.spirv-tools+=	spirv-tools>=2026.4nb3
 .include "../../parallel/spirv-tools/buildlink3.mk"
 .include "../../mk/bsd.prefs.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	3	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	3	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

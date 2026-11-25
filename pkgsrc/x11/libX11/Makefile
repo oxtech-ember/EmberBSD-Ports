@@ -57,8 +57,9 @@ X11_LIB_NAME?=		libX11
 pre-configure:
 	cd ${WRKSRC} && aclocal -I m4 -I ${_CROSS_DESTDIR}${BUILDLINK_PREFIX.xtrans}/share/aclocal && autoheader && automake --foreign && autoconf
 
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	2	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	2	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

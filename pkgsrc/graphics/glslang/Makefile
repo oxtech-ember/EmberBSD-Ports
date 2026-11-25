@@ -40,8 +40,9 @@ BUILDLINK_DEPMETHOD.googletest= build
 .endif
 BUILDLINK_ABI_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb3
 .include "../../parallel/spirv-tools/buildlink3.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	2	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	2	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

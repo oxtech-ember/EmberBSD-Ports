@@ -27,4 +27,9 @@ CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 .include "../../graphics/qt6-qtshadertools/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

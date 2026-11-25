@@ -32,4 +32,9 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/README.md ${DESTDIR}${PREFIX}/share/doc/sha1collisiondetection/README.md
 	${SED} -e 's|@PREFIX@|${PREFIX}|g' -e 's|@VERSION@|${PKGVERSION_NOREV}|g' ${FILESDIR}/sha1detectcoll.pc.in > ${DESTDIR}${PREFIX}/lib/pkgconfig/sha1detectcoll.pc
 
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	4	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

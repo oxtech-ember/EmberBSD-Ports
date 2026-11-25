@@ -20,8 +20,9 @@ post-install:
 	${INSTALL_DATA} ${WRKSRC:Q}/LICENSE ${DESTDIR:Q}${PREFIX:Q}/share/licenses/libspng/BSD-2-Clause
 	${INSTALL_DATA} ${FILESDIR:Q}/libpng-2.0 ${DESTDIR:Q}${PREFIX:Q}/share/licenses/libspng/libpng-2.0
 
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	1	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

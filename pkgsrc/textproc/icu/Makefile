@@ -76,8 +76,8 @@ TEST_MAKE_FLAGS+= ICU_TEST_PYTHON=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
 .endif
 
 # The cross SDK requires the exact runtime revision for its architecture.
-.if ${MACHINE_ARCH} == "aarch64"
-ICU_RUNTIME_REVISION= 2
+.if ${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64"
+ICU_RUNTIME_REVISION= 2 # Record the base libc SONAME.
 ICU_DEVEL_REVISION= 3
 .else
 ICU_RUNTIME_REVISION= 1

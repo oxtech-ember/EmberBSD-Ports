@@ -13,4 +13,9 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6HttpServer.pc
 
 .include "../../net/qt6-qtwebsockets/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

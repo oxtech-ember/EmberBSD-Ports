@@ -105,4 +105,8 @@ BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.32
 BUILDLINK_DEPMETHOD.gobject-introspection+=	build
 .include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../textproc/expat/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

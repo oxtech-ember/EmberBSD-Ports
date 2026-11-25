@@ -1,36 +1,39 @@
 --- a/x11/libXau/Makefile
 +++ b/x11/libXau/Makefile
-@@ -25,4 +25,9 @@
+@@ -25,4 +25,10 @@
  .include "../../meta-pkgs/modular-xorg/hacks.mk"
  .include "../../mk/pthread.buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXdmcp/Makefile
 +++ b/x11/libXdmcp/Makefile
-@@ -25,4 +25,9 @@
+@@ -25,4 +25,10 @@
  .include "../../meta-pkgs/modular-xorg/avoid-duplicate.mk"
  .include "../../meta-pkgs/modular-xorg/hacks.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/converters/libiconv/Makefile
 +++ b/converters/libiconv/Makefile
-@@ -51,4 +51,9 @@
+@@ -51,4 +51,10 @@
  CFLAGS+=		-c99
  .endif
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -56,235 +59,255 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libICE/Makefile
 +++ b/x11/libICE/Makefile
-@@ -29,4 +29,9 @@
+@@ -29,4 +29,10 @@
  .include "../../meta-pkgs/modular-xorg/hacks.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
  .include "../../x11/xtrans/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/sysutils/libpciaccess/Makefile
 +++ b/sysutils/libpciaccess/Makefile
-@@ -23,4 +23,9 @@
+@@ -23,4 +23,10 @@
  
  .include "../../devel/meson/build.mk"
  .include "../../devel/zlib/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/sysutils/ndevd/Makefile
 +++ b/sysutils/ndevd/Makefile
-@@ -21,4 +21,9 @@
+@@ -21,4 +21,10 @@
  ONLY_FOR_PLATFORM=	NetBSD-*-*
  
  .include "../../mk/pthread.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libxshmfence/Makefile
 +++ b/x11/libxshmfence/Makefile
-@@ -37,4 +37,8 @@
+@@ -37,4 +37,9 @@
  X11_LIB_NAME?=		libxshmfence
  .include "../../meta-pkgs/modular-xorg/avoid-duplicate.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/graphite2/Makefile
 +++ b/graphics/graphite2/Makefile
-@@ -52,4 +52,8 @@
+@@ -52,4 +52,9 @@
  
  .include "../../lang/python/tool.mk"
  .include "../../devel/cmake/build.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/print/libpaper/Makefile
 +++ b/print/libpaper/Makefile
-@@ -33,4 +33,9 @@
+@@ -33,4 +33,10 @@
  	${MV} ${DESTDIR}${PKG_SYSCONFDIR}/paperspecs ${DESTDIR}${EGDIR}
  	${INSTALL_DATA} ${WRKDIR}/papersize ${DESTDIR}${EGDIR}/papersize
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/math/double-conversion/Makefile
 +++ b/math/double-conversion/Makefile
-@@ -17,4 +17,9 @@
+@@ -17,4 +17,10 @@
  PKGCONFIG_OVERRIDE=	double-conversion.pc.in
  
  .include "../../devel/cmake/build.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/security/libb2/Makefile
 +++ b/security/libb2/Makefile
-@@ -22,4 +22,9 @@
+@@ -22,4 +22,10 @@
  
  TEST_TARGET=	check
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/giflib/Makefile
 +++ b/graphics/giflib/Makefile
-@@ -14,4 +14,9 @@
+@@ -14,4 +14,10 @@
  # as of 6.1.3
  # 51 tests, 9 failures.
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/multimedia/libogg/Makefile
 +++ b/multimedia/libogg/Makefile
-@@ -15,4 +15,9 @@
+@@ -15,4 +15,10 @@
  PKGCONFIG_OVERRIDE+=	ogg.pc.in
  TEST_TARGET=		check
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/libltdl/Makefile
 +++ b/devel/libltdl/Makefile
-@@ -16,4 +16,9 @@
+@@ -16,4 +16,10 @@
  CONFIGURE_DIRS=	libltdl
  
  .include "../../mk/dlopen.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/npth/Makefile
 +++ b/devel/npth/Makefile
-@@ -17,4 +17,9 @@
+@@ -17,4 +17,10 @@
  TEST_TARGET=		check
  PKGCONFIG_OVERRIDE+=	npth.pc.in
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/multimedia/x264/Makefile
 +++ b/multimedia/x264/Makefile
-@@ -77,4 +77,8 @@
+@@ -77,4 +77,9 @@
  
  .include "options.mk"
  
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/multimedia/xvidcore/Makefile
 +++ b/multimedia/xvidcore/Makefile
-@@ -52,4 +52,8 @@
+@@ -52,4 +52,9 @@
  .endif
  
  .include "../../mk/pthread.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/textproc/enca/Makefile
 +++ b/textproc/enca/Makefile
-@@ -24,4 +24,8 @@
+@@ -24,4 +24,9 @@
  CONFIGURE_ENV+=		ac_cv_path_MKTEMP_PROG=/usr/bin/mktemp
  .endif
  
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/dotconf/Makefile
 +++ b/devel/dotconf/Makefile
-@@ -19,4 +19,9 @@
+@@ -19,4 +19,10 @@
  pre-configure:
  	cd ${WRKSRC} && autoreconf -fiv
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/fonts/libfontenc/Makefile
 +++ b/fonts/libfontenc/Makefile
-@@ -24,4 +24,9 @@
+@@ -24,4 +24,10 @@
  .include "../../devel/meson/build.mk"
  .include "../../devel/zlib/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/nspr/Makefile
 +++ b/devel/nspr/Makefile
-@@ -98,4 +98,8 @@
+@@ -98,4 +98,9 @@
  	${LN} -s ../nspr/pkgconfig/nspr.pc ${DESTDIR}${PREFIX}/lib/pkgconfig
  
  .include "../../mk/pthread.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/textproc/inih/Makefile
 +++ b/textproc/inih/Makefile
-@@ -25,4 +25,9 @@
+@@ -25,4 +25,10 @@
  PKGCONFIG_OVERRIDE+=		output/meson-private/INIReader.pc
  
  .include "../../devel/meson/build.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/textproc/tree-sitter/Makefile
 +++ b/textproc/tree-sitter/Makefile
-@@ -21,4 +21,9 @@
+@@ -21,4 +21,10 @@
  
  CPPFLAGS.SunOS+=	-DHAVE_ENDIAN_H
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -302,61 +325,66 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/libdmtx/Makefile
 +++ b/graphics/libdmtx/Makefile
-@@ -24,4 +24,9 @@
+@@ -24,4 +24,10 @@
  pre-configure:
  	cd ${WRKSRC} && autoreconf -fi
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/security/pam-pwauth_suid/Makefile
 +++ b/security/pam-pwauth_suid/Makefile
-@@ -34,4 +34,9 @@
+@@ -34,4 +34,10 @@
  		${DESTDIR}${PREFIX}/share/examples/pam-pwauth_suid/xscreensaver
  
  .include "../../mk/pam.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libxcvt/Makefile
 +++ b/x11/libxcvt/Makefile
-@@ -14,4 +14,9 @@
+@@ -14,4 +14,10 @@
  PKGCONFIG_OVERRIDE_STAGE=	post-configure
  
  .include "../../devel/meson/build.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/argp/Makefile
 +++ b/devel/argp/Makefile
-@@ -15,4 +15,9 @@
+@@ -15,4 +15,10 @@
  FORCE_C_STD=	gnu99
  
  .include "../../devel/meson/build.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/cmocka/Makefile
 +++ b/devel/cmocka/Makefile
-@@ -11,4 +11,9 @@
+@@ -11,4 +11,10 @@
  LICENSE=	apache-2.0
  
  .include "../../devel/cmake/build.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -386,12 +414,13 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/libhighway/Makefile
 +++ b/graphics/libhighway/Makefile
-@@ -42,4 +42,8 @@
+@@ -42,4 +42,9 @@
  .include "../../devel/cmake/build.mk"
  .include "options.mk"
  .include "../../mk/atomic64.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -421,294 +450,319 @@
 
 --- a/x11/libxcb/Makefile
 +++ b/x11/libxcb/Makefile
-@@ -105,4 +105,8 @@
+@@ -105,4 +105,9 @@
  .include "../../x11/libXdmcp/buildlink3.mk"
  .include "../../x11/libXau/buildlink3.mk"
  
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libSM/Makefile
 +++ b/x11/libSM/Makefile
-@@ -33,4 +33,9 @@
+@@ -33,4 +33,10 @@
  .include "../../x11/libICE/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
  .include "../../x11/xtrans/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/security/libtasn1/Makefile
 +++ b/security/libtasn1/Makefile
-@@ -20,4 +20,9 @@
+@@ -20,4 +20,10 @@
  
  BUILDLINK_TRANSFORM+=	rm:-Werror
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/shells/bash/Makefile
 +++ b/shells/bash/Makefile
-@@ -104,4 +104,8 @@
+@@ -104,4 +104,9 @@
  	${INSTALL_MAN} ${WRKSRC}/doc/bashbug.1 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man1
  
  .include "../../mk/termcap.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	3	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	3	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/math/gsl/Makefile
 +++ b/math/gsl/Makefile
-@@ -14,4 +14,9 @@
+@@ -14,4 +14,10 @@
  INFO_FILES=	yes
  TEST_TARGET=	check
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/security/pinentry/Makefile
 +++ b/security/pinentry/Makefile
-@@ -22,4 +22,9 @@
+@@ -22,4 +22,10 @@
  .endif
  
  .include "../../security/libksba/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/check/Makefile
 +++ b/devel/check/Makefile
-@@ -32,4 +32,9 @@
+@@ -32,4 +32,10 @@
  	cd ${WRKSRC} && autoreconf -fiv
  
  .include "../../mk/pthread.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/textproc/hunspell/Makefile
 +++ b/textproc/hunspell/Makefile
-@@ -65,4 +65,8 @@
+@@ -65,4 +65,9 @@
  .include "../../converters/libiconv/buildlink3.mk"
  .include "../../devel/gettext-lib/buildlink3.mk"
  .include "../../mk/curses.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	4	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	4	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/converters/qrencode/Makefile
 +++ b/converters/qrencode/Makefile
-@@ -27,4 +27,9 @@
+@@ -27,4 +27,10 @@
  .include "../../devel/zlib/buildlink3.mk"
  .include "../../graphics/png/buildlink3.mk"
  .include "../../mk/pthread.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/nss/Makefile
 +++ b/devel/nss/Makefile
-@@ -209,4 +209,8 @@
+@@ -209,4 +209,9 @@
  .include "../../devel/nspr/buildlink3.mk"
  .include "../../devel/zlib/buildlink3.mk"
  .include "../../mk/pthread.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/exiv2/Makefile
 +++ b/graphics/exiv2/Makefile
-@@ -42,4 +42,8 @@
+@@ -42,4 +42,9 @@
  .include "../../textproc/expat/buildlink3.mk"
  .include "../../textproc/inih/buildlink3.mk"
  .include "../../mk/pthread.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/boost-libs/Makefile
 +++ b/devel/boost-libs/Makefile
-@@ -111,4 +111,9 @@
+@@ -111,4 +111,10 @@
  BJAM_ARGS+= --disable-icu boost.locale.icu=off
  .endif
  .include "../../mk/pthread.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	6	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	6	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/libmtp/Makefile
 +++ b/devel/libmtp/Makefile
-@@ -25,4 +25,9 @@
+@@ -25,4 +25,10 @@
  
  .include "../../converters/libiconv/buildlink3.mk"
  .include "../../devel/libusb1/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/devel/gperf/Makefile
 +++ b/devel/gperf/Makefile
-@@ -14,4 +14,9 @@
+@@ -14,4 +14,10 @@
  INFO_FILES=		yes
  TEST_TARGET=		check
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/math/fftw/Makefile
 +++ b/math/fftw/Makefile
-@@ -15,4 +15,9 @@
+@@ -15,4 +15,10 @@
  post-install:
  	touch ${DESTDIR}${PREFIX}/lib/cmake/fftw3/FFTW3LibraryDepends.cmake
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 
 --- a/security/nettle/Makefile
 +++ b/security/nettle/Makefile
-@@ -34,4 +34,8 @@
+@@ -34,4 +34,9 @@
  
  BUILDLINK_API_DEPENDS.gmp+=	gmp>=6.0
  .include "../../devel/gmp/buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/www/nghttp2/Makefile
 +++ b/www/nghttp2/Makefile
-@@ -18,4 +18,9 @@
+@@ -18,4 +18,10 @@
  TEST_TARGET=		check
  
  .include "../../textproc/libxml2/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/xcb-util-keysyms/Makefile
 +++ b/x11/xcb-util-keysyms/Makefile
-@@ -17,4 +17,9 @@
+@@ -17,4 +17,10 @@
  PKGCONFIG_OVERRIDE+=	xcb-keysyms.pc.in
  
  .include "../../x11/libxcb/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/xcb-util-renderutil/Makefile
 +++ b/x11/xcb-util-renderutil/Makefile
-@@ -17,4 +17,9 @@
+@@ -17,4 +17,10 @@
  PKGCONFIG_OVERRIDE=	renderutil/xcb-renderutil.pc.in
  
  .include "../../x11/libxcb/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/xcb-util-wm/Makefile
 +++ b/x11/xcb-util-wm/Makefile
-@@ -19,4 +19,9 @@
+@@ -19,4 +19,10 @@
  PKGCONFIG_OVERRIDE+=	icccm/xcb-icccm.pc.in
  
  .include "../../x11/libxcb/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/jasper/Makefile
 +++ b/graphics/jasper/Makefile
-@@ -34,4 +34,8 @@
+@@ -34,4 +34,9 @@
  .include "options.mk"
  .include "../../devel/cmake/build.mk"
  .include "../../mk/jpeg.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/databases/gdbm/Makefile
 +++ b/databases/gdbm/Makefile
-@@ -12,4 +12,8 @@
+@@ -12,4 +12,9 @@
  .include "../../converters/libiconv/buildlink3.mk"
  .include "../../devel/readline/buildlink3.mk"
  .include "../../mk/curses.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/multimedia/libbluray/Makefile
 +++ b/multimedia/libbluray/Makefile
-@@ -22,4 +22,9 @@
+@@ -22,4 +22,10 @@
  .include "../../fonts/fontconfig/buildlink3.mk"
  .include "../../graphics/freetype2/buildlink3.mk"
  .include "../../textproc/libxml2/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/multimedia/libtheora/Makefile
 +++ b/multimedia/libtheora/Makefile
-@@ -35,4 +35,9 @@
+@@ -35,4 +35,10 @@
  
  .include "../../audio/libvorbis/buildlink3.mk"
  .include "../../multimedia/libogg/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/fonts/mkfontscale/Makefile
 +++ b/fonts/mkfontscale/Makefile
-@@ -29,4 +29,9 @@
+@@ -29,4 +29,10 @@
  .include "../../graphics/freetype2/buildlink3.mk"
  .include "../../fonts/libfontenc/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -738,25 +792,27 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/zxing-cpp/Makefile
 +++ b/graphics/zxing-cpp/Makefile
-@@ -45,4 +45,9 @@
+@@ -45,4 +45,10 @@
  
  .include "../../devel/cmake/build.mk"
  .include "../../graphics/zint-lib/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXfont2/Makefile
 +++ b/x11/libXfont2/Makefile
-@@ -27,4 +27,9 @@
+@@ -27,4 +27,10 @@
  .include "../../fonts/libfontenc/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
  .include "../../x11/xtrans/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -774,12 +830,13 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/math/mpfr/Makefile
 +++ b/math/mpfr/Makefile
-@@ -23,6 +23,10 @@
+@@ -23,6 +23,11 @@
  
  BUILDLINK_API_DEPENDS.gmp+=	gmp>=5.0
  .include "../../devel/gmp/buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -788,61 +845,66 @@
 
 --- a/x11/libXext/Makefile
 +++ b/x11/libXext/Makefile
-@@ -33,4 +33,9 @@
+@@ -33,4 +33,10 @@
  BUILDLINK_API_DEPENDS.libX11+=	libX11>=1.6
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXfixes/Makefile
 +++ b/x11/libXfixes/Makefile
-@@ -21,4 +21,9 @@
+@@ -21,4 +21,10 @@
  .include "../../x11/xorgproto/buildlink3.mk"
  BUILDLINK_API_DEPENDS.libX11+=		libX11>=1.6
  .include "../../x11/libX11/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/xcb-util-image/Makefile
 +++ b/x11/xcb-util-image/Makefile
-@@ -18,4 +18,9 @@
+@@ -18,4 +18,10 @@
  
  .include "../../x11/libxcb/buildlink3.mk"
  .include "../../x11/xcb-util/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/libwebp/Makefile
 +++ b/graphics/libwebp/Makefile
-@@ -40,4 +40,9 @@
+@@ -40,4 +40,10 @@
  .include "../../graphics/giflib/buildlink3.mk"
  .include "../../graphics/png/buildlink3.mk"
  .include "../../mk/jpeg.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	5	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	5	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libxkbfile/Makefile
 +++ b/x11/libxkbfile/Makefile
-@@ -25,4 +25,9 @@
+@@ -25,4 +25,10 @@
  .include "../../devel/meson/build.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
  .include "../../x11/libX11/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -859,13 +921,14 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/textproc/ebook-tools/Makefile
 +++ b/textproc/ebook-tools/Makefile
-@@ -16,4 +16,9 @@
+@@ -16,4 +16,10 @@
  .include "../../devel/cmake/build.mk"
  .include "../../archivers/libzip/buildlink3.mk"
  .include "../../textproc/libxml2/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	31	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	31	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -895,156 +958,169 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXrender/Makefile
 +++ b/x11/libXrender/Makefile
-@@ -26,4 +26,9 @@
+@@ -26,4 +26,10 @@
  BUILDLINK_API_DEPENDS.libX11+=	libX11>=1.6
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libXext/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXxf86vm/Makefile
 +++ b/x11/libXxf86vm/Makefile
-@@ -26,4 +26,9 @@
+@@ -26,4 +26,10 @@
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libXext/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	3	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	3	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXi/Makefile
 +++ b/x11/libXi/Makefile
-@@ -28,4 +28,9 @@
+@@ -28,4 +28,10 @@
  .include "../../x11/libXfixes/buildlink3.mk"
  BUILDLINK_API_DEPENDS.xorgproto+=	xorgproto>=2021.5nb1
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXmu/Makefile
 +++ b/x11/libXmu/Makefile
-@@ -28,4 +28,9 @@
+@@ -28,4 +28,10 @@
  .include "../../x11/libXext/buildlink3.mk"
  BUILDLINK_API_DEPENDS.libXt+=	libXt>=1.1.0
  .include "../../x11/libXt/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	3	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	3	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/xcb-util-cursor/Makefile
 +++ b/x11/xcb-util-cursor/Makefile
-@@ -20,4 +20,9 @@
+@@ -20,4 +20,10 @@
  .include "../../x11/xcb-util/buildlink3.mk"
  .include "../../x11/xcb-util-image/buildlink3.mk"
  .include "../../x11/xcb-util-renderutil/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/mng/Makefile
 +++ b/graphics/mng/Makefile
-@@ -32,4 +32,9 @@
+@@ -32,4 +32,10 @@
  .include "../../devel/zlib/buildlink3.mk"
  .include "../../mk/jpeg.buildlink3.mk"
  .include "../../graphics/lcms2/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	3	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	3	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/multimedia/libva/Makefile
 +++ b/multimedia/libva/Makefile
-@@ -60,4 +60,9 @@
+@@ -60,4 +60,10 @@
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libdrm/buildlink3.mk"
  .include "../../mk/dlopen.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXScrnSaver/Makefile
 +++ b/x11/libXScrnSaver/Makefile
-@@ -27,4 +27,9 @@
+@@ -27,4 +27,10 @@
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libXext/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	3	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	3	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/textproc/xerces-c/Makefile
 +++ b/textproc/xerces-c/Makefile
-@@ -37,4 +37,8 @@
+@@ -37,4 +37,9 @@
  # curl as net accessor is the most compatible option across platforms.
  .include "../../www/curl/buildlink3.mk"
  .include "../../mk/pthread.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	7	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	7	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXinerama/Makefile
 +++ b/x11/libXinerama/Makefile
-@@ -22,4 +22,9 @@
+@@ -22,4 +22,10 @@
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libXext/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXres/Makefile
 +++ b/x11/libXres/Makefile
-@@ -27,4 +27,9 @@
+@@ -27,4 +27,10 @@
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libXext/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	3	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	3	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXcomposite/Makefile
 +++ b/x11/libXcomposite/Makefile
-@@ -23,4 +23,9 @@
+@@ -23,4 +23,10 @@
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libXext/buildlink3.mk"
  .include "../../x11/libXfixes/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/libXdamage/Makefile
 +++ b/x11/libXdamage/Makefile
-@@ -20,4 +20,9 @@
+@@ -20,4 +20,10 @@
  .include "../../x11/xorgproto/buildlink3.mk"
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libXfixes/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -1061,77 +1137,83 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/x11/xkbcomp/Makefile
 +++ b/x11/xkbcomp/Makefile
-@@ -29,4 +29,9 @@
+@@ -29,4 +29,10 @@
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/libxkbfile/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/graphics/libavif/Makefile
 +++ b/graphics/libavif/Makefile
-@@ -25,4 +25,9 @@
+@@ -25,4 +25,10 @@
  .include "../../devel/cmake/build.mk"
  .include "../../graphics/gdk-pixbuf2/loaders.mk"
  .include "../../multimedia/libaom/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 
 --- a/x11/libXrandr/Makefile
 +++ b/x11/libXrandr/Makefile
-@@ -29,4 +29,9 @@
+@@ -29,4 +29,10 @@
  .include "../../x11/libXext/buildlink3.mk"
  .include "../../x11/libXrender/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 
 --- a/x11/libXcursor/Makefile
 +++ b/x11/libXcursor/Makefile
-@@ -35,4 +35,9 @@
+@@ -35,4 +35,10 @@
  CONFIGURE_ARGS+= --with-cursorpath=/usr/share/icons:/usr/share/pixmaps
  .endif
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 
 --- a/x11/libXft/Makefile
 +++ b/x11/libXft/Makefile
-@@ -29,4 +29,9 @@
+@@ -29,4 +29,10 @@
  .include "../../x11/libXrender/buildlink3.mk"
  .include "../../x11/libX11/buildlink3.mk"
  .include "../../x11/xorgproto/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 
 --- a/x11/libXtst/Makefile
 +++ b/x11/libXtst/Makefile
-@@ -47,4 +47,9 @@
+@@ -47,4 +47,10 @@
  BUILDLINK_API_DEPENDS.libXext+=		libXext>=1.0.99.4
  .include "../../x11/libXext/buildlink3.mk"
  .include "../../x11/libXi/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -1162,25 +1244,27 @@
 
 --- a/graphics/glu/Makefile
 +++ b/graphics/glu/Makefile
-@@ -20,4 +20,9 @@
+@@ -20,4 +20,10 @@
  .include "../../converters/libiconv/buildlink3.mk"
  .include "../../devel/zlib/buildlink3.mk"
  .include "../../graphics/MesaLib/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 
 --- a/graphics/libepoxy/Makefile
 +++ b/graphics/libepoxy/Makefile
-@@ -41,4 +41,8 @@
+@@ -41,4 +41,9 @@
  .include "../../devel/xorg-util-macros/buildlink3.mk"
  .include "../../lang/python/batteries-included.mk"
  .include "../../lang/python/tool.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	3	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	3	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -1200,13 +1284,14 @@
 
 --- a/multimedia/phonon-qt6/Makefile
 +++ b/multimedia/phonon-qt6/Makefile
-@@ -34,4 +34,9 @@
+@@ -34,4 +34,10 @@
  .include "../../x11/qt6-qtbase/buildlink3.mk"
  .include "../../devel/qt6-qt5compat/buildlink3.mk"
  .include "../../devel/qt6-qttools/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	6	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	6	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"

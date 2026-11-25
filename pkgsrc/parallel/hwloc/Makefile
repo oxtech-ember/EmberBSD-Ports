@@ -38,4 +38,8 @@ PREFER.iconv=	pkgsrc
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../mk/curses.buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

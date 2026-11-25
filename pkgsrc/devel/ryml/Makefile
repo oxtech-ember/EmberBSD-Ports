@@ -22,8 +22,9 @@ CMAKE_CONFIGURE_ARGS+= -DRYML_BUILD_TOOLS=OFF
 CMAKE_CONFIGURE_ARGS+= -DRYML_BUILD_BENCHMARKS=OFF
 CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON
 
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	1	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

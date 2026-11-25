@@ -68,11 +68,7 @@ PLIST_VARS+=	runtime_split
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-.if ${MACHINE_ARCH} == "aarch64"
-_PROTOBUF_SPLIT_REVISION=	7
-.else
-_PROTOBUF_SPLIT_REVISION=	6
-.endif
+_PROTOBUF_SPLIT_REVISION=	7	# Record the base libc SONAME.
 PKGREVISION=	${_PROTOBUF_SPLIT_REVISION}
 .if ${PKGREVISION} != ${_PROTOBUF_SPLIT_REVISION}
 PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires package revision ${_PROTOBUF_SPLIT_REVISION}"

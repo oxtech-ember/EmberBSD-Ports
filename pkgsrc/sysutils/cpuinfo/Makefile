@@ -34,4 +34,8 @@ CMAKE_CONFIGURE_ARGS+=	-DCPUINFO_BUILD_BENCHMARKS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DCPUINFO_PACKAGE_VERSION=${PKGVERSION_NOREV:Q}
 
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

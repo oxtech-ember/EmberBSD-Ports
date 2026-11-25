@@ -33,4 +33,8 @@ PLIST_SUBST+= HDR_LIB=${HDR_LIB} HDR_SOVERSION=${HDR_SOVERSION} HDR_VERSIONED=${
 GENERATE_PLIST+= cd ${DESTDIR}${PREFIX}; ${FIND} lib/cmake/hdr_histogram -name "hdr_histogram-targets-*.cmake" -type f -print | ${SORT};
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

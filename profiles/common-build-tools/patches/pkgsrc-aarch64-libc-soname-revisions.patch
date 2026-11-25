@@ -1,106 +1,115 @@
 --- a/archivers/brotli/Makefile
 +++ b/archivers/brotli/Makefile
-@@ -19,4 +19,9 @@
+@@ -19,4 +19,10 @@
  PKGCONFIG_OVERRIDE+=	scripts/libbrotlienc.pc.in
  
  .include "../../devel/cmake/build.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/flac/Makefile
 +++ b/audio/flac/Makefile
-@@ -53,4 +53,8 @@
+@@ -53,4 +53,9 @@
  .endif
  
  .include "../../multimedia/libogg/buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/libao/Makefile
 +++ b/audio/libao/Makefile
-@@ -10,4 +10,9 @@
+@@ -10,4 +10,10 @@
  SUBST_FILES.disable-macosx=	configure.ac
  SUBST_SED.disable-macosx=	-e 's,have_macosx=yes,have_macosx=disabled,'
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/libao-sun/Makefile
 +++ b/audio/libao-sun/Makefile
-@@ -19,4 +19,9 @@
+@@ -19,4 +19,10 @@
  _LIBAO_BUILDING_PLUGIN=	yes
  
  .include "../../audio/libao/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	3	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	3	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/libopus/Makefile
 +++ b/audio/libopus/Makefile
-@@ -24,4 +24,9 @@
+@@ -24,4 +24,10 @@
  
  .include "options.mk"
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/libsndfile/Makefile
 +++ b/audio/libsndfile/Makefile
-@@ -43,4 +43,9 @@
+@@ -43,4 +43,10 @@
  BUILDLINK_API_DEPENDS.libogg+=	libogg>=1.1.3
  .include "../../multimedia/libogg/buildlink3.mk"
  .include "../../mk/terminfo.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	4	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	4	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/libvorbis/Makefile
 +++ b/audio/libvorbis/Makefile
-@@ -19,4 +19,9 @@
+@@ -19,4 +19,10 @@
  PKGCONFIG_OVERRIDE+=	vorbisfile.pc.in
  
  .include "../../multimedia/libogg/buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/mbrola/Makefile
 +++ b/audio/mbrola/Makefile
-@@ -27,4 +27,9 @@
+@@ -27,4 +27,10 @@
  	cd ${WRKSRC}/Documentation && pax -pp -rw * ${DESTDIR}${PREFIX}/share/doc/mbrola
  	${CHMOD} -R g-w ${DESTDIR}${PREFIX}/share/doc/mbrola
  
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/mpg123/Makefile
 +++ b/audio/mpg123/Makefile
-@@ -47,6 +47,10 @@
+@@ -47,6 +47,11 @@
  .include "Makefile.common"
  
  .include "options.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
@@ -108,35 +117,38 @@
  # now we can set the default module
 --- a/audio/pcaudiolib/Makefile
 +++ b/audio/pcaudiolib/Makefile
-@@ -43,4 +43,8 @@
+@@ -43,4 +43,9 @@
  	set -e; cd ${WRKSRC} && autoreconf -fi
  
  .include "options.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	5	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	5	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/speex/Makefile
 +++ b/audio/speex/Makefile
-@@ -25,4 +25,9 @@
+@@ -25,4 +25,10 @@
  .include "../../multimedia/libogg/buildlink3.mk"
  
  .include "../../mk/oss.buildlink3.mk"
 +.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
 --- a/audio/speexdsp/Makefile
 +++ b/audio/speexdsp/Makefile
-@@ -22,4 +22,8 @@
+@@ -22,4 +22,9 @@
  
  BUILDLINK_API_DEPENDS.speex+=	speex>=1.2rc2
  .include "../../audio/speex/buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-+PKGREVISION=	1	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	1	# Record the base libc SONAME.
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"

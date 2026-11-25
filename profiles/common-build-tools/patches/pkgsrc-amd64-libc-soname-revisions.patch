@@ -1,0 +1,487 @@
+--- a/audio/libcddb/Makefile
++++ b/audio/libcddb/Makefile
+@@ -21,4 +21,9 @@
+ TEST_TARGET=		check
+ 
+ .include "../../converters/libiconv/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/audio/libcuefile/Makefile
++++ b/audio/libcuefile/Makefile
+@@ -18,4 +18,9 @@
+ 	${INSTALL_DATA} ${WRKSRC}/include/cuetools/* ${DESTDIR}${PREFIX}/include/cuetools
+ 
+ .include "../../devel/cmake/build.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/audio/libmodplug/Makefile
++++ b/audio/libmodplug/Makefile
+@@ -17,4 +17,9 @@
+ FORCE_CXX_STD=		gnu++98
+ 
+ .include "../../mk/oss.buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/audio/libreplaygain/Makefile
++++ b/audio/libreplaygain/Makefile
+@@ -23,4 +23,9 @@
+ 	${INSTALL_DATA} ${WRKSRC}/include/replaygain/* ${DESTDIR}${PREFIX}/include/replaygain
+ 
+ .include "../../devel/cmake/build.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/audio/libsamplerate/Makefile
++++ b/audio/libsamplerate/Makefile
+@@ -29,4 +29,9 @@
+ .include "../../audio/libsndfile/buildlink3.mk"
+ .include "../../math/fftw/buildlink3.mk"
+ .include "../../mk/terminfo.buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	7	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/audio/libshout/Makefile
++++ b/audio/libshout/Makefile
+@@ -24,4 +24,9 @@
+ .include "../../multimedia/libtheora/buildlink3.mk"
+ .include "../../security/openssl/buildlink3.mk"
+ .include "../../mk/pthread.buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	3	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/audio/musepack/Makefile
++++ b/audio/musepack/Makefile
+@@ -26,4 +26,9 @@
+ .include "../../devel/cmake/build.mk"
+ .include "../../audio/libcuefile/buildlink3.mk"
+ .include "../../audio/libreplaygain/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/audio/rnnoise/Makefile
++++ b/audio/rnnoise/Makefile
+@@ -35,4 +35,9 @@
+ pre-configure:
+ 	cd ${WRKSRC} && autoreconf -fi
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/libcbor/Makefile
++++ b/devel/libcbor/Makefile
+@@ -20,4 +20,9 @@
+ PLIST_SUBST+=	PKGVERSION_SANS_TEENY=${PKGVERSION_NOREV:C/\.[0-9]*$//}
+ 
+ .include "../../devel/cmake/build.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/libebml/Makefile
++++ b/devel/libebml/Makefile
+@@ -17,4 +17,9 @@
+ 
+ .include "../../devel/cmake/build.mk"
+ .include "../../textproc/utf8-cpp/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/orc/Makefile
++++ b/devel/orc/Makefile
+@@ -27,4 +27,9 @@
+ 
+ .include "../../devel/meson/build.mk"
+ .include "../../mk/pthread.buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/pcre/Makefile
++++ b/devel/pcre/Makefile
+@@ -29,4 +29,9 @@
+ # needs a stacksize of 5.5mb, default is 2mb
+ TEST_TARGET=		test
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/popt/Makefile
++++ b/devel/popt/Makefile
+@@ -21,4 +21,9 @@
+ TEST_TARGET=		check
+ 
+ .include "../../devel/gettext-lib/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/re2/Makefile
++++ b/devel/re2/Makefile
+@@ -39,4 +39,8 @@
+ 
+ .include "../../devel/abseil/buildlink3.mk"
+ .include "../../devel/cmake/build.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	4	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/graphics/qr-code-generator/Makefile
++++ b/graphics/qr-code-generator/Makefile
+@@ -37,4 +37,9 @@
+ 	${INSTALL_PROGRAM} ${WRKSRC}/cpp/QrCodeGeneratorDemo ${DESTDIR}${PREFIX}/bin
+ 	${INSTALL_DATA} ${WRKSRC}/cpp/*.hpp ${DESTDIR}${PREFIX}/include/qrcodegen
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/lang/lua55/Makefile
++++ b/lang/lua55/Makefile
+@@ -100,4 +100,8 @@
+ .endif
+ .endif
+ .include "../../mk/dlopen.buildlink3.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/misc/libcdio/Makefile
++++ b/misc/libcdio/Makefile
+@@ -41,4 +41,8 @@
+ .include "../../audio/libcddb/buildlink3.mk"
+ .include "../../devel/popt/buildlink3.mk"
+ .include "../../mk/curses.buildlink3.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libdvbpsi/Makefile
++++ b/multimedia/libdvbpsi/Makefile
+@@ -20,4 +20,9 @@
+ CONFIG_GUESS_OVERRIDE=	.auto/config.guess
+ CONFIG_SUB_OVERRIDE=	.auto/config.sub
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libdvdnav/Makefile
++++ b/multimedia/libdvdnav/Makefile
+@@ -17,4 +17,9 @@
+ .include "../../devel/meson/build.mk"
+ .include "../../multimedia/libdvdread/buildlink3.mk"
+ .include "../../mk/pthread.buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libdvdplay/Makefile
++++ b/multimedia/libdvdplay/Makefile
+@@ -16,4 +16,9 @@
+ #CFLAGS.NetBSD+= -Wno-implicit-int -Wno-implicit-function-declaration -Wno-builtin-declaration-mismatch -Wno-incompatible-pointer-types -Wno-int-conversion
+ 
+ .include "../../multimedia/libdvdread/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	5	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libdvdread/Makefile
++++ b/multimedia/libdvdread/Makefile
+@@ -18,4 +18,9 @@
+ 
+ .include "options.mk"
+ .include "../../devel/meson/build.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libkate/Makefile
++++ b/multimedia/libkate/Makefile
+@@ -25,4 +25,9 @@
+ .include "../../mk/dlopen.buildlink3.mk"
+ .include "../../graphics/png/buildlink3.mk"
+ .include "../../multimedia/libogg/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	25	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libmatroska/Makefile
++++ b/multimedia/libmatroska/Makefile
+@@ -18,4 +18,9 @@
+ .include "../../devel/cmake/build.mk"
+ BUILDLINK_API_DEPENDS.libebml+=	libebml>=1.4.3
+ .include "../../devel/libebml/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/liboggz/Makefile
++++ b/multimedia/liboggz/Makefile
+@@ -21,4 +21,9 @@
+ BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--version-script=Version_script
+ 
+ .include "../../multimedia/libogg/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libvdpau/Makefile
++++ b/multimedia/libvdpau/Makefile
+@@ -36,4 +36,9 @@
+ .include "../../x11/libXext/buildlink3.mk"
+ .include "../../x11/xorgproto/buildlink3.mk"
+ .include "../../devel/meson/build.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/schroedinger/Makefile
++++ b/multimedia/schroedinger/Makefile
+@@ -18,4 +18,9 @@
+ PKGCONFIG_OVERRIDE+=	schroedinger.pc.in
+ 
+ .include "../../devel/orc/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/net/libcares/Makefile
++++ b/net/libcares/Makefile
+@@ -18,4 +18,9 @@
+ PKGCONFIG_OVERRIDE+=	libcares.pc.in
+ 
+ .include "../../devel/cmake/build.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/net/libmicrodns/Makefile
++++ b/net/libmicrodns/Makefile
+@@ -25,4 +25,9 @@
+ PKGCONFIG_OVERRIDE+=	src/microdns.pc.in
+ 
+ .include "../../devel/meson/build.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/net/libupnp/Makefile
++++ b/net/libupnp/Makefile
+@@ -24,4 +24,9 @@
+ 
+ .include "options.mk"
+ .include "../../mk/pthread.buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/net/wireguard-tools/Makefile
++++ b/net/wireguard-tools/Makefile
+@@ -43,4 +43,8 @@
+ MAKE_FLAGS+=		WITH_WGQUICK=no
+ .endif
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/security/libgcrypt/Makefile
++++ b/security/libgcrypt/Makefile
+@@ -79,4 +79,9 @@
+ .include "../../devel/gettext-lib/buildlink3.mk"
+ .include "../../security/libgpg-error/buildlink3.mk"
+ .include "../../mk/pthread.buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	3	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/security/libssh2/Makefile
++++ b/security/libssh2/Makefile
+@@ -18,4 +18,9 @@
+ 
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../security/openssl/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/sysutils/daemonize/Makefile
++++ b/sysutils/daemonize/Makefile
+@@ -20,4 +20,8 @@
+ 
+ MAKE_FLAGS+=	INSTALL_MAN=${PREFIX}/${PKGMANDIR}
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/sysutils/pciutils/Makefile
++++ b/sysutils/pciutils/Makefile
+@@ -59,4 +59,8 @@
+ 
+ BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--version-script=libpci.ver
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/libfyaml/Makefile
++++ b/textproc/libfyaml/Makefile
+@@ -25,4 +25,9 @@
+ 
+ .include "../../devel/cmake/build.mk"
+ .include "../../mk/atomic64.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/xmlcatmgr/Makefile
++++ b/textproc/xmlcatmgr/Makefile
+@@ -51,8 +51,9 @@
+ 	${INSTALL_DATA} ${WRKDIR}/catalog.sgml ${DESTDIR}${EGDIR}/catalog.share.sgml
+ 	${INSTALL_DATA} ${WRKDIR}/catalog.xml ${DESTDIR}${EGDIR}/catalog.share.xml
+ 
+-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+-PKGREVISION=	2	# Require the libc SONAME on AArch64.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
++PKGREVISION=	2	# Record the base libc SONAME.
+ .endif
+ 
+ .include "../../mk/bsd.pkg.mk"
+--- a/www/http-parser/Makefile
++++ b/www/http-parser/Makefile
+@@ -30,4 +30,9 @@
+ 	    -c libhttp_parser.la ${DESTDIR}${PREFIX}/lib/libhttp_parser.la
+ 	${INSTALL_DATA} ${WRKSRC}/http_parser.h ${DESTDIR}${PREFIX}/include
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/www/libsass/Makefile
++++ b/www/libsass/Makefile
+@@ -21,4 +21,9 @@
+ 	${RUN} cd ${WRKSRC}; libtoolize -c -f; \
+ 	aclocal; autoheader; automake -a --foreign -i; autoconf
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/www/sassc/Makefile
++++ b/www/sassc/Makefile
+@@ -20,4 +20,9 @@
+ 	aclocal; autoheader; automake -a --foreign -i; autoconf
+ 
+ .include "../../www/libsass/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/x11/libfakekey/Makefile
++++ b/x11/libfakekey/Makefile
+@@ -17,4 +17,9 @@
+ 
+ .include "../../x11/libXtst/buildlink3.mk"
+ .include "../../x11/libX11/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	1	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/x11/sddm/Makefile
++++ b/x11/sddm/Makefile
+@@ -101,4 +101,8 @@
+ .include "../../sysutils/dbus/buildlink3.mk"
+ .include "../../x11/libxcb/buildlink3.mk"
+ .include "../../mk/pam.buildlink3.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	9	# Record the base libc SONAME.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"

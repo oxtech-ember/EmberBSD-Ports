@@ -35,4 +35,8 @@ MAKE_FLAGS+=	OS=${LOWER_OPSYS:C/^(net|open|free)bsd$/bsd/:S/^sunos$/bsd/}
 TOOL_DEPENDS+=	nasm>=2.07:../../devel/nasm
 .endif
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

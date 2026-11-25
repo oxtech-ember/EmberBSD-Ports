@@ -26,4 +26,9 @@ BUILDLINK_API_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0
 .include "../../sysutils/kf6-kdbusaddons/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	5	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

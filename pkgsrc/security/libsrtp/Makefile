@@ -16,4 +16,8 @@ CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON -DLIBSRTP_TEST_APPS=OFF
 CMAKE_CONFIGURE_ARGS+= -DENABLE_OPENSSL=ON -DENABLE_WARNINGS_AS_ERRORS=OFF
 .include "../../security/openssl/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

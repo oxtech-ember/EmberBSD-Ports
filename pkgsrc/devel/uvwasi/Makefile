@@ -24,4 +24,8 @@ UVWASI_VERSIONED= libuvwasi.so.${PKGVERSION_NOREV}
 PLIST_SUBST+= UVWASI_SHARED=${UVWASI_SHARED} UVWASI_SONAME=${UVWASI_SONAME} UVWASI_VERSIONED=${UVWASI_VERSIONED}
 .include "../../devel/libuv/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

@@ -57,8 +57,9 @@ BUILDLINK_TRANSFORM+= I:${EMBERBSD_LIBPROXY_REAL_SYSROOT}${PREFIX}:${BUILDLINK_D
 .include "../../www/curl/buildlink3.mk"
 .include "../../mk/dlopen.buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	9	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	9	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

@@ -52,4 +52,8 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/LICENSE.txt ${DESTDIR}${PREFIX}/share/licenses/zxcvbn-c/LICENSE.txt
 
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	3	# Record the base libc SONAME.
+.endif
+
 .include "../../mk/bsd.pkg.mk"

@@ -23,8 +23,9 @@ BUILDLINK_API_DEPENDS.gpgme+=	gpgme>=2.2.0
 .include "../../security/gpgme/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.prefs.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	1	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	1	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"

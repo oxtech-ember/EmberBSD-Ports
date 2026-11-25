@@ -78,8 +78,9 @@ BUILDLINK_TRANSFORM+=	rm:-Wno-array-bounds
 DL_AUTO_VARS=	yes
 .include "../../mk/dlopen.buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	6	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	6	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"
