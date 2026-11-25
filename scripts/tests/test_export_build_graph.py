@@ -16,6 +16,10 @@ import types
 import unittest
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'export-build-graph.py'
+sys.path.insert(0, str(SCRIPT.parent))
+spec = importlib.util.spec_from_file_location('export_build_graph', SCRIPT)
+graph = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(graph)
 
 
 class ExportTests(unittest.TestCase):
@@ -182,6 +186,12 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
 ''')
         self.pkg_admin.chmod(0o755)
         self.counter = 0
+
+    def test_native_toolset_key_is_a_single_token(self):
+        key = '/sdk|/host|clang|fetch|/host-tools.mk|||abi-a45b0d45b2af338bb2af338bb2af338b'
+        self.assertEqual(graph.verified_native_toolset(key, 'bmake metadata'), key)
+        with self.assertRaisesRegex(graph.ExportError, 'invalid EMBERBSD_NATIVE_TOOLSET_VERIFIED'):
+            graph.verified_native_toolset(key + ' /bad', 'bmake metadata')
 
     def run_export(self, *extra, success=True, inventory=True, environment=None):
         (self.pkgsrc / 'metadata.json').write_text(json.dumps(self.packages))

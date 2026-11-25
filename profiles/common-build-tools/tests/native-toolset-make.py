@@ -25,6 +25,7 @@ spec = importlib.util.spec_from_file_location('native_make_adapter', source)
 adapter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(adapter)
 from emberbsd_sdk.errors import SDKError
+from emberbsd_sdk.host_prefix import parse_host_abi_flags
 
 
 def refused(function, *arguments):
@@ -46,7 +47,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     flags = {'cppflags': ('-isystem', '/native/include'), 'cflags': ('-fPIC',),
              'cxxflags': ('-std=c++17',), 'ldflags': ('-L/native/lib',)}
     selected = types.SimpleNamespace(
-        tool=lambda role: tools[role], tools=tools, path=str(root), abi_flags=flags,
+        tool=lambda role: tools[role], tools=tools, path=str(root),
+        bundle_root=str(root / 'host-pkg-llvm'), abi_flags=flags,
         command=lambda role: (tools[role], '-c', '-x', 'assembler') if role == 'as' else (tools[role],),
         compiler_family='clang', host={'os': 'NetBSD'},
         as_dict=lambda: {'format': 'emberbsd-native-toolset-selection',
@@ -108,7 +110,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert not (root / 'selection.json').exists()
         call = api.load_host_prefix.call_args
         assert call.args == (str(root / 'host-pkg-llvm'),)
-        assert set(call.kwargs) == {'required_roles', 'compiler_family'}
+        assert set(call.kwargs) == {'required_roles', 'compiler_family', 'abi_flags'}
+        assert call.kwargs['abi_flags'] is None
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
         assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen', 'wayland-scanner', 'flex', 'bison', 'yacc', 'gtee', 'fetch')
@@ -255,6 +258,31 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         with contextlib.redirect_stdout(io.StringIO()) as output:
             adapter.main(['verify', *pins, '--makeconf', str(include)])
         assert output.getvalue() == 'VERIFIED\n'
+        # Darwin flags pass through the SDK parser and must match on write,
+        # verify, and aliases. A changed selection invalidates the include.
+        darwin_flags = '-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -mmacosx-version-min=27.0'
+        options = ['--host-abi-cppflags=' + darwin_flags]
+        assert parse_host_abi_flags({'host_abi_cppflags': darwin_flags})['cppflags'] == (
+            '-isysroot', '/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk',
+            '-mmacosx-version-min=27.0')
+        selected.abi_flags = dict(flags, cppflags=('-isysroot',
+            '/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk', '-mmacosx-version-min=27.0'))
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, *options, '--output', str(destination)])
+        assert api.load_host_prefix.call_args.kwargs['abi_flags']['cppflags'] == selected.abi_flags['cppflags']
+        assert b'-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -mmacosx-version-min=27.0' in include.read_bytes()
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            adapter.main(['verify', *pins, *options, '--makeconf', str(include)])
+        assert output.getvalue() == 'VERIFIED\n'
+        selected.abi_flags = dict(selected.abi_flags, cppflags=('-isysroot', '/missing'))
+        refused(adapter.main, ['verify', *pins, '--host-abi-cppflags=-isysroot /missing', '--makeconf', str(include)])
+        selected.abi_flags = dict(flags, cppflags=('-isysroot',
+            '/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk', '-mmacosx-version-min=27.0'))
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['aliases', *pins, *options, '--output', str(root / 'native-aliases')])
+        assert api.load_host_prefix.call_args.kwargs['abi_flags']['cppflags'] == selected.abi_flags['cppflags']
+        selected.abi_flags = flags
+        adapter.write(selected, str(destination))
         # Cross lang/mlir takes all of its generators from a native mlir
         # package in the prefix. A partial set is refused.
         assert b'EMBERBSD_MLIR_NATIVE_TOOLS' not in without_qt

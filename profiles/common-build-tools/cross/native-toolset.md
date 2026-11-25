@@ -111,6 +111,25 @@ Generate the ordinary make-variable include with the selected Python:
     --host-prefix /absolute/host-pkg-llvm --output /absolute/host-tools.mk
 ```
 
+For a Darwin host ABI, pass the same explicit flags when generating the include
+and in the pkgsrc make configuration. `native-tools.mk` verifies this selection
+and incorporates these values in `EMBERBSD_NATIVE_TOOLSET_VERIFIED`:
+
+```sh
+EMBERBSD_HOST_ABI_CPPFLAGS='-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -mmacosx-version-min=27.0'
+/absolute/host/bin/python3.15 -B -E -S \
+    profiles/common-build-tools/cross/prepare-native-tools.py \
+    --sdk-source /absolute/EmberBSD-SDK write \
+    --host-prefix /absolute/host \
+    --host-abi-cppflags="$EMBERBSD_HOST_ABI_CPPFLAGS" \
+    --output /absolute/host-tools.mk
+```
+
+Set `EMBERBSD_HOST_ABI_CPPFLAGS` to the same value in the selected pkgsrc
+make configuration. Set the other `EMBERBSD_HOST_ABI_CFLAGS`,
+`EMBERBSD_HOST_ABI_CXXFLAGS`, and `EMBERBSD_HOST_ABI_LDFLAGS` variables when
+needed, and pass their matching `--host-abi-*` options to the generator.
+
 The command writes one configuration file. Rerun it after changing the
 selected prefix or its tool paths. It replaces that file atomically.
 It does not create a report, certificate or toolset descriptor.

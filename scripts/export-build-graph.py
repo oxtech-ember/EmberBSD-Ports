@@ -43,6 +43,13 @@ class ExportError(ValueError):
     """The selected metadata cannot form an unambiguous graph."""
 
 
+def verified_native_toolset(value, source):
+    """Accept only one-token native selection keys from bmake metadata."""
+    if value and any(character.isspace() for character in value):
+        raise ExportError('invalid EMBERBSD_NATIVE_TOOLSET_VERIFIED from ' + source)
+    return value
+
+
 def digest(value):
     return hashlib.sha256(value).hexdigest()
 
@@ -209,8 +216,7 @@ class Exporter:
             raise ExportError('unexpected bmake metadata line count for ' + package)
         result = dict(zip(variables, values))
         verified = result.pop('EMBERBSD_NATIVE_TOOLSET_VERIFIED')
-        if verified and any(character.isspace() for character in verified):
-            raise ExportError('invalid EMBERBSD_NATIVE_TOOLSET_VERIFIED from bmake metadata')
+        verified = verified_native_toolset(verified, 'bmake metadata')
         result['_VERIFIED_NATIVE_TOOLSET'] = verified
         if verified:
             query_environment['EMBERBSD_NATIVE_TOOLSET_VERIFIED'] = verified
@@ -552,8 +558,7 @@ class Exporter:
 
     def discover_host_pkg_info(self):
         native = self.frozen_show_var('EMBERBSD_NATIVE_TOOLSET_VERIFIED')
-        if any(character.isspace() for character in native):
-            raise ExportError('invalid EMBERBSD_NATIVE_TOOLSET_VERIFIED from frozen MAKECONF')
+        native = verified_native_toolset(native, 'frozen MAKECONF')
         self.native_toolset_seed = native
         self.native_toolset_initialized = True
         info = self.frozen_show_var('PKG_INFO', native=native, cross='no')

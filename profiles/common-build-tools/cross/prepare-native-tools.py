@@ -336,7 +336,9 @@ def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
 
 def selection(arguments):
     from emberbsd_sdk.errors import SDKError
+    from emberbsd_sdk.host_prefix import parse_host_abi_flags
     from emberbsd_sdk.native_toolset import load_host_prefix
+    abi_flags = parse_host_abi_flags(vars(arguments))
     optional = tuple(role for role in OPTIONAL_ROLES
                      if any(os.path.lexists(Path(arguments.host_prefix) / directory / name)
                             for directory in ('bin', 'gnu/bin')
@@ -344,7 +346,8 @@ def selection(arguments):
     toolset = load_host_prefix(arguments.host_prefix,
                               required_roles=tuple(ROLE_VARIABLES) + tuple(ROLE_DIRECTORIES) + optional +
                               (('fetch',) if arguments.fetch_mode == 'fetch' else ()),
-                              compiler_family=arguments.compiler_family)
+                              compiler_family=arguments.compiler_family,
+                              abi_flags=abi_flags)
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
         raise SDKError('The adapter interpreter differs from the selected Ports Python')
     return toolset
@@ -511,6 +514,8 @@ def main(arguments):
     parser.add_argument('--host-prefix', required=True)
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--fetch-mode', choices=('fetch', 'manual'), default='fetch')
+    for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags'):
+        parser.add_argument('--host-abi-' + name, default='')
     parser.add_argument('--output')
     parser.add_argument('--makeconf')
     parser.add_argument('--native-cxx-binding-record')
