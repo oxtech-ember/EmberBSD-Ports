@@ -55,7 +55,7 @@ X11_LIB_NAME?=		libX11
 .include "../../x11/xtrans/buildlink3.mk"
 # Regenerate changed Autoconf inputs with selected host tools.
 pre-configure:
-	cd ${WRKSRC} && aclocal -I m4 && autoheader && automake --foreign && autoconf
+	cd ${WRKSRC} && aclocal -I m4 -I ${_CROSS_DESTDIR}${BUILDLINK_PREFIX.xtrans}/share/aclocal && autoheader && automake --foreign && autoconf
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
 PKGREVISION=	2	# Require the libc SONAME on AArch64.
