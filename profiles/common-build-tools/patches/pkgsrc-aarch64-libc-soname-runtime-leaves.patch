@@ -36,6 +36,15 @@
  .include "../../mk/bsd.pkg.mk"
 --- a/textproc/xmlcatmgr/Makefile
 +++ b/textproc/xmlcatmgr/Makefile
+@@ -29,7 +29,7 @@
+ .if ${USE_CROSS_COMPILE:tl} != "yes"
+ XMLCATMGR=	${WRKSRC}/xmlcatmgr
+ .else
+-TOOL_DEPENDS+=	${PKGNAME}:../../${PKGPATH}
++TOOL_DEPENDS+=	${PKGNAME_NOREV}{,nb[0-9]*}:../../${PKGPATH}
+ XMLCATMGR=	${TOOLBASE}/bin/xmlcatmgr
+ .endif
+ 
 @@ -51,4 +51,8 @@
  	${INSTALL_DATA} ${WRKDIR}/catalog.sgml ${DESTDIR}${EGDIR}/catalog.share.sgml
  	${INSTALL_DATA} ${WRKDIR}/catalog.xml ${DESTDIR}${EGDIR}/catalog.share.xml
