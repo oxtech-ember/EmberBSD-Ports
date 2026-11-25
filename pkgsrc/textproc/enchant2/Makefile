@@ -53,8 +53,18 @@ MAKE_ENV+= GROFF_BIN_PATH=${EMBERBSD_BUILD_GROFF:H}
 
 BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.76
 .include "../../devel/glib2/buildlink3.mk"
-BUILDLINK_DEPMETHOD.unittest-cpp=	build	# XXX: for tests
+.if !empty(PKGSRC_RUN_TEST:M[yY][eE][sS]) || make(test) || make(retest)
+BUILDLINK_DEPMETHOD.unittest-cpp=	build
 .include "../../devel/unittest-cpp/buildlink3.mk"
+# A work directory configured by a regular build has no UnitTest++ flags.
+TEST_MAKE_FLAGS+=	UNITTESTPP_LIBS=-lUnitTest++
+pre-test:
+	${RUN} if ${TEST} ! -f ${BUILDLINK_DIR:Q}/.buildlink_unittest-cpp_done; then \
+		${RECURSIVE_MAKE} ${MAKEFLAGS} PKGSRC_RUN_TEST=yes depends-clean && \
+		${RECURSIVE_MAKE} ${MAKEFLAGS} PKGSRC_RUN_TEST=yes depends && \
+		${RECURSIVE_MAKE} ${MAKEFLAGS} PKGSRC_RUN_TEST=yes buildlink-unittest-cpp; \
+	fi
+.endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
 PKGREVISION=	2	# Record the base libc SONAME.

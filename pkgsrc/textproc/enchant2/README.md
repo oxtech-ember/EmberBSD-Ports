@@ -6,7 +6,9 @@ This is the current stable upstream release as checked on 2026-10-13:
 The recipe derives from pkgsrc fff4deb639a1a640476203c80f752fb77b6cb14b.
 Keep the upstream LGPL terms and the pkgsrc SunOS adaptation.
 The default provider is current Hunspell with the official en_US dictionary.
-UnitTest++ remains a build dependency. The upstream `check` target remains.
+Use `bmake test` or `bmake retest` to run the upstream `check` target.
+Set `PKGSRC_RUN_TEST=yes` to include tests in a package build.
+These modes select UnitTest++ for the same target as Enchant.
 No GTK library is required.
 
 A cross build creates target programs. Run the Enchant test executables on
