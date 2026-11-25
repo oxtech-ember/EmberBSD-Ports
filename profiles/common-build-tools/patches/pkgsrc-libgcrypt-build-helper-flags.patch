@@ -1,0 +1,17 @@
+--- a/security/libgcrypt/Makefile
++++ b/security/libgcrypt/Makefile
+@@ -53,3 +53,14 @@
+ .endif
+ 
++# gost-s-box is compiled during make, after configure has read its environment.
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++MAKE_FLAGS+=	CPPFLAGS_FOR_BUILD=${NATIVE_CPPFLAGS:Q}
++MAKE_FLAGS+=	CFLAGS_FOR_BUILD=${NATIVE_CFLAGS:Q}
++MAKE_FLAGS+=	LDFLAGS_FOR_BUILD=${NATIVE_LDFLAGS:Q}
++.else
++MAKE_FLAGS+=	CPPFLAGS_FOR_BUILD=${CPPFLAGS:Q}
++MAKE_FLAGS+=	CFLAGS_FOR_BUILD=${CFLAGS:Q}
++MAKE_FLAGS+=	LDFLAGS_FOR_BUILD=${LDFLAGS:Q}
++.endif
++
+ .if ${OPSYS} == "Darwin"
