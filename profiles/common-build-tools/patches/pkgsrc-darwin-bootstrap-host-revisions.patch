@@ -1,0 +1,44 @@
+Rebuild Darwin bootstrap packages with public host metadata.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/pkgtools/bootstrap-mk-files/Makefile
++++ b/pkgtools/bootstrap-mk-files/Makefile
+@@ -69,4 +69,10 @@
+ 		${DESTDIR}${PREFIX}/libexec/emberbsd-darwin-builtin.sh
+ .endif
+ 
++.include "../../mk/bsd.prefs.mk"
++
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	7	# Rebuild with public host metadata.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/security/mozilla-rootcerts-openssl/Makefile
++++ b/security/mozilla-rootcerts-openssl/Makefile
+@@ -58,6 +58,12 @@
+ 	${CHMOD} go+r ${DESTDIR}${OPENSSLDIR}/*.pem
+ 	${CHMOD} go+r ${DESTDIR}${OPENSSLDIR}/*.crt
+ 
++.include "../../mk/bsd.prefs.mk"
++
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	1	# Rebuild with public host metadata.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+ 
+ # This must be after bsd.pkg.mk is included to work.
+--- a/archivers/zstd/Makefile
++++ b/archivers/zstd/Makefile
+@@ -24,6 +24,10 @@
+ #MAKE_JOBS_SAFE=		no
+ 
+ .include "../../mk/bsd.prefs.mk"
++
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	2	# Rebuild with public host metadata.
++.endif
+ 
+ # See HASH and BUILD_DIR in lib/Makefile and programs/Makefile.
+ # Set BUILD_DIR so that HASH is not needed and there is no

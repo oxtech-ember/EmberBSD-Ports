@@ -26,6 +26,10 @@ TEST_DIRS= install-info
 TEST_TARGET= check
 
 .include "../../mk/bsd.prefs.mk"
+
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	4	# Rebuild with public host metadata.
+.endif
 .include "../../devel/gtexinfo/cross.mk"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \

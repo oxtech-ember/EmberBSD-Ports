@@ -12,6 +12,10 @@ LICENSE=	2-clause-bsd AND gnu-gpl-v2
 USE_LANGUAGES=	c
 .include "../../mk/bsd.prefs.mk"
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	1	# Rebuild with public host metadata.
+.endif
+
 .if ${EMBERBSD_NATIVE_BOOTSTRAP:Uno} == "yes" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .error "EMBERBSD_NATIVE_BOOTSTRAP cannot be used for cross builds"
 .endif

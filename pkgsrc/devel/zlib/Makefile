@@ -22,6 +22,10 @@ CFLAGS+=		${CPPFLAGS}
 LDFLAGS.Cygwin=		-no-undefined
 
 .include "../../mk/bsd.prefs.mk"
+
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	1	# Rebuild with public host metadata.
+.endif
 .if ${MACHINE_ARCH} == i386
 # use NO_DIVIDE for adler32 if processor does not do division in hardware
 # which avoids needing emulation provided by libgcc_s
