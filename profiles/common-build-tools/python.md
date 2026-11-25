@@ -207,6 +207,13 @@ submitted or accepted upstream.
 
 ## Host and target separation
 
+Native Darwin Python 3.15 finds its standard library relative to the installed
+executable. Its compiled fallback is `/usr/pkg`. Standard-library bytecode
+records paths relative to the package. The installed extension settings retain
+the selected ABI and library flags. They omit staging ownership and use local
+tool names for build wrappers. Qualify the package in another SDK prefix and
+compile and import an extension with that Python.
+
 The recipe recognizes NetBSD/AArch64 in both upstream cross-host checks.
 The added cases agree between `configure` and `configure.ac`; other unknown
 targets still fail. The shipped configure remains the build entry point,

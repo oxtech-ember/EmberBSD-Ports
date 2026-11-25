@@ -127,6 +127,30 @@ PLIST_SUBST+=	PY_PLATNAME=${PY_PLATNAME:Q}
 # Origin: EmberBSD (AI-assisted), retain the selected Darwin ABI and libffi.
 .if ${OPSYS} == "Darwin"
 .  if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# Keep compiler defaults and traceback names independent of the producer.
+PKGREVISION=	8
+MAKE_FLAGS+=	host_prefix=/usr/pkg host_exec_prefix=/usr/pkg
+MAKE_FLAGS+=	COMPILEALL_OPTS=-j${MAKE_JOBS:U1}
+
+SUBST_CLASSES+=		darwin-pyc-path
+SUBST_STAGE.darwin-pyc-path=	pre-build
+SUBST_FILES.darwin-pyc-path=	Makefile
+SUBST_SED.darwin-pyc-path=	-e 's|-d [$$][(]LIBDEST[)]|-d lib/python${PY_VER_SUFFIX}|g'
+
+# Keep the installed toolchain settings for extension builds. Build-tree
+# paths and the owner used to stage files have no meaning on a client.
+SUBST_CLASSES+=		darwin-sysconfig darwin-config-make
+SUBST_STAGE.darwin-sysconfig=	post-build
+SUBST_FILES.darwin-sysconfig=	build/lib.*/_sysconfigdata_*.py
+SUBST_FILES.darwin-sysconfig+=	build/lib.*/_sysconfig_vars_*.json
+SUBST_STAGE.darwin-config-make=	post-install
+SUBST_FILES.darwin-config-make=	${DESTDIR}${PREFIX}/lib/python${PY_VER_SUFFIX}/config-${PY_VER_SUFFIX}/Makefile
+.    for stage in darwin-sysconfig darwin-config-make
+SUBST_FILTER_CMD.${stage}=	${AWK} -v work=${WRKDIR:Q} -v source=${WRKSRC:Q} \
+				-v ports=${PKGSRCDIR:Q} -v prefix=${PREFIX:Q} \
+				-v owner=${BINOWN:Q} -v group=${BINGRP:Q} \
+				-f ${FILESDIR}/native-paths.awk
+.    endfor
 .    if empty(OSX_SDK_PATH:M/*) || !exists(${OSX_SDK_PATH:U:Q}/.)
 PKG_FAIL_REASON+= "Python315 native Darwin requires OSX_SDK_PATH to name an existing absolute ABI directory"
 .    endif
