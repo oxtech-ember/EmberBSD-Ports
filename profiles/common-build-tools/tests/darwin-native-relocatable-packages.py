@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
-"""Check Darwin-only XZ and gettext-lib package metadata with bmake."""
+"""Check Darwin-only package revisions and relocation options with bmake."""
 import argparse
 import os
 import subprocess
@@ -11,6 +11,16 @@ for name in ('pkgsrc', 'native-makeconf', 'target-makeconf', 'bmake'):
     parser.add_argument('--' + name, type=Path, required=True)
 args = parser.parse_args()
 pkgsrc = args.pkgsrc.resolve(strict=True)
+
+def query_pkgname(pkgpath, makeconf):
+    env = dict(os.environ, MAKECONF=str(makeconf.resolve(strict=True)))
+    command = [str(args.bmake), '-C', str(pkgsrc / pkgpath),
+               'MAKECONF=' + env['MAKECONF'], 'PKGSRCDIR=' + str(pkgsrc),
+               'EMBERBSD_PKGSRCDIR=' + str(pkgsrc), 'show-vars',
+               'VARNAMES=PKGNAME']
+    result = subprocess.run(command, env=env, check=True, text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return result.stdout.strip()
 
 def query(pkgpath, makeconf):
     env = dict(os.environ, MAKECONF=str(makeconf.resolve(strict=True)))
@@ -47,4 +57,13 @@ assert xz_target[:3] == ['NetBSD', 'xz-5.8.4nb2', '2'], xz_target
 assert gettext_target[:3] == ['NetBSD', 'gettext-lib-1.0nb3', '3'], gettext_target
 assert '--enable-relocatable' not in gettext_target[3].split(), gettext_target
 assert 'prefix=/usr/pkg' not in gettext_target[4].split(), gettext_target
-print('PASS: Darwin native revisions are isolated; NetBSD names and gettext options stay unchanged')
+
+expected = {
+    'databases/sqlite3': ('sqlite3-3.54.1nb3', 'sqlite3-3.54.1nb3'),
+    'devel/libffi': ('libffi-3.8.1nb1', 'libffi-3.8.1'),
+    'textproc/expat': ('expat-2.10.0nb2', 'expat-2.10.0nb2'),
+}
+for pkgpath, (native_name, target_name) in expected.items():
+    assert query_pkgname(pkgpath, args.native_makeconf) == native_name, pkgpath
+    assert query_pkgname(pkgpath, args.target_makeconf) == target_name, pkgpath
+print('PASS: Darwin native revisions are isolated; target names stay unchanged')

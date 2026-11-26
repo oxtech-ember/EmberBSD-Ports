@@ -1,0 +1,42 @@
+--- a/databases/sqlite3/Makefile
++++ b/databases/sqlite3/Makefile
+@@ -518,6 +518,8 @@
+ post-install:
+ 	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id ${PREFIX}/lib/libsqlite3.dylib \
+ 		${DESTDIR}${PREFIX}/lib/libsqlite3.dylib
++	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id ${PREFIX}/lib/libsqlite3.${SQLITE3_VERSION}.dylib \
++		${DESTDIR}${PREFIX}/lib/libsqlite3.${SQLITE3_VERSION}.dylib
+ .endif
+ 
+ .include "../../mk/dlopen.buildlink3.mk"
+@@ -532,4 +534,8 @@
+ PKGREVISION=	3	# Record the base libc SONAME.
+ .endif
+ 
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	3	# Rebuild native package with portable provenance.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/libffi/Makefile
++++ b/devel/libffi/Makefile
+@@ -55,4 +55,8 @@
+ .endif
+ 
+ .include "../../mk/pthread.buildlink3.mk"
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	1	# Rebuild native package with portable provenance.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/expat/Makefile
++++ b/textproc/expat/Makefile
+@@ -40,4 +40,8 @@
+ PKGREVISION=	2	# Record the base libc SONAME.
+ .endif
+ 
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	2	# Rebuild native package with portable provenance.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
