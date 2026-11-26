@@ -30,6 +30,10 @@ pre-build:
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Rebuild with public host metadata.
+.endif
+
 # readelf is used only to inspect ELF .eh_frame flags. Darwin uses Mach-O
 # unwind sections, and the upstream configure probe permits no readelf.
 .if ${OPSYS} != "Darwin"

@@ -12,7 +12,8 @@ LICENSE=	2-clause-bsd AND gnu-gpl-v2
 USE_LANGUAGES=	c
 .include "../../mk/bsd.prefs.mk"
 
-.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+.if (${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes") || \
+    (${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64")
 PKGREVISION=	1	# Rebuild with public host metadata.
 .endif
 

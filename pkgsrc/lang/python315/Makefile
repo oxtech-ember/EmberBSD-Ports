@@ -12,6 +12,8 @@ PKGREVISION=	7
 PKGREVISION=	9
 PREFER.openssl=	pkgsrc
 BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
+.elif ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	8	# Rebuild with public host metadata.
 .endif
 CATEGORIES=	lang python
 
