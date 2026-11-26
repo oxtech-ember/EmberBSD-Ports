@@ -26,6 +26,10 @@ CPPFLAGS+=	-DPNG_USER_CHUNK_CACHE_MAX=128 -DPNG_USER_CHUNK_MALLOC_MAX=8000000
 CPPFLAGS.UnixWare+=	-D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=199506
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD"
+PREFER.zlib=	pkgsrc
+PKGREVISION=	2
+.endif
 .include "options.mk"
 
 # keep this in sync with the same code in buildlink3.mk
@@ -39,9 +43,5 @@ SUBST_VARS.rpathfix=	COMPILER_RPATH_FLAG
 SUBST_STAGE.rpathfix=	post-build
 
 .include "../../devel/zlib/buildlink3.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-PKGREVISION=	1	# Record the base libc SONAME.
-.endif
 
 .include "../../mk/bsd.pkg.mk"

@@ -29,3 +29,17 @@
  USE_TOOLS+=		pkg-config
  PKGCONFIG_OVERRIDE+=	output/meson-private/fontenc.pc
  
+--- a/devel/nss/Makefile
++++ b/devel/nss/Makefile
+@@ -30,6 +30,11 @@
+ 
+ .include "../../mk/bsd.prefs.mk"
+ 
++.if ${OPSYS} == "NetBSD"
++PREFER.zlib=	pkgsrc
++PKGREVISION=	2
++.endif
++
+ .if ${USE_CROSS_COMPILE:U:tl} == yes
+ 
+ MAKE_FLAGS+=		CROSS_COMPILE=1

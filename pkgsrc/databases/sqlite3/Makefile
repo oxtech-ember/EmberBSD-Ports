@@ -30,6 +30,12 @@ LDFLAGS+=		${COMPILER_RPATH_FLAG}${PREFIX}/lib
 MAKE_FLAGS+=		LDFLAGS=${LDFLAGS:Q}
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD"
+PREFER.zlib=	pkgsrc
+PKGREVISION=	4
+.elif ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	3
+.endif
 .if ${OBJECT_FMT} == "ELF"
 CONFIGURE_ARGS+=	${SQLITE_ELF_CONFIGURE_ARGS}
 .endif
@@ -518,6 +524,8 @@ LDFLAGS.SCO_SV+=	-lpthread
 post-install:
 	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id ${PREFIX}/lib/libsqlite3.dylib \
 		${DESTDIR}${PREFIX}/lib/libsqlite3.dylib
+	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id ${PREFIX}/lib/libsqlite3.${SQLITE3_VERSION}.dylib \
+		${DESTDIR}${PREFIX}/lib/libsqlite3.${SQLITE3_VERSION}.dylib
 .endif
 
 .include "../../mk/dlopen.buildlink3.mk"
@@ -526,10 +534,5 @@ post-install: sqlite-install-licenses
 .PHONY: sqlite-install-licenses
 sqlite-install-licenses:
 	${SH} ${FILESDIR}/install-licenses.sh ${WRKSRC} ${DESTDIR}${PREFIX} ${.CURDIR}
-
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-PKGREVISION=	3	# Record the base libc SONAME.
-.endif
 
 .include "../../mk/bsd.pkg.mk"

@@ -552,18 +552,6 @@
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
---- a/devel/nss/Makefile
-+++ b/devel/nss/Makefile
-@@ -209,4 +209,9 @@
- .include "../../devel/nspr/buildlink3.mk"
- .include "../../devel/zlib/buildlink3.mk"
- .include "../../mk/pthread.buildlink3.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-+PKGREVISION=	1	# Record the base libc SONAME.
-+.endif
-+
- .include "../../mk/bsd.pkg.mk"
 --- a/graphics/exiv2/Makefile
 +++ b/graphics/exiv2/Makefile
 @@ -42,4 +42,9 @@
