@@ -31,6 +31,10 @@ INSTALLATION_DIRS=	bin ${PKGMANDIR}/man1 share/examples/mksh
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	4	# Rebuild Darwin bootstrap with public package metadata.
+.endif
+
 # The bootstrap shell must not register itself as a login shell: its
 # +INSTALL script would need that same shell. This matches both bootstrap
 # prefixes, as in pinned pkgsrc.

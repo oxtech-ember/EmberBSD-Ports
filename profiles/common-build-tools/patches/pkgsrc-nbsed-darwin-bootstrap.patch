@@ -1,0 +1,24 @@
+--- a/textproc/nbsed/Makefile
++++ b/textproc/nbsed/Makefile
+@@ -3,6 +3,13 @@
+ DISTNAME=		nbsed-20240312
+ PKGREVISION=		2
+ CATEGORIES=		textproc pkgtools
++
++USE_FEATURES=		nbcompat
++
++.include "../../mk/bsd.prefs.mk"
++.if ${OPSYS} == "Darwin"
++PKGREVISION=		3
++.endif
+ MASTER_SITES=		# empty
+ DISTFILES=		# empty
+ 
+@@ -15,7 +22,6 @@
+ 
+ BOOTSTRAP_PKG=	yes
+ 
+-USE_FEATURES=		nbcompat
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--program-transform-name="s,sed,nbsed,"
+ 
