@@ -25,4 +25,30 @@ BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
     CROSS_BULK_BINARY_INSTALLED="$out/binary-installed" \
     sh "$ports/scripts/cross-bulk.sh" selected-build "$out/roots" "$out/state" > "$out/build-binary.log" 2>&1
 [ ! -s "$out/targets" ] || { echo 'Installed binaries were rebuilt' >&2; exit 1; }
+# A new SDK selection file must use the same package metadata as its predecessor.
+mv "$out/bmake" "$out/bmake-fixture"
+cat > "$out/bmake" <<'WRAPPER'
+#!/bin/sh
+if [ "${CROSS_BULK_BINARY_INSTALLED+x}" = x ]; then
+    echo 'The SDK selection reached bmake' >&2
+    exit 1
+fi
+exec "${0%/*}/bmake-fixture" "$@"
+WRAPPER
+chmod +x "$out/bmake"
+build_with_selection()
+{
+    BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
+        CROSS_BULK_BINARY_INSTALLED="$1" \
+        sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state"
+}
+cp "$out/binary-installed" "$out/next-selection"
+build_with_selection "$out/binary-installed" > "$out/first-manifest.log" 2>&1
+: > "$out/calls"
+build_with_selection "$out/next-selection" > "$out/next-manifest.log" 2>&1
+if grep -E '/cat/(app|dep) show-vars$' "$out/calls" >&2; then
+    echo 'Changing the SDK selection file repeated the package metadata queries' >&2
+    exit 1
+fi
+[ ! -s "$out/targets" ] || { echo 'Installed binaries were rebuilt' >&2; exit 1; }
 printf '%s\n' 'PASS: source graph identities and installed binary reuse'

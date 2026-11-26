@@ -70,6 +70,11 @@ umask 022
 mode=$1
 list=$2
 state=$3
+# Only the scheduler reads the SDK selection. Keep its path out of the
+# package environment and the cache identity derived from that environment.
+unset binary_selection_file
+binary_selection_file=${CROSS_BULK_BINARY_INSTALLED:-}
+unset CROSS_BULK_BINARY_INSTALLED
 case "$state" in
     /*) ;;
     *) echo "Not an absolute path: $state" >&2; exit 2 ;;
@@ -981,7 +986,8 @@ stage_supervise()
     for stage_db in "$(k_database "$native_pkg_info")" "$stage_target_db"; do
         case "$stage_db" in /*) set -- "$@" --prefix-database "$stage_db" ;; esac
     done
-    if "$host_python" -B -E -S "$(dirname "$stage_script")/stage-context-supervisor.py" --sdk-source "$sdk_source" --locks "$stage_json" --manifest "$stage_manifest" "$@" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"; then stage_status=0; else stage_status=$?; fi
+    if CROSS_BULK_BINARY_INSTALLED="$binary_selection_file" \
+        "$host_python" -B -E -S "$(dirname "$stage_script")/stage-context-supervisor.py" --sdk-source "$sdk_source" --locks "$stage_json" --manifest "$stage_manifest" "$@" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"; then stage_status=0; else stage_status=$?; fi
     # A normal supervisor exit proves that the owned session was drained.
     if [ "$stage_status" -lt 128 ]; then state_lock_release_safe=yes; fi
     rm -f "$stage_json"
@@ -2247,8 +2253,8 @@ record_source_archive()
 # predicate handles builds initiated without the scheduler.
 selected_binary_installed()
 {
-    [ -n "${CROSS_BULK_BINARY_INSTALLED:-}" ] || return 1
-    awk -v p="$1" -v n="$2" '$1 == p && $2 == n { found=1 } END { exit !found }' "$CROSS_BULK_BINARY_INSTALLED" || return 1
+    [ -n "$binary_selection_file" ] || return 1
+    awk -v p="$1" -v n="$2" '$1 == p && $2 == n { found=1 } END { exit !found }' "$binary_selection_file" || return 1
     set -f
     $target_pkg_info -e "$2" > /dev/null
 }
@@ -2257,7 +2263,7 @@ ready_binary()
 (
     rb_path=$1
     case "$rb_path" in *@native) return 1 ;; esac
-    awk -v p="$rb_path" '$1 == p {found=1} END {exit !found}' "$CROSS_BULK_BINARY_INSTALLED" || return 1
+    awk -v p="$rb_path" '$1 == p {found=1} END {exit !found}' "$binary_selection_file" || return 1
     vars_context=${build_vars_context:+$build_vars_context|target}
     rb_vars=$(pkg_vars "$rb_path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR') || return 1
     rb_work=$(printf '%s\n' "$rb_vars" | sed -n 2p)
@@ -2935,7 +2941,7 @@ build()
         elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ] && [ "$replacing" = 0 ] && [ "$waiting" = 0 ]; then
             changed=0
             ready $((workers - running)) > "$run/ready"
-            if [ -n "${CROSS_BULK_BINARY_INSTALLED:-}" ]; then
+            if [ -n "$binary_selection_file" ]; then
                 # Recompute the ready frontier after satisfying verified nodes,
                 # before dividing MAKE_JOBS among remaining source builds.
                 binary_progress=no

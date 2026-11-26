@@ -105,7 +105,8 @@ The client may fetch matching binaries for that closure before invoking the
 ordinary selected build.
 
 For that build only, `CROSS_BULK_BINARY_INSTALLED` names a client-owned list of
-verified binary selections in the same two-column format. Target builds skip a
+verified binary selections in the same two-column format. The scheduler reads
+this file. Changing its path preserves the package metadata cache. Target builds skip a
 listed node only when its evaluated PKGNAME still matches and pkg_info confirms
 that exact name is installed. Ordinary source builds and explicit package-stage
 recovery keep their existing rebuild rules. Native packages retain their

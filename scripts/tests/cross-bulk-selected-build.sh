@@ -232,10 +232,17 @@ rm -rf "$out/state/build.lock"
 # controller must compute the environment identity through that selected
 # implementation, without depending on another PATH directory.
 mkdir -p "$out/no-awk-bin"
-for tool in env sort shasum rm mkdir rmdir printf tsort; do
-    resolved=$(command -v "$tool") || fail "test host lacks $tool"
-    ln -s "$resolved" "$out/no-awk-bin/$tool"
-done
+"$host_python" - "$out/no-awk-bin" <<'PY'
+from pathlib import Path
+from shutil import which
+import sys
+
+for tool in "env sort shasum rm mkdir rmdir printf tsort".split():
+    executable = which(tool)
+    if executable is None:
+        sys.exit(f"test host lacks {tool}")
+    (Path(sys.argv[1]) / tool).symlink_to(Path(executable).absolute())
+PY
 nawk_path=$(command -v nawk || command -v awk) || fail 'test host lacks an awk-compatible implementation'
 ln -s "$nawk_path" "$out/no-awk-bin/nawk"
 [ ! -e "$out/no-awk-bin/awk" ] || fail 'curated PATH unexpectedly contains awk'
