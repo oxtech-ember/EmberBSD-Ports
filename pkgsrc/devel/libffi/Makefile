@@ -30,7 +30,8 @@ pre-build:
 
 .include "../../mk/bsd.prefs.mk"
 
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "x86_64" || ${MACHINE_ARCH} == "aarch64")
 PKGREVISION=	1	# Rebuild with public host metadata.
 .endif
 
