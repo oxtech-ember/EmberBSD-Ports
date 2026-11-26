@@ -835,17 +835,9 @@ fetch()
     rm -f "$state/sizes"
 }
 
-# Resolve the same build variables used by the actual worker, then lock every
-# selected WRKDIR across the supervised invocation.  The metadata cache uses
-# the identical role, arguments and variable list as build_one/build_native.
-stage_supervise()
+# Use the same role, variables and arguments as build_one and build_native.
+stage_lock_rows()
 {
-    stage_mode=$1
-    stage_nodes=$2
-    stage_rows=$state/.stage-locks.$$.tsv
-    stage_json=$state/.stage-locks.$$.json
-    stage_manifest=$state/.stage-locked.$$.txt
-    : > "$stage_rows"
     while IFS= read -r stage_node; do
         [ -n "$stage_node" ] || continue
         case "$stage_node" in
@@ -858,13 +850,86 @@ stage_supervise()
                 set +f ;;
             *) stage_path=$stage_node; vars_context=${build_vars_context:+$build_vars_context|target}; set -- ;;
         esac
-        stage_values=$(pkg_vars "$stage_path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR' "$@") || return 1
+        stage_values=$(pkg_vars "$stage_path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR' "$@") || return $?
         stage_work=$(printf '%s\n' "$stage_values" | sed -n 2p)
         stage_root=$(printf '%s\n' "$stage_values" | sed -n 7p)
         [ -n "$stage_root" ] || stage_root=$(dirname "$stage_work")
         case "$stage_root:$stage_work" in /*:/*) ;; *) echo "Invalid stage metadata for $stage_node" >&2; return 1 ;; esac
-        printf '%s\t%s\n' "$stage_root" "$stage_work" >> "$stage_rows"
-    done < "$stage_nodes"
+        printf '%s\t%s\n' "$stage_root" "$stage_work"
+    done
+}
+
+# Query independent package directories within the SDK job budget. Contiguous
+# input groups preserve the node order when their completed rows are joined.
+stage_collect_lock_rows()
+{
+    stage_count=$(wc -l < "$1") || return 1
+    stage_limit=${CROSS_BULK_JOBS:-$cpus}
+    count CROSS_BULK_JOBS "$stage_limit"
+    if [ "$stage_limit" -gt "$cpus" ]; then
+        echo "CROSS_BULK_JOBS=$stage_limit exceeds resolved CPU capacity=$cpus" >&2
+        return 1
+    fi
+    if [ "$stage_count" -le 1 ] || [ "$stage_limit" -eq 1 ]; then
+        stage_lock_rows < "$1"
+        return $?
+    fi
+
+    stage_dir=$(mktemp -d "$run/stage-queries.XXXXXXXX") || return 1
+    stage_group=$(( (stage_count + stage_limit - 1) / stage_limit ))
+    if ! (cd "$stage_dir" && awk -v size="$stage_group" '
+        (NR - 1) % size == 0 {
+            if (file != "") close(file)
+            file = sprintf("%09d.nodes", NR)
+        }
+        { print > file }
+    ') < "$1"; then
+        rm -r "$stage_dir"
+        return 1
+    fi
+    stage_prior_safe=$state_lock_release_safe
+    state_lock_release_safe=no
+    stage_pids=
+    for stage_part in "$stage_dir"/*.nodes; do
+        stage_lock_rows < "$stage_part" > "$stage_part.rows" &
+        stage_pids="$stage_pids $!"
+    done
+
+    stage_status=0
+    for stage_pid in $stage_pids; do
+        while :; do
+            stage_rc=0
+            wait "$stage_pid" || stage_rc=$?
+            # A trapped signal can interrupt wait before the child exits.
+            [ "$stage_rc" -gt 128 ] && kill -0 "$stage_pid" 2>/dev/null || break
+        done
+        if [ "$stage_rc" -ge 128 ] || [ "$stage_status" -eq 0 ]; then
+            stage_status=$stage_rc
+        fi
+    done
+    [ "$stage_status" -lt 128 ] || return "$stage_status"
+    state_lock_release_safe=$stage_prior_safe
+    if [ "$stage_status" -eq 0 ]; then
+        cat "$stage_dir"/*.rows || stage_status=$?
+    fi
+    rm -r "$stage_dir"
+    return "$stage_status"
+}
+
+stage_supervise()
+{
+    stage_mode=$1
+    stage_nodes=$2
+    stage_rows=$state/.stage-locks.$$.tsv
+    stage_json=$state/.stage-locks.$$.json
+    stage_manifest=$state/.stage-locked.$$.txt
+    stage_status=0
+    stage_collect_lock_rows "$stage_nodes" > "$stage_rows" || stage_status=$?
+    if [ "$stage_status" -ne 0 ] || [ "${stop:-0}" != 0 ]; then
+        rm -f "$stage_rows"
+        [ "$stage_status" -eq 0 ] || return "$stage_status"
+        return 143
+    fi
     "$host_python" -B -c 'import json,sys; rows=[x.rstrip("\n").split("\t") for x in open(sys.argv[1])]; json.dump([{"root":a,"work":b} for a,b in rows],open(sys.argv[2],"w"))' "$stage_rows" "$stage_json" || return 1
     rm -f "$stage_rows"
     stage_script=$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")

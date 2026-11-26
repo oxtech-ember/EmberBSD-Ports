@@ -785,6 +785,9 @@ a `PKGREVISION` in an included `.mk`, an edited MAKECONF, a replaced tree or a
 new file such as `hacks.mk` next to a makefile. This holds for a Git checkout
 and for an exported or hand-edited tree alike. `CROSS_BULK_VARS_CACHE=no`
 turns the cache off.
+Before it takes stage locks, the controller queries independent package directories
+in parallel. It uses the SDK CPU budget or the explicit `CROSS_BULK_JOBS` limit.
+It sends the complete lock list to the supervisor in package order.
 `scripts/tests/cross-bulk-trash.sh NEW_OUTPUT` checks with a slow clean step
 that no package waits for a removal.
 `scripts/tests/cross-bulk-clean-success-fallback.sh NEW_OUTPUT` checks native
