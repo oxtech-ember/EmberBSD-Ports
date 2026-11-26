@@ -21,8 +21,6 @@ WRKSRC=			${WRKDIR}/${GITHUB_PROJECT}-${GITHUB_PROJECT}-${PKGVER}
 BUILD_DIRS=		mDNSPosix
 BUILDDIR=		${WRKSRC}/mDNSPosix/build/prod
 
-CFLAGS+=		-DPID_FILE=\"${VARBASE}/run/mdnsd/mdnsd.pid\"
-CFLAGS+=		-DMDNS_UDS_SERVERPATH=\"${VARBASE}/run/mdnsd/mdnsd\"
 BUILDLINK_TRANSFORM+=	rm:-Werror
 
 USE_GCC_RUNTIME=	yes
@@ -69,6 +67,13 @@ CWRAPPERS_PREPEND.cc+=	${_RELRO_LDFLAGS}
 CWRAPPERS_PREPEND.cxx+=	${_RELRO_LDFLAGS}
 
 .include "../../mk/bsd.prefs.mk"
+
+.if ${OPSYS} == "NetBSD"
+PKGREVISION=	10
+.endif
+# Use the target VARBASE for both the daemon and its clients.
+CFLAGS+=		-DPID_FILE=\"${VARBASE}/run/mdnsd/mdnsd.pid\"
+CFLAGS+=		-DMDNS_UDS_SERVERPATH=\"${VARBASE}/run/mdnsd/mdnsd\"
 
 # Only the Darwin default target builds the dnsextd lexer and parser.
 .if ${OPSYS} == "Darwin"
