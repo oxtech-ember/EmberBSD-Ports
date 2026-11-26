@@ -32,7 +32,7 @@ CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
 # ext/phar runs PHP to make phar.php and phar.phar and prefers the
 # sapi/cli/php it has just linked, a target executable in a cross build.
 # Run the native php of the same version in TOOLBASE instead.
-TOOL_DEPENDS+=		${PKGNAME}:../../lang/php86
+TOOL_DEPENDS+=		${PHP_PKG_PREFIX}-${PHP_VERSION}{,nb[0-9]*}:../../lang/php86
 MAKE_FLAGS+=		PHP_EXECUTABLE=${TOOLBASE}/bin/php${PHP_VER}
 MAKE_FLAGS+=		PHP_PHARCMD_EXECUTABLE=${TOOLBASE}/bin/php${PHP_VER}
 .endif
