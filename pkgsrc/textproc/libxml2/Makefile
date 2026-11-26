@@ -4,6 +4,13 @@
 
 PKGREVISION=	5
 
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD"
+# libxml2 links to libz in the package prefix.
+PREFER.zlib=	pkgsrc
+PKGREVISION=	7
+.endif
+
 # The release tarball omits two CMake test drivers from the same upstream tag.
 post-extract:
 	${CP} ${FILESDIR}/run_and_diff.cmake ${WRKSRC}/
@@ -64,8 +71,6 @@ CPPFLAGS.Linux+=	-D_POSIX_C_SOURCE=200112L
 
 CONFIGURE_ENV+=	COMPILER_RPATH_FLAG=${COMPILER_RPATH_FLAG:Q}
 
-.include "../../mk/bsd.prefs.mk"
-
 .if ${OPSYS} == "Darwin" && ${OPSYS_VERSION} < 100500
 BUILDLINK_TRANSFORM+=	rm:-Wno-array-bounds
 .endif
@@ -78,9 +83,4 @@ BUILDLINK_TRANSFORM+=	rm:-Wno-array-bounds
 DL_AUTO_VARS=	yes
 .include "../../mk/dlopen.buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-PKGREVISION=	6	# Record the base libc SONAME.
-.endif
-
 .include "../../mk/bsd.pkg.mk"
