@@ -4,10 +4,12 @@ DISTNAME=	gobject-introspection-1.86.0
 PKGREVISION=	11
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-PKGREVISION=	12	# Relocatable names for prefix-owned introspection libraries.
+PKGREVISION=	13	# Use the selected SDK Mach-O inspection tool.
+DEPENDS+=	llvm-[0-9]*:../../lang/llvm
 
 post-patch:
 	${RUN} ${PATCH} ${PATCH_ARGS} ${PATCH_FUZZ_FACTOR} < ${FILESDIR:Q}/darwin-dylib-names.patch
+	${RUN} ${PATCH} ${PATCH_ARGS} ${PATCH_FUZZ_FACTOR} < ${FILESDIR:Q}/darwin-sdk-otool.patch
 .elif ${OPSYS} == "NetBSD"
 PKGREVISION=	12	# Updated libffi shared-library requirement.
 .endif

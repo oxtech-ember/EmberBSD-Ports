@@ -1,0 +1,50 @@
+$NetBSD$
+
+Use the selected SDK LLVM tool to inspect Darwin shared libraries.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- giscanner/shlibs.py.orig
++++ giscanner/shlibs.py
+@@ -101,7 +101,7 @@
+             args.extend(options.ldd_wrapper)
+             args.append(binary.args[0])
+         elif platform_system == 'Darwin':
+-            args.extend(['otool', '-L', binary.args[0]])
++            args.extend(['llvm-otool', '-L', binary.args[0]])
+         else:
+             args.extend(['ldd', binary.args[0]])
+         output = subprocess.check_output(args)
+--- tests/scanner/test_shlibs.py.orig
++++ tests/scanner/test_shlibs.py
+@@ -1,11 +1,31 @@
+ import unittest
+ import sys
+ import os
++from unittest.mock import patch
++from types import SimpleNamespace
+ 
+ from giscanner.shlibs import resolve_from_ldd_output, sanitize_shlib_path
+ 
+ 
+ class TestLddParser(unittest.TestCase):
++
++    def test_darwin_resolver_uses_llvm_otool(self):
++        from giscanner.shlibs import _resolve_non_libtool
++
++        options = SimpleNamespace(nolibtool=True, libtool_path=None, ldd_wrapper=None)
++        binary = SimpleNamespace(args=['/tmp/libfoo.dylib'])
++        output = '@rpath/libfoo.dylib (compatibility version 1.0.0, current version 1.0.0)'
++
++        with patch('giscanner.shlibs.platform.platform', return_value='Darwin'):
++            with patch('giscanner.shlibs.platform.system', return_value='Darwin'):
++                with patch('giscanner.shlibs.subprocess.check_output', return_value=output) as run:
++                    self.assertEqual(_resolve_non_libtool(options, binary, ['foo']), ['libfoo.dylib'])
++                    run.assert_called_once_with(['llvm-otool', '-L', '/tmp/libfoo.dylib'])
++
++                with patch('giscanner.shlibs.subprocess.check_output', side_effect=FileNotFoundError) as run:
++                    with self.assertRaises(FileNotFoundError):
++                        _resolve_non_libtool(options, binary, ['foo'])
++                    run.assert_called_once_with(['llvm-otool', '-L', '/tmp/libfoo.dylib'])
+ 
+     def test_resolve_from_ldd_output(self):
+         output = '''\
