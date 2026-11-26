@@ -21,8 +21,8 @@
 +.PHONY: ruby-install-target-metadata
 +ruby-install-target-metadata:
 +	${TOOLBASE:Q}/bin/${RUBY_NAME:Q} --disable-gems \
-+	    ${.CURDIR:Q}/install-cross-rbconfig.rb \
-+	    ${DESTDIR:Q}${PREFIX:Q}/${RUBY_ARCHLIB}/rbconfig.rb ${WRKSRC:Q}
++	    ${.CURDIR:Q}/install-rbconfig.rb \
++	    ${DESTDIR:Q}${PREFIX:Q}/${RUBY_ARCHLIB}/rbconfig.rb ${WRKSRC:Q} cross
 +# Ruby generates these fragments while building extensions from bundled gems.
 +.for gem in bigdecimal debug fiddle nkf racc rbs syslog
 +	${RM} -f ${DESTDIR:Q}${PREFIX:Q}/${GEM_HOME}/gems/${gem}-${RUBY_${gem:tu}_VER}/exts.mk
@@ -97,49 +97,3 @@
  ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/lib/syslog.rb
  ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/lib/syslog/logger.rb
  ${GEM_HOME}/gems/test-unit-${RUBY_TEST_UNIT_VER}/BSDL
---- /dev/null
-+++ b/lang/ruby40/install-cross-rbconfig.rb
-@@ -0,0 +1,43 @@
-+# Keep build-time rbconfig intact for Ruby's own generators. Extensions use
-+# this installed copy on the target and through RubyGems --target-rbconfig.
-+require "shellwords"
-+
-+path, build_dir = ARGV
-+target = Module.new
-+Kernel.load(path, target)
-+config = target::RbConfig::MAKEFILE_CONFIG
-+replacements = {
-+  "INSTALL" => "/usr/bin/install -c",
-+  "MKDIR_P" => "/bin/mkdir -p",
-+  "MAKEDIRS" => "/bin/mkdir -p",
-+  "SHELL" => "/bin/sh",
-+}
-+%w[AR RANLIB RUSTC].each do |name|
-+  value = config[name]
-+  replacements[name] = File.basename(value) if value&.start_with?("/")
-+end
-+if config["RUST_LIB"]
-+  replacements["RUST_LIB"] = config["RUST_LIB"].delete_prefix(build_dir + "/")
-+end
-+if config["CC_VERSION_MESSAGE"]
-+  replacements["CC_VERSION_MESSAGE"] =
-+    config["CC_VERSION_MESSAGE"].lines.reject { |line| line.start_with?("InstalledDir: ") }.join.chomp
-+end
-+args = Shellwords.split(config.fetch("configure_args")).map do |arg|
-+  option, separator, value = arg.partition("=")
-+  if %w[--with-baseruby AR RANLIB RUSTC].include?(option) && value.start_with?("/")
-+    option + separator + File.basename(value)
-+  else
-+    arg
-+  end
-+end
-+replacements["configure_args"] = Shellwords.join(args)
-+
-+source = File.binread(path)
-+replacements.each do |key, value|
-+  assignment = /^  CONFIG\[#{Regexp.escape(key.dump)}\] = .*$/
-+  raise "missing RbConfig assignment for #{key}" unless source.sub!(assignment) {
-+    "  CONFIG[#{key.dump}] = #{value.dump}"
-+  }
-+end
-+File.binwrite(path, source)

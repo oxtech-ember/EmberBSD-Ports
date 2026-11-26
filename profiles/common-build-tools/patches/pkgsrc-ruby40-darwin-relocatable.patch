@@ -1,6 +1,6 @@
 --- a/lang/ruby40/Makefile
 +++ b/lang/ruby40/Makefile
-@@ -19,6 +19,16 @@
+@@ -19,6 +19,30 @@
  TEST_TARGET=		test
  CONFIGURE_ARGS+=	--enable-shared --enable-install-static-library
  CONFIGURE_ARGS+=	--without-git
@@ -10,10 +10,72 @@
 +.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 +CONFIGURE_ARGS+=	--enable-load-relative
 +CONFIGURE_ARGS+=	--with-destdir=${PREFIX}
-+.  if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
-+PKGREVISION=	1
++PKGREVISION=	2
++USE_TOOLS+=	find
++post-install: ruby-install-darwin-rbconfig
++.PHONY: ruby-install-darwin-rbconfig
++ruby-install-darwin-rbconfig:
++	${WRKSRC:Q}/miniruby --disable-gems ${.CURDIR:Q}/install-rbconfig.rb \
++	    ${DESTDIR:Q}${PREFIX:Q}/${RUBY_ARCHLIB:Q}/rbconfig.rb ${WRKSRC:Q} native
++.  if ${INSTALL_UNSTRIPPED:Uno:tl} != "yes"
++post-install: ruby-strip-darwin-debug
++.PHONY: ruby-strip-darwin-debug
++ruby-strip-darwin-debug:
++	${STRIP:Q} -S ${DESTDIR:Q}${PREFIX:Q}/lib/libruby${RUBY_STATICLIB:Q} \
++	    ${DESTDIR:Q}${PREFIX:Q}/bin/${RUBY_NAME:Q} \
++	    ${DESTDIR:Q}${PREFIX:Q}/lib/libruby${RUBY_SHLIB:Q}
++	${FIND:Q} ${DESTDIR:Q}${PREFIX:Q}/lib/ruby -type f -name '*.bundle' \
++	    -exec ${STRIP:Q} -S {} +
 +.  endif
 +.endif
  MAKE_ENV+=		XDG_DATA_HOME=${WRKDIR}
  WRKSRC=			${RUBY_WRKSRC}
  FILES_SUBST+=		PKGMANDIR=${PKGMANDIR:Q}
+--- /dev/null
++++ b/lang/ruby40/install-rbconfig.rb
+@@ -0,0 +1,45 @@
++# Keep build-time rbconfig intact. Normalize paths in this installed copy.
++path, build_dir, mode = ARGV
++abort "usage: install-rbconfig.rb path WRKSRC native|cross" unless
++  path && build_dir && %w[native cross].include?(mode)
++target = Module.new
++Kernel.load(path, target)
++config = target::RbConfig::MAKEFILE_CONFIG
++replacements = {}
++if config["RUST_LIB"]
++  replacements["RUST_LIB"] = config["RUST_LIB"].delete_prefix(build_dir + "/")
++end
++if mode == "cross"
++  require "shellwords"
++  replacements.merge!(
++    "INSTALL" => "/usr/bin/install -c",
++    "MKDIR_P" => "/bin/mkdir -p",
++    "MAKEDIRS" => "/bin/mkdir -p",
++    "SHELL" => "/bin/sh",
++  )
++  %w[AR RANLIB RUSTC].each do |name|
++    value = config[name]
++    replacements[name] = File.basename(value) if value&.start_with?("/")
++  end
++  if config["CC_VERSION_MESSAGE"]
++    replacements["CC_VERSION_MESSAGE"] =
++      config["CC_VERSION_MESSAGE"].lines.reject { |line| line.start_with?("InstalledDir: ") }.join.chomp
++  end
++  args = Shellwords.split(config.fetch("configure_args")).map do |arg|
++    option, separator, value = arg.partition("=")
++    if %w[--with-baseruby AR RANLIB RUSTC].include?(option) && value.start_with?("/")
++      option + separator + File.basename(value)
++    else
++      arg
++    end
++  end
++  replacements["configure_args"] = Shellwords.join(args)
++end
++source = File.binread(path)
++replacements.each do |key, value|
++  assignment = /^  CONFIG\[#{Regexp.escape(key.dump)}\] = .*$/
++  raise "missing RbConfig assignment for #{key}" unless source.sub!(assignment) {
++    "  CONFIG[#{key.dump}] = #{value.dump}"
++  }
++end
++File.binwrite(path, source)

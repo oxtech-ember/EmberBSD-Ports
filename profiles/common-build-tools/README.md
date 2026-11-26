@@ -360,6 +360,16 @@ Native Darwin Ruby uses upstream `--enable-load-relative` so a qualified
 package resolves its standard library from its installed prefix. The metadata
 regression is `tests/ruby-darwin-relocatable.py`; relocated runtime acceptance
 is still required for a package release.
+Native Darwin packages strip debug information from `ruby40`, libruby and
+every installed `.bundle`. This removes compiler and build paths from Mach-O
+debug symbols without removing exported symbols. The installed `rbconfig.rb`
+also stores `RUST_LIB` relative to the Ruby build directory. This change does
+not alter Ruby's build configuration. Set `INSTALL_UNSTRIPPED=yes` to retain
+Mach-O debug information; `RUST_LIB` normalization still runs. NetBSD builds
+keep their target configuration and strip behavior.
+`tests/ruby-darwin-relocatable.py` checks native and cross make metadata,
+expanded post-install commands, and `RUST_LIB` normalization through the built
+`miniruby`.
 The minimal Darwin SDK omits the optional RI database because upstream RI
 names collide on case-insensitive filesystems. Explicit `ruby-build-ri-db`
 remains available; that choice is not qualified for those filesystems. The
