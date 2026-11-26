@@ -11,4 +11,4 @@ SHA1 (patch-test_ELF_emulation-arm.s) = 52dbd87573a0cdb6963afafcdf45d00142da3415
 SHA1 (patch-test_MachO_flat-namespace-dysyms.s) = c08ceebf440c0516896eab070feb75cb5d28580a
 SHA1 (patch-test_lit.cfg.py) = 73f6abea9c105b7e59f8e7e742f80ef02661efb1
 SHA1 (patch-MachO_InputFiles.cpp) = 5c5fe36e68ea86ccb8d7d16359638eddaa856419
-SHA1 (patch-unittests_CMakeLists.txt) = b3080a05c8179401bdbeaa16529e5e60ec108e05
+SHA1 (patch-unittests_CMakeLists.txt) = 3f2a1888a9855be5e7b1cd0662d8a223ac4c704e
