@@ -15,7 +15,7 @@
  
 --- a/lang/ruby/platform.mk
 +++ b/lang/ruby/platform.mk
-@@ -128,11 +128,24 @@
+@@ -128,11 +128,27 @@
  
  CONFIGURE_ENV.SunOS+=	OBJCOPY=:
  
@@ -24,8 +24,9 @@
 -# of our cc wrapper because it tries to invoke the system-default gcc
 -# with argv[0] set to "gcc", not the absolute path to gcc.
 -.if exists(/usr/sbin/dtrace)
-+# In the Darwin bootstrap, DTrace and its compiler are explicit native tools.
-+.if ${OPSYS} == "Darwin" && ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++# On Darwin, use the DTrace provider and compiler selected by Ports.
++.if ${OPSYS} == "Darwin" && (\
++    ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes" || !empty(TOOLS_PLATFORM.dtrace))
 +.  if !defined(TOOLS_PLATFORM.dtrace) || empty(TOOLS_PLATFORM.dtrace) || \
 +      ${TOOLS_PLATFORM.dtrace:[#]} != 1 || empty(TOOLS_PLATFORM.dtrace:M/*)
 +PKG_FAIL_REASON+=	Select the declared DTrace provider for the Darwin bootstrap.
@@ -41,6 +42,8 @@
 +		> "${WRAPPER_BINDIR}/dtrace"
 +	${RUN}${CHMOD} +x "${WRAPPER_BINDIR}/dtrace"
 +.  endif
++.elif ${OPSYS} == "Darwin"
++CONFIGURE_ARGS+=	--disable-dtrace
 +.elif exists(/usr/sbin/dtrace)
  post-wrapper:
  	${RUN}(${ECHO} '#!${SH}'; \

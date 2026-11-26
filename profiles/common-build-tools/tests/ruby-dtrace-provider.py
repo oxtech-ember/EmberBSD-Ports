@@ -44,10 +44,10 @@ def main():
     selected_dtrace.chmod(0o755)
     makefile = args.work / 'Makefile'
 
-    def makefile_text(opsys='Darwin', provider=selected_dtrace, override=None):
+    def makefile_text(opsys='Darwin', provider=selected_dtrace, override=None, bootstrap='yes'):
         variables = ('.SHELL: name=sh path=' + str(args.shell) +
                      ' hasErrCtl=no check="set -e" ignore="set +e" echoFlag=v errFlag=e\n' +
-                     f'OPSYS= {opsys}\nEMBERBSD_DARWIN_BOOTSTRAP= yes\n')
+                     f'OPSYS= {opsys}\nEMBERBSD_DARWIN_BOOTSTRAP= {bootstrap}\n')
         if provider is not None:
             variables += f'TOOLS_PLATFORM.dtrace= {provider}\n'
         variables += f'PKG_CC= {selected_cc}\n'
@@ -102,6 +102,21 @@ def main():
             'DTRACE must match the selected Darwin provider' in result.stdout,
             'A DTRACE override bypassed the selected bootstrap provider')
     require(not wrapper.exists(), 'A mismatched provider created a wrapper')
+
+    normal = args.work / 'native.mk'
+    normal.write_text(makefile_text(provider=None, bootstrap='no'))
+    result = subprocess.run([str(args.make), '-r', '-f', str(normal),
+                             '-V', 'CONFIGURE_ARGS', '-V', '.ALLTARGETS'],
+                            cwd=args.work, env=env, capture_output=True, text=True)
+    require(result.returncode == 0 and '--disable-dtrace' in result.stdout.split()
+            and 'post-wrapper' not in result.stdout.split(),
+            'Native Ruby selected DTrace without a configured provider')
+
+    normal.write_text(makefile_text(bootstrap='no'))
+    result = run(filename=normal)
+    require(result.returncode == 0 and str(selected_dtrace) in wrapper.read_text(),
+            'Native Ruby did not use its selected DTrace provider')
+    wrapper.unlink()
 
     other = args.work / 'other-platform.mk'
     other.write_text(makefile_text(opsys='NetBSD'))

@@ -351,6 +351,9 @@ The export keeps only Ruby 4.0. Its `rubyversion.mk` supports, accepts and
 defaults to 4.0 alone, so no profile sets its own Ruby default and builds
 without a profile, such as the Darwin bootstrap, also select `lang/ruby40`.
 Recursive host generators use native Ruby and `ruby40-asciidoctor`.
+On Darwin, native Ruby builds DTrace probes when Ports selects a DTrace
+provider. The Darwin bootstrap requires an explicit provider. Other native
+Darwin builds use Ruby's disabled-probe headers when the provider is absent.
 Native Darwin Ruby uses upstream `--enable-load-relative` so a qualified
 package resolves its standard library from its installed prefix. The metadata
 regression is `tests/ruby-darwin-relocatable.py`; relocated runtime acceptance
