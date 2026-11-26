@@ -346,6 +346,40 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.assertEqual(graph, parallel)
         self.assertEqual(peak_concurrency(), 2)
 
+    def test_parallel_timeout_retries_only_the_affected_query(self):
+        args = types.SimpleNamespace(pkgsrc=self.pkgsrc, makeconf=self.config, bmake=self.bmake,
+                                     pkg_admin=self.pkg_admin, make_variable=[], max_nodes=10, jobs=2)
+        exporter = graph.Exporter(args, lambda path: '')
+        exporter.native_toolset_initialized = True
+        calls = []
+
+        def query(package, *_):
+            calls.append(package)
+            if package == 'devel/library' and calls.count(package) == 1:
+                raise subprocess.TimeoutExpired('bmake', 1)
+            return {'_VERIFIED_NATIVE_TOOLSET': None, 'PKGNAME': package}
+
+        exporter.query = query
+        requests = [(name, 'yes', {}, {}, '') for name in ('devel/app', 'devel/library', 'devel/runtime')]
+        exporter.prefetch(requests)
+        self.assertCountEqual(calls, ['devel/app', 'devel/library', 'devel/runtime', 'devel/library'])
+        self.assertEqual(calls[-1], 'devel/library')
+        self.assertEqual(len(exporter.query_results), 3)
+
+    def test_shared_export_binds_the_recorded_revision_and_inputs(self):
+        snapshot = {'api': 1, 'files': {}, 'trees': {}, 'upstream': '1' * 40}
+        checksum = hashlib.sha256(json.dumps(snapshot, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        patch = {'path': '/fixture/patch', 'sha256': '2' * 64}
+        revision = '3' * 40
+        receipt = dict(format='emberbsd-pkgsrc-shared-export', version=4, material={'net/libfetch/files': {}},
+                       dirty_inputs={}, patch_provenance=dict(base=patch, files={}, packages={}),
+                       inputs=snapshot, identity=dict(api=1, ports_commit=revision, upstream='1' * 40,
+                                                      patch=patch, export_inputs_sha256=checksum))
+        (self.pkgsrc.parent / 'pkgsrc-export.json').write_text(json.dumps(receipt))
+        self.assertIn('revision differs', self.run_export(success=False))
+        value = self.run_export('--revision', revision)
+        self.assertEqual(value['context']['shared_inputs']['pkgsrc-export'], checksum)
+
     def test_parallel_frontier_coalesces_exact_requests(self):
         self.packages['devel/app']['DEPENDS'] = 'library>=1:../../devel/library'
         self.run_export('--jobs', '3')

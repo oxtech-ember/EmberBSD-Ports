@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -132,6 +133,21 @@ class Exporter:
         if overlap:
             raise ExportError('conflicting --make-variable and --native-make-variable: ' + overlap[0])
         self.root = args.pkgsrc.resolve(strict=True)
+        self.export_digest = None
+        if self.root.name == 'pkgsrc':
+            directory = self.root.parent
+            if os.path.lexists(directory / '.pkgsrc-update-incomplete'):
+                raise ExportError('shared pkgsrc export update is incomplete')
+            receipt = directory / 'pkgsrc-export.json'
+            if receipt.exists():
+                from emberbsd_sdk.jsonio import read_json
+                source = read_json(receipt)
+                validate = runpy.run_path(str(Path(__file__).with_name('pkgsrc-source-identity.py')))
+                validate['validate_shared_receipt'](source)
+                identity = source['identity']
+                if identity['ports_commit'] != args.revision:
+                    raise ExportError('graph revision differs from the shared pkgsrc export')
+                self.export_digest = identity['export_inputs_sha256']
         self.makeconf = args.makeconf.resolve(strict=True)
         self.bmake = args.bmake.resolve(strict=True)
         self.pkg_admin = args.pkg_admin.resolve(strict=True)
@@ -498,15 +514,23 @@ class Exporter:
             results = []
         else:
             results = []
+            retries = []
             with ThreadPoolExecutor(max_workers=min(self.args.jobs, len(remaining))) as pool:
                 futures = [pool.submit(self.query, *request) for request in remaining]
                 try:
-                    # Consume in request order so graph mutation and failures stay deterministic.
-                    results = [future.result() for future in futures]
+                    # Keep successful queries when concurrent bmake processes time out.
+                    for index, future in enumerate(futures):
+                        try:
+                            results.append(future.result())
+                        except subprocess.TimeoutExpired:
+                            results.append(None)
+                            retries.append(index)
                 except BaseException:
                     for future in futures:
                         future.cancel()
                     raise
+            for index in retries:
+                results[index] = self.query(*remaining[index])
         for request, metadata in zip(remaining, results):
             self.accept_native_toolset(metadata)
             self.query_results[self.query_key(*request)] = metadata
@@ -639,6 +663,8 @@ class Exporter:
                   'make-variables': digest(canonical(self.make_variables)),
                   'environment': digest(canonical(self.environment)),
                   'exporter': self.file_digest(Path(__file__))}
+        if self.export_digest:
+            shared['pkgsrc-export'] = self.export_digest
         if self.native_make_variables:
             shared['native-make-variables'] = digest(canonical(self.native_make_variables))
         if self.host_argv is not None:

@@ -74,7 +74,9 @@ slots from an inherited MAKEFLAGS jobserver. An inherited serial make or an
 unavailable jobserver limits the exporter to one query at a time. Pass
 `--jobs N` to set a smaller or explicit query limit; `--jobs 1` keeps the
 serial path. This option does not schedule package builds or change graph
-contents.
+contents. A parallel query that times out is retried once after the other queries
+finish. Completed queries keep their results. For a shared pkgsrc export, pass
+the revision from its receipt. The graph records the export input digest.
 
 Pass an early MAKECONF policy input as a repeatable `--make-variable NAME=VALUE`
 option, for example `--make-variable EMBERBSD_DARWIN_BOOTSTRAP=yes`. The
