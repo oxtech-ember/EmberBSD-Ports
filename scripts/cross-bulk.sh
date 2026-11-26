@@ -840,30 +840,46 @@ stage_lock_rows()
 {
     while IFS= read -r stage_node; do
         [ -n "$stage_node" ] || continue
-        case "$stage_node" in
-            *@native)
-                stage_path=${stage_node%@native}
-                vars_context=${build_vars_context:+$build_vars_context|native}
-                set -f
-                set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
-                ! grep -qFx "$stage_node" "$run/crossfed" || set -- "$@" $target_settings
-                set +f ;;
-            *) stage_path=$stage_node; vars_context=${build_vars_context:+$build_vars_context|target}; set -- ;;
-        esac
-        stage_values=$(pkg_vars "$stage_path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR' "$@") || return $?
-        stage_work=$(printf '%s\n' "$stage_values" | sed -n 2p)
-        stage_root=$(printf '%s\n' "$stage_values" | sed -n 7p)
-        [ -n "$stage_root" ] || stage_root=$(dirname "$stage_work")
-        case "$stage_root:$stage_work" in /*:/*) ;; *) echo "Invalid stage metadata for $stage_node" >&2; return 1 ;; esac
-        printf '%s\t%s\n' "$stage_root" "$stage_work"
+        stage_lock_row "$stage_node" || return $?
     done
 }
 
-# Query independent package directories within the SDK job budget. Contiguous
-# input groups preserve the node order when their completed rows are joined.
+stage_lock_row()
+{
+    stage_node=$1
+    case "$stage_node" in
+        *@native)
+            stage_path=${stage_node%@native}
+            vars_context=${build_vars_context:+$build_vars_context|native}
+            set -f
+            set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
+            ! grep -qFx "$stage_node" "$run/crossfed" || set -- "$@" $target_settings
+            set +f ;;
+        *) stage_path=$stage_node; vars_context=${build_vars_context:+$build_vars_context|target}; set -- ;;
+    esac
+    stage_values=$(pkg_vars "$stage_path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR' "$@") || return $?
+    stage_work=$(printf '%s\n' "$stage_values" | sed -n 2p)
+    stage_root=$(printf '%s\n' "$stage_values" | sed -n 7p)
+    [ -n "$stage_root" ] || stage_root=$(dirname "$stage_work")
+    case "$stage_root:$stage_work" in /*:/*) ;; *) echo "Invalid stage metadata for $stage_node" >&2; return 1 ;; esac
+    printf '%s\t%s\n' "$stage_root" "$stage_work"
+}
+
+stage_lock_rows_indexed()
+{
+    stage_tab=$(printf '\t')
+    while IFS="$stage_tab" read -r stage_index stage_node; do
+        [ -n "$stage_node" ] || continue
+        printf '%s\t' "$stage_index"
+        stage_lock_row "$stage_node" || return $?
+    done
+}
+
+# Query stage metadata in a round-robin split within the SDK job budget.
+# Indexed rows restore the input order after workers finish at different times.
 stage_collect_lock_rows()
 {
-    stage_count=$(wc -l < "$1") || return 1
+    stage_count=$(awk 'NF { n++ } END { print n + 0 }' "$1") || return 1
     stage_limit=${CROSS_BULK_JOBS:-$cpus}
     count CROSS_BULK_JOBS "$stage_limit"
     if [ "$stage_limit" -gt "$cpus" ]; then
@@ -876,13 +892,14 @@ stage_collect_lock_rows()
     fi
 
     stage_dir=$(mktemp -d "$run/stage-queries.XXXXXXXX") || return 1
-    stage_group=$(( (stage_count + stage_limit - 1) / stage_limit ))
-    if ! (cd "$stage_dir" && awk -v size="$stage_group" '
-        (NR - 1) % size == 0 {
-            if (file != "") close(file)
-            file = sprintf("%09d.nodes", NR)
+    if ! (cd "$stage_dir" && awk -v workers="$stage_limit" '
+        NF {
+            sequence = sequence + 1
+            group = (sequence - 1) % workers + 1
+            file = sprintf("%09d.nodes", group)
+            print sequence "\t" $0 >> file
+            close(file)
         }
-        { print > file }
     ') < "$1"; then
         rm -r "$stage_dir"
         return 1
@@ -891,7 +908,7 @@ stage_collect_lock_rows()
     state_lock_release_safe=no
     stage_pids=
     for stage_part in "$stage_dir"/*.nodes; do
-        stage_lock_rows < "$stage_part" > "$stage_part.rows" &
+        stage_lock_rows_indexed < "$stage_part" > "$stage_part.rows" &
         stage_pids="$stage_pids $!"
     done
 
@@ -910,7 +927,20 @@ stage_collect_lock_rows()
     [ "$stage_status" -lt 128 ] || return "$stage_status"
     state_lock_release_safe=$stage_prior_safe
     if [ "$stage_status" -eq 0 ]; then
-        cat "$stage_dir"/*.rows || stage_status=$?
+        awk -F '\t' -v count="$stage_count" '
+            NF != 3 || $1 !~ /^[0-9]+$/ || $1 < 1 || $1 > count || ($1 in rows) {
+                invalid = 1
+                next
+            }
+            { rows[$1] = $2 "\t" $3; seen++ }
+            END {
+                if (invalid || seen != count) exit 1
+                for (i = 1; i <= count; i++) {
+                    if (!(i in rows)) exit 1
+                    print rows[i]
+                }
+            }
+        ' "$stage_dir"/*.rows || stage_status=$?
     fi
     rm -r "$stage_dir"
     return "$stage_status"

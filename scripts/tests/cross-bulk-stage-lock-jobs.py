@@ -92,6 +92,7 @@ class StageLockCollectionTests(unittest.TestCase):
                 raise SystemExit(0)
             if not varnames:
                 print(''); raise SystemExit(0)
+            query_started = time.monotonic()
             counter = pathlib.Path(os.environ['TEST_COUNTER'])
             lock_path = pathlib.Path(str(counter) + '.lock')
             with lock_path.open('a') as lock:
@@ -100,8 +101,11 @@ class StageLockCollectionTests(unittest.TestCase):
                 state['running'] += 1
                 state['maximum'] = max(state['maximum'], state['running'])
                 state['started'] = state.get('started', []) + [path]
+                state['timings'] = state.get('timings', []) + [{'path': path, 'start': query_started}]
                 counter.write_text(json.dumps(state))
-            delay = float(os.environ.get('TEST_QUERY_DELAY', '.20'))
+            delay = float(os.environ.get('TEST_QUERY_DELAY', '.02'))
+            if path in os.environ.get('TEST_SLOW_PATHS', '').split():
+                delay = float(os.environ.get('TEST_SLOW_QUERY_DELAY', '.40'))
             if path == os.environ.get('TEST_FAIL_PATH'):
                 delay = float(os.environ.get('TEST_FAIL_QUERY_DELAY', '.02'))
             time.sleep(delay)
@@ -131,6 +135,10 @@ class StageLockCollectionTests(unittest.TestCase):
                 state['running'] -= 1
                 state['finished'] = state.get('finished', []) + [path + ':' + role + ':' +
                     ('crossfed' if 'CROSS_TEST_SETTING=yes' in args else 'plain')]
+                for timing in state['timings']:
+                    if timing['path'] == path and 'end' not in timing:
+                        timing['end'] = time.monotonic()
+                        break
                 counter.write_text(json.dumps(state))
             if path == os.environ.get('TEST_FAIL_PATH'):
                 raise SystemExit(1)
@@ -174,7 +182,8 @@ class StageLockCollectionTests(unittest.TestCase):
             'TEST_TARGET_DB': str(self.target_db), 'TEST_NATIVE_DB': str(self.native_db),
             'TEST_PACKAGES': str(self.packages), 'TEST_WORK': str(self.work),
             'TEST_COUNTER': str(self.counter), 'TEST_LOCKS': str(self.root / 'locks.json'),
-            'TEST_FAIL_PATH': fail_path, 'TEST_FAIL_QUERY_DELAY': '.02',
+            'TEST_FAIL_PATH': fail_path, 'TEST_FAIL_QUERY_DELAY': '.40',
+            'TEST_SLOW_PATHS': 'text/beta text/gamma', 'TEST_SLOW_QUERY_DELAY': '.40',
         })
         return subprocess.run([str(self.scripts / 'cross-bulk.sh'), 'build',
                                str(self.state / 'order'), str(self.state)], env=env,
@@ -208,6 +217,17 @@ class StageLockCollectionTests(unittest.TestCase):
         self.assertEqual(len(counters['finished']), len(counters['started']), counters)
         self.assertFalse((self.root / 'locks.json').exists(), result.stdout)
         self.assertFalse((self.state / 'build.lock').exists(), result.stdout)
+
+    def test_balances_expensive_tail_queries_and_preserves_lock_order(self):
+        result = self.run_build()
+        self.assertEqual(result.returncode, 97, result.stdout)
+        counters = json.loads(self.counter.read_text())
+        slow = [row for row in counters['timings'] if row['path'] in ('text/beta', 'text/gamma')]
+        self.assertEqual(len(slow), 2, counters)
+        self.assertLess(max(row['start'] for row in slow), min(row['end'] for row in slow), counters)
+        locks = json.loads((self.root / 'locks.json').read_text())
+        self.assertEqual([Path(row['work']).name for row in locks],
+                         ['native', 'target', 'target', 'target'])
 
 
 if __name__ == '__main__':
