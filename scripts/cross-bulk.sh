@@ -74,7 +74,7 @@ state=$3
 # package environment and the cache identity derived from that environment.
 unset binary_selection_file
 binary_selection_file=${CROSS_BULK_BINARY_INSTALLED:-}
-unset CROSS_BULK_BINARY_INSTALLED
+unset CROSS_BULK_BINARY_INSTALLED CROSS_BULK_PKG_ADD_JOB
 case "$state" in
     /*) ;;
     *) echo "Not an absolute path: $state" >&2; exit 2 ;;
@@ -1100,11 +1100,23 @@ for arg do
 done
 # Run again as the writer of this database; the lock stays until pkg_add exits.
 case "$db" in /*) writer=$db ;; *) writer= ;; esac
+report=
+case "${CROSS_BULK_PKG_ADD_JOB:-}" in
+    ''|*/*) ;;
+    *) report=${0%/*}/$CROSS_BULK_PKG_ADD_JOB.pkg-add ;;
+esac
 if [ -n "$writer" ] && [ "${CROSS_BULK_PREFIX_WRITER:-}" != "$db" ]; then
     CROSS_BULK_PREFIX_WRITER=$db
     export CROSS_BULK_PREFIX_WRITER
     case "$0" in /*) self=$0 ;; *) self=$(pwd -P)/$0 ;; esac
-    exec "$host_python" -B -E -S "$prefix_lock" write --database "$db" -- "$self" "$@"
+    rc=0
+    "$host_python" -B -E -S "$prefix_lock" write --database "$db" -- "$self" "$@" || rc=$?
+    # The lock helper returns EX_TEMPFAIL before it starts pkg_add. Keep a
+    # real pkg_add failure with that same status on the normal error path.
+    if [ "$rc" -eq 75 ] && [ -n "$report" ] && [ ! -f "$report.returned-75" ]; then
+        printf '%s\n' "$db" > "$report.busy"
+    fi
+    exit "$rc"
 fi
 if [ -n "$native_db" ] && [ "$db" = "$native_db" ]; then
     grep -lE '^# (DIR|FILE): /' "$db"/*/+DIRS "$db"/*/+FILES 2> /dev/null |
@@ -1125,7 +1137,11 @@ if [ -n "$native_db" ] && [ "$db" = "$native_db" ]; then
 fi
 rc=0
 WRAPPER
-    printf '%s "$@" || rc=$?\nexit "$rc"\n' "$1"
+    printf '%s "$@" || rc=$?\n' "$1"
+    cat <<'WRAPPER'
+if [ "$rc" -eq 75 ] && [ -n "$report" ]; then : > "$report.returned-75"; fi
+exit "$rc"
+WRAPPER
 }
 
 dev_of()
@@ -1599,6 +1615,17 @@ result()
     reported=1
 }
 
+package_failure()
+{
+    if [ -s "$run/$1.pkg-add.busy" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') deferred $2: package database busy" >> "$state/progress"
+        result "$1" "deferred $2"
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $2" >> "$state/progress"
+        result "$1" "failed $2 $3"
+    fi
+}
+
 # A native node is built and installed into the native host prefix as
 # pkgsrc's depends step would do it. Its binary package goes to
 # PACKAGES-native/All, not to PACKAGES/All, where the target package of
@@ -1616,6 +1643,7 @@ stage_verify_locked()
 
 build_native()
 {
+    unset CROSS_BULK_PKG_ADD_JOB
     vars_context=${build_vars_context:+$build_vars_context|native}
     provider_role=native
     nnode=$1 key=$2 path=${1%@native}
@@ -1626,6 +1654,7 @@ build_native()
     varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR'
     vars=$(pkg_vars "$path" "$varnames" "$@") ||
         { result "$key" "failed $nnode vars"; return 0; }
+    export CROSS_BULK_PKG_ADD_JOB="$key"
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
     stage_verify_locked "$wrkdir" || { result "$key" "failed $nnode stage-lock-mismatch"; return 0; }
@@ -1721,8 +1750,7 @@ build_native()
         result "$key" "built $nnode $name native"
         return 0
     fi
-    echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $nnode" >> "$state/progress"
-    result "$key" "failed $nnode $why"
+    package_failure "$key" "$nnode" "$why"
 }
 
 native_recipe_satisfies_consumers()
@@ -2274,6 +2302,7 @@ ready_binary()
 
 build_one()
 {
+    unset CROSS_BULK_PKG_ADD_JOB
     vars_context=${build_vars_context:+$build_vars_context|target}
     provider_role=target
     path=$1
@@ -2283,6 +2312,7 @@ build_one()
     varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR'
     vars=$(pkg_vars "$path" "$varnames") ||
         { result "$key" "failed $path vars"; return 0; }
+    export CROSS_BULK_PKG_ADD_JOB="$key"
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
     stage_verify_locked "$wrkdir" || { result "$key" "failed $path stage-lock-mismatch"; return 0; }
@@ -2434,8 +2464,7 @@ build_one()
         result "$key" "built $path $name $package_sha"
         return 0
     }
-    echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $path" >> "$state/progress"
-    result "$key" "failed $path build"
+    package_failure "$key" "$path" build
 }
 
 # Install one explicitly selected target or native package from its existing
@@ -2651,6 +2680,7 @@ package_install_one()
                 set -- $outcome
                 set +f
                 case "${1:-}" in
+                    deferred) echo "Package database busy; retry $partner from its retained stage" >&2; return 75 ;;
                     built)
                         shift 2
                         if [ "$package_only" = yes ]; then
@@ -2681,6 +2711,7 @@ package_install_one()
         done)
             echo "$requested is already recorded done"
             ;;
+        deferred) echo "Package database busy; retry $requested from its retained stage" >&2; return 75 ;;
         *)
             case "${1:-}" in
                 skipped)
@@ -2731,7 +2762,7 @@ ready()
         END {
             for (i = 1; i <= n; i++) {
                 p = order[i]
-                if (p in st) continue
+                if (p in st && st[p] != "retry") continue
                 k = split(deps[p], d, " ")
                 bad = ""; wait = 0
                 for (j = 1; j <= k; j++) {
@@ -2866,6 +2897,8 @@ build()
     running=0
     jobs_in_use=0
     changed=1
+    prefix_deferred=no
+    retried_prefix=no
     poll_delay=0.05
     while :; do
         for res in "$run"/*.result; do
@@ -2878,6 +2911,7 @@ build()
             case "$what" in
                 built) echo "$path $*" >> "$state/done"; echo "$path done" >> "$run/status" ;;
                 done) echo "$path done" >> "$run/status" ;;
+                deferred) echo "$path deferred" >> "$run/status"; prefix_deferred=yes ;;
                 skipped) echo "$path $*" >> "$state/skipped"; echo "$path skipped" >> "$run/status" ;;
                 *)
                     echo "$path $*" >> "$state/failed"
@@ -3003,7 +3037,21 @@ build()
                 fi
             done < "$run/ready"
         fi
-        [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break
+        if [ "$running" -eq 0 ] && [ "$changed" != 1 ]; then
+            if [ "$prefix_deferred" = yes ] && [ "$retried_prefix" = no ]; then
+                # Independent nodes have finished. Retry the installations once.
+                # Another controller can hold its own reader until we return.
+                awk '$2 == "deferred" {print $1, "retry"}' "$run/status" > "$run/prefix-retries"
+                while read -r node _; do
+                    retry_key=$(echo "$node" | tr / _)
+                    rm -f "$run/$retry_key.pkg-add.busy" "$run/$retry_key.pkg-add.returned-75"
+                done < "$run/prefix-retries"
+                cat "$run/prefix-retries" >> "$run/status"
+                prefix_deferred=no retried_prefix=yes changed=1
+                continue
+            fi
+            break
+        fi
         # Pending replacements stop all new dispatch. Otherwise the reader
         # can take all free slots only when no other package is ready.
         if [ -n "$ninja_worker" ] && [ "$stop" = 0 ] && [ "$replacing" = 0 ] &&
@@ -3036,6 +3084,10 @@ build()
     [ ! -s "$state/blocked" ] || failed=yes
     rm -rf "$run"
     [ "$failed" = no ] || return 1
+    if [ "$prefix_deferred" = yes ]; then
+        echo 'Package database busy; resume the saved order after the other build releases its prefix' >&2
+        return 75
+    fi
     return 0
 }
 

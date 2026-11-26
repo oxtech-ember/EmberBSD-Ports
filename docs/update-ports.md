@@ -277,6 +277,12 @@ means at least one package failed or was blocked. Inspect `STATE/failed`,
 invalid mode, and explicit CLI validation errors exit 2; SIGTERM exits 143
 after running packages finish.
 
+If another build reads the package database during installation, `build`
+continues with independent packages. It retries the deferred packages once
+after that work finishes. Exit 75 means the database is still busy. When
+the other build releases its prefix, run `build` with the saved order and
+state. A single `package-install` also returns 75 for a busy prefix.
+
 ```sh
 python3 /absolute/EmberBSD-SDK/scripts/ports-plan.py record plan.json target:www/curl \
   --outcome failure --log /absolute/logs/curl.log --output curl-failed.json

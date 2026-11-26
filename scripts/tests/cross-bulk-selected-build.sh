@@ -14,6 +14,7 @@ ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 selected_shell=${CROSS_BULK_TEST_SHELL:-$(command -v sh)}
 host_python=${CROSS_BULK_TEST_PYTHON:-$(command -v python3)}
 : "${CROSS_BULK_TEST_SDK_SOURCE:?Set CROSS_BULK_TEST_SDK_SOURCE to the selected SDK source}"
+sdk_source=$CROSS_BULK_TEST_SDK_SOURCE
 mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/app" \
     "$out/tree/cat/dep" "$out/tree/cat/fail" "$out/packages/All" \
     "$out/native-db" "$out/target-db" "$out/state/logs" "$out/sdk/scripts"
@@ -42,13 +43,14 @@ if [ "\${CHECK_AWK_FALLBACK:-no}" = yes ]; then
     printf '%s\\n' "\${CROSS_BULK_ENV_IDENTITY:-}" > "$out/awk-env-identity"
     exit 1
 fi
-dir= target= varname= varnames= cross=no
+dir= target= varname= varnames= cross=no native_pkg_add=
 cache=no fresh_makevars=no
 for arg do
     case "\$arg" in
         PBULK_CACHE_DIRECTORY=*) cache=yes ;;
         _MAKEVARS_MK=defined) fresh_makevars=yes ;;
         USE_CROSS_COMPILE=no) cross=yes ;;
+        NATIVE_PKG_ADD_CMD=*) native_pkg_add=\${arg#NATIVE_PKG_ADD_CMD=} ;;
         VARNAME=*) varname=\${arg#VARNAME=} ;;
         VARNAMES=*) varnames=\${arg#VARNAMES=} ;;
         *=*) ;;
@@ -59,6 +61,7 @@ done
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
         -C) dir=\$2; shift 2 ;;
+        -V) varnames="\$varnames \$2"; target=query; shift 2 ;;
         VARNAME=*) varname=\${1#VARNAME=}; shift ;;
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
         USE_CROSS_COMPILE=no) cross=yes; shift ;;
@@ -85,6 +88,14 @@ case "\$target" in
             CROSSTARGETSETTINGS|DISTDIR) echo ;;
             *) echo ;;
         esac ;;
+    query)
+        for v in \$varnames; do
+            case "\$v" in
+                '\${USE_TOOLS}') echo ;;
+                '\${WRKDIR}') echo "$out/work/cat/\$pkg" ;;
+                '\${_COOKIE.tools}') echo "$out/work/cat/\$pkg/.tools_done" ;;
+            esac
+        done ;;
     show-vars)
         if [ "\${SLOW_ORDER:-no}" = yes ] && [ "\$pkg" = app ]; then
             : > "$out/order-worker-active"
@@ -128,6 +139,7 @@ case "\$target" in
             printf 'full\t%s>=1\t%s-1.0\n' "\$provider" "\$provider" > "\$resolved"
         fi ;;
     clean) rm -rf "$out/work/cat/\$pkg"; echo "TARGET clean" >> "$out/targets" ;;
+    depends-clean|_package-clean) echo "TARGET \$target" >> "$out/targets" ;;
     package|replace) echo "TARGET \$target" >> "$out/targets" ;;
     package-install)
         [ -d "$out/state/build.lock" ] || echo "\$pkg" >> "$out/missing-build-lock"
@@ -138,6 +150,12 @@ case "\$target" in
         : > "\$work/.depends"
         : > "\$work/.rdepends"
         printf '@name %s-1.0\n' "\$pkg" > "$out/packages/All/\$pkg-1.0.tgz"
+        if [ -f "$out/prefix-busy-mode" ]; then
+            rc=0
+            "\$native_pkg_add" -K "$out/target-db" "$out/packages/All/\$pkg-1.0.tgz" || rc=\$?
+            printf 'cat/%s %s\n' "\$pkg" "\$rc" >> "$out/pkg-add-attempts"
+            [ "\$rc" -eq 0 ] || exit "\$rc"
+        fi
         if [ "\$pkg" = app ]; then
             printf 'full\tdep>=1\t../../cat/dep\n' > "\$work/.depends"
             printf 'full\tdep>=1\tdep-1.0\n' > "\$work/.rdepends"
@@ -350,4 +368,88 @@ env BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
 [ "$rc" -ne 0 ] || fail 'selected-build ignored dependency-order failure'
 [ ! -s "$out/targets" ] || fail 'selected-build started package work after order failure'
 [ ! -e "$out/state/build.lock" ] || fail 'failed selected-build left its state lock'
-echo 'PASS: order/selected-build lock refusal, selected dependency closure, accepted package reuse, and fail-closed ordering'
+
+# A foreign SDK reader makes pkg_add return EX_TEMPFAIL. Keep it through the
+# retry so build returns 75 without poisoning failed/blocked, then rerun the
+# saved selection after release. The independent package must still stage.
+rm -rf "$out/state" "$out/target-db" "$out/native-db" "$out/packages" "$out/work"
+mkdir -p "$out/state/logs" "$out/target-db" "$out/native-db" "$out/packages/All" "$out/work"
+mkdir -p "$out/tree/cat/other"
+: > "$out/tree/cat/other/Makefile"
+: > "$out/prefix-busy-mode"
+: > "$out/targets"
+: > "$out/pkg-add-attempts"
+printf '%s\n' cat/app cat/other > "$out/roots"
+printf '#!/bin/sh\nexit 0\n' > "$out/pkg_add"
+chmod +x "$out/pkg_add"
+"$host_python" -B -E -S "$sdk_source/scripts/prefix-lock.py" read \
+    --database "$out/target-db" -- "$selected_shell" -c \
+    'touch "$1"; while [ ! -e "$2" ]; do sleep 0.05; done' \
+    prefix-busy-reader "$out/reader-ready" "$out/release-reader" \
+    > "$out/reader.log" 2>&1 &
+reader_pid=$!
+busy_cleanup()
+{
+    : > "$out/release-reader"
+    kill "$reader_pid" 2>/dev/null || :
+    wait "$reader_pid" 2>/dev/null || :
+    "$host_python" -B -E -S "$sdk_source/scripts/prefix-lock.py" write \
+        --database "$out/target-db" -- /usr/bin/true >/dev/null 2>&1 || :
+}
+trap busy_cleanup EXIT HUP INT TERM
+i=0
+while [ ! -e "$out/reader-ready" ] && kill -0 "$reader_pid" 2>/dev/null && [ "$i" -lt 200 ]; do
+    sleep 0.05
+    i=$((i + 1))
+done
+[ -e "$out/reader-ready" ] || fail 'real SDK prefix reader did not start'
+
+run_selected()
+{
+    env BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
+        CROSS_BULK_SHELL="$selected_shell" CROSS_BULK_CPUS=2 CROSS_BULK_JOBS=1 \
+        "$selected_shell" "$ports/scripts/cross-bulk.sh" selected-build "$out/roots" "$out/state"
+}
+rc=0
+run_selected > "$out/prefix-busy.log" 2>&1 || rc=$?
+[ "$rc" -eq 75 ] || fail "busy selected-build exited $rc instead of 75"
+grep -q '^cat/dep 75$' "$out/pkg-add-attempts" || fail 'SDK writer did not return 75 for cat/dep'
+grep -q '^cat/other 75$' "$out/pkg-add-attempts" || fail 'SDK writer did not cover the independent target'
+[ -f "$out/packages/All/other-1.0.tgz" ] || fail 'independent package did not reach package creation'
+[ ! -s "$out/state/failed" ] || fail 'transient package lock entered STATE/failed'
+[ ! -s "$out/state/blocked" ] || fail 'transient package lock entered STATE/blocked'
+
+: > "$out/release-reader"
+wait "$reader_pid"
+reader_pid=
+run_selected > "$out/prefix-recovered.log" 2>&1 || {
+    rc=$?
+    echo "selected-build did not recover after release (status $rc)" >&2
+    cat "$out/prefix-recovered.log" >&2
+    exit 1
+}
+for path in cat/dep cat/app cat/other; do
+    grep -q "^$path " "$out/state/done" || fail "$path did not finish after release"
+    grep -q "^$path 0$" "$out/pkg-add-attempts" || fail "$path did not install after release"
+done
+[ ! -s "$out/state/failed" ] || fail 'recovery retained failed rows'
+[ ! -s "$out/state/blocked" ] || fail 'recovery retained blocked rows'
+[ ! -e "$out/state/build.lock" ] || fail 'recovery left the state lock'
+
+# A pkg_add that itself returns 75 is an ordinary package failure, not a busy-prefix retry.
+rm -rf "$out/state" "$out/target-db" "$out/native-db" "$out/packages" "$out/work"
+mkdir -p "$out/state/logs" "$out/target-db" "$out/native-db" "$out/packages/All" "$out/work"
+: > "$out/targets"
+: > "$out/pkg-add-attempts"
+printf '%s\n' cat/app > "$out/roots"
+printf '#!/bin/sh\nexit 75\n' > "$out/pkg_add"
+chmod +x "$out/pkg_add"
+rc=0
+run_selected > "$out/pkg-add-75.log" 2>&1 || rc=$?
+[ "$rc" -eq 1 ] || fail "pkg_add's own 75 exited $rc instead of ordinary build failure"
+grep -q '^cat/dep 75$' "$out/pkg-add-attempts" || fail 'fixture pkg_add did not return 75'
+grep -q '^cat/dep ' "$out/state/failed" || fail "pkg_add's own 75 was deferred"
+grep -q '^cat/app ' "$out/state/blocked" || fail 'failed dependency did not block cat/app'
+[ ! -e "$out/state/build.lock" ] || fail 'pkg_add failure left the state lock'
+
+echo "PASS: real prefix-lock busy recovered after release; pkg_add-owned 75 remained a failure"
