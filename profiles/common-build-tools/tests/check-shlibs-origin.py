@@ -27,6 +27,11 @@ env = {'PATH': str(args.host_prefix / 'bin') + ':' + str(args.host_prefix / 'gnu
        'TMPDIR': str(args.work), 'LC_ALL': 'C', 'PYTHONDONTWRITEBYTECODE': '1'}
 subprocess.run([str(args.patch), '-p1', '-i', str(patch)], cwd=args.work, env=env, check=True)
 subprocess.run([str(args.patch), '-p1', '-i', str(root / 'profiles/common-build-tools/patches/native-check-shlibs-host-abi.patch')], cwd=args.work, env=env, check=True)
+metadata = Path('mk/pkgformat/pkg/metadata.mk')
+(args.work / metadata).parent.mkdir(parents=True)
+(args.work / metadata).write_bytes((args.pkgsrc / metadata).read_bytes())
+builtin_patch = root / 'profiles/common-build-tools/patches/pkgsrc-cross-builtin-shlibs.patch'
+subprocess.run([str(args.patch), '-p1', '-i', str(builtin_patch)], cwd=args.work, env=env, check=True)
 stage = args.work / 'stage space'
 cross = args.work / 'cross space'
 libdir = stage / 'usr/pkg/lib/electron44'
@@ -75,14 +80,14 @@ package_plist = args.work / 'fixture-plist'
 package_plist.write_text('lib/owned/libdiagnostic.so.1\nlibexec/runner\n')
 
 def check(path, *, expected=None, metadata=True, checker_path=checker, staged=True,
-          toxic='', extra='', dependency='', prefix='/usr/pkg'):
+          toxic='', extra='', dependency='', prefix='/usr/pkg', builtin='', system_rpath=''):
     if requires_file.exists():
         requires_file.unlink()
     depends.write_text(dependency)
     runenv = dict(env, DESTDIR=str(stage) if staged else '',
                   CROSS_DESTDIR=str(cross) if staged else '', PREFIX=prefix, READELF=str(args.readelf),
-                  WRKDIR=str(args.work / 'build'), PLATFORM_RPATH='',
-                  PKG_INFO_CMD=str(pkg_info), DEPENDS_FILE=str(depends),
+                  WRKDIR=str(args.work / 'build'), PLATFORM_RPATH=system_rpath, BUILTIN_PKGS=builtin, PKGNAME='consumer-1.0',
+                  PKG_INFO_CMD=str(pkg_info), PKG_ADMIN_CMD=str(args.host_prefix / 'sbin/pkg_admin'), DEPENDS_FILE=str(depends),
                   CHECK_SHLIBS_TOXIC=toxic, CHECK_WRKREF_EXTRA_DIRS=extra,
                   REQUIRES_FILE=str(requires_file) if metadata else '', PACKAGE_PLIST=str(package_plist))
     result = subprocess.run([str(args.awk), '-f', str(checker_path)], input=str(path) + '\n',
@@ -149,6 +154,30 @@ check(external_consumer, expected='matches toxic', toxic='/usr/pkg/lib/external/
       dependency='full ignored diagnostic-1.0\n')
 check(external_consumer, expected='relative to CHECK_WRKREF_EXTRA_DIRS',
       extra='/usr/pkg/lib/external', dependency='full ignored diagnostic-1.0\n')
+
+# The build selected the base library. The sysroot also has an optional
+# package for another consumer, first in this ELF file's RUNPATH.
+system_lib = cross / 'usr/lib/libdiagnostic.so.1'
+system_lib.parent.mkdir(parents=True, exist_ok=True)
+system_lib.write_bytes(external.read_bytes())
+builtin = {'builtin': 'diagnostic-0.9', 'system_rpath': '/usr/lib'}
+assert check(external_consumer, **builtin) == ['/usr/lib/libdiagnostic.so.1']
+assert check(external_consumer, dependency='full ignored diagnostic-1.0\n', **builtin) == [
+    '/usr/pkg/lib/external/libdiagnostic.so.1']
+check(external_consumer, expected='not a runtime dependency', builtin='unrelated-1.0',
+      system_rpath='/usr/lib')
+assert check(external_consumer, dependency='indirect-full ignored diagnostic-1.0\n', **builtin) == [
+    '/usr/pkg/lib/external/libdiagnostic.so.1']
+assert check(external_consumer, dependency='full diagnostic>=0.9 diagnostic-0.9\n', **builtin) == [
+    '/usr/pkg/lib/external/libdiagnostic.so.1']
+assert check(external_consumer, dependency='full diagnostic>=2.0 diagnostic-2.1\n', **builtin) == [
+    '/usr/lib/libdiagnostic.so.1']
+hidden = external.with_name('held-out')
+external.rename(hidden)
+assert check(external_consumer, system_rpath='/usr/lib') == ['/usr/lib/libdiagnostic.so.1']
+hidden.rename(external)
+system_lib.unlink()
+check(external_consumer, expected='missing library: libdiagnostic.so.1', **builtin)
 
 # External SONAME aliases must not pin the implementation microversion.
 external.unlink()

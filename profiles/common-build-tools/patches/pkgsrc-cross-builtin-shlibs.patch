@@ -1,0 +1,148 @@
+--- a/mk/check/check-shlibs-elf.awk
++++ b/mk/check/check-shlibs-elf.awk
+@@ -68,40 +68,72 @@
+ 	return out;
+ }
+ 
+-function check_pkg(DSO, lib,	pkg, found) {
+-	if (destdir == "")
+-		return 0
+-	if (lib in pkgcache) {
+-		pkg = pkgcache[lib]
+-	} else {
++function package_owner(lib,    cmd, pkg) {
++	if (!(lib in pkgcache)) {
+ 		cmd = pkg_info_cmd " -Fe " shquote(lib) " 2>/dev/null"
+-		if ((cmd | getline pkg) < 0) {
+-			close(cmd)
+-			return 0
+-		}
++		if ((cmd | getline pkg) <= 0) pkg = ""
+ 		close(cmd)
+ 		pkgcache[lib] = pkg
+ 	}
+-	if (pkg == "")
++	return pkgcache[lib]
++}
++
++function package_base(pkg) {
++	sub(/-[^-]*$/, "", pkg)
++	return pkg
++}
++
++function dependency_role(pkg,    entry, fields, base, count, patterns, i, role) {
++	if (pkg in resolved_roles) return resolved_roles[pkg]
++	if (!dependencies_read) {
++		while ((getline entry < depends_file) > 0) {
++			if (split(entry, fields) < 3) continue
++			if (fields[1] == "full" || fields[1] == "indirect-full") {
++				dep_roles[fields[3]] = "runtime"
++				base = package_base(fields[3])
++				runtime_patterns[base] = runtime_patterns[base] " " fields[2]
++			} else if (!(fields[3] in dep_roles))
++				dep_roles[fields[3]] = "build"
++		}
++		close(depends_file)
++		dependencies_read = 1
++	}
++	role = dep_roles[pkg]
++	base = package_base(pkg)
++	# A compatible update may have replaced the recorded package version.
++	if (role != "runtime" && (base in runtime_patterns)) {
++		count = split(runtime_patterns[base], patterns)
++		for (i = 1; i <= count; i++) {
++			if (system(pkg_admin_cmd " pmatch " shquote(patterns[i]) " " shquote(pkg)) == 0) {
++				role = "runtime"
++				break
++			}
++		}
++	}
++	resolved_roles[pkg] = role
++	return role
++}
++
++function check_pkg(DSO, lib,    pkg, role, relative) {
++	if (destdir == "") return
++	pkg = package_owner(lib)
++	if (pkg == "") return
++	role = dependency_role(pkg)
++	if (role == "runtime") return
++	if (role == "" && (cross_destdir == "" || index(lib, prefix "/") != 1)) return
++	relative = substr(lib, length(prefix) + 2)
++	if (pkg == current_package && (requires_file == "" || (relative in provided_libraries))) return
++	print DSO ": " lib ": " pkg " is not a runtime dependency"
++}
++
++# A cross sysroot may contain an optional package for another consumer.
++# Ignore that copy when buildlink selected the built-in provider.
++function shadows_builtin(lib,    pkg, name) {
++	if (cross_destdir == "" || !builtin_count || index(lib, prefix "/") != 1)
+ 		return 0
+-	found = 0
+-	while ((getline < depends_file) > 0) {
+-		if ($3 == pkg) {
+-			found = 1
+-			if ($1 == "full" || $1 == "indirect-full") {
+-				close(depends_file)
+-				return 0
+-			}
+-		}
+-	}
+-	# Ideally we would error here if we found a dependency on any pkgsrc
+-	# library that isn't listed in the depends file.  However this doesn't
+-	# work for a variety of reasons, not least if the package itself is
+-	# already installed and its pkgsrc libraries are found before the ones
+-	# in DESTDIR.  A package obviously can't depend on itself...
+-	if (found)
+-		print DSO ": " lib ": " pkg " is not a runtime dependency"
+-	close(depends_file)
++	pkg = package_owner(lib)
++	name = package_base(pkg)
++	return (name in builtin_names) && dependency_role(pkg) != "runtime"
+ }
+ 
+ # Resolve staged aliases in the target namespace, including directory links.
+@@ -360,6 +392,7 @@
+ 			}
+ 			if (!libcache[libfile]) {
+ 				logicalfile = cross_destdir != "" ? substr(libfile, length(cross_destdir) + 1) : libfile
++				if (shadows_builtin(logicalfile)) continue
+ 				check_external(DSO, logicalfile)
+ 				found = 1
+ 				break
+@@ -400,6 +433,13 @@
+ 		if (plist_status < 0) { print "ELF metadata cannot read PACKAGE_PLIST"; exit 1 }
+ 	}
+ 	system_rpath = ENVIRON["PLATFORM_RPATH"]
++	current_package = ENVIRON["PKGNAME"]
++	pkg_admin_cmd = ENVIRON["PKG_ADMIN_CMD"]
++	builtin_count = split(ENVIRON["BUILTIN_PKGS"], builtin_list, " ")
++	for (i = 1; i <= builtin_count; i++) {
++		name = package_base(builtin_list[i])
++		builtin_names[name] = 1
++	}
+ 	cross_destdir = ENVIRON["CROSS_DESTDIR"]
+ 	destdir = ENVIRON["DESTDIR"]
+ 	prefix = ENVIRON["PREFIX"]
+--- a/mk/check/check-shlibs.mk
++++ b/mk/check/check-shlibs.mk
+@@ -94,6 +94,9 @@
+ CHECK_SHLIBS_NATIVE_ENV+=	EMBERBSD_NATIVE_STAGE_ROOT=${EMBERBSD_NATIVE_STAGE_ROOT:U:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	EMBERBSD_NATIVE_STAGE_PREFIX=${EMBERBSD_NATIVE_STAGE_PREFIX:U:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	PKG_INFO_CMD=${PKG_INFO:Q}
++CHECK_SHLIBS_NATIVE_ENV+=	PKG_ADMIN_CMD=${PKG_ADMIN:Q}
++CHECK_SHLIBS_NATIVE_ENV+=	PKGNAME=${PKGNAME:Q}
++CHECK_SHLIBS_NATIVE_ENV+=	BUILTIN_PKGS=${BUILTIN_PKGS:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	DEPENDS_FILE=${_RRDEPENDS_FILE:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	MACHO_USE_LOAD_COMMANDS=${MACHO_USE_LOAD_COMMANDS:U:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	PREFIX=${PREFIX:Q}
+--- a/mk/pkgformat/pkg/metadata.mk
++++ b/mk/pkgformat/pkg/metadata.mk
+@@ -103,6 +103,7 @@
+ 			    EMBERBSD_NATIVE_STAGE_ROOT=${EMBERBSD_NATIVE_STAGE_ROOT:U:Q} \
+ 			    EMBERBSD_NATIVE_STAGE_PREFIX=${EMBERBSD_NATIVE_STAGE_PREFIX:U:Q} \
+ 				    WRKDIR=${WRKDIR:Q} READELF=${TOOLS_PATH.readelf:Q} \
++				    PKGNAME=${PKGNAME:Q} BUILTIN_PKGS=${BUILTIN_PKGS:Q} PKG_ADMIN_CMD=${PKG_ADMIN:Q} \
+ 				    PKG_INFO_CMD=${PKG_INFO:Q} DEPENDS_FILE=${_RRDEPENDS_FILE:Q} \
+ 				    ${AWK} -f ${PKGSRCDIR}/mk/check/check-shlibs-elf.awk \
+ 				    > ${WRKDIR}/.elf-requires-errors || exit 1; \

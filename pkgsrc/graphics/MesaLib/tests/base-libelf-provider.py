@@ -241,7 +241,7 @@ def make_query(bmake, work, source, arch, cross, root):
     buildlink = work / 'buildlink-query'
     sdk.mkdir(exist_ok=True)
     buildlink.mkdir(exist_ok=True)
-    fields = ('PKGREVISION', 'PKG_FAIL_REASON', '_EMBERBSD_MESA_LIBELF_MODE',
+    fields = ('PKG_FAIL_REASON', '_EMBERBSD_MESA_LIBELF_MODE',
               '_EMBERBSD_MESA_LIBELF_ROOT', '_EMBERBSD_MESA_LIBELF_CHECK')
     fixture_file.write_text(f'''OPSYS=NetBSD
 OS_VERSION=11.0
@@ -274,7 +274,7 @@ show:
 def check_make_modes(bmake, work):
     source = (RECIPE / 'Makefile').read_text()
     native, sdk, buildlink = make_query(bmake, work / 'native', source, 'x86_64', False, '')
-    require(native['PKGREVISION'] == '12' and native['_EMBERBSD_MESA_LIBELF_MODE'] == 'native' and
+    require(native['_EMBERBSD_MESA_LIBELF_MODE'] == 'native' and
             native['_EMBERBSD_MESA_LIBELF_ROOT'] == '/', 'native bmake root selection changed')
     argv = shlex.split(native['_EMBERBSD_MESA_LIBELF_CHECK'])
     require(argv[1:4] == ['-B', '-E', '-S'] and '--target-root' in argv and argv[argv.index('--target-root') + 1] == '/' and

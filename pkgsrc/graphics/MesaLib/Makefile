@@ -2,7 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 .include "mesa-source.mk"
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	${MESA_PORT_REVISION}
+PKGREVISION=	1
 CATEGORIES=	graphics
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.mesa3d.org/
