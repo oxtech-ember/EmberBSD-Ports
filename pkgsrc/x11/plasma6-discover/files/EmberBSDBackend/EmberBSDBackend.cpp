@@ -62,11 +62,49 @@ public:
     }
 };
 
+class SystemUpdateResource final : public EmberBSDResource
+{
+public:
+    SystemUpdateResource(EmberBSDBackend *backend, const EmberUpdateState &state)
+        : EmberBSDResource({{QStringLiteral("base"), QStringLiteral("emberbsd-system-update")}}, {}, {}, backend)
+        , m_state(state)
+        , m_backend(backend)
+    {
+    }
+
+    State state() override { return m_state.canApply() ? Upgradeable : Installed; }
+    Type type() const override { return System; }
+    QString origin() const override { return QStringLiteral("EmberBSD"); }
+    QString name() const override { return i18n("EmberBSD system update"); }
+    QVariant icon() const override { return QStringLiteral("system-software-update"); }
+    QString comment() override { return m_backend->emberUpdateStatus(); }
+    QString longDescription() override { return m_state.description(true).toHtmlEscaped().replace(QLatin1Char('\n'), QStringLiteral("<br/>")); }
+    void fetchChangelog() override { Q_EMIT changelogFetched(longDescription()); }
+
+private:
+    const EmberUpdateState &m_state;
+    EmberBSDBackend *const m_backend;
+};
+
 EmberBSDBackend::EmberBSDBackend(QObject *parent)
     : AbstractResourcesBackend(parent)
+    , m_systemResource(new SystemUpdateResource(this, m_updateState))
     , m_updater(new StandardBackendUpdater(this))
 {
-    reload();
+    auto update = [this] {
+        m_updater->setNeedsReboot(m_updateState.needsReboot());
+        Q_EMIT emberUpdateStatusChanged();
+        Q_EMIT m_systemResource->stateChanged();
+    };
+    connect(&m_updateState, &EmberUpdateState::changed, this, update);
+    m_updater->setNeedsReboot(m_updateState.needsReboot());
+    // Populate the updater without advertising a change to the storefront.
+    QTimer::singleShot(0, m_updater, &StandardBackendUpdater::cleanup);
+}
+
+QString EmberBSDBackend::emberUpdateStatus() const
+{
+    return m_updateState.description();
 }
 
 bool EmberBSDBackend::isValid() const
@@ -217,10 +255,23 @@ QVector<StreamResult> EmberBSDBackend::match(const Filters &filter) const
 
 ResultsStream *EmberBSDBackend::search(const Filters &filter)
 {
+    if (filter.state == AbstractResource::Upgradeable) {
+        const QVector<StreamResult> result = m_updateState.canApply()
+            ? QVector<StreamResult>{StreamResult(m_systemResource)} : QVector<StreamResult>{};
+        return new ResultsStream(QStringLiteral("emberbsd-system-update"), result);
+    }
+    return searchCatalog(filter);
+}
+
+ResultsStream *EmberBSDBackend::searchCatalog(const Filters &filter)
+{
     auto *stream = new EmberBSDResultsStream;
     m_pending.append(PendingSearch{stream, filter});
     QTimer::singleShot(0, this, [this] {
-        completePending();
+        if (!m_ready && !m_process)
+            reload();
+        else
+            completePending();
     });
     return stream;
 }
@@ -237,17 +288,12 @@ AbstractBackendUpdater *EmberBSDBackend::backendUpdater() const
 
 int EmberBSDBackend::updatesCount() const
 {
-    int count = 0;
-    for (EmberBSDResource *resource : m_resources) {
-        if (resource->state() == AbstractResource::Upgradeable)
-            ++count;
-    }
-    return count;
+    return m_updateState.canApply() ? 1 : 0;
 }
 
 int EmberBSDBackend::fetchingUpdatesProgress() const
 {
-    return m_ready ? 100 : 0;
+    return 100; // Update checks read local state synchronously.
 }
 
 QString EmberBSDBackend::displayName() const
@@ -264,6 +310,8 @@ InlineMessage *EmberBSDBackend::explainDysfunction() const
 {
     if (!m_error.isEmpty())
         return new InlineMessage(InlineMessage::Error, QStringLiteral("dialog-error"), m_error);
+    if (!m_ready && !m_process)
+        return nullptr;
     if (!m_ready)
         return new InlineMessage(InlineMessage::Information, QStringLiteral("package-x-generic"), i18n("Reading the signed package catalog."));
     if (m_desktopCount == 0) {
@@ -317,6 +365,7 @@ public:
     InstallTransaction(EmberBSDBackend *backend, EmberBSDResource *app)
         : Transaction(backend, app, InstallRole, {}, true)
         , m_backend(backend)
+        , m_system(app == backend->m_systemResource)
         , m_root(app->packageRoot())
         , m_base(app->packageName())
         , m_version(app->availableVersion())
@@ -340,7 +389,7 @@ public:
 
     QString name() const override
     {
-        return i18n("Install");
+        return m_system ? i18n("EmberBSD system update") : i18n("Install");
     }
 
 private:
@@ -352,10 +401,15 @@ private:
         }
         QProcess *process = m_process = new QProcess(this);
         process->setProgram(QStringLiteral("/usr/pkg/bin/pkexec"));
-        process->setArguments({QStringLiteral("/usr/pkg/libexec/emberbsd-discover-install"), m_root});
+        if (m_system)
+            process->setArguments({QStringLiteral("/usr/sbin/ember-update"), QStringLiteral("apply")});
+        else
+            process->setArguments({QStringLiteral("/usr/pkg/libexec/emberbsd-discover-install"), m_root});
         connect(process, &QProcess::readyReadStandardError, this, [this, process] {
             const QString text = QString::fromUtf8(process->readAllStandardError());
             m_detail += text;
+            if (m_system)
+                return;
             if (!m_committing && text.contains(QLatin1String("Install:"))) {
                 m_committing = true;
                 setStatus(CommittingStatus);
@@ -375,7 +429,10 @@ private:
                 fail(m_detail);
                 return;
             }
-            confirmInstalled();
+            if (m_system)
+                succeed();
+            else
+                confirmInstalled();
         });
         connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError) {
             // A crash still reports Running here; finished() handles it.
@@ -401,12 +458,7 @@ private:
                 fail(i18n("The package database does not list %1.", expected));
                 return;
             }
-            const QPointer<EmberBSDBackend> backend = m_backend;
-            finish();
-            setProgress(100);
-            setStatus(DoneStatus);
-            if (backend)
-                backend->checkForUpdates();
+            succeed();
         });
         connect(check, &QProcess::errorOccurred, this, [this, check](QProcess::ProcessError) {
             if (check->state() == QProcess::NotRunning) {
@@ -416,6 +468,19 @@ private:
             }
         });
         check->start(QStringLiteral("/usr/sbin/pkg_info"), {QStringLiteral("-e"), m_base});
+    }
+
+    void succeed()
+    {
+        const QPointer<EmberBSDBackend> backend = m_backend;
+        const bool reloadCatalog = !m_system;
+        finish();
+        if (backend)
+            backend->checkForUpdates();
+        setProgress(100);
+        setStatus(DoneStatus);
+        if (backend && reloadCatalog)
+            backend->reload();
     }
 
     // Every error path ends here: release the backend, then the terminal status.
@@ -453,6 +518,7 @@ private:
 
     QPointer<EmberBSDBackend> m_backend;
     QProcess *m_process = nullptr;
+    const bool m_system;
     QString m_root;
     QString m_base;
     QString m_version;
@@ -465,6 +531,13 @@ Transaction *EmberBSDBackend::installApplication(AbstractResource *app, const Ad
 {
     auto *resource = qobject_cast<EmberBSDResource *>(app);
     // A running reload (m_process) replaces every resource. Install and reload never overlap.
+    if (app == m_systemResource) {
+        m_updateState.refresh();
+        if (m_installing || !m_updateState.canApply())
+            return refused(app, Transaction::InstallRole);
+        m_installing = true;
+        return new InstallTransaction(this, m_systemResource);
+    }
     if (!resource || m_installing || m_process || resource->catalogAction() != QLatin1String("available") || !catalogRoot(resource->packageRoot()))
         return refused(app, Transaction::InstallRole);
     m_installing = true;
@@ -478,10 +551,7 @@ Transaction *EmberBSDBackend::removeApplication(AbstractResource *app)
 
 void EmberBSDBackend::checkForUpdates()
 {
-    // A reload replaces every resource. The transaction reloads at its end.
-    if (m_installing)
-        return;
-    reload();
+    m_updateState.refresh();
 }
 
 #include "EmberBSDBackend.moc"

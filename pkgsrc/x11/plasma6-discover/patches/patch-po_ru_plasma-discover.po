@@ -1,22 +1,20 @@
 $NetBSD$
 
-Russian title for the desktop application group.
+Translate the application group and the system action.
 
 --- po/ru/plasma-discover.po.orig
 +++ po/ru/plasma-discover.po
-@@ -2388,3 +2388,15 @@
+@@ -2388,3 +2388,13 @@
  
  #~ msgid "Sign in is required"
  #~ msgstr "Необходимо выполнить вход"
 +
-+#: discover/qml/BrowsingPage.qml
 +#, kde-format
 +msgctxt "@title:group"
 +msgid "Desktop applications"
 +msgstr "Приложения"
 +
-+#: discover/qml/InstallApplicationButton.qml
 +#, kde-format
 +msgctxt "@action:button"
-+msgid "Update stays unavailable until a verified helper exists"
-+msgstr "Обновление недоступно, пока нет проверенного помощника"
++msgid "Update system"
++msgstr "Обновить систему"

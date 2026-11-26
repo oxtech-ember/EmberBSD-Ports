@@ -1,16 +1,91 @@
 $NetBSD$
 
-Russian name for the Plasma components category.
+Translate the EmberBSD package category and system update status.
 
 --- po/ru/libdiscover.po.orig
 +++ po/ru/libdiscover.po
-@@ -4606,3 +4606,9 @@
+@@ -4606,3 +4606,84 @@
  #~ msgctxt "@status describes a past-tense action"
  #~ msgid "Installed"
  #~ msgstr "установлен"
 +
-+#: libdiscover/backends/EmberBSDBackend/emberbsd-categories.xml
 +#, kde-format
 +msgctxt "Category"
 +msgid "Components"
 +msgstr "Компоненты"
++
++#, kde-format
++msgid "No update check has completed yet."
++msgstr "Проверка обновлений ещё не выполнялась."
++
++#, kde-format
++msgid "EmberBSD system update"
++msgstr "Обновление EmberBSD"
++
++#, kde-format
++msgid "System update status is unavailable."
++msgstr "Сведения об обновлении системы недоступны."
++
++#, kde-format
++msgid "No system update is pending."
++msgstr "Ожидающих обновлений системы нет."
++
++#, kde-format
++msgid "Checking for system updates."
++msgstr "Идёт проверка обновлений системы."
++
++#, kde-format
++msgid "A system update is available."
++msgstr "Доступно обновление системы."
++
++#, kde-format
++msgid "Preparing the system update."
++msgstr "Идёт подготовка обновления системы."
++
++#, kde-format
++msgid "The system update is ready."
++msgstr "Обновление системы подготовлено."
++
++#, kde-format
++msgid "The system is testing an update."
++msgstr "Идёт пробная загрузка обновлённой системы."
++
++#, kde-format
++msgid "The system update failed."
++msgstr "Ошибка при обновлении системы."
++
++#, kde-format
++msgid "Available OS generation: %1"
++msgstr "Доступное поколение ОС: %1"
++
++#, kde-format
++msgid "Packages: %1"
++msgstr "Пакеты: %1"
++
++#, kde-format
++msgid "The custom kernel holds OS updates. Package updates remain available."
++msgstr "Установлено собственное ядро. Можно обновлять только пакеты."
++
++#, kde-format
++msgid "A restart is required."
++msgstr "Требуется перезагрузка."
++
++#, kde-format
++msgid "Running slot: %1"
++msgstr "Текущий раздел: %1"
++
++#, kde-format
++msgid "Confirmed slot: %1"
++msgstr "Подтверждённый раздел: %1"
++
++#, kde-format
++msgid "Last checked: %1"
++msgstr "Последняя проверка: %1"
++
++#, kde-format
++msgid "%1 package update"
++msgid_plural "%1 package updates"
++msgstr[0] "%1 обновление пакета"
++msgstr[1] "%1 обновления пакетов"
++msgstr[2] "%1 обновлений пакетов"
++msgstr[3] "%1 обновления пакетов"

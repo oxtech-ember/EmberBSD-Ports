@@ -40,7 +40,7 @@ def is_component(base, catalog_role, desktop):
 
 def catalog_state(action):
     if action == "upgrade":
-        return "Upgradeable"
+        return "Installed"
     if action == "available":
         return "None"
     if action in {"installed", "installed-newer", "version-uncompared"}:
@@ -73,7 +73,7 @@ class ComponentPolicy(unittest.TestCase):
     def test_available_component_uses_the_same_signed_name(self):
         self.assertTrue(is_component("plasma6-powerdevil", "package", False))
         self.assertEqual(catalog_state("available"), "None")
-        self.assertEqual(catalog_state("upgrade"), "Upgradeable")
+        self.assertEqual(catalog_state("upgrade"), "Installed")
 
     def test_desktop_application_is_not_duplicated_as_a_component(self):
         self.assertFalse(is_component("plasma6-spectacle", "package", True))
@@ -112,14 +112,12 @@ class ComponentPolicy(unittest.TestCase):
 
     def test_states_and_transactions_stay_on_the_signed_catalog(self):
         self.assertIn('m_action == QLatin1String("installed")', RESOURCE)
-        self.assertIn('m_action == QLatin1String("available")', RESOURCE)
         self.assertIn('m_action == QLatin1String("upgrade")', RESOURCE)
         self.assertIn("catalogAction() != QLatin1String(\"available\")", BACKEND)
         self.assertIn("return refused(app, Transaction::RemoveRole);", BACKEND)
         self.assertIn("i18nc(\"@action:button\", \"Install\")", BUTTON)
-        self.assertIn("Update stays unavailable until a verified helper exists", BUTTON)
+        self.assertNotIn("Update stays unavailable", BUTTON)
         self.assertIn("displayName !== \"EmberBSD\"", BUTTON)
-        self.assertIn("state === Discover.AbstractResource.Upgradeable", BUTTON)
 
 
 if __name__ == "__main__":

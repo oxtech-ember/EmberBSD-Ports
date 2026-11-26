@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: BSD-2-Clause
+cmake_minimum_required(VERSION 3.21)
+project(discover-system-update-test LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Test)
+find_package(KF6I18n REQUIRED)
+qt_standard_project_setup()
+include(CTest)
+qt_add_executable(check-update-state StateTest.cpp ../EmberBSDBackend/EmberUpdateState.cpp)
+target_include_directories(check-update-state PRIVATE ../EmberBSDBackend)
+target_link_libraries(check-update-state PRIVATE Qt6::Test KF6::I18n)
+add_test(NAME system-update-state COMMAND check-update-state)

@@ -77,17 +77,17 @@ class InstallTransactionLifecycle(unittest.TestCase):
         self.assertEqual(outside.count("setStatus(DoneStatus)"), 1)
 
     def test_success_path_releases_first_and_keeps_only_a_guarded_backend(self):
-        confirm = method("void confirmInstalled")
-        finished = next(part for part in lambdas(confirm) if "setStatus(DoneStatus)" in part)
+        success = method("void succeed")
         order = [
-            finished.index("const QPointer<EmberBSDBackend> backend = m_backend;"),
-            finished.index("finish();"),
-            finished.index("setStatus(DoneStatus);"),
-            finished.index("backend->checkForUpdates();"),
+            success.index("const QPointer<EmberBSDBackend> backend = m_backend;"),
+            success.index("finish();"),
+            success.index("backend->checkForUpdates();"),
+            success.index("setStatus(DoneStatus);"),
+            success.index("backend->reload();"),
         ]
         self.assertEqual(order, sorted(order))
-        after_finish = finished[finished.index("finish();"):]
-        self.assertNotIn("m_backend->", after_finish)
+        self.assertIn("if (backend && reloadCatalog)", success)
+        self.assertNotIn("m_backend->", success[success.index("finish();"):])
 
     def test_both_processes_handle_errorOccurred(self):
         for name in ("void start", "void confirmInstalled"):
@@ -97,13 +97,12 @@ class InstallTransactionLifecycle(unittest.TestCase):
             self.assertIn("fail(", handlers[0])
             self.assertIn("m_process = nullptr;", handlers[0])
 
-    def test_reload_waits_for_the_install(self):
-        check = SOURCE[SOURCE.index("void EmberBSDBackend::checkForUpdates()"):]
-        self.assertRegex(check, r"if \(m_installing\)\s*return;\s*reload\(\);")
+    def test_check_reads_local_state(self):
+        self.assertRegex(SOURCE, r"void EmberBSDBackend::checkForUpdates\(\)\s*\{\s*m_updateState.refresh\(\);\s*\}")
 
     def test_install_is_refused_during_a_reload(self):
         install = SOURCE[END:SOURCE.index("Transaction *EmberBSDBackend::removeApplication")]
-        condition = re.search(r"if \((.*?)\)\s*return refused\(app, Transaction::InstallRole\);", install, re.S).group(1)
+        condition = re.search(r"if \((.*?)\)\s*return refused\(app, Transaction::InstallRole\);", install[install.index("if (!resource"):], re.S).group(1)
         self.assertIn("m_installing", condition)
         self.assertIn("m_process", condition)
 

@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "EmberUpdateState.h"
+
 #include <Transaction/Transaction.h>
 #include <resources/AbstractResourcesBackend.h>
 
@@ -35,10 +37,12 @@ public:
 class EmberBSDBackend : public AbstractResourcesBackend
 {
     Q_OBJECT
+    Q_PROPERTY(QString emberUpdateStatus READ emberUpdateStatus NOTIFY emberUpdateStatusChanged)
     friend class InstallTransaction;
 public:
     explicit EmberBSDBackend(QObject *parent = nullptr);
 
+    QString emberUpdateStatus() const;
     bool isValid() const override;
     ResultsStream *search(const Filters &search) override;
     AbstractReviewsBackend *reviewsBackend() const override;
@@ -52,7 +56,11 @@ public:
     Transaction *removeApplication(AbstractResource *app) override;
     void checkForUpdates() override;
 
+Q_SIGNALS:
+    void emberUpdateStatusChanged();
+
 private:
+    ResultsStream *searchCatalog(const Filters &filter);
     struct PendingSearch {
         QPointer<EmberBSDResultsStream> stream;
         Filters filter;
@@ -68,6 +76,8 @@ private:
 
     QVector<EmberBSDResource *> m_resources;
     QVector<PendingSearch> m_pending;
+    EmberUpdateState m_updateState;
+    EmberBSDResource *m_systemResource;
     StandardBackendUpdater *m_updater = nullptr;
     QProcess *m_process = nullptr;
     QString m_error;

@@ -50,6 +50,7 @@ public:
 private:
     bool m_desktop = false;
     bool m_component = false;
+    QString m_repository;
     QString m_packageId;
     QString m_version;
     QString m_root;

@@ -68,6 +68,7 @@ QString localizedValue(const QJsonObject &values)
 
 EmberBSDResource::EmberBSDResource(const QJsonObject &package, const QJsonObject &desktop, const QString &releaseId, AbstractResourcesBackend *parent)
     : AbstractResource(parent)
+    , m_repository(package.value(QStringLiteral("repository")).toString())
     , m_packageId(package.value(QStringLiteral("base")).toString())
     , m_version(package.value(QStringLiteral("version")).toString())
     , m_root(package.value(QStringLiteral("root")).toString())
@@ -78,11 +79,7 @@ EmberBSDResource::EmberBSDResource(const QJsonObject &package, const QJsonObject
     , m_prefix(package.value(QStringLiteral("prefix")).toString())
     , m_size(static_cast<quint64>(package.value(QStringLiteral("size")).toDouble()))
 {
-    if (m_action == QLatin1String("upgrade"))
-        m_state = Upgradeable;
-    else if (m_action == QLatin1String("available"))
-        m_state = None;
-    else if (m_action == QLatin1String("installed") || m_action == QLatin1String("installed-newer") || m_action == QLatin1String("version-uncompared"))
+    if (m_action == QLatin1String("upgrade") || m_action == QLatin1String("installed") || m_action == QLatin1String("installed-newer") || m_action == QLatin1String("version-uncompared"))
         m_state = Installed;
 
     if (!desktop.isEmpty()) {
@@ -249,7 +246,7 @@ QString EmberBSDResource::availableVersion() const
 
 QString EmberBSDResource::origin() const
 {
-    return QStringLiteral("netbsd-amd64");
+    return m_repository;
 }
 
 QString EmberBSDResource::section()

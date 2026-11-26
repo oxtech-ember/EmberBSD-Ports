@@ -105,7 +105,7 @@ public:
     void reload();
     // APPLY_CATALOG_DECLARATION
     void completePending();
-    ResultsStream *search(const Filters &);
+    ResultsStream *searchCatalog(const Filters &);
     QVector<StreamResult> match(const Filters &) const { return QVector<StreamResult>(m_resources.size()); }
     void passiveMessage(const QString &) { ++errors; }
     void fetchingUpdatesProgressChanged() {}
@@ -157,9 +157,9 @@ static void checkRequest(EmberBSDBackend &backend, int generation, bool success)
     const QPointer<QProcess> first = backend.m_process;
     backend.reload();
     require(first == backend.m_process, "second reload replaced the in-flight process");
-    auto one = QPointer<ResultsStream>(backend.search(Filters{}));
-    auto two = QPointer<ResultsStream>(backend.search(Filters{}));
-    delete backend.search(Filters{}); // Closing a search must not strand pending work.
+    auto one = QPointer<ResultsStream>(backend.searchCatalog(Filters{}));
+    auto two = QPointer<ResultsStream>(backend.searchCatalog(Filters{}));
+    delete backend.searchCatalog(Filters{}); // Closing a search must not strand pending work.
     pump(600);
     require(backend.m_ready, "backend did not become ready");
     require(!backend.m_process, "in-flight process was not released");
@@ -181,7 +181,7 @@ static void reloadDuringTimeoutCompletion()
     config = QStringLiteral("hang");
     backend.reload();
     const QPointer<QProcess> retired = backend.m_process;
-    const QPointer<ResultsStream> expired = backend.search(Filters{});
+    const QPointer<ResultsStream> expired = backend.searchCatalog(Filters{});
     QPointer<ResultsStream> next;
     QPointer<QProcess> replacement;
     bool lateFinishedDuringReload = false;
@@ -199,7 +199,7 @@ static void reloadDuringTimeoutCompletion()
         backend.reload();
         replacement = backend.m_process;
         require(replacement && replacement != retired, "timeout completion could not start reload");
-        next = backend.search(Filters{});
+        next = backend.searchCatalog(Filters{});
     };
     pump(650);
     require(lateFinishedDuringReload, "old finished signal did not reach the active reload");
@@ -263,7 +263,7 @@ def main():
     signature = apply_catalog[:apply_catalog.index("{")].strip()
     stubs = STUBS.replace("// APPLY_CATALOG_DECLARATION", signature.replace("EmberBSDBackend::", "") + ";")
     methods = "\n\n".join((method(source, "reload"), apply_catalog,
-                           method(source, "completePending"), method(source, "search")))
+                           method(source, "completePending"), method(source, "searchCatalog")))
     with tempfile.TemporaryDirectory(prefix="ember-discover-catalog-") as temp:
         root = Path(temp)
         (root / "main.cpp").write_text(stubs + methods + MAIN)

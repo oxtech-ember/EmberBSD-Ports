@@ -1,23 +1,19 @@
 $NetBSD$
 
-Install an available catalog package. Removal and reinstall stay unavailable.
+Install an available catalog package. System updates use the Updates page.
 
 --- discover/qml/InstallApplicationButton.qml.orig
 +++ discover/qml/InstallApplicationButton.qml
-@@ -25,6 +25,12 @@
+@@ -25,6 +25,8 @@
  
      readonly property Kirigami.Action action: Kirigami.Action {
          text: {
-+            if (root.application.backend.displayName === "EmberBSD") {
-+                if (root.application.state === Discover.AbstractResource.Upgradeable)
-+                    return i18nc("@action:button", "Update stays unavailable until a verified helper exists")
-+                if (!root.application.isInstalled)
-+                    return i18nc("@action:button", "Install")
-+            }
++            if (root.application.backend.displayName === "EmberBSD" && !root.application.isInstalled)
++                return i18nc("@action:button", "Install")
              if (!root.isStateAvailable) {
                  return i18nc("State being fetched", "Loading…")
              }
-@@ -43,7 +49,7 @@
+@@ -43,7 +45,7 @@
                  : Kirigami.Theme.backgroundColor
          }
          visible: !root.isActive && (!root.application.isInstalled || root.application.isRemovable)
@@ -26,13 +22,11 @@ Install an available catalog package. Removal and reinstall stay unavailable.
          onTriggered: root.click()
      }
  
-@@ -109,8 +115,8 @@
-         QQC2.Button {
+@@ -110,7 +112,7 @@
              id: installOrRemoveButton
  
--            visible: !root.application.isInstalled || root.application.isRemovable
+             visible: !root.application.isInstalled || root.application.isRemovable
 -            enabled: root.application.state !== Discover.AbstractResource.Broken
-+            visible: root.application.backend.displayName === "EmberBSD" ? (!root.application.isInstalled || root.application.state === Discover.AbstractResource.Upgradeable) : (!root.application.isInstalled || root.application.isRemovable)
 +            enabled: (root.application.backend.displayName !== "EmberBSD" || !root.application.isInstalled) && root.application.state !== Discover.AbstractResource.Broken
              activeFocusOnTab: root.buttonActiveFocusOnTab
  
