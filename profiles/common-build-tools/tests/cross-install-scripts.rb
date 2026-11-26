@@ -7,8 +7,11 @@ require 'digest'
 require 'fileutils'
 require 'open3'
 require 'shellwords'
-abort 'Usage: cross-install-scripts.rb PACKAGE_ARCHIVE NEW_OUTPUT' unless ARGV.length == 2
-archive, output = ARGV.map { |path| File.expand_path(path) }
+unless (2..3).cover?(ARGV.length) && [nil, 'YES', 'NO'].include?(ARGV[2])
+  abort 'Usage: cross-install-scripts.rb PACKAGE_ARCHIVE NEW_OUTPUT [YES|NO]'
+end
+account_policy = ARGV.fetch(2, 'YES')
+archive, output = ARGV.first(2).map { |path| File.expand_path(path) }
 File.umask(0o077)
 Dir.mkdir(output)
 tar = ENV.fetch('BSDTAR', 'tar')
@@ -49,6 +52,12 @@ begin
           'PKG_REFCOUNT_DBDIR' => File.join(output, 'refcount'), 'LC_ALL' => 'C' }
   run!(env, '/bin/sh', './+INSTALL', package, 'UNPACK', '+DIRS', chdir: metadata)
   run!(env, '/bin/sh', './+INSTALL', package, 'UNPACK', '+FILES', chdir: metadata)
+  if package.start_with?('polkit-')
+    run!(env, '/bin/sh', './+INSTALL', package, 'UNPACK', '+USERGROUP', chdir: metadata)
+    hook = File.read(File.join(metadata, '+USERGROUP'))
+    raise "Expected PKG_CREATE_USERGROUP=#{account_policy} in target hook" unless hook.include?("${PKG_CREATE_USERGROUP:-#{account_policy}}")
+    raise 'Missing polkitd account' unless hook.match?(/^# USER: polkitd:polkitd:/)
+  end
   attr = package.start_with?('attr-')
   %w[+DIRS +FILES].each do |name|
     path = File.join(metadata, name)

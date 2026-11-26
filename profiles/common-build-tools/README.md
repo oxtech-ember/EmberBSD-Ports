@@ -100,6 +100,13 @@ pass-through. Pass the existing exported pkgsrc, native makeconf, bmake, patch
 executable, upstream pkgsrc source, SDK source, barrier patch and metadata patch
 via the script's options.
 
+NetBSD cross packages use the target `PKG_CREATE_USERGROUP` setting for
+service accounts. The default is `YES`. A target administrator can override it
+when running `pkg_add`. An unprivileged build uses its own account policy
+when a recipe needs users or groups on the build host. For a polkit archive,
+`tests/cross-install-scripts.rb PACKAGE NEW_OUTPUT [YES|NO]` checks the
+selected default in the generated installation script.
+
 Generated pkginstall fragments, INSTALL/DEINSTALL hooks and rc.d scripts track
 changes to `mk/pkginstall/bsd.pkginstall.mk`. Rebuilding package metadata after
 that shared input changes refreshes their substitutions without recompiling the
