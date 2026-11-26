@@ -74,8 +74,10 @@ slots from an inherited MAKEFLAGS jobserver. An inherited serial make or an
 unavailable jobserver limits the exporter to one query at a time. Pass
 `--jobs N` to set a smaller or explicit query limit; `--jobs 1` keeps the
 serial path. This option does not schedule package builds or change graph
-contents. A parallel query that times out is retried once after the other queries
-finish. Completed queries keep their results. For a shared pkgsrc export, pass
+contents. If a parallel bmake inventory command fails or a metadata query times
+out, the exporter retries that query once after the other queries finish.
+A persistent inventory error reports the package, role, and exit status.
+Completed queries keep their results. For a shared pkgsrc export, pass
 the revision from its receipt. The graph records the export input digest.
 
 Pass an early MAKECONF policy input as a repeatable `--make-variable NAME=VALUE`

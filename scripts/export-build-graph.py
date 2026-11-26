@@ -44,6 +44,10 @@ class ExportError(ValueError):
     """The selected metadata cannot form an unambiguous graph."""
 
 
+class InventoryQueryError(ExportError):
+    """bmake did not complete its private variable inventory."""
+
+
 def verified_native_toolset(value, source):
     """Accept only one-token native selection keys from bmake metadata."""
     if value and any(character.isspace() for character in value):
@@ -173,14 +177,14 @@ class Exporter:
         self.native_toolset_seed = None
         self.native_toolset_initialized = False
 
-    def run(self, command, **kwargs):
+    def run(self, command, *, inventory=None, **kwargs):
         completed = subprocess.run(command, text=True, capture_output=True,
                                    timeout=self.args.timeout, **kwargs)
         if completed.returncode:
-            # The debug inventory can contain private MAKECONF values.
-            detail = ('bmake variable inventory query failed' if '-dg1' in command
-                      else completed.stderr.strip()[:2000])
-            raise ExportError('metadata command failed: ' + detail)
+            if inventory:
+                # Raw bmake debug output can contain private MAKECONF values.
+                raise InventoryQueryError(f'bmake variable inventory query failed: {inventory}, exit {completed.returncode}')
+            raise ExportError('metadata command failed: ' + completed.stderr.strip()[:2000])
         return completed
 
     def package_path(self, path, parent=None):
@@ -216,11 +220,9 @@ class Exporter:
             queries += ['-V', '${' + variable + '}']
         # bmake has no GNU .VARIABLES inventory. Its native input graph lists
         # defined names. Query their expanded values separately through -V.
-        try:
-            completed = self.run(command + ['-dg1'] + queries, env=query_environment)
-        except ExportError:
-            role = 'target' if cross == 'yes' else 'native'
-            raise ExportError(f'bmake variable inventory query failed: {package} ({role})') from None
+        role = 'target' if cross == 'yes' else 'native'
+        completed = self.run(command + ['-dg1'] + queries, env=query_environment,
+                             inventory=f'{package} ({role})')
         if '#*** Global Variables:' not in completed.stderr:
             raise ExportError('bmake did not report its native variable inventory')
         extra_trees = sorted(set(re.findall(
@@ -518,11 +520,11 @@ class Exporter:
             with ThreadPoolExecutor(max_workers=min(self.args.jobs, len(remaining))) as pool:
                 futures = [pool.submit(self.query, *request) for request in remaining]
                 try:
-                    # Keep successful queries when concurrent bmake processes time out.
+                    # Keep completed queries while other bmake processes recover.
                     for index, future in enumerate(futures):
                         try:
                             results.append(future.result())
-                        except subprocess.TimeoutExpired:
+                        except (subprocess.TimeoutExpired, InventoryQueryError):
                             results.append(None)
                             retries.append(index)
                 except BaseException:

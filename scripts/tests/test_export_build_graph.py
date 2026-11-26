@@ -346,25 +346,28 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.assertEqual(graph, parallel)
         self.assertEqual(peak_concurrency(), 2)
 
-    def test_parallel_timeout_retries_only_the_affected_query(self):
-        args = types.SimpleNamespace(pkgsrc=self.pkgsrc, makeconf=self.config, bmake=self.bmake,
-                                     pkg_admin=self.pkg_admin, make_variable=[], max_nodes=10, jobs=2)
-        exporter = graph.Exporter(args, lambda path: '')
-        exporter.native_toolset_initialized = True
-        calls = []
+    def test_parallel_metadata_failures_retry_only_the_affected_query(self):
+        failures = (subprocess.TimeoutExpired('bmake', 1), graph.InventoryQueryError('inventory failed'))
+        for error in failures:
+            with self.subTest(error=type(error).__name__):
+                args = types.SimpleNamespace(pkgsrc=self.pkgsrc, makeconf=self.config, bmake=self.bmake,
+                                             pkg_admin=self.pkg_admin, make_variable=[], max_nodes=10, jobs=2)
+                exporter = graph.Exporter(args, lambda path: '')
+                exporter.native_toolset_initialized = True
+                calls = []
 
-        def query(package, *_):
-            calls.append(package)
-            if package == 'devel/library' and calls.count(package) == 1:
-                raise subprocess.TimeoutExpired('bmake', 1)
-            return {'_VERIFIED_NATIVE_TOOLSET': None, 'PKGNAME': package}
+                def query(package, *_):
+                    calls.append(package)
+                    if package == 'devel/library' and calls.count(package) == 1:
+                        raise error
+                    return {'_VERIFIED_NATIVE_TOOLSET': None, 'PKGNAME': package}
 
-        exporter.query = query
-        requests = [(name, 'yes', {}, {}, '') for name in ('devel/app', 'devel/library', 'devel/runtime')]
-        exporter.prefetch(requests)
-        self.assertCountEqual(calls, ['devel/app', 'devel/library', 'devel/runtime', 'devel/library'])
-        self.assertEqual(calls[-1], 'devel/library')
-        self.assertEqual(len(exporter.query_results), 3)
+                exporter.query = query
+                requests = [(name, 'yes', {}, {}, '') for name in ('devel/app', 'devel/library', 'devel/runtime')]
+                exporter.prefetch(requests)
+                self.assertCountEqual(calls, ['devel/app', 'devel/library', 'devel/runtime', 'devel/library'])
+                self.assertEqual(calls[-1], 'devel/library')
+                self.assertEqual(len(exporter.query_results), 3)
 
     def test_shared_export_binds_the_recorded_revision_and_inputs(self):
         snapshot = {'api': 1, 'files': {}, 'trees': {}, 'upstream': '1' * 40}
@@ -622,7 +625,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.packages['devel/app']['_inventory_error'] = 'private-makeconf-secret'
         error = self.run_export('--jobs', '2', success=False)
         self.assertIn('variable inventory query failed', error)
-        self.assertIn('devel/app (target)', error)
+        self.assertIn('devel/app (target), exit 2', error)
         self.assertNotIn('private-makeconf-secret', error)
         self.assertNotIn('Global Variables', error)
         self.assertNotIn(str(self.config), error)
