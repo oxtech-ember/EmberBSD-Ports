@@ -29,16 +29,3 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  .include "../../mk/bsd.pkg.mk"
  
  # This must be after bsd.pkg.mk is included to work.
---- a/archivers/zstd/Makefile
-+++ b/archivers/zstd/Makefile
-@@ -24,6 +24,10 @@
- #MAKE_JOBS_SAFE=		no
- 
- .include "../../mk/bsd.prefs.mk"
-+
-+.if (${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes") || (${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64")
-+PKGREVISION=	2	# Rebuild with public host metadata.
-+.endif
- 
- # See HASH and BUILD_DIR in lib/Makefile and programs/Makefile.
- # Set BUILD_DIR so that HASH is not needed and there is no

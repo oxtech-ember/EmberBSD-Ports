@@ -1,9 +1,0 @@
-Rebuild zstd with the updated LZ4 package dependency.
-Origin: EmberBSD (AI-assisted).
-
---- a/archivers/zstd/Makefile
-+++ b/archivers/zstd/Makefile
-@@ -3,2 +3,3 @@
- DISTNAME=	zstd-1.5.7
-+PKGREVISION=	1
- CATEGORIES=	archivers

@@ -1,0 +1,24 @@
+Select the zlib package that provides the zstd executable dependency.
+Origin: EmberBSD (AI-assisted).
+
+--- a/archivers/zstd/Makefile
++++ b/archivers/zstd/Makefile
+@@ -3,2 +3,3 @@
+ DISTNAME=	zstd-1.5.7
++PKGREVISION=	1
+ CATEGORIES=	archivers
+@@ -24,6 +25,14 @@
+ #MAKE_JOBS_SAFE=		no
+ 
+ .include "../../mk/bsd.prefs.mk"
++
++.if ${OPSYS} == "NetBSD"
++# The executable links libz from the package prefix. Record its provider.
++PREFER.zlib=	pkgsrc
++PKGREVISION=	3
++.elif ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION=	2	# Rebuild with public host metadata.
++.endif
+ 
+ # See HASH and BUILD_DIR in lib/Makefile and programs/Makefile.
+ # Set BUILD_DIR so that HASH is not needed and there is no
