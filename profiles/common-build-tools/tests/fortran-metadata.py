@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='fortran-metadata-') as tmp:
     root = Path(tmp)
     buildlink = root / 'lang/flang-rt/buildlink3.mk'
     buildlink.parent.mkdir(parents=True)
-    buildlink.write_text('DEPENDS+= flang-rt>=23:../../lang/flang-rt\n')
+    buildlink.write_text('BUILDLINK_API_DEPENDS.flang-rt+= flang-rt>=23.1.6\nDEPENDS+= flang-rt>=23.1.6:../../lang/flang-rt\n')
     (root / 'EMBERBSD-METADATA-GOALS.MK').write_bytes(a.metadata_include.read_bytes())
     policy = root / 'fortran.mk'
     policy.write_bytes(a.policy.read_bytes())
@@ -39,7 +39,7 @@ EMBERBSD_FORTRAN_PORTS_SOURCE= /nonexistent/ports
 EMBERBSD_SDK_SOURCE= /nonexistent/sdk
 .include "%s"
 show-var show-vars all:
-\t@printf 'depends=%%s\\nbuild=%%s\\nfc=%%s\\nfail=%%s\\n' '${DEPENDS}' '${BUILD_DEPENDS}' '${FC}' '${PKG_FAIL_REASON}'
+\t@printf 'depends=%%s\\nbuild=%%s\\ntools=%%s\\nfc=%%s\\nfail=%%s\\n' '${DEPENDS}' '${BUILD_DEPENDS}' '${TOOL_DEPENDS}' '${FC}' '${PKG_FAIL_REASON}'
 ''' % (root, root, policy))
     def run(*goals, family='clang', compiler='clang', extra=()):
         return subprocess.run([str(a.bmake), '-r', '-f', str(makefile),
@@ -49,19 +49,23 @@ show-var show-vars all:
     for goal in ('show-var', 'show-vars'):
         result = run(goal)
         assert result.returncode == 0, (goal, result.stderr)
-        assert 'flang-rt>=23:../../lang/flang-rt' in result.stdout, result.stdout
+        assert 'flang-rt>=23.1.6:../../lang/flang-rt' in result.stdout, result.stdout
+        assert 'flang>=23.1.6:../../lang/flang' in result.stdout, result.stdout
         assert 'fail=\n' in result.stdout, result.stdout
         assert not result.stderr, result.stderr
     native = run('show-vars', extra=('TOOLS_USE_CROSS_COMPILE=no', 'EMBERBSD_HOST_COMPILER_FAMILY=clang'))
-    assert native.returncode == 0 and 'flang-rt>=23' in native.stdout and not native.stderr, (native.stdout, native.stderr)
+    assert native.returncode == 0 and 'flang-rt>=23.1.6' in native.stdout and 'flang>=23.1.6:../../lang/flang' in native.stdout and not native.stderr, (native.stdout, native.stderr)
     fake = run('show-vars', extra=('USE_CROSS_COMPILE=no',))
-    assert fake.returncode == 0 and 'flang-rt>=23' not in fake.stdout and not fake.stderr, (fake.stdout, fake.stderr)
+    assert fake.returncode == 0 and 'flang-rt>=23.1.6' not in fake.stdout and 'flang>=23.1.6:../../lang/flang' not in fake.stdout and not fake.stderr, (fake.stdout, fake.stderr)
+    no_fortran = run('show-vars', extra=('USE_LANGUAGES=c',))
+    assert no_fortran.returncode == 0 and 'flang-rt' not in no_fortran.stdout and 'lang/flang' not in no_fortran.stdout and not no_fortran.stderr, (no_fortran.stdout, no_fortran.stderr)
     for goals in (('all',), ('all', 'show-vars')):
         result = run(*goals)
         assert 'EMBERBSD_FLANG must select the build-host Ports flang driver' in result.stdout, result.stdout
     for goal in ('show-var', 'show-vars'):
         result = run(goal, family='gcc', compiler='gcc')
         assert result.returncode == 0, result.stderr
+        assert 'flang>=23.1.6:../../lang/flang' not in result.stdout, result.stdout
         assert 'gcc16-fortran-runtime-16.2.0nb1:../../lang/gcc16-fortran-runtime' in result.stdout, result.stdout
         assert 'gcc16-fortran-devel-16.2.0nb1:../../lang/gcc16-fortran-devel' in result.stdout, result.stdout
         assert '-gfortran' in result.stdout and 'fail=\n' in result.stdout, result.stdout

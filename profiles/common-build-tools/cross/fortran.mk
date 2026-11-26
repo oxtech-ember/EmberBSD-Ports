@@ -29,6 +29,9 @@ _EMBER_FLANG_MODE=native
 # a hard link that has no host library directory beside it.
 .if ${_EMBER_FLANG_MODE} == "native" || ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
+# Use the runtime's pinned ABI floor as the exact host compiler package name.
+_EMBER_FLANG_TOOL_DEPENDS=${BUILDLINK_API_DEPENDS.flang-rt:S/^flang-rt/flang/}
+TOOL_DEPENDS+=${_EMBER_FLANG_TOOL_DEPENDS}:../../lang/flang
 .endif
 .if ${_EMBER_METADATA_ONLY} != "yes"
 .if empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG})

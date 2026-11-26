@@ -21,6 +21,8 @@ USE_CXX_FEATURES+=	c++17
 # Fortran is built by the Flang named below, not by the pkgsrc Fortran
 # provider: the runtime and intrinsic modules must match that Flang.
 USE_LANGUAGES=		c c++
+# Flang-RT configure and build require the matching host Flang driver.
+TOOL_DEPENDS+=	flang-${LLVM_VERSION}{,nb*}:../../lang/flang
 
 # The build-host Flang selected by the host toolset include, as for every
 # Fortran package.
