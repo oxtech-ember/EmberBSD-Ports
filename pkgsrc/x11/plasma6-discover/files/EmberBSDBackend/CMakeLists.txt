@@ -21,7 +21,5 @@ set_target_properties(EmberBSDNotifier PROPERTIES INSTALL_RPATH ${CMAKE_INSTALL_
 install(FILES emberbsd-categories.xml
     DESTINATION ${KDE_INSTALL_DATADIR}/libdiscover/categories
     RENAME emberbsd-backend-categories.xml)
-install(PROGRAMS emberbsd-discover-install
-    DESTINATION ${KDE_INSTALL_LIBEXECDIR})
 install(FILES org.emberbsd.discover.install.policy org.emberbsd.discover.update.policy
     DESTINATION ${KDE_INSTALL_DATADIR}/polkit-1/actions)

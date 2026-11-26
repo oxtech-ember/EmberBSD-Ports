@@ -14,8 +14,10 @@ class SystemAction(unittest.TestCase):
     def test_fixed_argv_and_authorization(self):
         source = (BACKEND / "EmberBSDBackend.cpp").read_text()
         self.assertIn('process->setProgram(QStringLiteral("/usr/pkg/bin/pkexec"));', source)
-        self.assertIn('if (m_system)\n            process->setArguments({QStringLiteral("/usr/sbin/ember-update"), QStringLiteral("apply")});', source)
-        self.assertIn('else\n            process->setArguments({QStringLiteral("/usr/pkg/libexec/emberbsd-discover-install"), m_root});', source)
+        self.assertIn('const QString client = QStringLiteral("/usr/sbin/ember-update");', source)
+        self.assertIn('if (m_system)\n            process->setArguments({client, QStringLiteral("apply")});', source)
+        self.assertIn('process->setArguments({client, QStringLiteral("install"), m_root, QStringLiteral("--pkgname"),', source)
+        self.assertIn("m_base + QLatin1Char('-') + m_version", source)
         action = ElementTree.parse(BACKEND / "org.emberbsd.discover.update.policy").find("action")
         self.assertEqual(action.findtext("defaults/allow_active"), "auth_admin")
         for scope in ("allow_any", "allow_inactive"):
@@ -24,6 +26,18 @@ class SystemAction(unittest.TestCase):
             "org.freedesktop.policykit.exec.path": "/usr/sbin/ember-update",
             "org.freedesktop.policykit.exec.argv1": "apply",
         })
+
+    def test_catalog_and_install_use_native_actions(self):
+        source = (BACKEND / "EmberBSDBackend.cpp").read_text()
+        self.assertIn('process->start(client, {QStringLiteral("catalog")});', source)
+        self.assertNotIn("ember-sdk.pyz", source)
+        policy = ElementTree.parse(BACKEND / "org.emberbsd.discover.install.policy").find("action")
+        self.assertEqual(policy.findtext("annotate[@key='org.freedesktop.policykit.exec.path']"), "/usr/sbin/ember-update")
+        self.assertEqual(policy.findtext("annotate[@key='org.freedesktop.policykit.exec.argv1']"), "install")
+        self.assertEqual(policy.findtext("defaults/allow_active"), "auth_admin")
+        self.assertIn('if (result == "idle")', source)
+        self.assertIn('else if (result == "ready")', source)
+        self.assertIn('emberStagedPackages().contains(name)', source)
 
     def test_single_notifier_owns_automatic_updates(self):
         header = (ROOT / "patches" / "patch-notifier_DiscoverNotifier.h").read_text()

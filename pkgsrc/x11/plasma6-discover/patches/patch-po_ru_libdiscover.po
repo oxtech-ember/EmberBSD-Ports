@@ -4,7 +4,7 @@ Translate the EmberBSD package category and system update status.
 
 --- po/ru/libdiscover.po.orig
 +++ po/ru/libdiscover.po
-@@ -4606,3 +4606,84 @@
+@@ -4606,3 +4606,96 @@
  #~ msgctxt "@status describes a past-tense action"
  #~ msgid "Installed"
  #~ msgstr "установлен"
@@ -61,6 +61,18 @@ Translate the EmberBSD package category and system update status.
 +#, kde-format
 +msgid "Packages: %1"
 +msgstr "Пакеты: %1"
++
++#, kde-format
++msgid "The prepared update does not list %1."
++msgstr "В подготовленном обновлении нет пакета %1."
++
++#, kde-format
++msgid "%1 will be installed after restart."
++msgstr "Пакет %1 будет установлен после перезагрузки."
++
++#, kde-format
++msgid "The package installer returned an unknown result."
++msgstr "Установщик вернул неизвестный результат."
 +
 +#, kde-format
 +msgid "The custom kernel holds OS updates. Package updates remain available."

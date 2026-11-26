@@ -38,11 +38,15 @@ class EmberBSDBackend : public AbstractResourcesBackend
 {
     Q_OBJECT
     Q_PROPERTY(QString emberUpdateStatus READ emberUpdateStatus NOTIFY emberUpdateStatusChanged)
+    Q_PROPERTY(bool emberRestartRequired READ emberRestartRequired NOTIFY emberUpdateStatusChanged)
+    Q_PROPERTY(QStringList emberStagedPackages READ emberStagedPackages NOTIFY emberUpdateStatusChanged)
     friend class InstallTransaction;
 public:
     explicit EmberBSDBackend(QObject *parent = nullptr);
 
     QString emberUpdateStatus() const;
+    QStringList emberStagedPackages() const;
+    bool emberRestartRequired() const { return m_updateState.needsReboot(); }
     bool isValid() const override;
     ResultsStream *search(const Filters &search) override;
     AbstractReviewsBackend *reviewsBackend() const override;

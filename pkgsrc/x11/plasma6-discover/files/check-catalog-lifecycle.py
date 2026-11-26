@@ -27,23 +27,14 @@ target_compile_features(check-catalog PRIVATE cxx_std_20)
 target_link_libraries(check-catalog PRIVATE Qt6::Core)
 """
 
-CLIENT = """
-import json
-import sys
-import time
-
-fixture = sys.argv[sys.argv.index('--config') + 1]
-if fixture == 'hang':
-    time.sleep(10)
-elif fixture == 'error':
-    print('Catalog fixture error', file=sys.stderr)
-    sys.exit(7)
-else:
-    if fixture == "slow-ok":
-        time.sleep(0.05)
-    print(json.dumps({'schema': 'emberbsd.catalog-index.v1', 'release_id': 'fixture',
-                     'desktop_binding': 'unavailable', 'counts': {'total': 1},
-                     'packages': [{'base': 'curl', 'pkgname': 'curl-8.23.0'}]}))
+CLIENT = """#!/bin/sh
+[ "$#" -eq 1 ] && [ "$1" = catalog ] || exit 64
+case "$EMBER_DISCOVER_TEST_CASE" in
+hang) exec /bin/sleep 10 ;;
+error) echo 'Catalog fixture error' >&2; exit 7 ;;
+slow-ok) /bin/sleep 0.05 ;;
+esac
+echo '{"schema":"emberbsd.catalog-index.v1","release_id":"fixture","desktop_binding":"unavailable","counts":{"total":1},"packages":[{"base":"curl","version":"8.23.0","pkgname":"curl-8.23.0"}]}'
 """
 
 STUBS = r"""
@@ -54,7 +45,6 @@ STUBS = r"""
 #include <QJsonObject>
 #include <QPointer>
 #include <QProcess>
-#include <QStandardPaths>
 #include <QString>
 #include <QThread>
 #include <QTimer>
@@ -64,14 +54,12 @@ STUBS = r"""
 #include <functional>
 #include <utility>
 
-static QString python;
 static QString client;
 static QString config;
 // Use a short timeout while keeping the production QTimer call unchanged.
-constexpr int catalogTimeoutMs = 150;
+int catalogTimeoutMs = 2000;
 
 QString i18n(const char *message) { return QString::fromUtf8(message); }
-QString userDirectory(QStandardPaths::StandardLocation, const QString &name) { return name; }
 
 struct Filters {};
 using StreamResult = int;
@@ -139,11 +127,11 @@ static void require(bool condition, const char *message)
     }
 }
 
-static void pump(int milliseconds)
+static void pumpUntil(const std::function<bool()> &done)
 {
     QElapsedTimer timer;
     timer.start();
-    while (timer.elapsed() < milliseconds) {
+    while (!done() && timer.elapsed() < 4000) {
         QCoreApplication::processEvents();
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         QThread::msleep(1);
@@ -153,6 +141,7 @@ static void pump(int milliseconds)
 static void checkRequest(EmberBSDBackend &backend, int generation, bool success)
 {
     const int errors = backend.errors;
+    catalogTimeoutMs = config == QStringLiteral("hang") ? 150 : 2000;
     backend.reload();
     const QPointer<QProcess> first = backend.m_process;
     backend.reload();
@@ -160,7 +149,7 @@ static void checkRequest(EmberBSDBackend &backend, int generation, bool success)
     auto one = QPointer<ResultsStream>(backend.searchCatalog(Filters{}));
     auto two = QPointer<ResultsStream>(backend.searchCatalog(Filters{}));
     delete backend.searchCatalog(Filters{}); // Closing a search must not strand pending work.
-    pump(600);
+    pumpUntil([&] { return !first && backend.completions == generation; });
     require(backend.m_ready, "backend did not become ready");
     require(!backend.m_process, "in-flight process was not released");
     require(!first, "retired child was not deleted");
@@ -179,6 +168,8 @@ static void reloadDuringTimeoutCompletion()
 {
     EmberBSDBackend backend;
     config = QStringLiteral("hang");
+    catalogTimeoutMs = 150;
+    qputenv("EMBER_DISCOVER_TEST_CASE", config.toUtf8());
     backend.reload();
     const QPointer<QProcess> retired = backend.m_process;
     const QPointer<ResultsStream> expired = backend.searchCatalog(Filters{});
@@ -196,12 +187,14 @@ static void reloadDuringTimeoutCompletion()
         require(expired->deliveries == 1 && expired->results == 0,
                 "timed-out pending search did not finish once");
         config = QStringLiteral("slow-ok");
+        catalogTimeoutMs = 2000;
+        qputenv("EMBER_DISCOVER_TEST_CASE", config.toUtf8());
         backend.reload();
         replacement = backend.m_process;
         require(replacement && replacement != retired, "timeout completion could not start reload");
         next = backend.searchCatalog(Filters{});
     };
-    pump(650);
+    pumpUntil([&] { return backend.completions == 2 && !retired && !replacement; });
     require(lateFinishedDuringReload, "old finished signal did not reach the active reload");
     require(!retired && !replacement, "one of the two processes was not reaped");
     require(backend.completions == 2 && backend.errors == 1 && backend.m_ready,
@@ -216,23 +209,24 @@ static void reloadDuringTimeoutCompletion()
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    require(argc == 4, "expected Python, fixture client and case");
-    python = QString::fromLocal8Bit(argv[1]);
-    client = QString::fromLocal8Bit(argv[2]);
-    config = QString::fromLocal8Bit(argv[3]);
+    require(argc == 3, "expected fixture client and case");
+    client = QString::fromLocal8Bit(argv[1]);
+    config = QString::fromLocal8Bit(argv[2]);
+    qputenv("EMBER_DISCOVER_TEST_CASE", config.toUtf8());
     if (config == QStringLiteral("late-finished")) {
         reloadDuringTimeoutCompletion();
         return 0;
     }
-    const QString originalPython = python;
+    const QString originalClient = client;
     if (config == QStringLiteral("missing"))
-        python = client + QStringLiteral(".interpreter-not-found");
+        client = originalClient + QStringLiteral(".not-found");
     EmberBSDBackend backend;
     checkRequest(backend, 1, config == QStringLiteral("ok"));
     if (config == QStringLiteral("error"))
         require(backend.m_error == QStringLiteral("Catalog fixture error"), "child stderr lost");
-    python = originalPython;
+    client = originalClient;
     config = QStringLiteral("ok");
+    qputenv("EMBER_DISCOVER_TEST_CASE", config.toUtf8());
     checkRequest(backend, 2, true);
     return 0;
 }
@@ -268,8 +262,9 @@ def main():
         root = Path(temp)
         (root / "main.cpp").write_text(stubs + methods + MAIN)
         (root / "CMakeLists.txt").write_text(CMAKE)
-        fixture = root / "client.py"
+        fixture = root / "ember-update"
         fixture.write_text(CLIENT)
+        fixture.chmod(0o755)
         build = root / "build"
         qt_config = args.qt_prefix / "lib" / "cmake" / "Qt6"
         if not (qt_config / "Qt6Config.cmake").is_file():
@@ -281,7 +276,7 @@ def main():
                        stdout=subprocess.DEVNULL)
         failed = False
         for case in ("ok", "missing", "error", "hang", "late-finished"):
-            result = subprocess.run([build / "check-catalog", sys.executable, fixture, case],
+            result = subprocess.run([build / "check-catalog", fixture, case],
                                     capture_output=True, text=True, timeout=8)
             if result.returncode:
                 print(f"FAIL: {case}: {result.stderr.strip()}", file=sys.stderr)

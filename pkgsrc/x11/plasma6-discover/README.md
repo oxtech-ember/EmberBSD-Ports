@@ -12,9 +12,12 @@ the OS generation. Available packages can still be applied. A missing or
 invalid record disables the action. Reopening Discover reads the current
 record, including a prepared update that needs a restart.
 
-The store reads a signed catalog with the installed SDK client and Python.
-The package Install action calls its own polkit helper for one catalog
-PKGPATH and confirms the result in the live package database.
+The store runs `ember-update catalog` as the desktop user. To install an
+application, it authorizes `ember-update install PKGPATH --pkgname PKGNAME`.
+The selected version must still exist in the signed catalog. Discover checks
+the live package database after installation on a single-root system. On a
+two-slot system it checks the selected package in the prepared update and
+shows that installation takes effect after restart.
 
 ## Tests
 

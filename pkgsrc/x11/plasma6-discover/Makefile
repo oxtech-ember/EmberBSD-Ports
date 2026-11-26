@@ -2,7 +2,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 
 DISTNAME=	discover-${PLASMAVER}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	x11
 COMMENT=	KDE Discover software manager
 HOMEPAGE=	https://apps.kde.org/discover/
@@ -32,8 +32,7 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_packagekitqt6=ON
 LDFLAGS+=		${COMPILER_RPATH_FLAG}${PREFIX}/lib/plasma-discover
 
 
-# The signed-catalog backend is package source. It calls the installed
-# SDK client with fixed arguments.
+# The backend calls the native service client for the catalog and system update.
 post-extract:
 	${CP} -R ${FILESDIR}/EmberBSDBackend ${WRKSRC}/libdiscover/backends/
 

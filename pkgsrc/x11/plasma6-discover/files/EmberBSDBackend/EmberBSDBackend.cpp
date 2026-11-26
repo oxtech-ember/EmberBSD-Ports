@@ -2,10 +2,8 @@
  * SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
  * SPDX-FileCopyrightText: 2026 EmberBSD contributors
  *
- * The package list is the SDK client's read-only catalog command.
- * Arguments are fixed. State and cache are this user's XDG directories.
- * Install runs the polkit-authorized helper with one catalog root.
- * Remove is not called.
+ * The native client reads the signed catalog as the desktop user.
+ * A privileged install receives one root and the exact selected package name.
  *
  * A search that arrives before the catalog stays open. It is completed with
  * the real resources, or with the real error, when the client finishes.
@@ -26,7 +24,6 @@
 #include <QPointer>
 #include <QProcess>
 #include <QRegularExpression>
-#include <QStandardPaths>
 #include <QTimer>
 #include <utility>
 
@@ -34,15 +31,7 @@ DISCOVER_BACKEND_PLUGIN(EmberBSDBackend)
 
 namespace {
 constexpr int catalogTimeoutMs = 180000;
-const QString python = QStringLiteral("/usr/pkg/bin/python3.15");
-const QString client = QStringLiteral("/usr/local/libexec/ember-sdk.pyz");
-const QString config = QStringLiteral("/usr/local/etc/ember-sdk.json");
-
-QString userDirectory(QStandardPaths::StandardLocation location, const QString &name)
-{
-    const QString base = QStandardPaths::writableLocation(location);
-    return base.isEmpty() ? QString() : base + QLatin1Char('/') + name;
-}
+const QString client = QStringLiteral("/usr/sbin/ember-update");
 }
 
 class RefusedTransaction : public Transaction
@@ -102,6 +91,17 @@ EmberBSDBackend::EmberBSDBackend(QObject *parent)
     QTimer::singleShot(0, m_updater, &StandardBackendUpdater::cleanup);
 }
 
+QStringList EmberBSDBackend::emberStagedPackages() const
+{
+    QStringList packages;
+    if (m_updateState.needsReboot()) {
+        const auto available = m_updateState.value().value(QStringLiteral("available")).toObject();
+        for (const auto &pkg : available.value(QStringLiteral("packages")).toArray())
+            packages << pkg.toString();
+    }
+    return packages;
+}
+
 QString EmberBSDBackend::emberUpdateStatus() const
 {
     return m_updateState.description();
@@ -116,16 +116,6 @@ void EmberBSDBackend::reload()
 {
     if (m_process)
         return;
-    const QString stateDir = userDirectory(QStandardPaths::GenericStateLocation, QStringLiteral("discover-emberbsd"));
-    const QString cacheDir = userDirectory(QStandardPaths::GenericCacheLocation, QStringLiteral("discover-emberbsd"));
-    if (stateDir.isEmpty() || cacheDir.isEmpty()) {
-        m_error = i18n("No user state directory is available for the signed catalog.");
-        m_ready = true;
-        Q_EMIT passiveMessage(m_error);
-        completePending();
-        Q_EMIT fetchingUpdatesProgressChanged();
-        return;
-    }
     auto *process = new QProcess(this);
     m_process = process;
     m_ready = false;
@@ -157,7 +147,7 @@ void EmberBSDBackend::reload()
     QTimer::singleShot(catalogTimeoutMs, process, [complete] {
         complete(CatalogResult::TimedOut, i18n("The signed catalog client timed out.").toUtf8());
     });
-    process->start(python, {client, QStringLiteral("--config"), config, QStringLiteral("--state-dir"), stateDir, QStringLiteral("--cache-dir"), cacheDir, QStringLiteral("catalog")});
+    process->start(client, {QStringLiteral("catalog")});
 }
 
 void EmberBSDBackend::applyCatalog(const QByteArray &output, const QByteArray &errors, bool failed)
@@ -176,7 +166,9 @@ void EmberBSDBackend::applyCatalog(const QByteArray &output, const QByteArray &e
             const QString releaseId = root.value(QStringLiteral("release_id")).toString();
             for (const QJsonValue &value : root.value(QStringLiteral("packages")).toArray()) {
                 const QJsonObject package = value.toObject();
-                if (package.value(QStringLiteral("base")).toString().isEmpty() || package.value(QStringLiteral("pkgname")).toString().isEmpty())
+                const auto base = package.value(QStringLiteral("base")).toString();
+                const auto version = package.value(QStringLiteral("version")).toString();
+                if (base.isEmpty() || version.isEmpty() || package.value(QStringLiteral("pkgname")) != base + QLatin1Char('-') + version)
                     continue;
                 bool desktop = false;
                 if (package.value(QStringLiteral("role")).toString() == QLatin1String("desktop")) {
@@ -402,24 +394,13 @@ private:
         QProcess *process = m_process = new QProcess(this);
         process->setProgram(QStringLiteral("/usr/pkg/bin/pkexec"));
         if (m_system)
-            process->setArguments({QStringLiteral("/usr/sbin/ember-update"), QStringLiteral("apply")});
+            process->setArguments({client, QStringLiteral("apply")});
         else
-            process->setArguments({QStringLiteral("/usr/pkg/libexec/emberbsd-discover-install"), m_root});
+            process->setArguments({client, QStringLiteral("install"), m_root, QStringLiteral("--pkgname"), m_base + QLatin1Char('-') + m_version});
         connect(process, &QProcess::readyReadStandardError, this, [this, process] {
-            const QString text = QString::fromUtf8(process->readAllStandardError());
-            m_detail += text;
-            if (m_system)
-                return;
-            if (!m_committing && text.contains(QLatin1String("Install:"))) {
-                m_committing = true;
-                setStatus(CommittingStatus);
-                setProgress(60);
-            } else if (!m_committing) {
-                setStatus(DownloadingStatus);
-                setProgress(25);
-            }
+            m_detail = (m_detail + QString::fromUtf8(process->readAllStandardError())).right(4096);
         });
-        connect(process, &QProcess::finished, this, [this](int code, QProcess::ExitStatus status) {
+        connect(process, &QProcess::finished, this, [this, process](int code, QProcess::ExitStatus status) {
             m_process = nullptr;
             if (status != QProcess::NormalExit || code != 0) {
                 if (code == 126 || code == 127 || m_detail.contains(QLatin1String("not authorized"), Qt::CaseInsensitive)
@@ -429,10 +410,26 @@ private:
                 fail(m_detail);
                 return;
             }
-            if (m_system)
+            if (m_system) {
                 succeed();
-            else
+                return;
+            }
+            const auto result = process->readAllStandardOutput().trimmed();
+            if (result == "idle") {
                 confirmInstalled();
+            } else if (result == "ready") {
+                const auto name = m_base + QLatin1Char('-') + m_version;
+                m_backend->checkForUpdates();
+                if (!m_backend->emberStagedPackages().contains(name)) {
+                    fail(i18n("The prepared update does not list %1.", name));
+                    return;
+                }
+                m_staged = true;
+                m_backend->reportInstall(i18n("%1 will be installed after restart.", name));
+                succeed();
+            } else {
+                fail(i18n("The package installer returned an unknown result."));
+            }
         });
         connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError) {
             // A crash still reports Running here; finished() handles it.
@@ -441,8 +438,7 @@ private:
                 fail(process->errorString());
             }
         });
-        setStatus(DownloadingStatus);
-        setProgress(10);
+        setStatus(CommittingStatus);
         process->start();
     }
 
@@ -473,7 +469,7 @@ private:
     void succeed()
     {
         const QPointer<EmberBSDBackend> backend = m_backend;
-        const bool reloadCatalog = !m_system;
+        const bool reloadCatalog = !m_system && !m_staged;
         finish();
         if (backend)
             backend->checkForUpdates();
@@ -523,7 +519,7 @@ private:
     QString m_base;
     QString m_version;
     QString m_detail;
-    bool m_committing = false;
+    bool m_staged = false;
     bool m_finished = false;
 };
 
@@ -538,7 +534,8 @@ Transaction *EmberBSDBackend::installApplication(AbstractResource *app, const Ad
         m_installing = true;
         return new InstallTransaction(this, m_systemResource);
     }
-    if (!resource || m_installing || m_process || resource->catalogAction() != QLatin1String("available") || !catalogRoot(resource->packageRoot()))
+    m_updateState.refresh();
+    if (!resource || m_installing || m_process || m_updateState.needsReboot() || resource->catalogAction() != QLatin1String("available") || !catalogRoot(resource->packageRoot()))
         return refused(app, Transaction::InstallRole);
     m_installing = true;
     return new InstallTransaction(this, resource);

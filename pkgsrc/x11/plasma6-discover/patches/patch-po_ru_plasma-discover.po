@@ -4,7 +4,7 @@ Translate the application group and the system action.
 
 --- po/ru/plasma-discover.po.orig
 +++ po/ru/plasma-discover.po
-@@ -2388,3 +2388,13 @@
+@@ -2388,3 +2388,23 @@
  
  #~ msgid "Sign in is required"
  #~ msgstr "Необходимо выполнить вход"
@@ -18,3 +18,13 @@ Translate the application group and the system action.
 +msgctxt "@action:button"
 +msgid "Update system"
 +msgstr "Обновить систему"
++
++#, kde-format
++msgctxt "@action:button"
++msgid "Installing after restart"
++msgstr "Установится после перезагрузки"
++
++#, kde-format
++msgctxt "@action:button"
++msgid "Restart before installing"
++msgstr "Для установки перезагрузите систему"
