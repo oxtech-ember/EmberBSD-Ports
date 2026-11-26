@@ -267,8 +267,8 @@ cache_identity()
         "native=$native" "environment-sha256=$env_identity"
     ls -id "$PKGSRCDIR/" | awk '{ print $1 }'
     for file in $files; do
-        case "$file" in /*) shasum -a 256 "$file" || return 1 ;; esac
-    done
+        case "$file" in /*) printf '%s\0' "$file" ;; esac
+    done | xargs -0 -r shasum -a 256 || return 1
     pkgdb_snapshot
 }
 
