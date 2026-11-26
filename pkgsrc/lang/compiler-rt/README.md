@@ -618,6 +618,11 @@ builtins and static libunwind stages, using `riscv32--netbsd`, RV32IMAC and
 complete SDK or target execution result. The SDK validates ELF class and
 floating-point ABI flags on each installed runtime archive member.
 
+Use `--target earmv7hf` with `--phase builtins` or `--phase bootstrap` for the
+ARMv7 static C foundation. Clang selects the hard-float calling convention
+with `armv7--netbsdelf-eabihf`. The SDK checks ARM EABI5 and any explicit
+file-scope VFP argument attribute on the relocatable runtime objects.
+
 `patch-15-sanitizer-netbsd-aslr-diagnostic` avoids reading process arguments
 before startup when NetBSD ASan rejects enabled PaX ASLR. NetBSD ASan requires
 ASLR disabled for the diagnostic executable: use `paxctl +a /path/to/test`

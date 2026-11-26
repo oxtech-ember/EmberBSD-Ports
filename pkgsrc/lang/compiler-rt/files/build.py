@@ -109,6 +109,8 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
         LLVM_INCLUDE_DOCS='OFF', LLVM_INCLUDE_BENCHMARKS='OFF',
         LLVM_ENABLE_PROJECTS='', LLVM_ENABLE_RUNTIMES='',
     )
+    if definition['arch'] == 'earmv7hf':
+        settings.update(CMAKE_SYSTEM_PROCESSOR='armv7')
     linker = '--ld-path=' + compiler['binaries']['ld']['selected_path']
     # Driver queries and compile-only feature probes also consume these flags.
     # Scope unused-argument suppression to link options, never all diagnostics.
@@ -276,7 +278,10 @@ def inspect_inputs(owner, args, prepared, *, existing=False):
     owner.require(native_checks.NATIVE_CHECKS_API == 1,
                   'compiler-rt runtime requires native-checks API 1')
     source = Path(owner.paths.build_path(owner.paths.canonical_new(args.source)))
-    definition = targets.target_definition(args.target)
+    if args.target == 'earmv7hf' and args.phase in ('builtins', 'bootstrap'):
+        definition = targets.target_definition(args.target, targets.FOUNDATION_TARGETS)
+    else:
+        definition = targets.target_definition(args.target)
     base = Path(owner.paths.canonical_existing(args.sysroot))
     work, stage = Path(args.work), Path(args.stage)
     owner.require(args.jobs > 0 and work.is_absolute() and stage.is_absolute(), 'use absolute work/stage and positive jobs')

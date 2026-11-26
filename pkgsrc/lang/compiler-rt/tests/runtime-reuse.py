@@ -58,10 +58,15 @@ with tempfile.TemporaryDirectory() as tmp:
         else:
             assert not want_error
     check(stage)
-    guard = b"    if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':\n        cli.error('riscv32 supports only builtins and bootstrap')\n"
+    guard = b"    if args.command in ('build', 'verify') and args.target in ('riscv32', 'earmv7hf') and args.phase == 'full':\n        cli.error(f'{args.target} supports only builtins and bootstrap')\n"
     assert guard in cli_bytes
     assert runtime.build_cli(cli_bytes) == runtime.build_cli(cli_bytes.replace(guard, b''))
-    target_old = cli_bytes.replace(b"choices=('aarch64', 'amd64', 'riscv32')", b"choices=('aarch64', 'amd64')")
+    choices = b"choices=('aarch64', 'amd64', 'riscv32', 'earmv7hf')"
+    assert choices in cli_bytes
+    target_old = cli_bytes.replace(choices, b"choices=('aarch64', 'amd64')")
+    target_rv = cli_bytes.replace(choices, b"choices=('aarch64', 'amd64', 'riscv32')")
+    assert runtime.build_cli(cli_bytes, 'riscv32') == runtime.build_cli(target_rv, 'riscv32')
+    assert runtime.build_cli(cli_bytes, 'earmv7hf') != runtime.build_cli(target_rv, 'earmv7hf')
     assert runtime.build_cli(cli_bytes, 'aarch64') == runtime.build_cli(target_old, 'aarch64')
     assert runtime.build_cli(cli_bytes, 'riscv32') != runtime.build_cli(target_old, 'riscv32')
     assert runtime.build_cli(cli_bytes, 'aarch64') != runtime.build_cli(cli_bytes.replace(b"default='clang'", b"default='gcc'"), 'aarch64')

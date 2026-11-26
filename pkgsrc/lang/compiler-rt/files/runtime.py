@@ -51,7 +51,7 @@ def main(arguments):
     verify.add_argument('--source', help='currently selected prepared LLVM source')
     verify.add_argument('--original-source', help='prepared source used by the existing runtime')
     for parser in (build, recover, verify):
-        parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32'), required=True)
+        parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32', 'earmv7hf'), required=True)
     for parser in (build, verify):
         parser.add_argument('--phase', choices=('builtins', 'bootstrap', 'full'), default='full')
     recover.add_argument('--phase', choices=('bootstrap',), default='bootstrap')
@@ -60,8 +60,8 @@ def main(arguments):
     for parser in (prepare, verify_source, build, recover, verify):
         parser.add_argument('--git')
     args = cli.parse_args(arguments)
-    if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':
-        cli.error('riscv32 supports only builtins and bootstrap')
+    if args.command in ('build', 'verify') and args.target in ('riscv32', 'earmv7hf') and args.phase == 'full':
+        cli.error(f'{args.target} supports only builtins and bootstrap')
     owner.select_recipe_root(args.pkgsrc_root)
     if args.command == 'prepare':
         record = owner.prepare_source(args.archive, args.source, args.patch, args.git)
@@ -221,6 +221,22 @@ def compatible_build_for_target(previous, current, machine_arch, atomic_defaults
     """Compare build inputs after reviewed target-guard and metadata normalization."""
     if not isinstance(machine_arch, str) or not machine_arch:
         return False
+
+    # These two additive statements change only the new ARM target. Compare
+    # the complete remaining producer bytes before applying historical rules.
+    if machine_arch in ('aarch64', 'x86_64', 'riscv32'):
+        arm_input = b"""    if args.target == 'earmv7hf' and args.phase in ('builtins', 'bootstrap'):
+        definition = targets.target_definition(args.target, targets.FOUNDATION_TARGETS)
+    else:
+        definition = targets.target_definition(args.target)
+"""
+        arm_settings = b"""    if definition['arch'] == 'earmv7hf':
+        settings.update(CMAKE_SYSTEM_PROCESSOR='armv7')
+"""
+        old_input = b'    definition = targets.target_definition(args.target)\n'
+        if current.count(arm_input) == 1 and current.count(arm_settings) == 1:
+            if current.replace(arm_input, old_input).replace(arm_settings, b'') == previous:
+                return True
 
     previous = normalize_export_revision(previous)
     current = normalize_export_revision(current)
@@ -543,7 +559,8 @@ def compatible_source(owner, stage, expected, source, original_source, git):
                       owner.digest(current_build) == new.get(build_name),
                       'runtime build or patch inputs changed')
         from emberbsd_sdk import targets
-        selected_arch = targets.target_definition(stage.get('target'))['arch']
+        selected_arch = targets.target_definition(stage.get('target'),
+            targets.FOUNDATION_TARGETS if stage.get('target') == 'earmv7hf' else targets.TARGETS)['arch']
         atomic_defaults = atomic_builtin_excluded(stage, original_path, source)
         owner.require(stage.get('machine_arch') == selected_arch and
                       compatible_build_for_target(previous_build, current_build, selected_arch,
@@ -589,6 +606,9 @@ build.add_argument('--original-source', help='prepared source used by the bootst
 build.add_argument('--jobs', type=int, default=1)
 """).body
     target_loop = ast.parse("""for parser in (build, verify):
+    parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32', 'earmv7hf'), required=True)
+""").body[0]
+    target_loop_rv = ast.parse("""for parser in (build, verify):
     parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32'), required=True)
 """).body[0]
     target_loop_old = ast.parse("""for parser in (build, verify):
@@ -620,7 +640,7 @@ build.add_argument('--jobs', type=int, default=1)
     if setup_count != 1:
         return False
     pairs = [i for i in range(len(out) - 1)
-             if dump(out[i]) in (dump(target_loop), dump(target_loop_old)) and
+             if dump(out[i]) in (dump(target_loop), dump(target_loop_rv), dump(target_loop_old)) and
              dump(out[i + 1]) == dump(phase_loop)]
     if len(pairs) != 1:
         return False
@@ -762,6 +782,8 @@ build.add_argument('--original-source', help='prepared source used by the bootst
 owner.select_recipe_root(args.pkgsrc_root)
 if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':
     cli.error('riscv32 supports only builtins and bootstrap')
+if args.command in ('build', 'verify') and args.target in ('riscv32', 'earmv7hf') and args.phase == 'full':
+    cli.error(f'{args.target} supports only builtins and bootstrap')
 """
     ignored = {ast.dump(n, include_attributes=False) for n in ast.parse(additions).body}
     selected = []
@@ -781,12 +803,16 @@ if args.command in ('build', 'verify') and args.target == 'riscv32' and args.pha
         for call in ast.walk(clone):
             if isinstance(call, ast.Call) and call.args and isinstance(call.args[0], ast.Constant) and call.args[0].value == '--git':
                 call.keywords = [k for k in call.keywords if k.arg != 'required']
-            if (target in ('aarch64', 'amd64') and isinstance(call, ast.Call) and
+            if (target in ('aarch64', 'amd64', 'riscv32') and isinstance(call, ast.Call) and
                     call.args and isinstance(call.args[0], ast.Constant) and call.args[0].value == '--target'):
                 for keyword in call.keywords:
                     if keyword.arg == 'choices' and isinstance(keyword.value, ast.Tuple):
                         values = keyword.value.elts
-                        if [getattr(v, 'value', None) for v in values] == ['aarch64', 'amd64', 'riscv32']:
+                        choices = [getattr(v, 'value', None) for v in values]
+                        if choices == ['aarch64', 'amd64', 'riscv32', 'earmv7hf']:
+                            keyword.value.elts = values[:3]
+                            choices = choices[:3]
+                        if target in ('aarch64', 'amd64') and choices == ['aarch64', 'amd64', 'riscv32']:
                             keyword.value.elts = values[:2]
         selected.append(clone)
 

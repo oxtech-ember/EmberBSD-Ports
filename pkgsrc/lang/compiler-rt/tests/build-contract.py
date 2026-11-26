@@ -26,7 +26,7 @@ def main():
     owner = module(files / 'source.py', 'runtime_source')
     owner.load_sdk(['--sdk-source', args.sdk_source])
     producer = module(files / 'build.py', 'runtime_builder')
-    from emberbsd_sdk.targets import target_definition
+    from emberbsd_sdk.targets import FOUNDATION_TARGETS, target_definition
 
     native = SimpleNamespace(tool=lambda role: '/native/bin/' + role,
                              path='/native/bin:/native/sbin', bundle_root='/native')
@@ -41,9 +41,12 @@ def main():
         headers = [flags[i + 1] for i, value in enumerate(flags) if value == '-isystem']
         assert headers == ([cxx_header, builtin_header] if role == 'cxx' else [builtin_header])
 
-    for target in ('aarch64', 'amd64', 'riscv32'):
-        definition = target_definition(target)
-        for phase in ('builtins', 'bootstrap', 'full'):
+    for target in ('aarch64', 'amd64', 'riscv32', 'earmv7hf'):
+        definition = target_definition(target, FOUNDATION_TARGETS)
+        phases = ('builtins', 'bootstrap')
+        if target in ('aarch64', 'amd64'):
+            phases += ('full',)
+        for phase in phases:
             command = producer.cmake_arguments(Path('/source'), Path('/work'), Path('/stage'),
                 Path('/base'), native, compiler, definition, '23.1.6', phase)
             assert command[0] == '/native/bin/cmake'
@@ -55,6 +58,9 @@ def main():
             else:
                 assert 'COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN' not in options
                 assert 'COMPILER_RT_BUILD_STANDALONE_LIBATOMIC' not in options
+            if target == 'earmv7hf':
+                assert options['CMAKE_SYSTEM_PROCESSOR'] == 'armv7'
+                assert options['CMAKE_C_COMPILER_TARGET'] == 'armv7--netbsdelf-eabihf'
             assert options['CMAKE_C_COMPILER'] == '/target/bin/clang'
             assert options['CMAKE_CXX_COMPILER_TARGET'] == definition['triplet']
             assert options['CMAKE_MAKE_PROGRAM'] == '/native/bin/ninja'
@@ -206,7 +212,7 @@ def main():
         pass
     else:
         raise AssertionError('missing required preliminary header was accepted')
-    print('PASS: six phase/target routes with canonical file prefix maps, resolved DSO, link-hop and directory-header changes, headers-only bootstrap and directory-link parent traversal')
+    print('PASS: supported phase/target routes with canonical file prefix maps, resolved DSO, link-hop and directory-header changes, headers-only bootstrap and directory-link parent traversal')
 
 
 if __name__ == '__main__':
