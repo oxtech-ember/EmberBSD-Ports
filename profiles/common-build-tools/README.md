@@ -63,6 +63,8 @@ Pkgsrc `repackage` re-enters its build barrier after cleaning a work directory
 for a changed package revision. `tests/pkgsrc-repackage-revision.py` checks a
 real package rebuild, selected make settings and the new package payload.
 
+The package writer omits flag fields that contain the work directory or cross sysroot.
+
 `bmake repackage-metadata` explicitly repackages an already completed build
 when the operator has verified that its compiled inputs, toolchain and ABI remain
 compatible. The current recipe's package dependency declarations may change; the

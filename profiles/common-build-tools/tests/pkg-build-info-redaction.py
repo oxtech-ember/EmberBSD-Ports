@@ -25,6 +25,7 @@ makefile = work / 'Makefile'
 target = work / '.pkgdb/+BUILD_INFO'
 makefile.write_text(f'''PKGSRCDIR= {pkgsrc}
 WRKDIR= {work}
+EMBERBSD_CROSS_SYSROOT= /private/test-sysroot
 DESTDIR= {work}/destdir
 PREFIX= /usr/pkg
 UNAME= {tool}
@@ -35,7 +36,7 @@ TEST= /bin/test
 MKDIR= /bin/mkdir
 TRUE= /usr/bin/true
 _PLIST_NOKEYWORDS= {work}/plist
-_BUILD_DEFS= PKGNAME CONFIGURE_ENV CONFIGURE_ARGS CMAKE_CONFIGURE_ARGS OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_ARCH ABI OBJECT_FMT LICENSE DEPENDS PKG_OPTIONS BUILTIN_PKGS PYTHON_VERSION_DEFAULT CFLAGS CPPFLAGS LDFLAGS
+_BUILD_DEFS= PKGNAME CONFIGURE_ENV CONFIGURE_ARGS CMAKE_CONFIGURE_ARGS OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_ARCH ABI OBJECT_FMT LICENSE DEPENDS PKG_OPTIONS BUILTIN_PKGS PYTHON_VERSION_DEFAULT CFLAGS CPPFLAGS LDFLAGS CXXFLAGS SHLIB_LDFLAGS
 PKGNAME= graphene-1.10.8nb5
 CONFIGURE_ENV= CC=/private/path/bin/clang SDKROOT=/private/path/sdk
 CONFIGURE_ARGS= --cc=/private/path/bin/clang --prefix=/usr/pkg
@@ -54,6 +55,8 @@ PYTHON_VERSION_DEFAULT= 315
 CFLAGS= -O2 -I/usr/pkg/include
 CPPFLAGS= -DGRAPHENE=1
 LDFLAGS= -L/usr/pkg/lib
+CXXFLAGS= -I{work}/generated
+SHLIB_LDFLAGS= -Wl,-rpath-link,${{EMBERBSD_CROSS_SYSROOT}}/usr/pkg/qt6/lib
 INIT_SYSTEM= none
 USE_LANGUAGES= c
 CC_VERSION= clang 23.1.6
@@ -70,7 +73,8 @@ result = subprocess.run([str(bmake), '-r', '-f', str(makefile), str(target)],
 if result.returncode:
     raise SystemExit(result.stderr or result.stdout)
 metadata = target.read_text()
-for private_field in ('CONFIGURE_ENV=', 'CONFIGURE_ARGS=', 'CMAKE_CONFIGURE_ARGS='):
+for private_field in ('CONFIGURE_ENV=', 'CONFIGURE_ARGS=', 'CMAKE_CONFIGURE_ARGS=',
+                      'CXXFLAGS=', 'SHLIB_LDFLAGS='):
     assert private_field not in metadata, (private_field, metadata)
 assert 'private-builder.local' not in metadata, metadata
 assert 'BUILD_HOST=Darwin arm64' in metadata, metadata

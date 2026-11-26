@@ -12,7 +12,7 @@
  _METADATA_TARGETS+=	${_BUILD_INFO_FILE}
  
  #
-@@ -37,8 +37,15 @@
+@@ -37,8 +37,16 @@
  	${RUN}								\
  	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
  	{								\
@@ -20,9 +20,10 @@
 -			${ECHO} ${v}=${_BUILD_DEFS.${v}:Q:U${${v}:Q}};	\
 +		public_build_def() {					\
 +			case "$${1%%=*}" in				\
-+			*FLAGS) case "$$1" in				\
-+				*${WRKDIR:Q}*) return 0 ;;			\
-+				esac ;;					\
++			*FLAGS) for dir in ${WRKDIR:Q} ${EMBERBSD_CROSS_SYSROOT:U:Q}; do	\
++				case "$$dir" in ""|/) continue ;; esac;	\
++				case "$$1" in *"$$dir"*) return 0 ;; esac;	\
++			    done ;;	\
 +			esac;						\
 +			${ECHO} "$$1"; };				\
 +		(${_BUILD_DEFS:NPATH:NCONFIGURE_ENV:NCONFIGURE_ARGS:NCMAKE_CONFIGURE_ARGS:@v@ \
