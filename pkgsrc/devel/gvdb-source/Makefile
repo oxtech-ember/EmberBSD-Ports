@@ -15,6 +15,11 @@ HOMEPAGE=	https://gitlab.gnome.org/GNOME/gvdb
 COMMENT=	GNOME GVariant database reader and builder sources
 LICENSE=	gnu-lgpl-v2.1
 
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	1	# Reissue the native package with public build metadata.
+.endif
+
 USE_LANGUAGES=	# none
 NO_CONFIGURE=	yes
 NO_BUILD=	yes
