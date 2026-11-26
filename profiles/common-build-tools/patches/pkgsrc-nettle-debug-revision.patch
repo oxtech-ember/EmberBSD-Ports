@@ -1,0 +1,13 @@
+--- a/security/nettle/Makefile
++++ b/security/nettle/Makefile
+@@ -34,9 +34,6 @@
+ 
+ BUILDLINK_API_DEPENDS.gmp+=	gmp>=6.0
+ .include "../../devel/gmp/buildlink3.mk"
+-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+-    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+-PKGREVISION=	1	# Record the base libc SONAME.
+-.endif
++PKGREVISION=	2	# Make the debug-info change selectable.
+ 
+ .include "../../mk/bsd.pkg.mk"

@@ -1,0 +1,11 @@
+--- configure.ac.orig
++++ configure.ac
+@@ -1165,7 +1165,7 @@
+ 
+ # Set these flags *last*, or else the test programs won't compile
+ if test x$GCC = xyes ; then
+-  CFLAGS="$CFLAGS -ggdb3 -Wall -W -Wno-sign-compare \
++  CFLAGS="$CFLAGS -Wall -W -Wno-sign-compare \
+   -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes \
+   -Wpointer-arith -Wbad-function-cast -Wnested-externs"
+ 
