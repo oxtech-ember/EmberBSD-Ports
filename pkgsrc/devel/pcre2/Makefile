@@ -16,12 +16,12 @@ LICENSE=	modified-bsd
 
 .include "../../mk/bsd.prefs.mk"
 
-.if ${OBJECT_FMT} == "ELF"
+.if ${OPSYS} == "NetBSD"
+# pcre2grep uses libz from the package prefix. Register the provider.
+PREFER.zlib=	pkgsrc
+PKGREVISION=	3
+.elif ${OBJECT_FMT} == "ELF"
 PKGREVISION=	1
-.endif
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-    (${MACHINE_ARCH} == "x86_64" || ${MACHINE_ARCH} == "aarch64")
-PKGREVISION=	2	# Rebuild with public host metadata.
 .endif
 
 USE_LANGUAGES=		c
