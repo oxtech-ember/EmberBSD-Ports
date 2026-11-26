@@ -29,6 +29,12 @@ PYTHON_FOR_BUILD_ONLY=	tool
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${OPSYS} == "Darwin"
+# The generated lexers use POSIX interfaces and Darwin resolver types.
+CPPFLAGS+=	-D_DARWIN_C_SOURCE
+PKGREVISION=	1
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 PKG_FAIL_REASON+=	"${PKGNAME} provides build-host generators"
 .endif
