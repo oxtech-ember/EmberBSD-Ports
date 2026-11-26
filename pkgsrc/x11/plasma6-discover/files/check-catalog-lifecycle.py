@@ -24,7 +24,9 @@ project(CatalogLifecycle LANGUAGES CXX)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 add_executable(check-catalog main.cpp)
 target_compile_features(check-catalog PRIVATE cxx_std_20)
+target_compile_definitions(check-catalog PRIVATE QT_USE_QSTRINGBUILDER)
 target_link_libraries(check-catalog PRIVATE Qt6::Core)
+set_target_properties(check-catalog PROPERTIES BUILD_RPATH "$<TARGET_FILE_DIR:Qt6::Core>")
 """
 
 CLIENT = """#!/bin/sh

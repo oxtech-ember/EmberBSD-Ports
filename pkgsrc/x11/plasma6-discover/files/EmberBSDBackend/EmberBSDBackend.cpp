@@ -168,7 +168,7 @@ void EmberBSDBackend::applyCatalog(const QByteArray &output, const QByteArray &e
                 const QJsonObject package = value.toObject();
                 const auto base = package.value(QStringLiteral("base")).toString();
                 const auto version = package.value(QStringLiteral("version")).toString();
-                if (base.isEmpty() || version.isEmpty() || package.value(QStringLiteral("pkgname")) != base + QLatin1Char('-') + version)
+                if (base.isEmpty() || version.isEmpty() || package.value(QStringLiteral("pkgname")).toString() != base + QLatin1Char('-') + version)
                     continue;
                 bool desktop = false;
                 if (package.value(QStringLiteral("role")).toString() == QLatin1String("desktop")) {
@@ -398,7 +398,8 @@ private:
         else
             process->setArguments({client, QStringLiteral("install"), m_root, QStringLiteral("--pkgname"), m_base + QLatin1Char('-') + m_version});
         connect(process, &QProcess::readyReadStandardError, this, [this, process] {
-            m_detail = (m_detail + QString::fromUtf8(process->readAllStandardError())).right(4096);
+            m_detail += QString::fromUtf8(process->readAllStandardError());
+            m_detail = m_detail.right(4096);
         });
         connect(process, &QProcess::finished, this, [this, process](int code, QProcess::ExitStatus status) {
             m_process = nullptr;
