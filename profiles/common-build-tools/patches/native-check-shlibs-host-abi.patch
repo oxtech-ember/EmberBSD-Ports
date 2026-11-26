@@ -4,8 +4,8 @@
  
  # Expand only a leading standard token. Resolve dot components later, after
  # walking target symlinks, rather than applying lexical host normalization.
-+# Native Linux packages may use only their selected prefix and declared
-+# system ABI directories. Target checks never enable this fallback.
++# Native Linux and NetBSD packages may use only their selected prefix and
++# declared system ABI directories. Target checks never enable this fallback.
 +function host_realpath(value,    cmd, line, result) {
 +	cmd = "readlink -f " shquote(value) " 2>/dev/null"
 +	result = ""
@@ -20,7 +20,7 @@
 +	if (prefixdir != "" && index(file, prefixdir "/") == 1) return file
 +	dir = file
 +	sub(/\/[^\/]*$/, "", dir)
-+	count = split(system_rpath, dirs, ":")
++	count = split(host_abi_dirs != "" ? host_abi_dirs : system_rpath, dirs, ":")
 +	for (i = 1; i <= count; i++) {
 +		allowed = host_realpath(dirs[i])
 +		if (allowed != "" && dir == allowed) return file
@@ -65,22 +65,28 @@
  			if (lookup == "") { print DSO ": cannot resolve dependency path"; continue }
  			print lookup >> requires_file
  		}
-@@ -372,6 +403,7 @@
+@@ -372,6 +403,8 @@
  	cross_destdir = ENVIRON["CROSS_DESTDIR"]
  	destdir = ENVIRON["DESTDIR"]
  	prefix = ENVIRON["PREFIX"]
 +	native_host_abi = ENVIRON["EMBERBSD_NATIVE_HOST_ABI"]
++	host_abi_dirs = ENVIRON["EMBERBSD_NATIVE_HOST_ABI_DIRS"]
  	readelf = ENVIRON["READELF"]
  	wrkdir = ENVIRON["WRKDIR"]
  	extradirs = ENVIRON["CHECK_WRKREF_EXTRA_DIRS"]
 --- a/mk/check/check-shlibs.mk
 +++ b/mk/check/check-shlibs.mk
-@@ -81,6 +81,11 @@
+@@ -81,6 +81,16 @@
  .    endif
  .  endif
  CHECK_SHLIBS_NATIVE_ENV+=	CROSS_DESTDIR=${_CROSS_DESTDIR:Q}
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "no" && ${OPSYS} == "Linux" && ${EMBERBSD_NATIVE_HOST_ABI:Uno:tl} == "yes"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "no" && (${OPSYS} == "NetBSD" || (${OPSYS} == "Linux" && ${EMBERBSD_NATIVE_HOST_ABI:Uno:tl} == "yes"))
 +CHECK_SHLIBS_NATIVE_ENV+= EMBERBSD_NATIVE_HOST_ABI=yes
++.if ${OPSYS} == "NetBSD"
++# NetBSD keeps the libraries of rescue and early boot in /lib; the
++# /usr/lib names of these libraries are symbolic links into /lib.
++CHECK_SHLIBS_NATIVE_ENV+= EMBERBSD_NATIVE_HOST_ABI_DIRS=/lib:/usr/lib
++.endif
 +.else
 +CHECK_SHLIBS_NATIVE_ENV+= EMBERBSD_NATIVE_HOST_ABI=no
 +.endif
