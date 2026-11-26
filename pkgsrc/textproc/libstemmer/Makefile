@@ -2,6 +2,7 @@
 
 DISTNAME=	libstemmer_c-3.2.0
 PKGNAME=	${DISTNAME:S/libstemmer_c/libstemmer/}
+PKGREVISION=	1
 CATEGORIES=	textproc
 MASTER_SITES=	https://snowballstem.org/dist/
 
