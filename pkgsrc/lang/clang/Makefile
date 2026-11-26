@@ -14,6 +14,11 @@ DEPENDS+= lld>=23.1.6nb1:../../devel/lld
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
 
+# The native NetBSD defaults select the base libc++ headers.
+.if ${OPSYS} == "NetBSD"
+PKGREVISION= 1
+.endif
+
 # clang-tblgen links the LLVM-provided zstd library directly.
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 DEPENDS+= zstd>=1.3.6:../../archivers/zstd

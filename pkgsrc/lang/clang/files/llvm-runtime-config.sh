@@ -22,5 +22,9 @@ mkdir "$output"
     echo '--rtlib=compiler-rt'
     echo '--unwindlib=libunwind'
     echo '-stdlib=libc++'
+    # The LLVM 23 NetBSD driver has no libc++ header search. The base
+    # comp set installs these headers in /usr/include/c++. -nostdinc++
+    # still removes this path.
+    echo '-stdlib++-isystem /usr/include/c++'
 } > "$output/$triple.cfg"
 printf 'etc/clang/%s.cfg\n' "$triple" > "$output/PLIST"

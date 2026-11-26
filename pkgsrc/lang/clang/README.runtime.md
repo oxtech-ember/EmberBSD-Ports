@@ -25,6 +25,12 @@ the unchanged NetBSD default runtime is libgcc: `libgcc` and `none` are valid,
 while `libunwind` diagnoses the incompatible selection. SDK callers therefore
 set both options.
 
+The native NetBSD package also installs `etc/clang/TRIPLE.cfg`. It selects
+the same LLVM runtimes and `-stdlib++-isystem /usr/include/c++`. The LLVM 23
+NetBSD driver has no libc++ header search, and the base comp set installs these
+headers in `/usr/include/c++`. `-nostdinc++` removes this path, and C
+compilations do not use it. SDK cross commands use `--no-default-config`.
+
 An invocation without runtime flags retains the upstream NetBSD base ABI.
 Native Darwin defaults are unchanged. `-stdlib` selects the C++ standard
 library independently; choosing Clang does not establish a C++ ABI. Installed
