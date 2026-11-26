@@ -12,7 +12,7 @@
  _METADATA_TARGETS+=	${_BUILD_INFO_FILE}
  
  #
-@@ -37,8 +37,16 @@
+@@ -37,8 +37,19 @@
  	${RUN}								\
  	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
  	{								\
@@ -20,6 +20,9 @@
 -			${ECHO} ${v}=${_BUILD_DEFS.${v}:Q:U${${v}:Q}};	\
 +		public_build_def() {					\
 +			case "$${1%%=*}" in				\
++			EMBERBSD_SDK_SOURCE|OSX_SDK_PATH|EMBERBSD_*_HOST_PREFIX| \
++			EMBERBSD_*_COMPILER_PREFIX|EMBERBSD_*_SYSROOT|	\
++			EMBERBSD_*_CROSS_TOOLS) return 0 ;;		\
 +			*FLAGS) for dir in ${WRKDIR:Q} ${EMBERBSD_CROSS_SYSROOT:U:Q}; do	\
 +				case "$$dir" in ""|/) continue ;; esac;	\
 +				case "$$1" in *"$$dir"*) return 0 ;; esac;	\

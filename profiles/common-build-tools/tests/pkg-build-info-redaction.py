@@ -37,6 +37,15 @@ MKDIR= /bin/mkdir
 TRUE= /usr/bin/true
 _PLIST_NOKEYWORDS= {work}/plist
 _BUILD_DEFS= PKGNAME CONFIGURE_ENV CONFIGURE_ARGS CMAKE_CONFIGURE_ARGS OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_ARCH ABI OBJECT_FMT LICENSE DEPENDS PKG_OPTIONS BUILTIN_PKGS PYTHON_VERSION_DEFAULT CFLAGS CPPFLAGS LDFLAGS CXXFLAGS SHLIB_LDFLAGS
+_BUILD_DEFS+= EMBERBSD_SDK_SOURCE EMBERBSD_UNDICI_HOST_PREFIX EMBERBSD_RUST_COMPILER_PREFIX EMBERBSD_RUST_TARGET_SYSROOT EMBERBSD_RUST_CROSS_TOOLS OSX_SDK_PATH EMBERBSD_UNDICI_RUNTIME_PREFIX MACOSX_DEPLOYMENT_TARGET
+EMBERBSD_SDK_SOURCE= {work}/sdk
+EMBERBSD_UNDICI_HOST_PREFIX= {work}/host
+EMBERBSD_RUST_COMPILER_PREFIX= {work}/compiler
+EMBERBSD_RUST_TARGET_SYSROOT= {work}/sysroot
+EMBERBSD_RUST_CROSS_TOOLS= {work}/cross
+OSX_SDK_PATH= {work}/platform-sdk
+EMBERBSD_UNDICI_RUNTIME_PREFIX= /usr/pkg
+MACOSX_DEPLOYMENT_TARGET= 14.0
 PKGNAME= graphene-1.10.8nb5
 CONFIGURE_ENV= CC=/private/path/bin/clang SDKROOT=/private/path/sdk
 CONFIGURE_ARGS= --cc=/private/path/bin/clang --prefix=/usr/pkg
@@ -74,7 +83,9 @@ if result.returncode:
     raise SystemExit(result.stderr or result.stdout)
 metadata = target.read_text()
 for private_field in ('CONFIGURE_ENV=', 'CONFIGURE_ARGS=', 'CMAKE_CONFIGURE_ARGS=',
-                      'CXXFLAGS=', 'SHLIB_LDFLAGS='):
+                      'CXXFLAGS=', 'SHLIB_LDFLAGS=', 'EMBERBSD_SDK_SOURCE=', 'OSX_SDK_PATH=',
+                      'EMBERBSD_UNDICI_HOST_PREFIX=', 'EMBERBSD_RUST_COMPILER_PREFIX=',
+                      'EMBERBSD_RUST_TARGET_SYSROOT=', 'EMBERBSD_RUST_CROSS_TOOLS='):
     assert private_field not in metadata, (private_field, metadata)
 assert 'private-builder.local' not in metadata, metadata
 assert 'BUILD_HOST=Darwin arm64' in metadata, metadata
@@ -84,6 +95,7 @@ for field in ('PKGNAME=graphene-1.10.8nb5', 'OPSYS=NetBSD',
               'OBJECT_FMT=ELF', 'LICENSE=mit', 'DEPENDS=glib2>=2.0',
               'PKG_OPTIONS=graphviz', 'BUILTIN_PKGS=zlib-1.4',
               'PYTHON_VERSION_DEFAULT=315', 'CFLAGS=-O2 -I/usr/pkg/include',
-              'CPPFLAGS=-DGRAPHENE=1', 'LDFLAGS=-L/usr/pkg/lib'):
+              'CPPFLAGS=-DGRAPHENE=1', 'LDFLAGS=-L/usr/pkg/lib',
+              'EMBERBSD_UNDICI_RUNTIME_PREFIX=/usr/pkg', 'MACOSX_DEPLOYMENT_TARGET=14.0'):
     assert field in metadata, (field, metadata)
 print('generated +BUILD_INFO omits private configure data and retains package identity')

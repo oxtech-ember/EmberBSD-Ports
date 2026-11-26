@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted), Chromium inspector protocol source.
 DISTNAME= inspector-protocol-0.0.0pre20261020
-PKGREVISION= 2
+PKGREVISION= 3
 CATEGORIES= devel
 INSPECTOR_REVISION= 3f95e5ac93fab4a064e637b3567f63b9007d9937
 INSPECTOR_TREE= 4df18a260c2baac122c176713b5696178000d629
