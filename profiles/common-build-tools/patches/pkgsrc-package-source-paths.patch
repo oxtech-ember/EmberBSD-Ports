@@ -1,12 +1,16 @@
 --- a/mk/compiler/gcc-style-args.mk
 +++ b/mk/compiler/gcc-style-args.mk
-@@ -15,6 +15,13 @@
+@@ -15,6 +15,17 @@
  # ready.
  _WRAP_EXTRA_ARGS.cc+=	-fcommon
  CWRAPPERS_PREPEND.cc+=	-fcommon
 +
 +# Use package-relative source locations in diagnostics and binaries.
 +_PKG_SOURCE_MAP=	-ffile-prefix-map=${WRKDIR}/=./
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && !empty(CROSS_DESTDIR)
++_PKG_SOURCE_MAP+=	-ffile-prefix-map=${CROSS_DESTDIR}/=/
++_PKG_SOURCE_MAP+=	-ffile-prefix-map=${TOOLBASE}/lib/clang/=/usr/lib/clang/
++.endif
 +CWRAPPERS_PREPEND.cc+=	${_PKG_SOURCE_MAP}
 +CWRAPPERS_PREPEND.cxx+=	${_PKG_SOURCE_MAP}
 +_WRAP_EXTRA_ARGS.CC+=	${_PKG_SOURCE_MAP}
