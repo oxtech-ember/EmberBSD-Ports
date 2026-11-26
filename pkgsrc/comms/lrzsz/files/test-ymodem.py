@@ -30,13 +30,12 @@ with tempfile.TemporaryDirectory(prefix='lrzsz-ymodem-') as directory:
     try:
         for program, cwd, slave, params in (
             ('lrb', destination, recv_slave, ('--binary',)),
-            ('lsz', source, send_slave, ('--ymodem', 'payload.bin')),
+            ('lsz', source, send_slave, ('--ymodem', '--1k', 'payload.bin')),
         ):
             processes.append(subprocess.Popen(
                 [str(bindir / program), *params], cwd=cwd,
                 stdin=slave, stdout=slave, stderr=subprocess.DEVNULL))
-        os.close(send_slave)
-        os.close(recv_slave)
+        # Keep both slave handles open until the sender consumes the final ACK.
         deadline = time.monotonic() + 45
         while any(p.poll() is None for p in processes):
             if time.monotonic() >= deadline:
@@ -58,5 +57,7 @@ with tempfile.TemporaryDirectory(prefix='lrzsz-ymodem-') as directory:
             if p.poll() is None:
                 p.kill()
             p.wait()
+        os.close(send_slave)
+        os.close(recv_slave)
         os.close(send_master)
         os.close(recv_master)
