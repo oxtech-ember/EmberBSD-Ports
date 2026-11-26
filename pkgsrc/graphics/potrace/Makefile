@@ -24,8 +24,8 @@ post-install:
 
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../mk/bsd.prefs.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	2	# Require the libc SONAME on AArch64.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+PKGREVISION=	3	# Record the selected base zlib in the package requirements.
 .endif
 
 .include "../../mk/bsd.pkg.mk"
