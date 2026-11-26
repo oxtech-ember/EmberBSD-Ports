@@ -74,7 +74,8 @@ class StageLockCollectionTests(unittest.TestCase):
             if native:
                 values = {
                     'NATIVE_PKG_ADD_CMD': os.environ['TEST_PKG_ADD'],
-                    'PKG_INFO': os.environ['TEST_PKG_INFO'],
+                    'PKG_INFO': os.environ['TEST_PKG_INFO'] + ' -K ' +
+                                os.environ['TEST_NATIVE_DB' if cross_native else 'TEST_TARGET_DB'],
                     'CROSSTARGETSETTINGS': 'CROSS_TEST_SETTING=yes',
                     '_PKG_DBDIR': os.environ['TEST_TARGET_DB'],
                     '_HOST_PKG_DBDIR': os.environ['TEST_NATIVE_DB'],
@@ -163,14 +164,16 @@ class StageLockCollectionTests(unittest.TestCase):
         self.counter.write_text('{"running":0,"maximum":0,"started":[],"finished":[]}')
         self.supervisor = self.scripts / 'stage-context-supervisor.py'
         self.supervisor.write_text(textwrap.dedent('''\
-            import os, pathlib, sys
+            import json, os, pathlib, sys
             args=sys.argv[1:]
             lock=pathlib.Path(args[args.index('--locks')+1])
             pathlib.Path(os.environ['TEST_LOCKS']).write_text(lock.read_text())
+            databases = [args[i + 1] for i, arg in enumerate(args) if arg == '--prefix-database']
+            lock.with_name('observed-databases.json').write_text(json.dumps(databases))
             raise SystemExit(97)
         '''))
 
-    def run_build(self, fail_path=''):
+    def run_build(self, fail_path='', package=None):
         env = dict(os.environ)
         env.update({
             'BMAKE': str(self.fake_bmake), 'MAKECONF': str(self.makeconf),
@@ -185,14 +188,16 @@ class StageLockCollectionTests(unittest.TestCase):
             'TEST_FAIL_PATH': fail_path, 'TEST_FAIL_QUERY_DELAY': '.40',
             'TEST_SLOW_PATHS': 'text/beta text/gamma', 'TEST_SLOW_QUERY_DELAY': '.40',
         })
-        return subprocess.run([str(self.scripts / 'cross-bulk.sh'), 'build',
-                               str(self.state / 'order'), str(self.state)], env=env,
+        operation = ['package', package] if package else ['build', str(self.state / 'order')]
+        return subprocess.run([str(self.scripts / 'cross-bulk.sh'), *operation, str(self.state)], env=env,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                               timeout=60)
 
     def test_collects_independent_roles_in_parallel_and_preserves_lock_order(self):
         result = self.run_build()
         self.assertEqual(result.returncode, 97, result.stdout)
+        databases = json.loads((self.state / 'observed-databases.json').read_text())
+        self.assertCountEqual(databases, [str(self.native_db), str(self.target_db)])
         counters = json.loads(self.counter.read_text())
         self.assertEqual(counters['maximum'], 2, counters)
         self.assertEqual(len(counters['finished']), len(self.nodes), counters)
@@ -206,6 +211,21 @@ class StageLockCollectionTests(unittest.TestCase):
         self.assertIn('tools/echo:native:crossfed', finished)
         self.assertIn('text/beta:target:plain', finished)
         self.assertIn('text/alpha:target:plain', finished)
+
+    def test_native_graph_does_not_lease_the_target_database(self):
+        native = 'tools/echo@native'
+        (self.state / 'order').write_text(native + '\n')
+        (self.state / 'edges').write_text(f'{native} {native}\n')
+        result = self.run_build()
+        self.assertEqual(result.returncode, 97, result.stdout)
+        databases = json.loads((self.state / 'observed-databases.json').read_text())
+        self.assertEqual(databases, [str(self.native_db)])
+
+    def test_native_package_with_target_settings_leases_both_databases(self):
+        result = self.run_build(package='tools/echo@native')
+        self.assertEqual(result.returncode, 97, result.stdout)
+        databases = json.loads((self.state / 'observed-databases.json').read_text())
+        self.assertCountEqual(databases, [str(self.native_db), str(self.target_db)])
 
     def test_query_failure_drains_workers_and_never_supervises_partial_rows(self):
         result = self.run_build(fail_path='text/alpha')

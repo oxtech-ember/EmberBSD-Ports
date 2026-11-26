@@ -965,10 +965,20 @@ stage_supervise()
     stage_script=$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")
     stage_shell=$(command -v "$controller_shell") || return 1
     case "$stage_shell" in /*) ;; *) echo 'Cannot resolve the selected controller shell' >&2; return 1 ;; esac
+    # Every stage uses host tools. Protect the target database for target
+    # nodes and for native tools that receive target build settings.
+    stage_reads_target=$(awk '
+        FILENAME == ARGV[1] { crossfed[$0] = 1; next }
+        NF && ($0 !~ /@native$/ || $0 in crossfed) { print "yes"; exit }
+    ' "$run/crossfed" "$stage_nodes") || return 1
     state_lock_release_safe=no
     native_info
+    stage_target_db=
+    if [ "$stage_reads_target" = yes ]; then
+        stage_target_db=$(k_database "${target_pkg_info:-}")
+    fi
     set --
-    for stage_db in "$(k_database "$native_pkg_info")" "$(k_database "${target_pkg_info:-}")"; do
+    for stage_db in "$(k_database "$native_pkg_info")" "$stage_target_db"; do
         case "$stage_db" in /*) set -- "$@" --prefix-database "$stage_db" ;; esac
     done
     if "$host_python" -B -E -S "$(dirname "$stage_script")/stage-context-supervisor.py" --sdk-source "$sdk_source" --locks "$stage_json" --manifest "$stage_manifest" "$@" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"; then stage_status=0; else stage_status=$?; fi
