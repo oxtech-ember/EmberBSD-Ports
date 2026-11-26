@@ -29,6 +29,7 @@ mkdir -p "$out/tree/t" "$out/packages/All" "$out/active" "$out/work" "$out/targe
 # The pkg_add wrapper runs pkg_add as the SDK writer of its package database.
 : "${CROSS_BULK_TEST_SDK_SOURCE:?Set CROSS_BULK_TEST_SDK_SOURCE to the selected SDK source}"
 mkdir -p "$out/sdk/scripts"
+ln -s "$CROSS_BULK_TEST_SDK_SOURCE/src" "$out/sdk/src"
 ln -s "$CROSS_BULK_TEST_SDK_SOURCE/scripts/prefix-lock.py" "$out/sdk/scripts/prefix-lock.py"
 host_python=${CROSS_BULK_TEST_PYTHON:-$(command -v python3)}
 real_shasum=$(command -v shasum)
@@ -255,26 +256,6 @@ run_bulk()
         . "$script"
     ' "$ports/scripts/cross-bulk.sh" "$ports/scripts/cross-bulk.sh" "$@"
 }
-run_bulk_signal()
-{
-    exec sh -c '
-        sleep() { env sleep "$@"; }
-        script=$1
-        shift
-        state=$3
-        manifest=$state/test-stage-manifest
-        root=${state%/*}
-        : > "$manifest"
-        while IFS= read -r node; do
-            echo "$root/work/${node##*/}" >> "$manifest"
-        done < "$2"
-        CROSS_BULK_STAGE_MANIFEST=$manifest
-        CROSS_BULK_SUPERVISED="$PPID|$1|$2|$3"
-        export CROSS_BULK_STAGE_MANIFEST CROSS_BULK_SUPERVISED
-        . "$script"
-    ' "$ports/scripts/cross-bulk.sh" "$ports/scripts/cross-bulk.sh" "$@"
-}
-
 bulk()
 {
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
@@ -539,10 +520,8 @@ for pkg in a b c d e f g h i j; do rm -rf "$out/work/$pkg" "$out/work/$pkg.built
 newstate
 : > "$out/calls"
 FAKE_SLEEP=3 BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
-    run_bulk_signal build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1 &
+    sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1 &
 pid=$!
-mkdir -p "$out/state/build.lock"
-echo "$pid" > "$out/state/build.lock/pid"
 n=0
 until grep -q ' start ' "$out/state/progress" 2> /dev/null; do
     n=$((n + 1)); [ "$n" -lt 100 ] || fail 'no package started'
@@ -557,7 +536,7 @@ started=$(grep -c ' start ' "$out/state/progress")
 finished=$(grep -c ' done \| FAILED ' "$out/state/progress")
 [ "$started" = "$finished" ] || fail "$started started, $finished finished after SIGTERM"
 [ "$(calls d)" = 0 ] && [ "$(calls j)" = 0 ] || fail 'a package started after SIGTERM'
-rm -rf "$out/state/build.lock"
+[ ! -e "$out/state/build.lock" ] || fail 'stopped build left its state lock'
 
 # A worker-side show-vars failure happens before the package log is opened.
 # Keep its stderr in the worker log and identify that log in the result.

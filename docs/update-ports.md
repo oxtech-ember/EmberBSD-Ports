@@ -273,9 +273,10 @@ phases.
 The `build` phase drains independent runnable packages after a package fails.
 Exit 0 means the pass completed without failed or blocked packages; exit 1
 means at least one package failed or was blocked. Inspect `STATE/failed`,
-`STATE/blocked`, and `STATE/skipped` to resume only affected work. Usage,
-invalid mode, and explicit CLI validation errors exit 2; SIGTERM exits 143
-after running packages finish.
+`STATE/blocked`, and `STATE/skipped` to resume only affected work. Usage
+and validation errors exit 2. To pause a build, send SIGTERM to the PID
+in `STATE/build.lock/pid`. The controller finishes its running packages,
+releases the state lock and exits 143. Resume with the same order and state.
 
 If another build reads the package database during installation, `build`
 continues with independent packages. It retries the deferred packages once

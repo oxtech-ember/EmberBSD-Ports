@@ -129,7 +129,7 @@ state_lock_acquire()
 state_lock_release()
 {
     [ "$state_lock_owned" = yes ] || return 0
-    rm -f "$state/build.lock/pid"
+    rm -f "$state/build.lock/pid" "$state/build.lock/stop"
     rmdir "$state/build.lock" 2> /dev/null || :
     state_lock_owned=no
 }
@@ -986,11 +986,25 @@ stage_supervise()
     for stage_db in "$(k_database "$native_pkg_info")" "$stage_target_db"; do
         case "$stage_db" in /*) set -- "$@" --prefix-database "$stage_db" ;; esac
     done
-    if CROSS_BULK_BINARY_INSTALLED="$binary_selection_file" \
-        "$host_python" -B -E -S "$(dirname "$stage_script")/stage-context-supervisor.py" --sdk-source "$sdk_source" --locks "$stage_json" --manifest "$stage_manifest" "$@" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"; then stage_status=0; else stage_status=$?; fi
+    set -- "$host_python" -B -E -S "$(dirname "$stage_script")/stage-context-supervisor.py" \
+        --sdk-source "$sdk_source" --locks "$stage_json" --manifest "$stage_manifest" \
+        "$@" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"
+    if [ "$stage_mode" = build ]; then
+        # A signal to the state owner must reach its trap while the supervisor runs.
+        CROSS_BULK_BINARY_INSTALLED="$binary_selection_file" "$@" < /dev/null &
+        stage_pid=$!
+        while :; do
+            stage_status=0
+            wait "$stage_pid" || stage_status=$?
+            [ "$stage_status" -gt 128 ] && kill -0 "$stage_pid" 2>/dev/null || break
+        done
+    else
+        CROSS_BULK_BINARY_INSTALLED="$binary_selection_file" "$@" || stage_status=$?
+    fi
     # A normal supervisor exit proves that the owned session was drained.
     if [ "$stage_status" -lt 128 ]; then state_lock_release_safe=yes; fi
     rm -f "$stage_json"
+    if [ "$stage_mode" = build ] && [ -f "$state/build.lock/stop" ]; then stop=1; fi
     if [ "${stop:-0}" = 1 ] && [ "$stage_status" = 0 ]; then return 143; fi
     return "$stage_status"
 }
@@ -2778,6 +2792,10 @@ ready()
 
 build()
 {
+    if [ "$stage_supervised" = no ]; then
+        stop=0
+        trap 'stop=1; : > "$state/build.lock/stop"' HUP INT TERM
+    fi
     cpu_file=$state/.cross-bulk-cpus.$$
     host_cpus > "$cpu_file" || return 1
     cpus=$(cat "$cpu_file")
@@ -2962,6 +2980,10 @@ build()
             mv "$first" "$worker.replacing"
             replacing=1 waiting=$((waiting - 1))
             poll_delay=0.05
+        fi
+        if [ "$changed" = 1 ] && [ -f "$state/build.lock/stop" ]; then
+            # The owner reports the signal after the supervisor confirms this drain.
+            stop=1 stop_status=0
         fi
         if [ "$stop" = 1 ]; then
             [ "$running" -gt 0 ] || {
