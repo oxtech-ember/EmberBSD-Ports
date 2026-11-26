@@ -2,7 +2,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 
 DISTNAME=	discover-${PLASMAVER}
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	x11
 COMMENT=	KDE Discover software manager
 HOMEPAGE=	https://apps.kde.org/discover/
@@ -11,6 +11,7 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1 AND gnu-fdl-v1.2
 .include "../../meta-pkgs/kde/plasma6.mk"
 
 USE_TOOLS+=	msgmerge pkg-config
+DEPENDS+=	polkit>=128:../../security/polkit
 
 # PackageKit, Flatpak, Snap, Fwupd and the other Linux stores are not
 # sources for this system. KNewStuff is a separate KDE catalog.

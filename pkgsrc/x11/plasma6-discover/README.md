@@ -19,6 +19,8 @@ the live package database after installation on a single-root system. On a
 two-slot system it checks the selected package in the prepared update and
 shows that installation takes effect after restart.
 
+The package depends on polkit for `/usr/pkg/bin/pkexec`.
+
 ## Tests
 
 Run the native state reader against a temporary directory with Qt 6 and

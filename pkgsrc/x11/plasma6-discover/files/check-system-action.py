@@ -12,6 +12,7 @@ BACKEND = ROOT / "files" / "EmberBSDBackend"
 
 class SystemAction(unittest.TestCase):
     def test_fixed_argv_and_authorization(self):
+        self.assertRegex((ROOT / "Makefile").read_text(), r"(?m)^DEPENDS\+=\s+polkit[^:]*:\.\./\.\./security/polkit$")
         source = (BACKEND / "EmberBSDBackend.cpp").read_text()
         self.assertIn('process->setProgram(QStringLiteral("/usr/pkg/bin/pkexec"));', source)
         self.assertIn('const QString client = QStringLiteral("/usr/sbin/ember-update");', source)
