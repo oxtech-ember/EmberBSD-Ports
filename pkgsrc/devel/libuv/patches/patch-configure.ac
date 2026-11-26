@@ -1,0 +1,12 @@
+Use the debug flags from the selected build profile.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -32,7 +32,6 @@
+ # Xlc has a flag "-f<filename>". Need to use CC_CHECK_FLAG_SUPPORTED_APPEND so
+ # we exclude -fno-strict-aliasing for xlc
+ CC_CHECK_FLAG_SUPPORTED_APPEND([-fno-strict-aliasing])
+-CC_CHECK_CFLAGS_APPEND([-g])
+ CC_CHECK_CFLAGS_APPEND([-std=gnu11])
+ CC_CHECK_CFLAGS_APPEND([-Wall])
+ CC_CHECK_CFLAGS_APPEND([-Wextra])

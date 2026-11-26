@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.91 2026/08/24 00:18:40 khorben Exp $
 
 DISTNAME=	libuv-1.53.0
-PKGREVISION=	1
+PKGREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=libuv/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -41,9 +41,5 @@ post-install:
 	${INSTALL_DATA} ${WRKSRC}/include/uv/* ${DESTDIR}${PREFIX}/include/uv/
 
 .include "../../mk/pthread.buildlink3.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-PKGREVISION=	2	# Record the base libc SONAME.
-.endif
 
 .include "../../mk/bsd.pkg.mk"
