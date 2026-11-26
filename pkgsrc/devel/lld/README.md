@@ -50,3 +50,12 @@ the user locale and fail the COFF incremental-link timestamp check.
 The Darwin/Clang 23 run passed 3197 tests, with 25 unsupported and one
 expected failure. Its only failure, `COFF/incremental.test`, passes after
 this test-environment correction. The full suite was not repeated.
+
+## ARM NetBSD hard-float emulation
+
+The NetBSD Clang driver selects `-m armelf_nbsd_eabihf` for little-endian
+ARM hard-float links. LLD accepts this GNU emulation name for ELF32 ARM.
+Its ARM backend reads the input VFP argument attributes to set the output
+float ABI. Clang supplies the NetBSD target library search paths.
+The `ELF/emulation-arm.s` test checks both the hard-float and base argument
+attributes with this emulation.
