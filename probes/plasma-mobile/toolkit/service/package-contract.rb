@@ -50,7 +50,7 @@ end
 minimum = {
   'plasma6-plasma-desktop'=>'6.8.2', 'plasma6-plasma-workspace'=>'6.8.2nb3',
   'plasma6-kwin'=>'6.8.2nb2', 'qt6-qtbase'=>'6.12.0nb3', 'perl'=>'5.44.0',
-  'dbus'=>'1.16.2', 'xwayland'=>'24.1.14nb3'
+  'dbus'=>'1.16.2', 'consolekit'=>'2.0.0nb8', 'xwayland'=>'24.1.14nb3'
 }
 dependencies = {}
 File.read(ARGV[3]).split.each do |dependency|
@@ -70,7 +70,7 @@ create = lambda do |name, source, paths, deps: {}, scripts: false|
   run.call('create-' + name, argv + [archive])
   archive
 end
-name = 'ember-plasma-session-1.0nb1'
+name = 'ember-plasma-session-1.0nb2'
 archive = create.call(name, staged, files, deps:dependencies, scripts:true)
 install = [tools['pkg_add'], '-I', '-C', config, '-K', database, '-p', prefix, '-m', 'NetBSD/aarch64 11.0']
 remove = [tools['pkg_delete'], '-D', '-K', database]
@@ -86,6 +86,7 @@ archives = {}
   archives[pkg] = create.call(pkg, source, [payload])
 end
 dependencies.each do |base, rev|
+  next if base == 'consolekit'
   selected = base == 'qt6-qtbase' ? '6.12.0nb2' : rev
   pkg = base + '-' + selected
   run.call('seed-' + pkg, install + [archives.fetch(pkg)])
@@ -93,6 +94,16 @@ end
 reject = run.call('reject-old-qt', install + [archive], expect:false)
 raise 'Old Qt did not cause rejection' unless reject.include?('qt6-qtbase>=6.12.0nb3') && !File.exist?(prefix + '/' + files.first)
 run.call('upgrade-provider-qt', install + ['-u', archives.fetch('qt6-qtbase-6.12.0nb3')])
+ck_archive = archives.fetch('consolekit-2.0.0nb8')
+hidden_ck = ck_archive + '.hidden'
+File.rename(ck_archive, hidden_ck)
+begin
+  reject = run.call('reject-no-consolekit', install + [archive], expect:false)
+ensure
+  File.rename(hidden_ck, ck_archive)
+end
+raise 'Missing ConsoleKit did not cause rejection' unless reject.include?('consolekit>=2.0.0nb8') && !File.exist?(prefix + '/' + files.first)
+run.call('seed-consolekit', install + [archives.fetch('consolekit-2.0.0nb8')])
 2.times do |cycle|
   run.call("install-session-#{cycle}", install + [archive])
   files.each do |file|

@@ -16,12 +16,12 @@ bmake MAKECONF=/absolute/common-cross.mk.conf package
 The recipe has no distfile or compiler step. Its `files/` directory holds the
 canonical supervisor and rc.d script. The package installs these exact bytes.
 It requires the shared Plasma, Perl and corrected Qt runtime providers. It
-requires the standard `/usr/pkg` prefix used by those service sources.
+requires ConsoleKit2 and the standard `/usr/pkg` prefix used by those service sources.
 
 Install the package and its dependency closure with normal package scripts:
 
 ```sh
-PKG_RCD_SCRIPTS=yes pkg_add /absolute/ember-plasma-session-1.0.tgz
+PKG_RCD_SCRIPTS=yes pkg_add /absolute/ember-plasma-session-1.0nb2.tgz
 ```
 
 The explicit environment setting installs the standard rc.d files through

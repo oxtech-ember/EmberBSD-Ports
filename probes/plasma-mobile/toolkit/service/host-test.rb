@@ -121,7 +121,7 @@ model = lambda do |name, mode: 'normal', visibility: 'marked', mutate: nil|
     my $state="$Bin/state";
     sub write_file {open(my $f,'>',$_[0]) or die "$!\n";print $f $_[1];close($f) or die "$!\n";}
     write_file("$state/entry.pid",$$);
-    my @keys=qw(HOME USER LOGNAME SHELL DISPLAY WAYLAND_DISPLAY LD_PRELOAD LD_LIBRARY_PATH KWIN_DRM_DEVICES KDE_FULL_SESSION QT_QPA_PLATFORMTHEME GALLIUM_DRIVER KWIN_COMPOSE XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP QSG_RHI_BACKEND);
+    my @keys=qw(HOME USER LOGNAME SHELL DISPLAY WAYLAND_DISPLAY LD_PRELOAD LD_LIBRARY_PATH KWIN_DRM_DEVICES KDE_FULL_SESSION QT_QPA_PLATFORMTHEME GALLIUM_DRIVER KWIN_COMPOSE XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP QSG_RHI_BACKEND XDG_SESSION_COOKIE DBUS_SESSION_BUS_ADDRESS EMBER_PLASMA_SESSION_MARKER);
     write_file("$state/environment.json",encode_json({map {$_=>$ENV{$_}} @keys}));
     open(my $f,'<',"$state/mode") or die "$!\n";my $mode=<$f>;close($f);
     exit 7 if $mode eq 'exit7';exit 0 if $mode eq 'exit0';
@@ -140,14 +140,32 @@ model = lambda do |name, mode: 'normal', visibility: 'marked', mutate: nil|
   executable.call(bus, '#!' + options[:perl] + "\n" + <<~'PERL')
     use strict;use warnings;use FindBin qw($Bin);use JSON::PP qw(encode_json);
     open(my $f,'>',"$Bin/state/bus-arguments.json") or die "$!\n";print $f encode_json(\@ARGV);close($f);
-    @ARGV==2 && $ARGV[0] eq '--' && $ARGV[1] eq "$Bin/entry" or exit 99;
-    exec "$Bin/entry";die "exec: $!\n";
+    @ARGV==5 && shift(@ARGV) eq '--' && $ARGV[0] eq "$Bin/ck" or exit 99;
+    $ENV{DBUS_SESSION_BUS_ADDRESS}='fixture-bus';
+    exec @ARGV;die "exec: $!\n";
+  PERL
+  ck = directory + '/ck'
+  executable.call(ck, '#!' + options[:perl] + "\n" + <<~'PERL')
+    use strict;use warnings;use FindBin qw($Bin);
+    @ARGV==3 && $ARGV[0] eq '/usr/bin/env' && $ARGV[2] eq "$Bin/entry" or exit 98;
+    ($ENV{DBUS_SESSION_BUS_ADDRESS}//'') eq 'fixture-bus' or exit 97;
+    open(my $f,'<',"$Bin/state/mode") or die "$!\n"; my $mode=<$f>; close($f);
+    exit 1 if $mode eq 'ck-failure';
+    my $pid=fork();defined $pid or die "$!\n";
+    if (!$pid) {
+        $ENV{XDG_SESSION_COOKIE}='fixture-ck-cookie';
+        $ENV{XDG_RUNTIME_DIR}="$Bin/ck-runtime";
+        exec @ARGV;die "exec: $!\n";
+    }
+    waitpid($pid,0)==$pid or die "$!\n";
+    exit(($? & 127) ? 128+($? & 127) : $? >> 8);
   PERL
   replacements = {
     'my @account=getpwuid($<);' => 'my @account=("fixture", "", $<, $(, "", "", "", ' + perlquote.call(home) + ', "/bin/sh");',
     "my $state='/var/run/ember-plasma/'.$<;" => 'my $state=' + perlquote.call(state) + ';',
     "'/bin/ps'" => perlquote.call(ps),
     "'/usr/pkg/bin/dbus-run-session'" => perlquote.call(bus),
+    "'/usr/pkg/bin/ck-launch-session'" => perlquote.call(ck),
     "'/usr/pkg/bin/startplasma-wayland'" => perlquote.call(entry)
   }
   text = production.dup
@@ -197,6 +215,13 @@ begin
   wait_for.call('abandoned acknowledgement cleanup') { File.exist?(item[:state] + '/session.status') }
   check.call(File.read(item[:state] + '/session.status').strip == '1', 'Lost caller bypassed cleanup')
   invoke.call('abandoned-ack-stopped', item, 'status', 3)
+  item = model.call('ck-registration-failure')
+  File.write(item[:state] + '/mode', 'ck-failure')
+  invoke.call('ck-registration-launch', item, 'start')
+  wait_for.call('ConsoleKit failure cleanup') { File.exist?(item[:state] + '/session.status') }
+  check.call(File.read(item[:state] + '/session.status').strip == '1', 'ConsoleKit failure status lost')
+  check.call(!File.exist?(item[:state] + '/entry.pid'), 'Plasma ran after ConsoleKit registration failed')
+  invoke.call('ck-registration-stopped', item, 'status', 3)
   item = model.call('normal')
   invoke.call('initial-status', item, 'status', 3); invoke.call('initial-stop', item, 'stop')
   invoke.call('start', item, 'start')
@@ -210,6 +235,9 @@ begin
     check.call(env[key].nil?, 'Inherited override ' + key)
   end
   check.call(env['XDG_SESSION_TYPE'] == 'wayland' && env['XDG_CURRENT_DESKTOP'] == 'KDE', 'Standard session metadata lost')
+  check.call(env['XDG_RUNTIME_DIR'] == item[:state] + '/runtime', 'ConsoleKit replaced the private runtime')
+  check.call(env['XDG_SESSION_COOKIE'] == 'fixture-ck-cookie' && env['DBUS_SESSION_BUS_ADDRESS'] == 'fixture-bus', 'ConsoleKit cookie or bus lost')
+  check.call(env['EMBER_PLASMA_SESSION_MARKER'] == JSON.parse(File.read(item[:state] + '/instance'))['generation'], 'Session ownership marker lost')
   check.call((File.stat(item[:state] + '/runtime').mode & 07777) == 0700, 'Runtime is not private')
   instance = File.read(item[:state] + '/instance'); item[:backup] = instance
   stale = item[:state] + '/stop-' + '0'*32; Dir.mkdir(stale, 0700)

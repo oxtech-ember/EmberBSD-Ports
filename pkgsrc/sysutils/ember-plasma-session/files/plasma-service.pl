@@ -163,7 +163,7 @@ directory($runtime,1,1);
 my $logs=$home;
 for my $part ('.local','state','ember-plasma') {$logs.='/'.$part;directory($logs,$part eq 'ember-plasma',1);}
 my $session_log=file("$logs/session.log",0);seek($session_log,0,2) or die "log seek: $!\n";
-for my $path ('/usr/pkg/bin/dbus-run-session','/usr/pkg/bin/startplasma-wayland') {-x $path or die "Missing executable: $path\n";}
+for my $path ('/usr/pkg/bin/dbus-run-session','/usr/pkg/bin/ck-launch-session','/usr/bin/env','/usr/pkg/bin/startplasma-wayland') {-x $path or die "Missing executable: $path\n";}
 pipe(my $ack_read,my $ack_write) or die "startup pipe: $!\n";
 my $daemon=fork();defined($daemon) or die "fork: $!\n";
 if ($daemon) {
@@ -188,7 +188,10 @@ $deadline=clock_gettime(CLOCK_MONOTONIC)+10;
 my %self=inventory(0);exists($self{$$}) or die "Cannot identify supervisor\n";
 record('instance',encode_json({pid=>$$,identity=>$self{$$}[0],generation=>$generation})."\n");
 $log=file("$state/processes.tsv",1);$log->autoflush(1);
-@ARGV=('/usr/pkg/bin/dbus-run-session','--','/usr/pkg/bin/startplasma-wayland');
+# ConsoleKit keeps its cookie and bus connection. Restore only the service's
+# private runtime path after ck-launch-session sets its own runtime directory.
+@ARGV=('/usr/pkg/bin/dbus-run-session','--','/usr/pkg/bin/ck-launch-session',
+    '/usr/bin/env',"XDG_RUNTIME_DIR=$runtime",'/usr/pkg/bin/startplasma-wayland');
 # Refuse to launch if the initial process inventory cannot be read.
 my %initial = inventory(0);
 %baseline = map { $_ => $initial{$_}[0] } keys %initial;

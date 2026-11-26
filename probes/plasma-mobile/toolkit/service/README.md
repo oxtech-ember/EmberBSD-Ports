@@ -4,7 +4,9 @@ This opt-in rc.d service starts one automatic session for an existing non-root
 account. It starts the standard installed entry:
 
 ```sh
-/usr/pkg/bin/dbus-run-session -- /usr/pkg/bin/startplasma-wayland
+/usr/pkg/bin/dbus-run-session -- /usr/pkg/bin/ck-launch-session \
+    /usr/bin/env XDG_RUNTIME_DIR=/var/run/ember-plasma/UID/runtime \
+    /usr/pkg/bin/startplasma-wayland
 ```
 
 The session uses the account's real HOME. It has no test controller, fixed
@@ -16,11 +18,12 @@ when one of its services fails. Inspect the session log and the desktop.
 
 ## Install and select an account
 
-Install the current common Plasma packages and Perl first. The account must
-already have the required device access. This service does not change device
-permissions, create accounts, start ConsoleKit, select a seat implementation,
-or force a graphics driver. It does not replace a display manager or qualify
-physical HDMI, input, locking, or seat ownership.
+Install the current common Plasma, Perl and ConsoleKit2 packages. The account
+must already have the required device access. The session launcher registers
+with ConsoleKit on the system bus. That session provides the standard
+authorized administrative lock and unlock interface. This service leaves
+account, device and lock policy unchanged. Physical HDMI, input and seat
+ownership require separate validation.
 
 Use the optional [service package](../../../../pkgsrc/sysutils/ember-plasma-session/README.md)
 from the current pkgsrc export. It installs these exact sources and requires
@@ -28,7 +31,7 @@ the corrected common Qt runtime. Install its audited dependency closure with
 normal package scripts:
 
 ```sh
-PKG_RCD_SCRIPTS=yes pkg_add /absolute/ember-plasma-session-1.0.tgz
+PKG_RCD_SCRIPTS=yes pkg_add /absolute/ember-plasma-session-1.0nb2.tgz
 ```
 
 The explicit environment setting installs rc.d files through pkgsrc's hooks.
@@ -48,7 +51,7 @@ ember_plasma_user=desktopuser
 This setting deliberately starts an unauthenticated automatic session for
 that account after the rc.d `LOGIN` marker. Enable it only on a device where
 this policy is intended. The service requires the existing `dbus` and
-`x11_runtime` rc.d providers. It adds no authentication or session broker.
+`x11_runtime` rc.d providers. ConsoleKit uses its existing system-bus authorization policy.
 
 ```sh
 /etc/rc.d/ember_plasma start
@@ -70,7 +73,9 @@ The service does not prestart KWin or change `KDE_FULL_SESSION`.
 The root rc.d entry prepares `/var/run/ember-plasma/UID` with mode 0700 for the
 selected user. The nested `runtime` directory is the session's private
 `XDG_RUNTIME_DIR`. Existing unsafe directories or metadata cause failure.
-The private log is `$HOME/.local/state/ember-plasma/session.log`. Status and
+The launcher restores the service's private runtime path after ConsoleKit
+sets its runtime path. The D-Bus address, ConsoleKit cookie and supervisor
+marker remain available to Plasma. The private log is `$HOME/.local/state/ember-plasma/session.log`. Status and
 owned-process records remain in the private runtime state. Do not publish
 these records or their private session identifiers.
 
@@ -132,8 +137,8 @@ The check separately executes the actual generated file hook. Only its single
 rc.d data record is relocated below the test prefix. It checks disabled
 installation by default, explicit activation, repeated installation, removal
 and preservation of a locally modified rc.d file. It does not run the service.
-The accepted fixture passes 54 native-tool and hook commands with pkgtools
-20260227. The local-source validator also passes 13 causal cases. These host
+The accepted fixture passes 55 native-tool and hook commands with pkgtools
+20260227. The local-source validator also passes 15 causal cases. These host
 checks do not establish installation on EmberBSD or hardware output.
 
 ## Hardware boundary
