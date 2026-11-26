@@ -29,14 +29,3 @@
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
---- a/textproc/expat/Makefile
-+++ b/textproc/expat/Makefile
-@@ -40,4 +40,8 @@
- PKGREVISION=	2	# Record the base libc SONAME.
- .endif
- 
-+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-+PKGREVISION=	2	# Rebuild native package with portable provenance.
-+.endif
-+
- .include "../../mk/bsd.pkg.mk"

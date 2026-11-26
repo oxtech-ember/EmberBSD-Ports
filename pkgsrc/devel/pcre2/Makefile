@@ -19,7 +19,8 @@ LICENSE=	modified-bsd
 .if ${OBJECT_FMT} == "ELF"
 PKGREVISION=	1
 .endif
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    (${MACHINE_ARCH} == "x86_64" || ${MACHINE_ARCH} == "aarch64")
 PKGREVISION=	2	# Rebuild with public host metadata.
 .endif
 
