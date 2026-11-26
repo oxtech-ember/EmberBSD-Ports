@@ -954,6 +954,8 @@ python3 -B scripts/pkgsrc-shared-export.py /absolute/shared-export \
 
 The updater proves the previous input identity, replays the selected package's
 ordered overlays and checks their old contents before replacing changed files.
+For a plain patch shared by several packages, select the outputs whose hunks
+change. The updater compares the remaining sections and their application order.
 Repeat `--package` for every changed package in the same transaction; all
 changed inputs must be covered by the selected packages or named file outputs.
 It keeps unchanged bytes, modes and mtimes. The selected `--patch` can change:

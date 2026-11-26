@@ -850,6 +850,36 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual({path.name for path in cache.iterdir()} if cache.exists() else set(),
                          {entry['sha256'] for entry in retained.values()})
 
+    def test_scoped_change_preserves_other_sections_and_shared_patch_order(self):
+        first = '--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -1 +1 @@\n-PKGNAME=fixture-1\n+PKGNAME=fixture-2\n'
+        other = '--- a/cat/other/Makefile\n+++ b/cat/other/Makefile\n@@ -1 +1 @@\n-PKGNAME=other-1\n+PKGNAME=other-2\n'
+        entry = 'patch\tpatches/shared.patch\n'
+        conf = self.ports / 'pkgsrc/export.conf'
+        previous = conf.read_text()
+        conf.write_text(previous + entry)
+        write(self.ports, 'patches/shared.patch', first + other)
+        commit(self.ports, 'apply shared patch')
+        directory = self.work / 'shared-sections'
+        command = self.command.copy()
+        command[3] = directory
+        run(command, self.ports)
+        retained = directory / 'pkgsrc/cat/other/Makefile'
+        stamp = retained.stat()
+        # Move the selected recipe out of a shared patch.
+        write(self.ports, 'patches/shared.patch', other)
+        commit(self.ports, 'remove selected section')
+        update = command + ['--update', '--package', 'cat/pkg']
+        run(update, self.ports)
+        self.assertEqual((directory / 'pkgsrc/cat/pkg/Makefile').read_text(), 'PKGNAME=fixture-1\n')
+        self.assertEqual(retained.read_text(), 'PKGNAME=other-2\n')
+        self.assertEqual((stamp.st_ino, stamp.st_mtime_ns), (retained.stat().st_ino, retained.stat().st_mtime_ns))
+        write(self.ports, 'patches/shared.patch', first + other)
+        conf.write_text(entry + previous)
+        commit(self.ports, 'move shared patch across another export input')
+        refusal = run(update, self.ports, check=False)
+        self.assertNotEqual(refusal.returncode, 0)
+        self.assertIn('export configuration changed outside selected outputs', refusal.stderr)
+
     def test_multi_package_shared_patch_atomic_resume(self):
         write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
         write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=fixture-1\n')

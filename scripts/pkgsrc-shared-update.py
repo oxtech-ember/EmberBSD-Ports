@@ -346,7 +346,9 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     patch_names = {row[1] for rows in (old_records, new_records) for row in rows
                    if row[0] in ('patch', 'git-apply')}
     scoped_patches = set()
+    shared_patches = set()
     for name in changed & patch_names:
+        outside = {True: [], False: []}
         for old in (True, False):
             if old and old_file(name) is None:
                 continue
@@ -354,9 +356,21 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                 continue
             data = read_source(name, old)
             sections = ident._update_patch_sections(data)
-            if sections is None or any(not all(selected_output(x) or x in global_files for x in paths)
-                                       for paths, _ in sections):
+            if sections is None:
                 raise ValueError('changed patch extends outside selected package: ' + name)
+            for paths, part in sections:
+                selected = [selected_output(path) or path in global_files for path in paths]
+                if not any(selected):
+                    outside[old].append(part)
+                elif not all(selected):
+                    raise ValueError('changed patch extends outside selected package: ' + name)
+        if outside[True] != outside[False]:
+            raise ValueError('changed patch extends outside selected package: ' + name)
+        if outside[True]:
+            # A retained section also requires the same patch command and order.
+            if any(row[0] == 'git-apply' and row[1] == name for rows in (old_records, new_records) for row in rows):
+                raise ValueError('changed git patch extends outside selected package: ' + name)
+            shared_patches.add(name)
         scoped_patches.add(name)
     old_replaces = (old_file('pkgsrc/replaces') or b'').decode('utf-8')
     new_replaces = (ports / 'pkgsrc/replaces').read_text() if (ports / 'pkgsrc/replaces').is_file() else ''
@@ -382,8 +396,9 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         and source not in old_snapshot['trees']
     }
     mapped_additions = added | new_mapped_outputs
+    local_patch_rows = scoped_patches - shared_patches
     def unaffected(rows):
-        return [row for row in rows if not (row[0] in ('patch', 'git-apply') and row[1] in scoped_patches)
+        return [row for row in rows if not (row[0] in ('patch', 'git-apply') and row[1] in local_patch_rows)
                 and not (row[0] == 'recipe-patch' and len(row) == 4 and row[2] in packages)
                 and not (row[0] == 'recipe' and len(row) == 3 and row[2] in mapped_additions
                          and overlays.get(row[2]) == row[1])
