@@ -189,6 +189,10 @@ case "\$target" in
             *) echo ;;
         esac ;;
     show-vars)
+        if [ -f "\$dir/block-result" ]; then
+            mkdir -p "\$(cat "\$dir/block-result")" || exit 1
+            exit 1
+        fi
         if [ -f \$dir/vars-fail ]; then echo 'intentional worker metadata failure' >&2; exit 1; fi
         if [ "\$varnames" = 'EMBERBSD_HOST_PYTHON EMBERBSD_SDK_SOURCE' ]; then
             echo \$out/bin/selected-python
@@ -558,4 +562,22 @@ grep -Fxq 'intentional worker metadata failure' "$out/worker-state/logs/t_worker
     fail 'worker-side stderr was not preserved before the package log opened'
 grep -Fq "Package worker log: $out/worker-state/logs/t_worker-fail.worker.log" "$out/worker.log" ||
     fail 'worker-side failure did not identify its log'
+
+# A worker cannot create its temporary result on a full filesystem.
+# A directory at that path produces a write failure without filling the disk.
+mkdir -p "$out/tree/t/no-result" "$out/lost-state"
+echo "$out/lost-state/run/t_no-result.tmp" > "$out/tree/t/no-result/block-result"
+echo 't/no-result t/no-result' > "$out/lost-state/edges"
+echo 't/no-result' > "$out/lost-state/order"
+for record in done failed blocked skipped; do : > "$out/lost-state/$record"; done
+rc=0
+PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
+    CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=1 \
+    run_bulk build "$out/lost-state/order" "$out/lost-state" > "$out/lost.log" 2>&1 || rc=$?
+[ "$rc" = 1 ] || fail "worker without a result exited $rc"
+grep -Fq 't_no-result exited without a result' "$out/lost.log" ||
+    fail 'the scheduler did not report the missing result'
+[ ! -s "$out/lost-state/done" ] && [ ! -s "$out/lost-state/failed" ] ||
+    fail 'a missing worker result changed package receipts'
+[ ! -e "$out/lost-state/build.lock" ] || fail 'lost worker left the build locked'
 echo 'PASS: parallel packages, dependency order, one install per database, blocking, resume and SIGTERM drain'

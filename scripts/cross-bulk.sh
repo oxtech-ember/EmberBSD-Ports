@@ -1624,8 +1624,8 @@ pkg_vars()
 
 result()
 {
-    printf '%s\n' "$2" > "$run/$1.tmp"
-    mv "$run/$1.tmp" "$run/$1.result"
+    printf '%s\n' "$2" > "$run/$1.tmp" &&
+        mv "$run/$1.tmp" "$run/$1.result" || return 1
     reported=1
 }
 
@@ -2790,6 +2790,17 @@ ready()
         }' "$run/status" "$state/edges" "$run/dispatch-order"
 }
 
+# Release a package worker's budget and any unfinished replacement request.
+finish_worker()
+{
+    if [ -s "$run/$1.jobs" ]; then
+        completed_jobs=$(cat "$run/$1.jobs")
+        jobs_in_use=$((jobs_in_use - completed_jobs))
+    fi
+    rm -f "$run/$1.jobs" "$run/$1.result" "$run/$1.replace" "$run/$1.replacing" "$run/$1.parked"
+    running=$((running - 1))
+}
+
 build()
 {
     if [ "$stage_supervised" = no ]; then
@@ -2913,6 +2924,7 @@ build()
     stop_status=143
     trap 'stop=1' TERM INT HUP
     running=0
+    worker_pids=
     jobs_in_use=0
     changed=1
     prefix_deferred=no
@@ -2938,19 +2950,34 @@ build()
                     echo "Package worker log: $state/logs/$worker_key.worker.log" >&2
                     ;;
             esac
-            # A request of a job that ended without its replace.
             res=${res%.result}
             res_key=${res##*/}
-            if [ -f "$run/$res_key.jobs" ]; then
-                completed_jobs=$(cat "$run/$res_key.jobs")
-                jobs_in_use=$((jobs_in_use - completed_jobs))
-                rm -f "$run/$res_key.jobs"
-            fi
-            rm -f "$res.result" "$res.replace" "$res.replacing" "$res.parked"
-            running=$((running - 1))
+            finish_worker "$res_key"
+            remaining_workers=
+            for worker in $worker_pids; do
+                [ "${worker%:*}" = "$res_key" ] || remaining_workers="$remaining_workers $worker"
+            done
+            worker_pids=$remaining_workers
             changed=1
             poll_delay=0.05
         done
+        # A terminated worker, or a full filesystem, can leave no result.
+        # Keep PIDs in memory so recovery itself does not require disk space.
+        if [ "$poll_delay" = 1 ] || [ "$stop" = 1 ]; then
+            remaining_workers=
+            for worker in $worker_pids; do
+                worker_key=${worker%:*}
+                worker_pid=${worker##*:}
+                if kill -0 "$worker_pid" 2>/dev/null || [ -f "$run/$worker_key.result" ]; then
+                    remaining_workers="$remaining_workers $worker"
+                else
+                    echo "Package worker $worker_key exited without a result; resume the build" >&2
+                    finish_worker "$worker_key"
+                    stop=1 stop_status=1
+                fi
+            done
+            worker_pids=$remaining_workers
+        fi
         # Give one waiting job its replace when every running job waits
         # (see exclusive); start no job while one waits or replaces.
         replacing=0 waiting=0 first=
@@ -2981,7 +3008,7 @@ build()
             replacing=1 waiting=$((waiting - 1))
             poll_delay=0.05
         fi
-        if [ "$changed" = 1 ] && [ -f "$state/build.lock/stop" ]; then
+        if [ "$stop" = 0 ] && [ -f "$state/build.lock/stop" ]; then
             # The owner reports the signal after the supervisor confirms this drain.
             stop=1 stop_status=0
         fi
@@ -3055,6 +3082,7 @@ build()
                         trap '[ -n "$reported" ] || result "$budget_key" "failed $node build"' EXIT
                         build_one "$node"
                     ) < /dev/null > "$worker_log" 2>&1 &
+                    worker_pids="$worker_pids $budget_key:$!"
                     poll_delay=0.05
                 fi
             done < "$run/ready"
