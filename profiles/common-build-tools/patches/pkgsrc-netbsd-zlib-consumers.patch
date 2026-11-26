@@ -1,0 +1,31 @@
+--- a/security/libssh2/Makefile
++++ b/security/libssh2/Makefile
+@@ -9,6 +9,13 @@
+ COMMENT=	SSH2 protocol library
+ LICENSE=	modified-bsd
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${OPSYS} == "NetBSD"
++# The target loader searches the package prefix for libz.
++PREFER.zlib=	pkgsrc
++PKGREVISION=	2
++.endif
++
+ USE_LIBTOOL=		yes
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--with-libz=${BUILDLINK_PREFIX.zlib:Q}
+--- a/fonts/libfontenc/Makefile
++++ b/fonts/libfontenc/Makefile
+@@ -11,6 +11,12 @@
+ COMMENT=		Library for handling fonts with different character set encodings
+ LICENSE=		mit
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${OPSYS} == "NetBSD"
++PREFER.zlib=	pkgsrc
++PKGREVISION=	3
++.endif
++
+ USE_TOOLS+=		pkg-config
+ PKGCONFIG_OVERRIDE+=	output/meson-private/fontenc.pc
+ 

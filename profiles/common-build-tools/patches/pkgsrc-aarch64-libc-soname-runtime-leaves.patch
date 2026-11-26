@@ -263,19 +263,6 @@
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
---- a/fonts/libfontenc/Makefile
-+++ b/fonts/libfontenc/Makefile
-@@ -24,4 +24,10 @@
- .include "../../devel/meson/build.mk"
- .include "../../devel/zlib/buildlink3.mk"
- .include "../../x11/xorgproto/buildlink3.mk"
-+.include "../../mk/bsd.prefs.mk"
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-+    (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-+PKGREVISION=	2	# Record the base libc SONAME.
-+.endif
-+
- .include "../../mk/bsd.pkg.mk"
 --- a/devel/nspr/Makefile
 +++ b/devel/nspr/Makefile
 @@ -98,4 +98,9 @@
