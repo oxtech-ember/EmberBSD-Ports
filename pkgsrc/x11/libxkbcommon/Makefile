@@ -12,7 +12,7 @@ MESON_ARGS+=	-Denable-docs=false
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
 .  if ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	4	# Rebuild the public package with portable build metadata.
+PKGREVISION=	5	# Record the current AArch64 keyboard data provider.
 .  else
 PKGREVISION=	3	# Record the base libc SONAME.
 .  endif

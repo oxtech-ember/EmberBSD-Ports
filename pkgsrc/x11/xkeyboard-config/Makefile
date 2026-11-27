@@ -24,7 +24,7 @@ post-install:
 .include "../../mk/bsd.prefs.mk"
 
 .if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=	5	# Rebuild the public package with portable build metadata.
+PKGREVISION=	6	# Record the current AArch64 build dependencies.
 .endif
 
 # Origin: EmberBSD (AI-assisted). Meson uses xkbcomp only in the optional

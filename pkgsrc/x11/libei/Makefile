@@ -49,7 +49,11 @@ CFLAGS+=	-I${BUILDLINK_PREFIX.libepoll-shim}/include/libepoll-shim
 .include "../../devel/meson/build.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+.  if ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	3	# Record the current keyboard library provider.
+.  else
 PKGREVISION=	2	# Record the base libc SONAME.
+.  endif
 .endif
 
 .include "../../mk/bsd.pkg.mk"
