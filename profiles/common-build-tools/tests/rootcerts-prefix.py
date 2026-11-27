@@ -23,6 +23,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[3]
 UPSTREAM = ROOT / 'upstream/pkgsrc'
 PATCH = ROOT / 'profiles/common-build-tools/patches/mozilla-rootcerts-prefix.patch'
+CROSS_PATCH = ROOT / 'profiles/common-build-tools/patches/mozilla-rootcerts-cross-install.patch'
 RECIPE = 'security/mozilla-rootcerts-openssl/Makefile'
 PLIST = 'security/mozilla-rootcerts-openssl/PLIST'
 HELPER = ROOT / 'profiles/common-build-tools/tests/bsdinstall-source.py'
@@ -343,17 +344,21 @@ class PrefixTests(unittest.TestCase):
         work.mkdir(parents=True, exist_ok=False)
         for directory in ('security/mozilla-rootcerts-openssl', 'security/openssl', 'mk'):
             (work / directory).mkdir(parents=True, exist_ok=True)
-        (work / 'security/openssl/builtin.mk').write_text('# Explicit fixture selection; no discovery.\n')
+        (work / 'mk/bsd.prefs.mk').write_text('# Use the explicit fixture platform.\n')
+        (work / 'security/openssl/builtin.mk').write_text(
+            '.if ${PREFER.openssl:Unative} == "pkgsrc"\n'
+            'USE_BUILTIN.openssl?= no\n.else\nUSE_BUILTIN.openssl?= yes\n.endif\n')
         (work / 'mk/bsd.pkg.mk').write_text('PKG_SYSCONFDIR= ${PKG_SYSCONFBASEDIR}\n')
         variables = ['PREFIX', 'OPENSSLDIR', 'PLIST_SUBST', 'NOT_FOR_UNPRIVILEGED', 'SCRIPT']
         receipts = {}
 
-        def query(text, builtin, config):
+        def query(text, builtin, config, *settings):
             path = work / RECIPE
             path.write_text('PREFIX= /sdk/final\n' + text)
             command = [*ARGS.make_arg, '-r', '-C', str(path.parent),
-                'LOCALBASE=/sdk/final', 'PKG_SYSCONFBASEDIR=' + config,
-                'USE_BUILTIN.openssl=' + builtin]
+                'LOCALBASE=/sdk/final', 'PKG_SYSCONFBASEDIR=' + config, *settings]
+            if builtin:
+                command.append('USE_BUILTIN.openssl=' + builtin)
             for variable in variables:
                 command += ['-v', variable]
             run = subprocess.run(command, check=True, capture_output=True, text=True)
@@ -383,6 +388,18 @@ class PrefixTests(unittest.TestCase):
             data = query(mutant, 'no', '/sdk/final/etc')
             self.assertFalse(data['PREFIX'] == '/sdk/final' and
                              'MYETCDIR=etc' in data['PLIST_SUBST'].split(), name)
+            receipts[name] = data
+        cross_recipe = model.replay(originals, CROSS_PATCH.read_text())[RECIPE]
+        cross = ('OPSYS=NetBSD', 'USE_CROSS_COMPILE=yes', 'UNPRIVILEGED=yes')
+        for name, recipe, settings, directory, privileged in (
+            ('original-cross', originals[RECIPE], cross, '/etc', 'yes'),
+            ('cross-default', cross_recipe, cross, '/sdk/final/etc', ''),
+            ('cross-system', cross_recipe, (*cross, 'PREFER.openssl=native'), '/etc', 'yes'),
+            ('native-default', cross_recipe, ('OPSYS=NetBSD', 'UNPRIVILEGED=yes'), '/etc', 'yes'),
+        ):
+            data = query(recipe, None, '/sdk/final/etc', *settings)
+            self.assertEqual(data['OPENSSLDIR'], directory + '/openssl/certs', name)
+            self.assertEqual(data['NOT_FOR_UNPRIVILEGED'], privileged, name)
             receipts[name] = data
         receipts['before'] = old
         (work / 'metadata.json').write_text(json.dumps(receipts, indent=2) + '\n')

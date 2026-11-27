@@ -2,7 +2,18 @@
 # Origin: EmberBSD (AI-assisted), use the selected native generator for cross installs.
 --- a/security/mozilla-rootcerts-openssl/Makefile
 +++ b/security/mozilla-rootcerts-openssl/Makefile
-@@ -45,9 +45,17 @@
+@@ -19,3 +19,10 @@
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    ${UNPRIVILEGED:Uno:tl} == "yes"
++# Install application trust under the package prefix in an unprivileged sysroot.
++PREFER.openssl?=	pkgsrc
++.endif
++
+ CHECK_BUILTIN.openssl=	yes
+ .include "../../security/openssl/builtin.mk"
+@@ -45,9 +52,17 @@
  
  OPENSSLDIR=		${PLACE}/openssl/certs
  
