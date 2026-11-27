@@ -1388,7 +1388,7 @@ ${PLIST.vulkan}${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qvulkan
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qwindow_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qxbmhandler_p.h
 ${PLIST.dbus}${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qxdgnotificationproxy_p.h
-${PLIST.dbus}${PLIST.wayland}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qxdgdesktopportalfiletransfer_p.h
+${PLIST.xdgportalft}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qxdgdesktopportalfiletransfer_p.h
 ${PLIST.x11}${PLIST.nonoffscreen}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qxkbcommon_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qxpmhandler_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/qpa/qplatformaccessibility.h

@@ -432,6 +432,12 @@ BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .endif
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../mk/atomic64.mk"
+# The xdg-desktop-portal file transfer needs O_PATH. NetBSD has no O_PATH,
+# so configure turns the feature off there and does not install its header.
+PLIST_VARS+=	xdgportalft
+.if ${OPSYS} != "NetBSD" && ${PLIST.dbus:Uno} == "yes" && ${PLIST.wayland:Uno} == "yes"
+PLIST.xdgportalft=	yes
+.endif
 .include "../../mk/bsd.pkg.mk"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
