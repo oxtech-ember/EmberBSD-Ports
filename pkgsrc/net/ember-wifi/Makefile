@@ -1,11 +1,11 @@
 # EmberBSD: Qt 6 Wi-Fi tray manager for wpa_supplicant.
 DISTNAME= EmberBSD-Examples
 PKGNAME= ember-wifi-0.1.0
-PKGREVISION= 4
+PKGREVISION= 5
 CATEGORIES= net
 MASTER_SITES= ${MASTER_SITE_GITHUB:=oxtech-ember/}
 GITHUB_PROJECT= EmberBSD-Examples
-GITHUB_TAG= d233a5fa2ce913cd496a22c4ad522ad9a9e204c9
+GITHUB_TAG= b1b1163f606dbb4c9a0b0c7d65ae163d09c779f4
 WRKSRC= ${WRKDIR}/${GITHUB_PROJECT}-${GITHUB_TAG}/desktop/ember-wifi
 
 HOMEPAGE= https://github.com/oxtech-ember/EmberBSD-Examples/tree/${GITHUB_TAG}/desktop/ember-wifi
@@ -28,7 +28,7 @@ BUILDLINK_API_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
-PKGREVISION=	5	# Record the base libc SONAME.
+PKGREVISION=	6	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"
