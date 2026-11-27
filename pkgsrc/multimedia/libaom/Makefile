@@ -73,4 +73,6 @@ BUILDLINK_TRANSFORM+=		opt:-Wl,--help:--dummy-error
 PKGREVISION=	1	# Record the base libc SONAME.
 .endif
 
+NASM_STATIC_ARCHIVES=	lib/libaom.a
+.include "../../devel/nasm/file-symbols.mk"
 .include "../../mk/bsd.pkg.mk"

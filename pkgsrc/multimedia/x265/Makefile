@@ -46,4 +46,6 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_SYSTEM_PROCESSOR:STRING=${MACHINE_ARCH}
 PKGREVISION=	3	# Record the base libc SONAME.
 .endif
 
+NASM_STATIC_ARCHIVES=	lib/libx265.a
+.include "../../devel/nasm/file-symbols.mk"
 .include "../../mk/bsd.pkg.mk"
