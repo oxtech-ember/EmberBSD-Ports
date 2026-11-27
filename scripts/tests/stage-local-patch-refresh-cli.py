@@ -67,12 +67,18 @@ with tempfile.TemporaryDirectory() as d:
  fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'libxslt.pc.in libexslt.pc.in'"))
  subprocess.run(cmd,check=True);assert (src/'second').read_text()=='D\n' and (src/'second').stat().st_mode & 0o777 == 0o640 and (root/'clean').read_text()=='yes'
  assert (work/'.patch_done').read_text()==str(patches/'patch-a')+'\n'+str(patches/'patch-b')+'\n'
- # A successful verified refresh must be accepted by ordinary bulk/SDK builds.
+ # A verified patch refresh advances the phase identities for the selected build.
  # Identity metadata does not mean that extraction/configure ran again.
  for name, when in identity_times.items():
   assert (work/name).read_text() == 'demo-1nb2\n'
   assert (work/name).stat().st_mtime_ns == when
  guard = helper.parent/'cross-bulk-workdir.py'
  result = subprocess.run([sys.executable, str(guard), str(work), 'demo', '1', 'demo-1nb2'], capture_output=True, text=True)
+ assert result.returncode and 'no matching build-input evidence' in result.stderr, result.stderr
+ # Ordinary bulk reuse also needs the input receipt written by a qualified build.
+ digest = hashlib.sha256(b'fixture build inputs').hexdigest()
+ (work/'.cross-bulk-inputs').write_text('cross-bulk-inputs-v1 ' + digest + '\n')
+ result = subprocess.run([sys.executable, str(guard), str(work), 'demo', '1', 'demo-1nb2', digest],
+                         capture_output=True, text=True)
  assert result.returncode == 0 and result.stdout.strip() == 'same', result.stderr
 print('stage-local CLI validates locked stage and refreshes selected patch series')

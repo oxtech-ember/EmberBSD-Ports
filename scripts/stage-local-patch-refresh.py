@@ -25,11 +25,13 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shlex
+import shutil
 import stat
 import subprocess
 import tempfile
 
 MAX_STAGE_ARCHIVE_BYTES = 512 * 1024 * 1024
+MAX_SCOPED_ARCHIVE_MEMBERS = 500000
 
 
 def require(condition, message):
@@ -227,6 +229,16 @@ def targets(data):
         result.add('/'.join(parts))
     require(result, 'patch has no supported file targets')
     return result
+
+
+def replay_source(paths, root, subdir):
+    """Accept only real source directories below the selected archive root."""
+    paths.real_directory(str(root))
+    require(not subdir.is_absolute() and '..' not in subdir.parts, 'unsupported archive layout')
+    for part in subdir.parts:
+        root = root / part
+        paths.real_directory(str(root))
+    return root
 
 
 def archive_replay_components(series, extra_components=()):
@@ -477,6 +489,35 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
     return old, old_inventory, new, additions, cookie
 
 
+def llvm_shared_profile_patch(paths, recipe, previous, source, output, tools, observed):
+    """Replay the checked compiler-rt patch on the same LLVM header in each private tree."""
+    require(recipe.parts[-2:] == ('lang', 'llvm'), 'custom patch hooks are unsupported')
+    owner = Path('lang/compiler-rt')
+    runner = owner / 'files/apply-profile-gpu-patch.py'
+    patch_file = owner / 'patches/patch-13-profile-gpu-bounds'
+    distinfo = owner / 'distinfo'
+    target = Path('include/llvm/ProfileData/InstrProfData.inc')
+    root = recipe.parents[1]
+    python, patch = tools
+    args = [python, '-B', str(root / runner), '--patch-file', str(root / patch_file),
+            '--distinfo', str(root / distinfo), '--patch-tool', patch, '--workdir']
+    require([shlex.split(line) for line in output.splitlines()] ==
+            [args + [str(source / target.parent)]], 'unsupported shared profile patch command')
+    for name in (runner, runner.with_name('profile_patch.py'), patch_file, distinfo):
+        old_path = previous.parents[1] / name
+        new_path = root / name
+        before = stable_read(paths, old_path)
+        require(stable_read(paths, new_path) == before, 'shared patch input changed: ' + str(name))
+        observed[old_path] = observed[new_path] = before
+
+    def apply(tree):
+        header = _entry(paths, tree, target.as_posix())
+        paths.regular_file(str(header))
+        subprocess.run(args + [str(header.parent)], check=True)
+
+    return apply, (target.as_posix(),)
+
+
 def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
     """Resolve pkgsrc's declared shared patch owner within its exported tree."""
     root = Path(pkgsrc_root).resolve(strict=True)
@@ -500,7 +541,7 @@ def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
     return patchdir, distinfo
 
 
-def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None, patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None, recover_applied_patches=False, extra_components=(), pre_transform=None, old_pre_transform=None, extra_transform_targets=(), subst_before_pre_transform=False):
+def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, source_subdir=Path(), patch_hook=None, hook_targets=(), old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None, patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None, recover_applied_patches=False, extra_components=(), pre_transform=None, old_pre_transform=None, extra_transform_targets=(), subst_before_pre_transform=False):
     """Replay complete old and current patch order and return validated leaf changes."""
     unfinished = installed_version is None
     require(not (unfinished and allow_completed),
@@ -525,8 +566,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
     else:
         old_recipe, old_meta = recipe, metadata
         old_patchdir = patchdir
-    data = stable_read(paths, archive)
-    measured = sourceprep.archive_hashes(data)
+    measured = sourceprep.archive_hashes(stable_read(paths, archive))
     require(all(measured[k] == old_meta[k] for k in ('sha512', 'blake2s', 'size')),
             'archive differs from previous distinfo')
     require(all(measured[k] == metadata[k] for k in ('sha512', 'blake2s', 'size')),
@@ -536,7 +576,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             'unsupported selected pkgsrc PATCH_ARGS')
     affected = set()
     cookie_inventory = {Path(name).name for name in old_cookie.decode('utf-8').splitlines() if name}
-    verify_targets = set()
+    verify_targets = set(hook_targets)
     for name in old_inventory:
         if name not in cookie_inventory:
             verify_targets.update(targets(stable_read(paths, old_patchdir / name)))
@@ -559,14 +599,25 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             'selected SDK lacks verified internal symlink extraction')
     require(getattr(sourceprep, 'ARCHIVE_OPTIONAL_COMPONENTS_API', None) == 1,
             'selected SDK lacks optional component extraction')
-    for label, series in (('old', old), ('new', new)):
-        dest = scratch / label
-        dest.mkdir()
-        sourceprep.extract_archive(archive, dest, archive_root, label,
-                                   components=components, require_components=False,
-                                   internal_symlinks=True,
-                                   max_bytes=MAX_STAGE_ARCHIVE_BYTES)
-        tree = dest / archive_root
+    if source_subdir.parts:
+        components = ([str(source_subdir / name) for name in components]
+                      if components is not None else [str(source_subdir)])
+    old_dest = scratch / 'old'
+    new_dest = scratch / 'new'
+    old_dest.mkdir()
+    new_dest.mkdir()
+    # A scoped LLVM checkout has more than 197,000 archive entries.
+    limits = {'max_members': MAX_SCOPED_ARCHIVE_MEMBERS} if components is not None else {}
+    sourceprep.extract_archive(archive, old_dest, archive_root, 'old',
+                               components=components, require_components=False,
+                               internal_symlinks=True, max_bytes=MAX_STAGE_ARCHIVE_BYTES, **limits)
+    old_root = old_dest / archive_root
+    old_source = replay_source(paths, old_root, source_subdir)
+    # Copy the validated preimage before either patch series changes its tree.
+    new_root = new_dest / archive_root
+    shutil.copytree(old_root, new_root, symlinks=True)
+    for label, series, tree in (('old', old, old_source),
+                                ('new', new, new_root / source_subdir)):
         for name in series:
             path = (old_patchdir if label == 'old' else patchdir) / name
             contents = stable_read(paths, path)
@@ -577,6 +628,8 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             sourceprep.apply_patch(str(patch), path, contents, tree, label,
                                    patch_args=tuple(patch_args), allow_dev_null=True)
             require(stable_read(paths, path) == contents, 'patch changed while applying: ' + name)
+        if patch_hook is not None:
+            patch_hook(tree)
         candidates.append(tree)
     replay_targets = affected | verify_targets | set(extra_transform_targets)
     transforms = ((old_transform, transform), (old_pre_transform, pre_transform)) \
@@ -605,7 +658,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             # pkgsrc preserves the archive's full mode; patches do not encode
             # mode changes, so retain the verified live mode on replacement.
             require(old_mode == new_mode, 'patch changes normalized file mode')
-            live = work / archive_root / name
+            live = work / archive_root / source_subdir / name
             live_mode = stat.S_IMODE(paths.regular_file(str(live)).st_mode)
             require((live_mode & 0o111) == (old_mode & 0o111), 'live executable bits differ: ' + name)
             old_mode = live_mode
@@ -623,7 +676,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
                     if rows[0]['old_sha'] == _sha(new_data):
                         old_data = new_data
                 else:
-                    live_data = stable_read(paths, work / archive_root / name)
+                    live_data = stable_read(paths, work / archive_root / source_subdir / name)
                     require(live_data in (old_data, new_data), 'live preimage differs: ' + name)
                     if live_data == new_data:
                         adoption_states.add('new')
@@ -657,6 +710,8 @@ def journal_old_cookie(sdk, work):
 def _entry(paths, root, name):
     require(name and not name.startswith('/') and '\\' not in name and
             all(part not in ('', '.', '..') for part in name.split('/')), 'unsafe journal path')
+    paths.real_directory(str(root))
+    root = root.resolve(strict=True)
     path = root.joinpath(*name.split('/'))
     current = root
     for component in name.split('/')[:-1]:
@@ -683,7 +738,6 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
     A crash is recovered forward; an ordinary pre-cookie error rolls back only
     files whose current bytes still match this transaction.
     """
-    import shutil
     paths, jsonio = sdk['paths'], sdk['jsonio']
     paths.real_directory(str(work))
     paths.real_directory(str(source))
@@ -1104,7 +1158,9 @@ def main():
         require(a.previous_makefile.is_absolute(), 'previous Makefile must be absolute')
     hooks = subprocess.run(cmd + ['-n', 'pre-patch', 'post-patch'], check=True,
                            stdout=subprocess.PIPE, text=True)
-    if not a.subst_class:
+    patch_hook = None
+    hook_targets = ()
+    if not a.subst_class and not a.previous_recipe:
         require(not hooks.stdout.strip(), 'custom patch hooks are unsupported')
     result = subprocess.run(cmd + ['show-vars', 'VARNAMES=' + ' '.join(names)],
                             check=True, stdout=subprocess.PIPE, text=True)
@@ -1131,7 +1187,12 @@ def main():
     if os.path.lexists(work / '.extract_done'):
         current_identity = selected_values(cmd, ['PKGNAME'])[0]
         identities = phase_identities(paths, work, v['PKGBASE'], v['PKGVERSION_NOREV'], current_identity)
-    require(source.name == v['DISTNAME'] and source.parent == work, 'unsupported archive layout')
+    distname = v['DISTNAME']
+    require(distname not in ('', '.', '..') and Path(distname).name == distname, 'unsafe archive root')
+    archive_root = work / distname
+    require(source.is_relative_to(archive_root), 'unsupported archive layout')
+    source_subdir = source.relative_to(archive_root)
+    replay_source(paths, archive_root, source_subdir)
     patch_args = shlex.split(v['PATCH_ARGS'])
     require(patch_args[:2] == ['-d', str(source)], 'unexpected patch destination')
     dbdir = Path(v['PKG_DBDIR'])
@@ -1241,8 +1302,11 @@ def main():
         old_pkgsrc_root = a.previous_recipe.parents[1].resolve()
         old_hooks = subprocess.run(oldcmd + ['-n', 'pre-patch', 'post-patch'], check=True,
                                    stdout=subprocess.PIPE, text=True)
-        require(not hooks.stdout.strip() and old_hooks.stdout == hooks.stdout,
-                'custom or changed patch hooks are unsupported')
+        require(old_hooks.stdout == hooks.stdout, 'changed patch hooks are unsupported for this recipe')
+        if hooks.stdout.strip():
+            patch_hook, hook_targets = llvm_shared_profile_patch(
+                paths, a.recipe, a.previous_recipe, source, hooks.stdout,
+                selected_values(cmd, ['TOOL_PYTHONBIN', 'PATCH']), observed_recipe_inputs)
         old_classes, old_makefiles = selected_values(oldcmd, ['SUBST_CLASSES', '.MAKE.MAKEFILES'])
         old_makefiles = previous_makefiles(paths, a.previous_recipe, a.recipe, old_makefiles)
         validate_active_target(paths, oldcmd, a.recipe, old_makefiles, framework_files, 'do-patch',
@@ -1497,7 +1561,9 @@ def main():
                         require(paths.entry(str(path) + '.new') is None,
                                 'interpreter replacement temporary file remains: ' + name)
         changes, cookie, inventory = prepare(sdk, a.recipe, work, archive, v['DISTNAME'], owner,
-                                             Path(v['PATCH']), patch_args[2:], Path(scratch), old_cookie=old_cookie,
+                                             Path(v['PATCH']), patch_args[2:], Path(scratch),
+                                             source_subdir=source_subdir, old_cookie=old_cookie,
+                                             patch_hook=patch_hook, hook_targets=hook_targets,
                                              transform=(transform if a.subst_class else
                                                         (lambda candidate, affected: existing_transform('new', cmd, candidate, affected))
                                                         if a.refresh_subst else None),
@@ -1509,7 +1575,7 @@ def main():
                                              previous_patchdir=(previous_patchdir if a.previous_recipe else None),
                                              previous_distinfo=(previous_distinfo if a.previous_recipe else None),
                                              recover_applied_patches=a.recover_applied_patches,
-                                             extra_components=archive_subst_inputs + archive_interpreter_inputs,
+                                             extra_components=[*archive_subst_inputs, *archive_interpreter_inputs, *hook_targets],
                                              extra_transform_targets=(subst_files if a.refresh_subst else ()),
                                              subst_before_pre_transform=(subst_stage == 'pre-configure'),
                                              pre_transform=(lambda candidate, affected: configure_pre_hooks('new', cmd, candidate, affected))
@@ -1518,7 +1584,7 @@ def main():
                                                                if a.previous_recipe and interpreter_ready else None)
         if a.refresh_subst:
             for label in ('old', 'new'):
-                candidate = Path(scratch) / label / v['DISTNAME']
+                candidate = Path(scratch) / label / distname / source_subdir
                 subst_candidates[label] = {
                     name: stable_read(paths, _entry(paths, candidate, name))
                     for name in subst_files
@@ -1537,7 +1603,7 @@ def main():
                 require(files, 'unsupported substitution paths')
                 for name in files:
                     if '*' in name or '?' in name:
-                        candidates = [Path(scratch) / label / v['DISTNAME'] for label in ('old', 'new')]
+                        candidates = [Path(scratch) / label / distname / source_subdir for label in ('old', 'new')]
                         unselected_subst_pattern(paths, [*candidates, source], name, changed)
                         continue
                     require(re.fullmatch(r'[A-Za-z0-9_+./-]+', name) and
@@ -1547,7 +1613,7 @@ def main():
                     require(name not in changed, 'changed source needs substitution refresh')
                     if not unselected_subst_file(paths, source, name):
                         for label in ('old', 'new'):
-                            candidate = Path(scratch) / label / v['DISTNAME']
+                            candidate = Path(scratch) / label / distname / source_subdir
                             require(not unselected_subst_file(paths, candidate, name),
                                     'missing substitution input differs from archive: ' + name)
         def clean():

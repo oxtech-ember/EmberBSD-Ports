@@ -402,8 +402,10 @@ with `CROSS_BULK_PATCH_REFRESH_RECONFIGURE=yes` and
 `CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE=/absolute/previous/recipe`.
 This explicit mode accepts new local includes and configure hooks. It verifies
 the source preimages and invalidates configuration while retaining
-objects. It rejects changes to the source archive, toolchain, ABI and compiler
-flags. It clears the accepted old dependency/package metadata and advances
+objects. The source can be a real subdirectory of the unpacked distribution.
+The old and new patch series use independent copies of one verified extraction.
+The LLVM recipe replays its unchanged compiler-rt profile patch on both private trees.
+Refresh rejects changes to the source archive, toolchain, ABI and compiler flags. It clears the accepted old dependency/package metadata and advances
 existing compatible phase identities to the current package revision, without
 creating a configure/build completion cookie. Identity-only updates retain
 phase timestamps so make does not reapply already verified patches.

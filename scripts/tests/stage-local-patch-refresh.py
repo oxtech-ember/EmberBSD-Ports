@@ -220,8 +220,11 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-patch-refresh-test-') as temp:
  assert (empty_source/'untouched').read_bytes()==b'preserve\n'
  assert (empty_source/'untouched').stat().st_mtime_ns==untouched_mtime
  (empty_work/'.patch_done').write_bytes(b'')
- empty_version.write_text('multimedia/example/distinfo: '+'0'*64+'\n')
- try: module.old_metadata(paths,recipe,empty_work,empty_version)
- except ValueError as exc: assert 'old distinfo cannot be reconstructed exactly' in str(exc)
- else: raise AssertionError('unverified unpatched recipe accepted')
+ # Installed BUILD_VERSION does not promise to include distinfo. Verify the archive itself.
+ archive.write_bytes(archive.read_bytes() + b'tampered')
+ try:
+  module.prepare(sdk,recipe,empty_work,archive,'example-1',empty_version,a.patch,
+   ['-E','-p0','--batch','--forward','-V','simple','-z','.orig'],empty_scratch)
+ except ValueError as exc: assert 'archive differs' in str(exc)
+ else: raise AssertionError('tampered archive accepted for a previously unpatched stage')
 print('stage-local additive patch provenance and ordered replay passed')

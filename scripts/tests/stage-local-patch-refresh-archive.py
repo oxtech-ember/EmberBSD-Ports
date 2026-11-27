@@ -6,6 +6,8 @@ import argparse
 import hashlib
 import importlib.util
 import io
+import shlex
+import shutil
 from pathlib import Path
 import sys
 import tarfile
@@ -46,13 +48,56 @@ def check_component_selection():
     print('PASS component selection')
 
 
-def exercise(root, mode):
+def exercise_shared_llvm_patch(root):
+    owner = Path("lang/compiler-rt")
+    files = (owner / "files/apply-profile-gpu-patch.py", owner / "files/profile_patch.py",
+             owner / "patches/patch-13-profile-gpu-bounds", owner / "distinfo")
+    current, previous = root / "current/pkgsrc", root / "previous/pkgsrc"
+    source = root / "llvm"
+    header = source / "include/llvm/ProfileData/InstrProfData.inc"
+    header.parent.mkdir(parents=True)
+    for prefix in (current, previous):
+        for name in files:
+            dest = prefix / name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(helper.parents[1] / "pkgsrc" / name, dest)
+    patch = (current / files[2]).read_bytes().split(b"@@", 2)[2].splitlines(keepends=True)[1:]
+    before = b"".join(line[1:] for line in patch if line.startswith((b" ", b"-")))
+    after = b"".join(line[1:] for line in patch if line.startswith((b" ", b"+")))
+    header.write_bytes(before)
+    command = [sys.executable, "-B", str(current / files[0]), "--patch-file", str(current / files[2]),
+               "--distinfo", str(current / files[3]), "--patch-tool", str(args.patch),
+               "--workdir", str(header.parent)]
+    def select(argv):
+        return module.llvm_shared_profile_patch(paths, current / "lang/llvm", previous / "lang/llvm",
+                   source, shlex.join(argv), (sys.executable, str(args.patch)), {})
+    apply, targets = select(command)
+    assert targets == ("include/llvm/ProfileData/InstrProfData.inc",)
+    apply(source)
+    assert header.read_bytes() == after
+    for incorrect in (command + ["--extra"], command[:-1] + [str(root)]):
+        try:
+            select(incorrect)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("unexpected shared profile patch command accepted")
+    (previous / files[2]).write_bytes(b"changed")
+    try:
+        select(command)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("changed shared profile patch accepted")
+
+
+def exercise(root, mode, subdir=Path()):
     recipe = root / 'pkgsrc/cat/demo'
     patchdir = recipe / 'patches'
     patchdir.mkdir(parents=True)
     work = root / 'work'
     work.mkdir()
-    live = work / 'demo-1'
+    live = work / 'demo-1' / subdir
     (live / 'real').mkdir(parents=True)
     (live / 'real/file').write_bytes(b'old\n')
     archive = root / 'demo-1.tar'
@@ -67,7 +112,7 @@ def exercise(root, mode):
     (patchdir / 'patch-a').write_bytes(patch)
     (recipe / 'Makefile').write_text('# fixture\n')
     with tarfile.open(archive, 'w') as tar:
-        entry = tarfile.TarInfo('demo-1/real/file')
+        entry = tarfile.TarInfo(str(Path('demo-1') / subdir / 'real/file'))
         entry.size = 4
         tar.addfile(entry, io.BytesIO(b'old\n'))
         if mode == 'casefold':
@@ -119,7 +164,7 @@ def exercise(root, mode):
     try:
         result = module.prepare(sdk, recipe, work, archive, 'demo-1', version,
                                 args.patch, ['-E', '-p0', '--batch', '--forward',
-                                             '-V', 'simple', '-z', '.orig'], scratch)
+                                             '-V', 'simple', '-z', '.orig'], scratch, source_subdir=subdir)
     except (ValueError, SDKError) as exc:
         if mode == 'valid':
             raise
@@ -136,6 +181,8 @@ def exercise(root, mode):
         elif expected not in str(exc):
             raise AssertionError(mode + ': wrong refusal: ' + str(exc)) from exc
     else:
+        if len(extracts) != 1:
+            raise AssertionError('the patch preimages must share one archive extraction')
         if mode in ('valid', 'casefold'):
             if len(calls) != 1 or result[0][0][1:3] != (b'old\n', b'new\n'):
                 raise AssertionError(mode + ': unexpected successful replay')
@@ -180,7 +227,7 @@ def exercise_omitted_old_target(root):
                      f'Size ({archive.name}) = {len(raw)} bytes\n')
     old_patch = b'--- omitted\n+++ omitted\n@@ -1 +1 @@\n-old source\n+old patched\n'
     current_patch = b'--- updated\n+++ updated\n@@ -1 +1 @@\n-base\n+changed\n'
-    added_patch = b'--- /dev/null\n+++ added\n@@ -0,0 +1 @@\n+added\n'
+    added_patch = b'--- added\n+++ added\n@@ -1 +1 @@\n-new source\n+added\n'
     (previous_patches / 'patch-a').write_bytes(old_patch)
     (current_patches / 'patch-a').write_bytes(current_patch)
     (current_patches / 'patch-b').write_bytes(added_patch)
@@ -307,6 +354,29 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-archive-') as tmp:
         case_root = Path(tmp) / case
         case_root.mkdir()
         exercise(case_root, case)
+    nested_root = Path(tmp) / 'nested'
+    nested_root.mkdir()
+    exercise(nested_root, 'valid', Path('projects/llvm'))
+    source_root = nested_root / 'work/demo-1'
+    (source_root / 'alias').symlink_to('projects', target_is_directory=True)
+    for invalid in (Path('alias/llvm'), Path('../outside')):
+        try:
+            module.replay_source(paths, source_root, invalid)
+        except (ValueError, SDKError):
+            pass
+        else:
+            raise AssertionError(f'accepted an invalid source subdirectory: {invalid}')
+    print('PASS nested source layout and path checks')
+    alias = Path(tmp) / 'scratch-alias'
+    alias.symlink_to(nested_root, target_is_directory=True)
+    exercise_shared_llvm_patch(alias / 'shared-profile')
+    try:
+        module._entry(paths, alias, 'file')
+    except (ValueError, SDKError):
+        pass
+    else:
+        raise AssertionError('accepted a symlink as the stage root')
+    print('PASS checked shared LLVM profile patch')
     omitted_root = Path(tmp) / 'omitted-old-target'
     omitted_root.mkdir()
     exercise_omitted_old_target(omitted_root)
