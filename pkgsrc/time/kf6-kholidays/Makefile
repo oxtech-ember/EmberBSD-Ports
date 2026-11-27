@@ -11,9 +11,15 @@ LICENSE=	gnu-lgpl-v2
 
 USE_TOOLS+=	bison gm4 msgmerge
 # Apple flex 2.6.4 has a different C++ scanner ABI from the upstream header.
-# Only the generator is needed; KHolidays supplies its scanner header and yywrap.
+# KHolidays supplies yywrap. Its FlexLexer.h comes from flex 2.6, and flex 2.7
+# scanners stop when the header is from another flex release, so the build
+# uses the header of the selected generator.
 TOOL_DEPENDS+= flex>=2.6.4:../../devel/flex
 CMAKE_CONFIGURE_ARGS+= -DFLEX_EXECUTABLE=${TOOLBASE:Q}/bin/flex
+
+pre-configure:
+	${RUN}${CP} ${TOOLBASE:Q}/include/FlexLexer.h \
+	    ${WRKSRC}/src/parsers/plan2/FlexLexer.h
 
 .include "../../devel/qt6-qttools/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
