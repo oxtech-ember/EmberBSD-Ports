@@ -8,24 +8,33 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
 import re
 import subprocess
 import sys
 
 p = argparse.ArgumentParser()
-for name in ('source', 'work', 'host-prefix', 'compiler-prefix', 'sysroot', 'sdk-source', 'macos-sdk', 'lock-root', 'link-context'):
+for name in ('source', 'work', 'host-prefix', 'compiler-prefix', 'sysroot', 'sdk-source', 'lock-root', 'link-context'):
     p.add_argument('--' + name, type=Path, required=True)
 p.add_argument('--target', choices=('amd64', 'aarch64', 'wasm32-wasip1'), required=True)
-p.add_argument('--macos-minimum', required=True)
+# The macOS SDK and deployment version select a Darwin build host only.
+p.add_argument('--macos-sdk', type=Path)
+p.add_argument('--macos-minimum')
 p.add_argument('--jobs', type=int, required=True)
 p.add_argument('--plan', action='store_true', help='check the bootstrap plan without building target std')
 p.add_argument('--runtime-stage', type=Path, help='prepared LLVM runtime stage instead of the sysroot record')
 p.add_argument('--runtime-base', type=Path, help='base checked by the runtime stage (default: the sysroot)')
 a = p.parse_args()
 if a.jobs < 1: p.error('jobs must be positive')
-if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', a.macos_minimum):
-    p.error('macOS deployment version must be numeric')
-for name in ('source','work','host_prefix','compiler_prefix','sysroot','sdk_source','macos_sdk','lock_root'):
+darwin_host = platform.system() == 'Darwin'
+if darwin_host:
+    if a.macos_sdk is None or a.macos_minimum is None:
+        p.error('a Darwin host requires --macos-sdk and --macos-minimum')
+    if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', a.macos_minimum):
+        p.error('macOS deployment version must be numeric')
+elif a.macos_sdk is not None or a.macos_minimum is not None:
+    p.error('--macos-sdk and --macos-minimum apply to Darwin hosts only')
+for name in ('source','work','host_prefix','compiler_prefix','sysroot','sdk_source','lock_root') + (('macos_sdk',) if darwin_host else ()):
     path = getattr(a, name)
     if not path.is_absolute(): p.error(name + ' must be absolute')
     setattr(a, name, path.resolve(strict=True))
@@ -53,17 +62,25 @@ if any(not Path(module.__file__).resolve().is_relative_to(a.sdk_source/'src/embe
 a.link_context = Path(paths.canonical_new(a.link_context))
 native = host_prefix.load_host_prefix(a.host_prefix, required_roles=('python','rustc','cargo','cc','cxx','cpp','ar','sh','readelf'), compiler_family='clang')
 if Path(sys.executable).resolve() != Path(native.tool('python')).resolve(): p.error('use selected native Python')
-if native.host['os'] != 'Darwin': p.error('this producer currently supports Darwin hosts')
+# Rust host triples of the supported build hosts, by OS and CPU.
+HOST_TRIPLES = {('Darwin','arm64'):'aarch64-apple-darwin', ('Darwin','aarch64'):'aarch64-apple-darwin',
+                ('Darwin','x86_64'):'x86_64-apple-darwin', ('Darwin','amd64'):'x86_64-apple-darwin',
+                ('Linux','x86_64'):'x86_64-unknown-linux-gnu'}
+expected_host = HOST_TRIPLES.get((native.host['os'], native.host['cpu']))
+if expected_host is None: p.error('unsupported Rust build host: %s %s' % (native.host['os'], native.host['cpu']))
+if (native.host['os'] == 'Darwin') != darwin_host: p.error('selected host prefix differs from the running OS')
 env = process.sanitized_environment()
 (a.work/'tmp').mkdir(exist_ok=True); (a.work/'cargo-home').mkdir(exist_ok=True)
 env.update(PATH=native.path, CARGO_NET_OFFLINE='true', CARGO_HOME=str(a.work/'cargo-home'),
            TMPDIR=str(a.work/'tmp'),
-           # The initial Cargo-built bootstrap runs before the Rust loader shim.
-           DYLD_FALLBACK_LIBRARY_PATH=str(a.host_prefix/'lib'),
            PYTHONDONTWRITEBYTECODE='1')
+if darwin_host:
+    # The initial Cargo-built bootstrap runs before the Rust loader shim.
+    env['DYLD_FALLBACK_LIBRARY_PATH'] = str(a.host_prefix/'lib')
 for name in ('RUSTFLAGS','CARGO_ENCODED_RUSTFLAGS','CARGO_BUILD_TARGET','RUSTC_BOOTSTRAP',
              'RUSTC_WRAPPER','RUSTC_WORKSPACE_WRAPPER','CARGO_TARGET_DIR',
-             'DYLD_LIBRARY_PATH','DYLD_FRAMEWORK_PATH','DYLD_INSERT_LIBRARIES'):
+             'DYLD_LIBRARY_PATH','DYLD_FRAMEWORK_PATH','DYLD_INSERT_LIBRARIES',
+             'LD_LIBRARY_PATH','LD_PRELOAD'):
     env.pop(name, None)
 def capture(args):
     return subprocess.run([str(x) for x in args], env=env, text=True, capture_output=True, check=True).stdout
@@ -71,11 +88,7 @@ version = capture([native.tool('rustc'), '-vV'])
 if 'commit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a\n' not in version:
     raise ValueError('selected Rust compiler is not the pinned 1.100.0 commit')
 host = next(line[6:] for line in version.splitlines() if line.startswith('host: '))
-if host not in ('aarch64-apple-darwin','x86_64-apple-darwin'):
-    raise ValueError('unsupported Rust build host')
-expected_host = {'arm64':'aarch64-apple-darwin', 'aarch64':'aarch64-apple-darwin',
-                 'x86_64':'x86_64-apple-darwin', 'amd64':'x86_64-apple-darwin'}.get(native.host['cpu'])
-if host != expected_host: raise ValueError('Rust compiler host differs from selected native CPU')
+if host != expected_host: raise ValueError('Rust compiler host differs from the selected native OS and CPU')
 triplet = {'amd64':'x86_64-unknown-netbsd','aarch64':'aarch64-unknown-netbsd', 'wasm32-wasip1':'wasm32-wasip1'}[a.target]
 if a.target == 'wasm32-wasip1':
     if a.compiler_prefix != a.host_prefix: p.error('WASI compiler must be the selected native prefix')
@@ -111,8 +124,12 @@ else:
         runtime = application_toolchain.load_clang_runtime(str(a.sysroot), target=a.target)
     target = application_toolchain.bind_clang_application_commands(a.work/'target-commands', compiler, str(a.sysroot), runtime,
         python=native.tool('python'), runtime_root=runtime_root)
-env.update(SDKROOT=str(a.macos_sdk), MACOSX_DEPLOYMENT_TARGET=a.macos_minimum)
-flags = ['-isysroot',str(a.macos_sdk),'-mmacosx-version-min='+a.macos_minimum]
+if darwin_host:
+    env.update(SDKROOT=str(a.macos_sdk), MACOSX_DEPLOYMENT_TARGET=a.macos_minimum)
+    flags = ['-isysroot',str(a.macos_sdk),'-mmacosx-version-min='+a.macos_minimum]
+else:
+    # A Linux host compiler uses the base OS headers and libraries.
+    flags = []
 commands = {role:[native.tool(role),*flags] for role in ('cc','cxx','cpp')}
 common_flags = {name:[] for name in ('cppflags','cflags','cxxflags','ldflags')}
 host_tools = compiler_bindings.bind_compilers(a.work/'host-commands', commands=commands, flags=common_flags,

@@ -17,10 +17,12 @@ SOURCE_GOALS = (
 )
 REQUIRED_INPUTS = (
     'EMBERBSD_SDK_SOURCE', 'EMBERBSD_RUST_COMPILER_PREFIX',
-    'EMBERBSD_RUST_TARGET_SYSROOT', 'EMBERBSD_RUST_MACOS_SDK',
-    'EMBERBSD_RUST_MACOS_MINIMUM', 'EMBERBSD_RUST_LOCK_ROOT',
+    'EMBERBSD_RUST_TARGET_SYSROOT', 'EMBERBSD_RUST_LOCK_ROOT',
     'EMBERBSD_RUST_LINK_CONTEXT', 'EMBERBSD_RUST_CROSS_TOOLS',
 )
+# Only a Darwin build host selects a macOS SDK and deployment version.
+DARWIN_INPUTS = ('EMBERBSD_RUST_MACOS_SDK', 'EMBERBSD_RUST_MACOS_MINIMUM')
+HOSTS = (('Darwin', 'aarch64', 'aarch64'), ('Linux', 'x86_64', 'amd64'))
 
 
 def main():
@@ -33,11 +35,21 @@ def main():
     producer = args.producer.resolve(strict=True)
     work = args.work.resolve(strict=True)
 
+    for opsys, machine, target in HOSTS:
+        check(bmake, producer, work, opsys, machine, target)
+
+    print('PASS: metadata and source goals do not require Rust build inputs')
+    print('PASS: default, build, unknown and mixed goals retain all input guards')
+    print('PASS: only Darwin build hosts require the macOS inputs')
+
+
+def check(bmake, producer, work, opsys, machine, target):
+    required = set(REQUIRED_INPUTS) | (set(DARWIN_INPUTS) if opsys == 'Darwin' else set())
     with tempfile.TemporaryDirectory(dir=work) as tmp:
         makefile = Path(tmp) / 'goal-policy.mk'
         gcc_inputs = ('EMBERBSD_RUST_CROSS_TOOLS', 'EMBERBSD_RUST_TARGET_SYSROOT')
         targets = (*SOURCE_GOALS, 'configure', 'build', 'package', 'install', 'custom-build')
-        lines = ['MACHINE_ARCH= aarch64', 'RUST_STD_TARGET= aarch64',
+        lines = ['OPSYS= ' + opsys, 'MACHINE_ARCH= ' + machine, 'RUST_STD_TARGET= ' + target,
                  f'.include "{producer}"',
                  '_GCC_REQUIRED_INPUTS= ' + ' '.join(gcc_inputs),
                  '.if ${_EMBERBSD_RUST_NEEDS_BUILD_INPUTS} == "yes"',
@@ -61,12 +73,11 @@ def main():
                       ('install',), ('custom-build',), ('fetch', 'configure'),
                       ('checksum', 'build')):
             reasons = missing(*goals)
-            found = {name for name in REQUIRED_INPUTS if name in reasons}
-            if found != set(REQUIRED_INPUTS):
-                raise SystemExit(f'{goals!r} did not retain build input guards: {sorted(found)}')
-
-    print('PASS: metadata and source goals do not require Rust build inputs')
-    print('PASS: default, build, unknown and mixed goals retain all input guards')
+            found = {name for name in (*REQUIRED_INPUTS, *DARWIN_INPUTS) if name in reasons}
+            if found != required:
+                raise SystemExit(f'{opsys} {goals!r} selected build input guards {sorted(found)}')
+            if 'Unsupported Rust build host' in reasons:
+                raise SystemExit(f'{opsys} {machine} is not a supported Rust build host')
 
 
 if __name__ == '__main__':

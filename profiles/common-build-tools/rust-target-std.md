@@ -93,7 +93,8 @@ the shared lock paths; the cross profile does not infer them from a package
 work directory.
 
 A source-built x86_64 std and a static Rust consumer were cross-linked using
-Clang/LLVM and verified for LLVM libunwind on a Darwin arm64 host. Target
+Clang/LLVM and verified for LLVM libunwind on a Darwin arm64 host and on a
+Linux x86_64 host. A Linux host needs no macOS SDK or deployment inputs. Target
 execution and the source-built LLVM AArch64 package require their own checks.
 
 ## Explicit GCC alternative

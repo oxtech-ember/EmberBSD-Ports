@@ -1,8 +1,16 @@
 # Shared Rust target standard-library producer for the selected LLVM runtime.
 # The including package selects a NetBSD CPU or wasm32-wasip1.
 .include "${.PARSEDIR}/build-goals.mk"
+# The macOS SDK and deployment version are inputs of a Darwin build host only.
+.if ${OPSYS} == "Darwin"
+_EMBERBSD_RUST_HOST_INPUTS= EMBERBSD_RUST_MACOS_SDK EMBERBSD_RUST_MACOS_MINIMUM
+_EMBERBSD_RUST_HOST_ARGS= --macos-sdk ${EMBERBSD_RUST_MACOS_SDK:Q} --macos-minimum ${EMBERBSD_RUST_MACOS_MINIMUM:Q}
+.else
+_EMBERBSD_RUST_HOST_INPUTS=
+_EMBERBSD_RUST_HOST_ARGS=
+.endif
 .if ${_EMBERBSD_RUST_NEEDS_BUILD_INPUTS} == "yes"
-.for var in EMBERBSD_SDK_SOURCE EMBERBSD_RUST_COMPILER_PREFIX EMBERBSD_RUST_TARGET_SYSROOT EMBERBSD_RUST_MACOS_SDK EMBERBSD_RUST_MACOS_MINIMUM EMBERBSD_RUST_LOCK_ROOT EMBERBSD_RUST_LINK_CONTEXT
+.for var in EMBERBSD_SDK_SOURCE EMBERBSD_RUST_COMPILER_PREFIX EMBERBSD_RUST_TARGET_SYSROOT ${_EMBERBSD_RUST_HOST_INPUTS} EMBERBSD_RUST_LOCK_ROOT EMBERBSD_RUST_LINK_CONTEXT
 .if empty(${var}:U)
 PKG_FAIL_REASON+= "Set ${var} to the selected SDK input."
 .endif
@@ -24,12 +32,14 @@ _EMBERBSD_RUST_RUNTIME_ARGS+= --runtime-base ${EMBERBSD_RUST_TARGET_RUNTIME_BASE
 PKG_FAIL_REASON+= "EMBERBSD_RUST_TARGET_RUNTIME_BASE requires EMBERBSD_RUST_TARGET_RUNTIME_STAGE."
 .endif
 EMBERBSD_RUST_BUILD_JOBS?= ${MAKE_JOBS:U1}
-.if ${MACHINE_ARCH} == "aarch64"
+.if ${OPSYS} == "Darwin" && ${MACHINE_ARCH} == "aarch64"
 RUST_HOST_TRIPLE= aarch64-apple-darwin
-.elif ${MACHINE_ARCH} == "x86_64"
+.elif ${OPSYS} == "Darwin" && ${MACHINE_ARCH} == "x86_64"
 RUST_HOST_TRIPLE= x86_64-apple-darwin
+.elif ${OPSYS} == "Linux" && ${MACHINE_ARCH} == "x86_64"
+RUST_HOST_TRIPLE= x86_64-unknown-linux-gnu
 .else
-PKG_FAIL_REASON+= "Unsupported Darwin Rust host CPU"
+PKG_FAIL_REASON+= "Unsupported Rust build host"
 .endif
 .if ${RUST_STD_TARGET} == "amd64"
 RUST_TARGET_TRIPLE= x86_64-unknown-netbsd
@@ -50,7 +60,7 @@ do-build:
 	${TOOL_PYTHONBIN} ${FILESDIR}/llvm-producer.py --source ${WRKSRC:Q} --work ${WRKDIR:Q} \
 	    --host-prefix ${PREFIX:Q} --compiler-prefix ${EMBERBSD_RUST_COMPILER_PREFIX:Q} \
 	    --sysroot ${EMBERBSD_RUST_TARGET_SYSROOT:Q} --sdk-source ${EMBERBSD_SDK_SOURCE:Q} \
-	    --macos-sdk ${EMBERBSD_RUST_MACOS_SDK:Q} --macos-minimum ${EMBERBSD_RUST_MACOS_MINIMUM:Q} \
+	    ${_EMBERBSD_RUST_HOST_ARGS} \
 	    --lock-root ${EMBERBSD_RUST_LOCK_ROOT:Q} --link-context ${EMBERBSD_RUST_LINK_CONTEXT:Q} \
 	    --target ${RUST_STD_TARGET:Q} --jobs ${EMBERBSD_RUST_BUILD_JOBS:Q} \
 	    ${_EMBERBSD_RUST_RUNTIME_ARGS}
