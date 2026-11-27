@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.7 2026/08/03 17:21:42 wiz Exp $
 BLAKE2s (libxmlb-0.3.30.tar.xz) = 76cff066cd87bc95e825e7efd94fa3fed45e83d67c44643853b3eedfef184607
 SHA512 (libxmlb-0.3.30.tar.xz) = e881b7941b2882f4cef35f8b1453a12eb772d918a0786b54b17034c25bf4dd61780e2e8b35c8d8f42ecfc2599ca020fe89a2e421c65b735e7d49e8f52eacf150
 Size (libxmlb-0.3.30.tar.xz) = 117916 bytes
+SHA1 (patch-src_meson.build) = c88fff757a8614b1f7147ea7468beeff5e603d7c

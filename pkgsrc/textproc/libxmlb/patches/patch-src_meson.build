@@ -1,0 +1,15 @@
+$NetBSD$
+
+Use the installed fixture directory when Meson does not supply G_TEST_SRCDIR.
+
+--- src/meson.build.orig
++++ src/meson.build
+@@ -293,7 +293,7 @@
+       libxmlb_dep,
+     ],
+     c_args: [
+-      '-DSRCDIR="' + join_paths(meson.project_source_root(), 'data') + '"',
++      '-DSRCDIR="' + installed_test_bindir + '"',
+     ],
+     install : true,
+     install_dir : installed_test_bindir

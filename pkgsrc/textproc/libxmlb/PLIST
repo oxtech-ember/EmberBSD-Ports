@@ -27,13 +27,13 @@ lib/libxmlb.so
 lib/libxmlb.so.2
 lib/libxmlb.so.2.0.0
 lib/pkgconfig/xmlb.pc
-libexec/installed-tests/libxmlb/test.desktop
-libexec/installed-tests/libxmlb/test.quirk
-libexec/installed-tests/libxmlb/test.xml
-libexec/installed-tests/libxmlb/test.xml.gz.gz.gz
-libexec/installed-tests/libxmlb/test.xml.xz
-libexec/installed-tests/libxmlb/test.xml.zst
-libexec/installed-tests/libxmlb/xb-self-test
+${PLIST.tests}libexec/installed-tests/libxmlb/test.desktop
+${PLIST.tests}libexec/installed-tests/libxmlb/test.quirk
+${PLIST.tests}libexec/installed-tests/libxmlb/test.xml
+${PLIST.tests}libexec/installed-tests/libxmlb/test.xml.gz.gz.gz
+${PLIST.tests}libexec/installed-tests/libxmlb/test.xml.xz
+${PLIST.tests}libexec/installed-tests/libxmlb/test.xml.zst
+${PLIST.tests}libexec/installed-tests/libxmlb/xb-self-test
 man/man1/xb-tool.1
 ${PLIST.gir}share/gir-1.0/Xmlb-2.0.gir
 ${PLIST.doc}share/gtk-doc/html/libxmlb/annotation-glossary.html
@@ -68,4 +68,4 @@ ${PLIST.doc}share/gtk-doc/html/libxmlb/right.png
 ${PLIST.doc}share/gtk-doc/html/libxmlb/style.css
 ${PLIST.doc}share/gtk-doc/html/libxmlb/up-insensitive.png
 ${PLIST.doc}share/gtk-doc/html/libxmlb/up.png
-share/installed-tests/libxmlb/libxmlb.test
+${PLIST.tests}share/installed-tests/libxmlb/libxmlb.test

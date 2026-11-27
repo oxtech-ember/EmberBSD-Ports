@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.14 2026/09/02 19:04:45 wiz Exp $
 
 DISTNAME=	libxmlb-0.3.30
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=hughsie/}
 GITHUB_RELEASE=	${PKGVERSION_NOREV}
@@ -11,8 +11,6 @@ MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://github.com/hughsie/libxmlb
 COMMENT=	Library to help create and query binary XML blobs
 LICENSE=	gnu-lgpl-v2.1
-
-TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
 
 USE_TOOLS+=	pkg-config
 
@@ -25,6 +23,9 @@ PKGCONFIG_OVERRIDE_STAGE=	post-configure
 .include "../../archivers/zstd/buildlink3.mk"
 BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.68
 .include "../../devel/glib2/buildlink3.mk"
+.if defined(PLIST.gir)
+TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
 .include "../../devel/gobject-introspection/buildlink3.mk"
+.endif
 .include "../../devel/meson/build.mk"
 .include "../../mk/bsd.pkg.mk"
