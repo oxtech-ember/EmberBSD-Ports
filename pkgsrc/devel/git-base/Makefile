@@ -188,4 +188,7 @@ BUILDLINK_API_DEPENDS.pcre2+=	pcre2>=10.34
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../textproc/expat/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Reissue the withdrawn AArch64 package.
+.endif
 .include "../../mk/bsd.pkg.mk"

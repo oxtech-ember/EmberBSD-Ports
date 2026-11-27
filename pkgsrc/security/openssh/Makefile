@@ -178,4 +178,7 @@ post-install:
 	  ${DESTDIR}${EGDIR}/sshd.pam
 .endif
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	36	# Reissue the withdrawn AArch64 package.
+.endif
 .include "../../mk/bsd.pkg.mk"

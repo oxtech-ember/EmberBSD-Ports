@@ -32,4 +32,7 @@ post-install:
 
 BUILDLINK_API_DEPENDS.gmp+=	gmp>=5.0
 .include "../../devel/gmp/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Reissue the withdrawn AArch64 package.
+.endif
 .include "../../mk/bsd.pkg.mk"

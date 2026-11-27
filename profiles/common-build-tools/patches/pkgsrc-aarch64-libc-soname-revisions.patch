@@ -185,3 +185,32 @@
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
+--- a/security/mozilla-rootcerts-openssl/Makefile
++++ b/security/mozilla-rootcerts-openssl/Makefile
+@@ -21,4 +21,8 @@
+ .include "../../security/openssl/builtin.mk"
+ CHECK_BUILTIN.openssl=	no
++
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
++PKGREVISION=	1	# Reissue the withdrawn AArch64 package.
++.endif
+ 
+ #
+--- a/devel/ncurses/Makefile
++++ b/devel/ncurses/Makefile
+@@ -274,3 +274,6 @@
+ 	${RM} -f ${DESTDIR}${PREFIX}/lib/terminfo
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
++PKGREVISION=	7	# Reissue the withdrawn AArch64 package.
++.endif
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/git-docs/Makefile
++++ b/devel/git-docs/Makefile
+@@ -20,3 +20,6 @@
+ .include "../../devel/git/Makefile.common"
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
++PKGREVISION=	1	# Reissue the withdrawn AArch64 package.
++.endif
+ .include "../../mk/bsd.pkg.mk"

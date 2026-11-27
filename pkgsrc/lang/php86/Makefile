@@ -90,4 +90,7 @@ post-install:
 		${DESTDIR}${PREFIX}/${PHP_SHAREDIR}
 
 .include "../../lang/php/phpversion.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Reissue the withdrawn AArch64 package.
+.endif
 .include "../../mk/bsd.pkg.mk"
