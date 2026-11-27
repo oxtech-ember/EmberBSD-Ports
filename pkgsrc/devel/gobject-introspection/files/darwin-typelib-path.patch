@@ -1,0 +1,25 @@
+Resolve the pkgsrc shared-library search directory from the installed GI library.
+Origin: EmberBSD contributors (AI-assisted); upstream status: not submitted.
+
+--- girepository/gitypelib.c.orig
++++ girepository/gitypelib.c
+@@ -28,6 +28,9 @@
+ #include <glib.h>
+ 
+ #include "gitypelib-internal.h"
++#include "gi-relocate-private.h"
++
++static const char gi_typelib_anchor;
+ 
+ typedef struct {
+   GITypelib *typelib;
+@@ -2286,7 +2289,8 @@
+             return m;
+         }
+       /* try pkgsrc lib dir */
+-      char *pkglibpath = g_build_filename ("@PREFIX@/lib", shlib, NULL);
++      g_autofree char *libdir = _g_ir_relocated_path (&gi_typelib_anchor, GOBJECT_INTROSPECTION_LIBDIR);
++      char *pkglibpath = g_build_filename (libdir ? libdir : GOBJECT_INTROSPECTION_LIBDIR, shlib, NULL);
+       m= g_module_open (pkglibpath, G_MODULE_BIND_LAZY);
+       g_free (pkglibpath);
+       if (m != NULL)

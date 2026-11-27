@@ -4,12 +4,14 @@ DISTNAME=	gobject-introspection-1.86.0
 PKGREVISION=	11
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-PKGREVISION=	13	# Use the selected SDK Mach-O inspection tool.
+PKGREVISION=	14	# Use the public SDK prefix in compiled fallback paths.
+MESON_ARGS+=	-Druntime_prefix=/usr/pkg
 DEPENDS+=	llvm-[0-9]*:../../lang/llvm
 
 post-patch:
 	${RUN} ${PATCH} ${PATCH_ARGS} ${PATCH_FUZZ_FACTOR} < ${FILESDIR:Q}/darwin-dylib-names.patch
 	${RUN} ${PATCH} ${PATCH_ARGS} ${PATCH_FUZZ_FACTOR} < ${FILESDIR:Q}/darwin-sdk-otool.patch
+	${RUN} ${PATCH} ${PATCH_ARGS} ${PATCH_FUZZ_FACTOR} < ${FILESDIR:Q}/darwin-typelib-path.patch
 .elif ${OPSYS} == "NetBSD"
 PKGREVISION=	12	# Updated libffi shared-library requirement.
 .endif
@@ -50,7 +52,9 @@ PKGCONFIG_OVERRIDE_STAGE=	post-build
 SUBST_CLASSES+=		libdirs
 SUBST_STAGE.libdirs=	pre-configure
 SUBST_FILES.libdirs=	giscanner/ccompiler.py
+.if ${OPSYS} != "Darwin" || ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 SUBST_FILES.libdirs+=	girepository/gitypelib.c
+.endif
 SUBST_VARS.libdirs=	_OPSYS_LIB_DIRS
 SUBST_VARS.libdirs+=	PREFIX
 

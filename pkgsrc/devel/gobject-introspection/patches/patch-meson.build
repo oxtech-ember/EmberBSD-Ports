@@ -5,15 +5,19 @@ Origin: EmberBSD (AI-assisted); not submitted upstream.
 
 --- meson.build.orig
 +++ meson.build
-@@ -104,6 +104,32 @@
+@@ -104,6 +104,36 @@
    extra_giscanner_args = []
  endif
  
 +# The private path resolver is optional on platforms without dladdr.
++runtime_prefix = get_option('runtime_prefix')
++if runtime_prefix == ''
++  runtime_prefix = get_option('prefix')
++endif
 +gi_reloc_config = configuration_data()
-+gi_reloc_config.set_quoted('GI_RELOC_PREFIX', get_option('prefix'))
-+gi_reloc_config.set_quoted('GI_RELOC_BINDIR', join_paths(get_option('prefix'), get_option('bindir')))
-+gi_reloc_config.set_quoted('GI_RELOC_LIBDIR', join_paths(get_option('prefix'), get_option('libdir')))
++gi_reloc_config.set_quoted('GI_RELOC_PREFIX', runtime_prefix)
++gi_reloc_config.set_quoted('GI_RELOC_BINDIR', join_paths(runtime_prefix, get_option('bindir')))
++gi_reloc_config.set_quoted('GI_RELOC_LIBDIR', join_paths(runtime_prefix, get_option('libdir')))
 +gi_reloc_deps = []
 +gi_reloc_cargs = []
 +if host_system != 'windows'
@@ -38,7 +42,20 @@ Origin: EmberBSD (AI-assisted); not submitted upstream.
  config = configuration_data()
  
  config.set('GI_MAJOR_VERSION', gi_versions[0])
-@@ -301,7 +327,7 @@
+@@ -119,9 +149,9 @@
+     gir_dir_pc_prefix = join_paths('${prefix}', gir_dir_prefix)
+ endif
+ girdir = join_paths(get_option('prefix'), gir_dir_prefix, 'gir-1.0')
+-config.set_quoted('GOBJECT_INTROSPECTION_DATADIR', join_paths(get_option('prefix'), get_option('datadir')))
+-config.set_quoted('GIR_DIR', girdir)
+-config.set_quoted('GOBJECT_INTROSPECTION_LIBDIR', join_paths(get_option('prefix'), get_option('libdir')))
++config.set_quoted('GOBJECT_INTROSPECTION_DATADIR', join_paths(runtime_prefix, get_option('datadir')))
++config.set_quoted('GIR_DIR', join_paths(runtime_prefix, gir_dir_prefix, 'gir-1.0'))
++config.set_quoted('GOBJECT_INTROSPECTION_LIBDIR', join_paths(runtime_prefix, get_option('libdir')))
+ 
+ foreach type : ['char', 'short', 'int', 'long']
+   size = cc.sizeof(type)
+@@ -301,7 +331,7 @@
  
  # The tests will also run, which is not possible if they
  # were built for a different architecture.

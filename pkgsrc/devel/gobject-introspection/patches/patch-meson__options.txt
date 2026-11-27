@@ -1,0 +1,18 @@
+$NetBSD$
+
+Select the fallback prefix independently of the package staging path.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- meson_options.txt.orig
++++ meson_options.txt
+@@ -20,6 +20,10 @@
+ 
+ option('python', type: 'string', value: 'python3',
+   description: 'Path or name of the Python interpreter to build for'
++)
++
++option('runtime_prefix', type: 'string', value: '',
++  description: 'Fallback prefix for installed binaries when their runtime location is unknown'
+ )
+ 
+ option('gir_dir_prefix', type: 'string',

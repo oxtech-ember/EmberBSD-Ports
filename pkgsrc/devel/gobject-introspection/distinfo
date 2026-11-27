@@ -21,4 +21,5 @@ SHA1 (patch-girepository_gi-relocate-private.h) = 65af3f0b2f036399ff00f1ecb5d18f
 SHA1 (patch-girepository_girepository.c) = 8484beb42ca016258e1ba8257fd9b01f965dd613
 SHA1 (patch-girepository_girparser.c) = 8d81ee4e5d761b9128745f83fa99be8a8b5961ba
 SHA1 (patch-girepository_meson.build) = 13c6465d3277ef8d809b30514c20e5083356c07a
-SHA1 (patch-meson.build) = 698b31d79d6bab2debd565231f6c3a7695da7a2d
+SHA1 (patch-meson.build) = 497282511f2df06a50ecde68f1705501c744156f
+SHA1 (patch-meson__options.txt) = 482aba72f693bce1dd0df6314a690d69d78fd250
