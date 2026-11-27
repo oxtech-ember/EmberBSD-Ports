@@ -29,9 +29,11 @@ _EMBER_WAF_RUN=		${TOOL_PYTHONBIN} -B -E -S ${_EMBER_WAF_TOOL}
 CONFIGURE_ARGS+=	--cross-compile --cross-answers=${_EMBER_WAF_WORK:Q}
 CONFIGURE_ENV+=		PYTHON=${TOOL_PYTHONBIN:Q}
 # Waf runs Python on the build host with target sysconfig data and headers.
+# A cross-built Python installs bin/python3.N-config as a shell script, so
+# give the host Python the python-config.py of the target library instead.
 .if ${PYTHON_FOR_BUILD_ONLY:Uno:tl} == "no"
 CONFIGURE_ENV+= PYTHONPATH=${WRKDIR}/.pysite:${CROSS_DESTDIR}${LOCALBASE}/${PYLIB}
-CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-config
+CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${LOCALBASE}/${PYLIB}/config-${PY_VER_SUFFIX}/python-config.py
 .endif
 
 pre-configure: emberbsd-waf-answers
