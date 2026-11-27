@@ -1,0 +1,65 @@
+Add the kate 26.08.3 translations that the PLIST does not list.
+The distfile has fi, ja and ta catalogs for these plugins.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/editors/kate/PLIST
++++ b/editors/kate/PLIST
+@@ -940,6 +940,7 @@
+ share/locale/fi/LC_MESSAGES/katekonsoleplugin.mo
+ share/locale/fi/LC_MESSAGES/kateproject.mo
+ share/locale/fi/LC_MESSAGES/katesearch.mo
++share/locale/fi/LC_MESSAGES/kateshownonprintableplugin.mo
+ share/locale/fi/LC_MESSAGES/katesnippetsplugin.mo
+ share/locale/fi/LC_MESSAGES/katesql.mo
+ share/locale/fi/LC_MESSAGES/katesymbolviewer.mo
+@@ -1257,9 +1258,11 @@
+ share/locale/ja/LC_MESSAGES/kate-replicode-plugin.mo
+ share/locale/ja/LC_MESSAGES/kate.mo
+ share/locale/ja/LC_MESSAGES/katebacktracebrowserplugin.mo
++share/locale/ja/LC_MESSAGES/katebookmarksplugin.mo
+ share/locale/ja/LC_MESSAGES/katebuild-plugin.mo
+ share/locale/ja/LC_MESSAGES/katecloseexceptplugin.mo
+ share/locale/ja/LC_MESSAGES/katecolorpickerplugin.mo
++share/locale/ja/LC_MESSAGES/katecompilerexplorer.mo
+ share/locale/ja/LC_MESSAGES/kateexternaltoolsplugin.mo
+ share/locale/ja/LC_MESSAGES/katefilebrowserplugin.mo
+ share/locale/ja/LC_MESSAGES/katefiletree.mo
+@@ -1269,6 +1272,7 @@
+ share/locale/ja/LC_MESSAGES/katekonsoleplugin.mo
+ share/locale/ja/LC_MESSAGES/kateproject.mo
+ share/locale/ja/LC_MESSAGES/katesearch.mo
++share/locale/ja/LC_MESSAGES/kateshownonprintableplugin.mo
+ share/locale/ja/LC_MESSAGES/katesnippetsplugin.mo
+ share/locale/ja/LC_MESSAGES/katesql.mo
+ share/locale/ja/LC_MESSAGES/katesymbolviewer.mo
+@@ -1278,6 +1282,7 @@
+ share/locale/ja/LC_MESSAGES/ktexteditorpreviewplugin.mo
+ share/locale/ja/LC_MESSAGES/lspclient.mo
+ share/locale/ja/LC_MESSAGES/rainbowparens.mo
++share/locale/ja/LC_MESSAGES/rbqlplugin.mo
+ share/locale/ja/LC_MESSAGES/tabswitcherplugin.mo
+ share/locale/ka/LC_MESSAGES/formatplugin.mo
+ share/locale/ka/LC_MESSAGES/kate-ctags-plugin.mo
+@@ -2021,18 +2026,22 @@
+ share/locale/ta/LC_MESSAGES/kate-replicode-plugin.mo
+ share/locale/ta/LC_MESSAGES/kate.mo
+ share/locale/ta/LC_MESSAGES/katebacktracebrowserplugin.mo
++share/locale/ta/LC_MESSAGES/katebookmarksplugin.mo
+ share/locale/ta/LC_MESSAGES/katebuild-plugin.mo
+ share/locale/ta/LC_MESSAGES/katecloseexceptplugin.mo
+ share/locale/ta/LC_MESSAGES/katecolorpickerplugin.mo
++share/locale/ta/LC_MESSAGES/katecompilerexplorer.mo
+ share/locale/ta/LC_MESSAGES/kateexternaltoolsplugin.mo
+ share/locale/ta/LC_MESSAGES/katefilebrowserplugin.mo
+ share/locale/ta/LC_MESSAGES/katefiletree.mo
+ share/locale/ta/LC_MESSAGES/kategdbplugin.mo
+ share/locale/ta/LC_MESSAGES/kategitblameplugin.mo
++share/locale/ta/LC_MESSAGES/kategpgplugin.mo
+ share/locale/ta/LC_MESSAGES/katekeyboardmacros.mo
+ share/locale/ta/LC_MESSAGES/katekonsoleplugin.mo
+ share/locale/ta/LC_MESSAGES/kateproject.mo
+ share/locale/ta/LC_MESSAGES/katesearch.mo
++share/locale/ta/LC_MESSAGES/kateshownonprintableplugin.mo
+ share/locale/ta/LC_MESSAGES/katesnippetsplugin.mo
+ share/locale/ta/LC_MESSAGES/katesql.mo
+ share/locale/ta/LC_MESSAGES/katesymbolviewer.mo
