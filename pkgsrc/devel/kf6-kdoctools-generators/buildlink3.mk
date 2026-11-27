@@ -12,6 +12,7 @@ BUILDLINK_PKGSRCDIR.kf6-kdoctools-generators?=	../../devel/kf6-kdoctools-generat
 
 BUILDLINK_FILES.kf6-kdoctools-generators+=	share/kf6/kdoctools/customization/*.xsl
 BUILDLINK_FILES.kf6-kdoctools-generators+=	bin/checkXML6
+BUILDLINK_FILES.kf6-kdoctools-generators+=	bin/docbookl10nhelper
 BUILDLINK_FILES.kf6-kdoctools-generators+=	bin/meinproc6
 
 .include "../../textproc/libxslt/buildlink3.mk"
