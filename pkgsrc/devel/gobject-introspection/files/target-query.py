@@ -297,7 +297,12 @@ def query(arguments):
         configured = config.get('library_dirs', [])
         require(isinstance(configured, list) and all(isinstance(path, str) for path in configured),
                 'library_dirs must be an array of strings')
-        search = list(dict.fromkeys(mapdir(path) for path in configured + environment.get('LD_LIBRARY_PATH', '').split(':') if path))
+        # g-ir-scanner names its target link directories in
+        # EMBERBSD_GI_LIBRARY_PATH; other target programs inherit them from
+        # the build in LD_LIBRARY_PATH.
+        runtime = (environment.get('EMBERBSD_GI_LIBRARY_PATH', '').split(':') +
+                   environment.get('LD_LIBRARY_PATH', '').split(':'))
+        search = list(dict.fromkeys(mapdir(path) for path in configured + runtime if path))
         defaults = [mapdir(path) for path in ('/usr/pkg/gcc16/lib', '/usr/pkg/lib', '/usr/lib', '/lib')]
         files, pending, declared_libraries = {}, [exe], []
         library_root = real_directory(sysroot) if library_inputs else None

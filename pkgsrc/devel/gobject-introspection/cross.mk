@@ -107,6 +107,10 @@ _EMBER_GI_COMPILER= ${TOOLBASE}/bin/g-ir-compiler
 .if ${NATIVE_OPSYS:U} == "Darwin" && !empty(EMBERBSD_NATIVE_RUNTIME_VIEW:U)
 _EMBER_GI_COMPILER= ${WRKDIR}/.meson-gi-compiler
 _EMBER_GI_ENV+= EMBERBSD_NATIVE_RUNTIME_VIEW=${EMBERBSD_NATIVE_RUNTIME_VIEW:Q}
+.elif ${NATIVE_OPSYS:U} == "Linux"
+# On Linux, LD_LIBRARY_PATH for target artifacts overrides the RUNPATH of the
+# native compiler, which then loads the target libgirepository.
+_EMBER_GI_COMPILER= ${WRKDIR}/.meson-gi-compiler
 .endif
 # Install targets can regenerate CMake/Meson configuration. Keep the launcher
 # and its target/runtime inputs identical throughout the build lifecycle.
@@ -132,6 +136,10 @@ emberbsd-gi-native: emberbsd-gi-inputs
 	${RUN}${TEST} -x ${EMBERBSD_CROSS_BUILD_PYTHON:Q} && ${TEST} -d ${EMBERBSD_NATIVE_RUNTIME_VIEW:Q} && ${TEST} -f ${EMBERBSD_SDK_SOURCE:Q}/scripts/run-darwin-with-runtime.py
 	${RUN}${PRINTF} '%s\n' '#!${TOOLS_SHELL}' \
 	    'exec "${EMBERBSD_CROSS_BUILD_PYTHON}" -E -S "${EMBERBSD_SDK_SOURCE}/scripts/run-darwin-with-runtime.py" --runtime-view "${EMBERBSD_NATIVE_RUNTIME_VIEW}" -- "${TOOLBASE}/bin/g-ir-compiler" "$$@"' > ${_EMBER_GI_COMPILER:Q}
+	${RUN}${CHMOD} +x ${_EMBER_GI_COMPILER:Q}
+.elif ${NATIVE_OPSYS:U} == "Linux"
+	${RUN}${PRINTF} '%s\n' '#!${TOOLS_SHELL}' 'unset LD_LIBRARY_PATH' \
+	    'exec "${TOOLBASE}/bin/g-ir-compiler" "$$@"' > ${_EMBER_GI_COMPILER:Q}
 	${RUN}${CHMOD} +x ${_EMBER_GI_COMPILER:Q}
 .endif
 	${RUN}${SED} \
