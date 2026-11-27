@@ -22,7 +22,7 @@ REQUIRED_INPUTS = (
 )
 # Only a Darwin build host selects a macOS SDK and deployment version.
 DARWIN_INPUTS = ('EMBERBSD_RUST_MACOS_SDK', 'EMBERBSD_RUST_MACOS_MINIMUM')
-HOSTS = (('Darwin', 'aarch64', 'aarch64'), ('Linux', 'x86_64', 'amd64'))
+HOSTS = (('Darwin', 'aarch64', 'aarch64'), ('Linux', 'x86_64', 'amd64'), ('NetBSD', 'x86_64', 'amd64'))
 
 
 def main():

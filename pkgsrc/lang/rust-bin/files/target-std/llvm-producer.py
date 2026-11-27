@@ -65,7 +65,9 @@ if Path(sys.executable).resolve() != Path(native.tool('python')).resolve(): p.er
 # Rust host triples of the supported build hosts, by OS and CPU.
 HOST_TRIPLES = {('Darwin','arm64'):'aarch64-apple-darwin', ('Darwin','aarch64'):'aarch64-apple-darwin',
                 ('Darwin','x86_64'):'x86_64-apple-darwin', ('Darwin','amd64'):'x86_64-apple-darwin',
-                ('Linux','x86_64'):'x86_64-unknown-linux-gnu'}
+                ('Linux','x86_64'):'x86_64-unknown-linux-gnu',
+                # An EmberBSD amd64 host; uname still reports NetBSD.
+                ('NetBSD','amd64'):'x86_64-unknown-netbsd', ('NetBSD','x86_64'):'x86_64-unknown-netbsd'}
 expected_host = HOST_TRIPLES.get((native.host['os'], native.host['cpu']))
 if expected_host is None: p.error('unsupported Rust build host: %s %s' % (native.host['os'], native.host['cpu']))
 if (native.host['os'] == 'Darwin') != darwin_host: p.error('selected host prefix differs from the running OS')
@@ -128,7 +130,7 @@ if darwin_host:
     env.update(SDKROOT=str(a.macos_sdk), MACOSX_DEPLOYMENT_TARGET=a.macos_minimum)
     flags = ['-isysroot',str(a.macos_sdk),'-mmacosx-version-min='+a.macos_minimum]
 else:
-    # A Linux host compiler uses the base OS headers and libraries.
+    # A Linux or EmberBSD host compiler uses the base OS headers and libraries.
     flags = []
 commands = {role:[native.tool(role),*flags] for role in ('cc','cxx','cpp')}
 common_flags = {name:[] for name in ('cppflags','cflags','cxxflags','ldflags')}
@@ -147,6 +149,18 @@ target_linker = linker_binding('target-linker', str(wasm_ld) if a.target == 'was
 host_linker = linker_binding('host-linker', host_tools['cc'])
 env.update(CC=host_tools['cc'], CXX=host_tools['cxx'], AR=native.tool('ar'))
 env['CARGO_TARGET_'+host.upper().replace('-', '_')+'_LINKER'] = host_linker
+same_triple = host == triplet
+if same_triple:
+    # An EmberBSD host builds the same Rust triple. bootstrap.toml can then
+    # have only one target table, and that table selects the target sysroot
+    # for std. bootstrap.py appends RUSTFLAGS_BOOTSTRAP last, so the host
+    # linker links the bootstrap tool.
+    env['RUSTFLAGS_BOOTSTRAP'] = '-C linker=' + host_linker
+    # The bootstrap tool links liblzma. Its static copy keeps target-sysroot
+    # libraries out of the host tool. The bundled xz has no configure step;
+    # give it the clock interface that EmberBSD has.
+    env['LZMA_API_STATIC'] = '1'
+    env['HOST_CFLAGS'] = '-DHAVE_CLOCK_GETTIME=1 -DHAVE_DECL_CLOCK_MONOTONIC=1'
 def q(value): return json.dumps(str(value))
 config = f'''change-id = "ignore"
 [build]
@@ -173,7 +187,9 @@ cxx = {q(target['cxx'])}
 ar = {q(native.tool('ar'))}
 linker = {q(target_linker)}
 {("wasi-root = " + q(a.sysroot)) if a.target == "wasm32-wasip1" else 'llvm-libunwind = "system"'}
-[target.{host}]
+'''
+if not same_triple:
+    config += f'''[target.{host}]
 cc = {q(host_tools['cc'])}
 cxx = {q(host_tools['cxx'])}
 ar = {q(native.tool('ar'))}

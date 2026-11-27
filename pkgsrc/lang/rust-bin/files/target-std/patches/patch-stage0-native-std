@@ -1,0 +1,50 @@
+Origin: EmberBSD; Rust 1.100.0 stage0 std for a requested host target; not submitted upstream.
+
+On an EmberBSD host, the Rust host triple is also the target triple.
+Std::run never builds a stage0 std for the host triple, so x.py planned
+no library build. With local-rebuild=true, build the std when the run
+requests the host triple as a target, and link it into stage0-sysroot
+instead of the std of the initial sysroot. Host tools of the initial
+sysroot stay. Builds for other targets are unchanged.
+Rust source licenses and upstream identifiers are preserved.
+
+--- a/src/bootstrap/src/core/build_steps/compile.rs
++++ b/src/bootstrap/src/core/build_steps/compile.rs
+@@ -161,8 +161,11 @@
+         // However, if we are doing a local rebuild (so the build compiler can compile the standard
+         // library even on stage 0), and we're cross-compiling (so the stage0 standard library for
+         // *target* is not available), we still allow the stdlib to be built here.
++        // EmberBSD: a local rebuild also builds a requested host-target std, so
++        // a host that runs the target triple gets a std from these sources.
+         if self.build_compiler.stage == 0
+-            && !(builder.local_rebuild && target != builder.host_target)
++            && !(builder.local_rebuild
++                && (target != builder.host_target || builder.targets.contains(&target)))
+         {
+             let compiler = self.build_compiler;
+             builder.ensure(StdLink::from_std(self, compiler));
+@@ -820,15 +823,21 @@
+                     .iter()
+                     .copied()
+                     .chain([target])
+-                    .filter(|target| *target != builder.host_target)
+-                    .map(|target| builder.initial_sysroot.join("lib/rustlib").join(target))
++                    .filter(|target| {
++                        *target != builder.host_target || builder.targets.contains(target)
++                    })
++                    .map(|target| {
++                        // Keep host tools; replace only a requested host std.
++                        let dir = builder.initial_sysroot.join("lib/rustlib").join(target);
++                        if target == builder.host_target { dir.join("lib") } else { dir }
++                    })
+                     .collect();
+                 builder.cp_link_r_excluding(
+                     &builder.initial_sysroot.join("lib"),
+                     &sysroot.join("lib"),
+                     &excluded,
+                 );
+-                if target != builder.host_target {
++                if target != builder.host_target || builder.targets.contains(&target) {
+                     add_to_sysroot(
+                         builder,
+                         &libdir,
