@@ -5,6 +5,9 @@
 PKGNAME=	mlir-${LLVM_VERSION}
 CATEGORIES=	lang devel
 
+# Resolve the configured build directory before pkgsrc derives PKGBASE.
+WRKSRC=		${WRKDIR}/${DISTNAME}/mlir
+
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://mlir.llvm.org/
 COMMENT=	Multi-Level Intermediate Representation
@@ -36,6 +39,7 @@ post-install:
 	${INSTALL_PROGRAM} ${WRKSRC}/${CMAKE_BUILD_DIR}/bin/mlir-linalg-ods-yaml-gen \
 	    ${DESTDIR}${PREFIX}/bin
 
+.include "../../mk/configure/ember-cmake-generator.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../lang/llvm/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm

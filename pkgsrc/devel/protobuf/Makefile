@@ -13,6 +13,7 @@ EMBERBSD_PROTOBUF_PKGDIR:= ${.PARSEDIR:tA}
 PKGREVISION=	5
 PROTOBUF_VERSION=	36.2
 DISTNAME=	protobuf-${PROTOBUF_VERSION}
+WRKSRC=		${WRKDIR}/${DISTNAME}
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=protocolbuffers/}
 GITHUB_PROJECT=	protobuf
@@ -95,6 +96,7 @@ PLIST_SRC=	${PROTOBUF_RUNTIME_PLIST_SRC}
 USE_TOOLS+=	perl:build
 .endif
 
+.include "../../mk/configure/ember-cmake-generator.mk"
 .include "../../devel/cmake/build.mk"
 #.include "../../devel/googletest/buildlink3.mk"
 BUILDLINK_API_DEPENDS.abseil+=	abseil>=20260817.0nb3

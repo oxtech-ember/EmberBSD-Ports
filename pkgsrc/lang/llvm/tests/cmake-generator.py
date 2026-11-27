@@ -20,8 +20,8 @@ def main():
     with tempfile.TemporaryDirectory(dir=args.work) as temporary:
         work = Path(temporary).resolve()
 
-        def query(expected, *options, package="llvm"):
-            command = [tools / "bmake", "-C", args.pkgsrc / "lang" / package,
+        def query(expected, *options, package="lang/llvm"):
+            command = [tools / "bmake", "-C", args.pkgsrc / package,
                        "WRKDIR=" + str(work), *options, "show-vars",
                        "VARNAMES=_CMAKE_BUILD_SYSTEM WRKSRC CMAKE_BUILD_DIR INSTALL_TARGET"]
             system, source, subdir, install = subprocess.check_output(
@@ -32,7 +32,17 @@ def main():
         build, install = query("Ninja")
         query("Unix Makefiles", "CMAKE_GENERATOR=make")
         query("Unix Makefiles", "CMAKE_GENERATORS_INCOMPATIBLE=ninja")
-        query("Ninja", package="llvm-devel")
+        query("Ninja", package="lang/llvm-devel")
+        for package in ("lang/mlir", "devel/protobuf", "devel/protobuf-devel",
+                        "multimedia/assimp"):
+            previous, _ = query("Ninja", package=package)
+            previous.mkdir(parents=True, exist_ok=True)
+            cache = previous / "CMakeCache.txt"
+            cache.write_text("CMAKE_GENERATOR:INTERNAL=Unix Makefiles\n")
+            try:
+                query("Unix Makefiles", package=package)
+            finally:
+                cache.unlink()
         source = work / "source"
         source.mkdir()
         (source / "stage.c").write_text("int llvm_stage(void) { return 0; }\n")

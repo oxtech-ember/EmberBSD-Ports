@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.22 2026/05/03 10:01:40 wiz Exp $
 
 DISTNAME=	assimp-6.0.6
+WRKSRC=		${WRKDIR}/${DISTNAME}
 CATEGORIES=	multimedia
 MASTER_SITES=	${MASTER_SITE_GITHUB:=assimp/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -27,6 +28,7 @@ CMAKE_CONFIGURE_ARGS+=	-DASSIMP_BUILD_ZLIB=OFF
 CMAKE_CONFIGURE_ARGS+=	-DASSIMP_WARNINGS_AS_ERRORS=OFF
 
 .include "options.mk"
+.include "../../mk/configure/ember-cmake-generator.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../archivers/minizip-ng/buildlink3.mk"

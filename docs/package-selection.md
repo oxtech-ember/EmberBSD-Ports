@@ -54,8 +54,9 @@ Ninja `-j` retains its package limit. Older Ninja versions and early SDKs
 use the numeric budget. Makefile generators keep their normal make jobs.
 Concurrent Ninja calls in one adaptive worker share the same lock.
 
-The SDK uses Ninja for a new LLVM package build. LLVM keeps the generator of
-a configured work directory. An explicit `CMAKE_GENERATOR` selects the tool.
+The SDK selects Ninja for new LLVM, MLIR, Protobuf and Assimp builds.
+These packages keep the generator of a configured work directory. Set
+`CMAKE_GENERATOR` to select a different tool for a new build.
 
 The [tail measurement](../scripts/tests/cross-bulk-ninja-tail.py) runs five
 real Ninja builds with the selected native Clang, a recording pkgsrc fixture
