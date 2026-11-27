@@ -58,13 +58,17 @@ BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
 MESON_ARGS+=	-Dopenssl=enabled
 .endif
 
+.if ${OPSYS} == "NetBSD"
+# One map.ver serves libpulse, libpulse-simple and libpulse-mainloop-glib;
+# ld.lld rejects its entries for symbols in the other libraries. Cross and
+# native NetBSD builds both link with ld.lld.
+LDFLAGS+= -Wl,--undefined-version
+.endif
+
 # git-version-gen runs on the build host; installed helpers use target Bash.
 REPLACE_BASH+= git-version-gen
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 USE_TOOLS+= bash:build
-# One map.ver serves libpulse, libpulse-simple and libpulse-mainloop-glib;
-# ld.lld rejects its entries for symbols in the other libraries.
-LDFLAGS+= -Wl,--undefined-version
 DEPENDS+= bash>=5.3:../../shells/bash
 REPLACE_INTERPRETER+= target-bash
 REPLACE.target-bash.old= .*bash[^[:space:]]*
