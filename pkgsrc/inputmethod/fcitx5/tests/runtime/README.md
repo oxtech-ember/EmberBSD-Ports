@@ -13,6 +13,13 @@ Keep these options in the test build configuration, not the production recipe:
 -DFCITX5_TEST_BINARY_DIR:PATH=/var/tmp/ember-fcitx5-tests/build
 ```
 
+An ordinary package build skips the upstream test programs. To build them for
+this runner, use the same SDK configuration and package directory. For a fresh
+work directory, run `bmake PKGSRC_RUN_TEST=yes build`. To reuse a regular build,
+run `bmake PKGSRC_RUN_TEST=yes cmake-configure` and then `bmake cmake-build`.
+On a native host, `bmake test` builds the test programs and runs CTest. For a
+cross build, run the prepared binaries on the target as described below.
+
 Use the existing complete build. The preparation command does not compile:
 
 ```sh

@@ -40,7 +40,6 @@ REPLACE_FILES.target-bash=	data/fcitx5-diagnose.sh
 
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_WAYLAND=ON
 CMAKE_CONFIGURE_ARGS+=	-DUSE_SYSTEMD=off
-CMAKE_CONFIGURE_ARGS+=	-DENABLE_TEST=ON
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_TESTING_ADDONS=ON
 CMAKE_CONFIGURE_ARGS+=	-DEVENT_LOOP_BACKEND=libuv
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_ENCHANT=ON
@@ -71,6 +70,28 @@ CONF_FILES+=	${PREFIX}/share/examples/fcitx5/20-fcitx-x11 \
 # The target spell compiler remains installed. A native Ports package of the
 # same release generates build data during cross compilation.
 .include "../../mk/bsd.prefs.mk"
+
+# Keep the installed testing addons. Build the test programs on request.
+.if !empty(PKGSRC_RUN_TEST:M[yY][eE][sS]) || make(test) || make(retest)
+CMAKE_CONFIGURE_ARGS+=	-DENABLE_TEST=ON
+.  if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_SKIP_TEST_ALL_DEPENDENCY=OFF
+.  endif
+.else
+CMAKE_CONFIGURE_ARGS+=	-DENABLE_TEST=OFF
+.endif
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+TEST_TARGET=	test
+.endif
+
+# An explicit test can reuse a work directory from a package build.
+pre-test:
+	${RUN} if ! ${GREP} -qx 'ENABLE_TEST:BOOL=ON' \
+	    ${WRKSRC:Q}/${CMAKE_BUILD_DIR:Q}/CMakeCache.txt || \
+	    ! ${TEST} -f ${WRKSRC:Q}/${CMAKE_BUILD_DIR:Q}/test/CTestTestfile.cmake; then \
+		${RECURSIVE_MAKE} ${MAKEFLAGS} PKGSRC_RUN_TEST=yes cmake-configure; \
+	fi
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 TOOL_DEPENDS+=	fcitx5-comp-spell-dict-5.1.23{,nb[0-9]*}:../../inputmethod/fcitx5-comp-spell-dict
 CMAKE_CONFIGURE_ARGS+= -DFCITX5_HOST_COMP_SPELL_DICT:FILEPATH=${TOOLBASE:Q}/bin/fcitx5-comp-spell-dict

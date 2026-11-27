@@ -72,7 +72,7 @@ for mode in no yes; do
         fcitx5)
             require "$log" name=fcitx5-5.1.23
             require "$log" -DENABLE_WAYLAND=ON
-            require "$log" -DENABLE_TEST=ON
+            require "$log" -DENABLE_TEST=OFF
             require "$log" -DENABLE_TESTING_ADDONS=ON
             require "$log" -DENABLE_ENCHANT=ON
             if grep -E -q 'cldr-emoji-annotation|(^|[[:space:]])-?fmtlib([[:space:]]|$)' "$log"; then
@@ -93,7 +93,7 @@ for mode in no yes; do
             require "$log" -DENABLE_KCM=ON
             require "$log" -DENABLE_CONFIG_QT=ON
             require "$log" qt6-qtbase\>=6.12.0
-            require "$log" kf6-kcmutils\>=6.32.0
+            require "$log" kf6-kcmutils\>=6.31.0
             ;;
         esac
         if sed -n 's/^tree=//p' "$log" | tr ' ' '\n' | \
@@ -103,6 +103,12 @@ for mode in no yes; do
         fi
     done
 done
+explicit=$out/fcitx5-explicit-test.log
+env MAKECONF="$makeconf" "$bmake" -C "$pkgsrc/inputmethod/fcitx5" \
+    USE_CROSS_COMPILE=yes PKGSRC_RUN_TEST=yes _PKGSRC_BARRIER=yes \
+    -v CMAKE_CONFIGURE_ARGS > "$explicit"
+require "$explicit" -DENABLE_TEST=ON
+require "$explicit" -DENABLE_TESTING_ADDONS=ON
 # The native dictionary compiler is a Ports TOOL_DEPENDS package; the former
 # path variable selects nothing.
 env MAKECONF="$makeconf" "$bmake" -C "$pkgsrc/inputmethod/fcitx5" \
