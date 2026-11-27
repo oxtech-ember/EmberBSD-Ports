@@ -1,0 +1,24 @@
+$NetBSD$
+
+Keep the generated Ruby configuration source relative in the RI database.
+
+--- tool/rdoc-srcdir.orig
++++ tool/rdoc-srcdir
+@@ -3,6 +3,7 @@
+ rdoc_path = Dir.glob("#{File.dirname(__dir__)}/.bundle/gems/rdoc-*").first
+ $LOAD_PATH.unshift("#{rdoc_path}/lib")
+ require 'rdoc/rdoc'
++require 'pathname'
+ 
+ # Make only the output directory relative to the invoked directory.
+ invoked = Dir.pwd
+@@ -17,7 +18,8 @@
+     .sort # "MAJOR" < "MINOR", fortunately
+     .to_h.values.join(".")
+ }
+-options.parse ARGV + ["#{invoked}/rbconfig.rb"]
++rbconfig = Pathname.new(File.join(invoked, "rbconfig.rb")).relative_path_from(Pathname.pwd)
++options.parse ARGV + [rbconfig.to_s]
+ 
+ options.singleton_class.define_method(:finish) do
+   super()

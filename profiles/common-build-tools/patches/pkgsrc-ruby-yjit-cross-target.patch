@@ -2,7 +2,7 @@ Origin: EmberBSD, AI-assisted. Compile the Ruby JIT for the selected NetBSD targ
 
 --- a/lang/ruby40/options.mk
 +++ b/lang/ruby40/options.mk
-@@ -18,6 +18,13 @@
+@@ -18,6 +18,14 @@
  CONFIGURE_ARGS+=	--enable-yjit --disable-zjit
  RUST_REQ=		1.58.0
  .include "../../lang/rust/rust.mk"
@@ -12,6 +12,7 @@ Origin: EmberBSD, AI-assisted. Compile the Ruby JIT for the selected NetBSD targ
 +PKG_FAIL_REASON+=	"Set RUST_TARGET_TRIPLE to the target triple of the selected Rust standard library"
 +.endif
 +MAKE_FLAGS+=	RUBY_JIT_RUST_TARGET=--target=${RUST_SELECTED_TARGET_TRIPLE}
++MAKE_FLAGS+=	RUBY_JIT_REMAP=--remap-path-prefix=${WRKSRC:Q}=.
 +.endif
  .endif
  
@@ -22,7 +23,7 @@ Origin: EmberBSD, AI-assisted. Compile the Ruby JIT for the selected NetBSD targ
  SHA1 (patch-lib_rubygems_specification.rb) = f543cab6b56fec0f7195d4eabddedc080c18688c
  SHA1 (patch-template_Makefile.in) = 6b967133835031ba424ad3975bccbc505791bef9
  SHA1 (patch-template_coroutine_context) = 987a9b4b6a0bddd28a8d24e451ba46028e693eb4
-+SHA1 (patch-template_yjit_rust_target) = 6df06a7cf45735951cd16d02306402ba8aef0569
++SHA1 (patch-template_yjit_rust_target) = 43de5c25eae1b3befa8573cc2ec3ecf35404d17e
  SHA1 (patch-test_rubygems_test__gem.rb) = 32f7c7d7f8a024c045d78c2bce93944fc3113d04
  SHA1 (patch-thread__pthread.c) = 7c1231933a2d6ce9d56891ab512371841697fbca
  SHA1 (patch-tool_ifchange) = 1803bb6a1836e232dcabcf38f11c9881dbf726ea
@@ -40,7 +41,7 @@ Origin: EmberBSD, AI-assisted. Compile the Ruby JIT for the selected NetBSD targ
 + CARGO_BUILD_ARGS=@CARGO_BUILD_ARGS@
 + ZJIT_TEST_FEATURES=@ZJIT_TEST_FEATURES@
 +-JIT_RUST_FLAGS=@JIT_RUST_FLAGS@
-++JIT_RUST_FLAGS=@JIT_RUST_FLAGS@ $(RUBY_JIT_RUST_TARGET)
+++JIT_RUST_FLAGS=@JIT_RUST_FLAGS@ $(RUBY_JIT_RUST_TARGET) $(RUBY_JIT_REMAP)
 + RLIB_DIR=@RLIB_DIR@
 + RUST_LIB=@RUST_LIB@
 + RUST_LIBOBJ = $(RUST_LIB:.a=.@OBJEXT@)

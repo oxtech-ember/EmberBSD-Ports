@@ -1,14 +1,17 @@
 --- a/lang/ruby40/Makefile
 +++ b/lang/ruby40/Makefile
-@@ -21,12 +21,28 @@
+@@ -21,12 +21,31 @@
  
  # Resolve native Darwin Ruby libraries relative to the installed libruby.
  .include "../../mk/bsd.prefs.mk"
 -.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
 -    ${MACHINE_ARCH} == "aarch64"
 +PLIST_VARS+=	bundled_ext_makefiles
++FILES_SUBST+=	RUBY_INSTALL_DATE=${RUBY_INSTALL_DATE:Q}
++RUBY_INSTALL_DATE=	${DATE}
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-+PKGREVISION=	1
++PKGREVISION=	2
++RUBY_INSTALL_DATE=	/bin/date
 +.  if ${MACHINE_ARCH} == "aarch64"
  # NetBSD 11 base sets carry different OpenSSL SONAMEs.
 -PKGREVISION=	1
@@ -97,3 +100,13 @@
  ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/lib/syslog.rb
  ${GEM_HOME}/gems/syslog-${RUBY_SYSLOG_VER}/lib/syslog/logger.rb
  ${GEM_HOME}/gems/test-unit-${RUBY_TEST_UNIT_VER}/BSDL
+--- a/lang/ruby40/INSTALL
++++ b/lang/ruby40/INSTALL
+@@ -1,6 +1,6 @@
+ # $NetBSD: INSTALL,v 1.1 2026/02/03 16:00:33 taca Exp $
+ 
+-DATE="@DATE@"
++DATE="@RUBY_INSTALL_DATE@"
+ RUBY_SITERIDIR="${PREFIX}/@RUBY_SITERIDIR@"
+ rid="${RUBY_SITERIDIR}/created.rid"
+ 
