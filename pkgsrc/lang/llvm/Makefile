@@ -174,6 +174,8 @@ SUBST_CLASSES+=		python
 SUBST_STAGE.python=	post-build
 SUBST_FILES.python=	${CMAKE_BUILD_DIR}/bin/llvm-lit
 SUBST_SED.python=	-e '1s,\#!.*python.*,\#!${PYTHONBIN},'
+# A host with the target prefix already has the target Python path.
+SUBST_NOOP_OK.python=	yes
 .endif
 
 PLIST_VARS+=	darwin min_tblgen notdylib
