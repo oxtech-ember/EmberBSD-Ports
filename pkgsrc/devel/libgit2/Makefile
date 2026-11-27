@@ -49,6 +49,9 @@ post-install:
 PREFER.openssl=			pkgsrc
 BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
 .endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	5	# Withdrawn AArch64 package name.
+.endif
 
 .include "../../devel/cmake/build.mk"
 .include "../../devel/zlib/buildlink3.mk"

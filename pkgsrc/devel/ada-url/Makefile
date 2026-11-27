@@ -36,4 +36,7 @@ BUILDLINK_DEPMETHOD.simdjson= build
 .endif
 .include "../../devel/ada-idna/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION= 1	# Withdrawn AArch64 package name.
+.endif
 .include "../../mk/bsd.pkg.mk"

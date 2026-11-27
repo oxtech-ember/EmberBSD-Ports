@@ -21,6 +21,9 @@ CONFIGURE_ARGS+=	--with-encodings-dir=${PREFIX}/share/fonts/X11/encodings/encodi
 CONFIGURE_ARGS+=	--with-locale-alias=${BUILDLINK_PREFIX.libX11}/share/X11/locale/locale.alias
 
 .include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=		5	# Withdrawn AArch64 package name.
+.endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 pre-configure:
 	${TEST} -f ${CROSS_DESTDIR}${PREFIX}/share/fonts/X11/encodings/encodings.dir

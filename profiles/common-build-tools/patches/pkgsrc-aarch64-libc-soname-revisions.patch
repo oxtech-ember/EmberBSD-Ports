@@ -11,6 +11,39 @@
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
+--- a/fonts/dejavu-ttf/Makefile
++++ b/fonts/dejavu-ttf/Makefile
+@@ -50,3 +50,7 @@
+ .endfor
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
++PKGREVISION=	1	# Withdrawn AArch64 package name.
++.endif
+ .include "../../mk/bsd.pkg.mk"
+--- a/graphics/libheif/Makefile
++++ b/graphics/libheif/Makefile
+@@ -33,5 +33,9 @@
+ .include "../../multimedia/libaom/buildlink3.mk"
+ .include "../../multimedia/libde265/buildlink3.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
++PKGREVISION=	1	# Withdrawn AArch64 package name.
++.endif
+ .include "../../multimedia/openh264/buildlink3.mk"
+ .include "../../multimedia/x265/buildlink3.mk"
+ .include "../../mk/jpeg.buildlink3.mk"
+--- a/comms/py-rich/Makefile
++++ b/comms/py-rich/Makefile
+@@ -17,4 +17,8 @@
+ USE_LANGUAGES=	# none
+ 
+ .include "../../lang/python/wheel.mk"
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
++PKGREVISION=	1	# Withdrawn AArch64 package name.
++.endif
+ .include "../../mk/bsd.pkg.mk"
 --- a/audio/flac/Makefile
 +++ b/audio/flac/Makefile
 @@ -53,4 +53,9 @@
