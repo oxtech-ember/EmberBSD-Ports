@@ -69,6 +69,8 @@ MESON_ARGS+=	-Dvulkan-drivers=amd -Dvulkan-manifest-per-architecture=false
 PLIST.intel=	yes
 PLIST.radeonsi=	yes
 PLIST.radv=	yes
+# RADV compiles its BVH shaders with glslangValidator on the build host.
+TOOL_DEPENDS+=	glslang>=16.6.0:../../graphics/glslang
 _EMBERBSD_MESA_GENERATOR_PROFILES+= intel
 _EMBERBSD_MESA_LLVM_TRIPLE=	x86_64-unknown-netbsd
 BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb7
