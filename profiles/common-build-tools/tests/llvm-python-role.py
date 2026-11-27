@@ -40,7 +40,7 @@ for package, cross in [('llvm', 'yes'), ('llvm-devel', 'yes'), ('llvm', 'no')]:
 runtime, sdk, native = rows
 for field in ('CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'CMAKE_CONFIGURE_ARGS', 'CONFIGURE_ENV'):
     assert runtime[field] == sdk[field], 'Cross inputs differ: ' + field
-assert [r['PKGNAME'] for r in (runtime, sdk)] == ['llvm-23.1.6', 'llvm-devel-23.1.6']
+assert [r['PKGNAME'] for r in (runtime, sdk)] == ['llvm-23.1.6', 'llvm-devel-23.1.6nb1']
 native_revision = 'nb1' if native['OPSYS'] == 'Darwin' and native['EMBERBSD_NATIVE_CXX_ABI_NAMESPACE'] == '__ember1' else ''
 assert native['PKGNAME'] == f'llvm-23.1.6{native_revision}'
 assert 'llvm-23.1.6:' in sdk['DEPENDS'] and 'llvm<23.1.4nb4' in sdk['CONFLICTS']

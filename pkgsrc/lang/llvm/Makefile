@@ -106,6 +106,7 @@ BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 PKG_FAIL_REASON+= "The LLVM SDK role belongs to lang/llvm-devel"
 .endif
 PKGNAME= llvm-devel-${LLVM_VERSION}
+PKGREVISION= 1
 COMMENT= LLVM target SDK for the development-host sysroot
 DISTINFO_FILE= ${EMBERBSD_LLVM_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_LLVM_PKGDIR}/patches
@@ -118,8 +119,8 @@ PKG_FAIL_REASON+= "The separate LLVM SDK requires a NetBSD cross build; native L
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The LLVM runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-.if ${PKGREVISION:U0} != 0
-PKG_FAIL_REASON+= "The LLVM runtime and SDK require the release package revision"
+.if !defined(EMBERBSD_LLVM_DEVEL) && ${PKGREVISION:U0} != 0
+PKG_FAIL_REASON+= "The LLVM SDK requires the matching runtime without a package revision"
 .endif
 # Both partitions come from the same full build with native Python tools.
 PYTHON_FOR_BUILD_ONLY= tool

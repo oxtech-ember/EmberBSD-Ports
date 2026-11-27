@@ -1,6 +1,7 @@
 $NetBSD$
 
 Origin: EmberBSD (AI-assisted), keep build paths out of installed metadata.
+Use the installed-prefix mode for the NetBSD cross llvm-config executable.
 The actual compiler/linker flags retain the sysroot and transitive dependency
 searches. Report target -L paths, but omit the two common build-only rpath-link
 arguments. Host packages and builds without a sysroot are intact.
@@ -8,7 +9,24 @@ Not submitted upstream. SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 --- tools/llvm-config/CMakeLists.txt.orig
 +++ tools/llvm-config/CMakeLists.txt
-@@ -76,6 +76,15 @@
+@@ -52,8 +52,14 @@
+ string(REGEX MATCH "-std=[^ ]+" LLVM_C_STD_FLAG ${CMAKE_C_FLAGS})
+ 
+ # Use configure_file to create BuildVariables.inc.
+-set(LLVM_SRC_ROOT ${LLVM_MAIN_SRC_DIR})
+-set(LLVM_OBJ_ROOT ${LLVM_BINARY_DIR})
++if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++  # The target executable runs from its installed prefix.
++  set(LLVM_SRC_ROOT "/__emberbsd_not_installed_source__")
++  set(LLVM_OBJ_ROOT "/__emberbsd_not_installed_build__")
++else()
++  set(LLVM_SRC_ROOT ${LLVM_MAIN_SRC_DIR})
++  set(LLVM_OBJ_ROOT ${LLVM_BINARY_DIR})
++endif()
+ set(LLVM_CPPFLAGS "${LLVM_DEFINITIONS}")
+ set(LLVM_CFLAGS "${LLVM_C_STD_FLAG} ${LLVM_DEFINITIONS}")
+ # The language standard potentially affects the ABI/API of LLVM, so we want
+@@ -76,6 +82,15 @@
  
  # Use the C++ link flags, since they should be a superset of C link flags.
  set(LLVM_LDFLAGS "${CMAKE_CXX_LINK_FLAGS}")

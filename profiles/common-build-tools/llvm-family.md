@@ -59,7 +59,7 @@ Native cache, RTTI, dependency and ELF evidence remains required.
 
 NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).
 The execution-only image receives `llvm-23.1.6`; the build-host target sysroot
-also needs `llvm-devel-23.1.6`. Native LLVM remains a full package.
+also needs `llvm-devel-23.1.6nb1`. Native LLVM remains a full package.
 ## Inherited patch decisions
 
 NetBSD RCS identifiers, authorship and licenses are preserved. These recipes,

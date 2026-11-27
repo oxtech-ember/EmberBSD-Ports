@@ -92,7 +92,7 @@ runtime = plist('runtime', 'llvm', *cross)
 assert sorted(runtime) == sorted(['include/llvm/Support/LICENSE.TXT', 'lib/libLLVM.so.23.1', 'lib/libLLVM-23.so', 'lib/libLLVM.so', 'lib/libLTO.so.23.1', 'lib/libLTO.so', 'lib/libRemarks.so.23.1', 'lib/libRemarks.so'])
 assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.6'
 sdk = plist('devel', 'llvm-devel', *cross)
-assert run('devel-name', 'llvm-devel', *cross, '-v', 'PKGNAME').strip() == 'llvm-devel-23.1.6'
+assert run('devel-name', 'llvm-devel', *cross, '-v', 'PKGNAME').strip() == 'llvm-devel-23.1.6nb1'
 assert all(p in sdk for p in ('bin/llvm-config', 'bin/llvm-tblgen', 'include/llvm/IR/Module.h', 'lib/cmake/llvm/LLVMConfig.cmake', 'lib/libLLVMCore.a',
                      'lib/cmake/llvm/emberbsd/BuildVariables.inc',
                      'lib/cmake/llvm/emberbsd/LibraryDependencies.inc',
