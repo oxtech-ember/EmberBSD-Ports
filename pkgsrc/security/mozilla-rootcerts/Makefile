@@ -74,4 +74,11 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/cacert.pem ${DESTDIR}${DATADIR}/cacert.pem
 	${INSTALL_DATA} files/gnupg2 ${DESTDIR}${PREFIX}/share/doc/${PKGBASE}
 
+.if ${OPSYS} == "Linux"
+# The script runs "$MKDIR" as one command name. pkgsrc MKDIR also has its
+# -p argument, so substitute the plain mkdir path for this build-host tool.
+SUBST_VARS.paths:=	${SUBST_VARS.paths:NMKDIR}
+SUBST_SED.paths+=	-e 's,@MKDIR@,${TOOLS_PATH.mkdir},g'
+.endif
+
 .include "../../mk/bsd.pkg.mk"
