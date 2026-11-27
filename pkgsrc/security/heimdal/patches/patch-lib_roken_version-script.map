@@ -1,7 +1,8 @@
 $NetBSD: patch-lib_roken_version-script.map,v 1.1 2024/09/18 14:50:12 hauke Exp $
 
 Keep conditional libc fallback exports optional, retaining exact names.
-Remove stale names with no libroken definition. Keep NetBSD 9 fix from
+Remove stale names with no libroken definition. rk_getpwnam_r is optional
+too: a POSIX getpwnam_r leaves it undefined. Keep NetBSD 9 fix from
 https://github.com/heimdal/heimdal/issues/106.
 
 --- lib/roken/version-script.map.orig
@@ -92,7 +93,7 @@ https://github.com/heimdal/heimdal/issues/106.
 -		rk_globfree;
 +		[r]k_getnameinfo;
 +		[r]k_getprogname;
-+		rk_getpwnam_r;
++		[r]k_getpwnam_r;
 +		[r]k_glob;
 +		[r]k_globfree;
  		rk_hex_decode;
