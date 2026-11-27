@@ -67,6 +67,29 @@ class WorkerTests(unittest.TestCase):
         self.assertIn('--jobserver-auth=fifo:', flags)
         self.assertFalse(self.budget.with_suffix('.ninja').is_symlink())
 
+    def test_share_idle_slots_only_with_live_ninja_workers(self):
+        second = self.root / 'second.jobs'
+        fixed = self.root / 'make.jobs'
+        parked = self.root / 'writer.parked'
+        for file in (second, fixed, parked):
+            file.write_text('2\n')
+        pipes = []
+        for file in (self.budget, second, parked):
+            fifo = file.with_suffix('.ninja')
+            os.mkfifo(fifo)
+            reader = os.open(fifo, os.O_RDWR | os.O_NONBLOCK)
+            self.addCleanup(os.close, reader)
+            pipes.append(reader)
+        command = [sys.executable, '-B', str(RUNNER), 'share', str(self.root), '11']
+        for _ in range(2):
+            result = subprocess.run(command, check=True, capture_output=True, text=True)
+            self.assertEqual(result.stdout.strip(), '11')
+        self.assertEqual([int(file.read_text()) for file in (self.budget, second, fixed, parked)],
+                         [5, 4, 2, 2])
+        self.assertEqual([len(os.read(fd, 8)) for fd in pipes[:2]], [3, 2])
+        with self.assertRaises(BlockingIOError):
+            os.read(pipes[2], 1)
+
     def test_inherited_options_and_assignments_survive_the_new_budget(self):
         value = r'A=some\ -j99\ arg'
         original = f'-r -j 2 -J 15,16 {value} --jobserver-auth=fifo:stale -- B=-j6'

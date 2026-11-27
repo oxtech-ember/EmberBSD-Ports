@@ -26,7 +26,7 @@ def allocation(state):
 
 
 def grant(budget, capacity):
-    """Grow the last worker once, including a Ninja which already started."""
+    """Increase a worker allocation, including a Ninja which already started."""
     with budget.open('r+') as state:
         fcntl.flock(state, fcntl.LOCK_EX)
         previous = allocation(state)
@@ -53,6 +53,29 @@ def grant(budget, capacity):
             pass  # The stage exited while the scheduler was granting its slots.
         finally:
             os.close(writer)
+
+
+def share(directory, capacity):
+    """Return the total reserved by workers after granting idle CPU slots."""
+    allocations = {}
+    for budget in sorted(directory.glob('*.jobs')):
+        with budget.open() as state:
+            allocations[budget] = allocation(state)
+    reserved = sum(allocations.values())
+    free = capacity - reserved
+    if free <= 0:
+        return reserved
+    # A sole reader can start Ninja later. With peers, grow live jobservers only.
+    readers = [budget for budget in allocations
+               if len(allocations) == 1 or budget.with_suffix('.ninja').is_fifo()]
+    if not readers:
+        return reserved
+    step, remainder = divmod(free, len(readers))
+    for index, budget in enumerate(sorted(readers, key=allocations.get)):
+        extra = step + (index < remainder)
+        if extra:
+            grant(budget, allocations[budget] + extra)
+    return capacity
 
 
 def explicit_limit(command, limit):
@@ -167,7 +190,7 @@ def run(budget, fixed, command, sdk_source, safe, capped):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest='action', required=True)
-    for name in ('grant', 'run'):
+    for name in ('grant', 'share', 'run'):
         action = subparsers.add_parser(name)
         action.add_argument('budget', type=Path)
         action.add_argument('jobs', type=int)
@@ -180,6 +203,9 @@ def main():
     if args.jobs < 1 or not args.budget.is_absolute():
         parser.error('select a positive allocation and an absolute worker budget path')
     try:
+        if args.action == 'share':
+            print(share(args.budget, args.jobs))
+            return 0
         if args.action == 'grant':
             grant(args.budget, args.jobs)
             return 0

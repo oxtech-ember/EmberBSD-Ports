@@ -38,14 +38,12 @@ selection does not overwrite the persistent full-build root list.
 
 ### CPU allocation at the end of a build
 
-Cross-bulk divides the selected CPU budget among ready workers. When one
-worker remains and the dependency queue has no other ready package, the
-scheduler assigns the idle slots to that worker. A worker waiting for an
-exclusive package replacement also returns its allocation. If only one reader
-is still running, it can use those slots until it finishes or requests a
-replacement itself. The scheduler restores each writer's allocation before
-granting its exclusive replacement. The pkgsrc CMake Ninja generator and the
-Meson build, test and install targets can use those slots with Ninja 1.13
+Cross-bulk divides the selected CPU budget among ready workers. If no new
+package can start, active Ninja workers share the available slots. A sole
+worker can also receive slots before it starts Ninja. A worker waiting for
+an exclusive replacement returns its allocation. The scheduler restores the
+allocation before the replacement starts. The pkgsrc CMake Ninja generator
+and the Meson build, test and install targets use those slots with Ninja 1.13
 or newer. A short file lock coordinates the grant with starting the worker's
 Ninja FIFO. Package completion and replacement requests trigger the grant.
 The package install and replacement locks still control access to shared files.
@@ -55,7 +53,6 @@ An explicit `CROSS_BULK_MAKE_JOBS` keeps the fixed allocation.
 Ninja `-j` retains its package limit. Older Ninja versions and early SDKs
 use the numeric budget. Makefile generators keep their normal make jobs.
 Concurrent Ninja calls in one adaptive worker share the same lock.
-Readers retain their initial allocations while two or more are active.
 
 The SDK uses Ninja for a new LLVM package build. LLVM keeps the generator of
 a configured work directory. An explicit `CMAKE_GENERATOR` selects the tool.

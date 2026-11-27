@@ -3147,18 +3147,21 @@ build()
             fi
             break
         fi
-        # Pending replacements stop all new dispatch. Otherwise the reader
-        # can take all free slots only when no other package is ready.
+        # A waiting writer prevents new dispatch. Give idle slots to readers
+        # when the ready frontier is empty or the writer already blocks it.
         if [ -n "$ninja_worker" ] && [ "$stop" = 0 ] && [ "$replacing" = 0 ] &&
-           [ "$running" -eq "$((waiting + 1))" ] && [ "$jobs_in_use" -lt "$cpus" ] &&
+           [ "$running" -gt "$waiting" ] && [ "$jobs_in_use" -lt "$cpus" ] &&
            { [ "$waiting" -gt 0 ] || ! grep -q '^R ' "$run/ready"; }; then
-            for budget in "$run"/*.jobs; do
-                if ! "$host_python" -B -E -S "$ninja_worker" grant "$budget" "$cpus"; then
-                    echo "Cannot grow the Ninja allocation for $budget; draining the running worker" >&2
+            for fifo in "$run"/*.ninja; do
+                [ "$running" -eq "$((waiting + 1))" ] || [ -p "$fifo" ] || continue
+                if allocated=$("$host_python" -B -E -S "$ninja_worker" share "$run" "$cpus"); then
+                    jobs_in_use=$allocated
+                else
+                    echo 'Cannot grow the Ninja allocations; draining the running workers' >&2
                     stop=1 stop_status=1
                 fi
+                break
             done
-            jobs_in_use=$cpus
         fi
         # Poll promptly after progress, then back off while workers keep running.
         sleep "$poll_delay"
