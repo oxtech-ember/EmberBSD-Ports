@@ -24,6 +24,10 @@ USE_TOOLS+=	msgmerge pkg-config
 USE_CXX_FEATURES+=	c++23
 
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
+# The cross build has no AppStreamQt, and the PLIST has no AppStream runner.
+# A native build otherwise finds an installed AppStreamQt outside the
+# buildlink tree and then misses its headers.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_AppStreamQt=ON
 # Installed service and update scripts must use target Qt runtime tools.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 CMAKE_CONFIGURE_ARGS+=	-DEMBERBSD_QT_RUNTIME_BINDIR:PATH=${LOCALBASE}/qt6/bin
