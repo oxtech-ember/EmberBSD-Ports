@@ -160,15 +160,11 @@ PLIST.androidtools=	yes
 CONFIGURE_ARGS+=		-platform freebsd-g++
 LDFLAGS+=			-lexecinfo
 .elif ${OPSYS} == "Darwin"
+PKGREVISION=	28
 CONFIGURE_ARGS+=		-platform macx-clang
 CONFIGURE_ARGS+=		-no-framework
-# pkgsrc has a patch to avoid using SDK, but the configure
-# logic gets confused if it can't find the header files
-# so give it a direct path to them if they aren't installed
-# in /usr/include
-.  if !exists(/usr/include)
-CONFIGURE_ARGS+=		-I ${OSX_SDK_PATH}/usr/include
-.  endif
+# CMAKE_OSX_SYSROOT selects the Apple headers for the compiler.
+# Qt exports each configure -I directory to consumers through QT_EXTRA_INCLUDEPATHS.
 .  if exists(/usr/lib/libresolv.dylib)
 LDFLAGS+=			-lresolv
 .  endif
