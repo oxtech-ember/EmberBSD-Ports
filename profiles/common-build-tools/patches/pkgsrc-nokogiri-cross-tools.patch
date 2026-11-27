@@ -12,7 +12,7 @@ Build the bundled HTML5 parser with the selected target Ruby and archiver.
 +
 +.include "../../mk/bsd.prefs.mk"
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-+PKGREVISION=	1
++PKGREVISION=	2
 +# The host Ruby runs extconf.rb and loads mini_portile2 to build Gumbo.
 +TOOL_DEPENDS+=	${RUBY_PKGPREFIX}-mini_portile2>=2.8.2<2.9:../../misc/ruby-mini_portile2
 +# mkmf loads the selected target configuration for a cross extension.
