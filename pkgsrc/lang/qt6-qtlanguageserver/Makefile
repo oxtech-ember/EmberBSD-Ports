@@ -9,4 +9,9 @@ LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 .include "../../x11/qt6-qtbase/Makefile.common"
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1
+.endif
+
 .include "../../mk/bsd.pkg.mk"

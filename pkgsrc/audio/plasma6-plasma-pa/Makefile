@@ -34,4 +34,9 @@ DEPENDS+= kf6-kitemmodels>=6.31.0:../../devel/kf6-kitemmodels
 .include "../../x11/kf6-kglobalaccel/buildlink3.mk"
 .include "../../x11/plasma6-libplasma/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1
+.endif
+
 .include "../../mk/bsd.pkg.mk"

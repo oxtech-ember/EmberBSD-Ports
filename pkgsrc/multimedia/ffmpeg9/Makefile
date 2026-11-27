@@ -39,4 +39,8 @@ CONFIGURE_ARGS+=	--disable-asm
 CONFIGURE_ARGS+=	--arch=${MACHINE_ARCH}
 
 .include "../../multimedia/ffmpeg9/Makefile.common"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	13
+.endif
+
 .include "../../mk/bsd.pkg.mk"

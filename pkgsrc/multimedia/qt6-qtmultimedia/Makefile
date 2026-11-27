@@ -22,7 +22,11 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6SpatialAudio.pc
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64") && !empty(PKG_OPTIONS:Mgstreamer)
+.  if ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	5
+.  else
 PKGREVISION=	4
+.  endif
 .endif
 
 .include "../../mk/bsd.pkg.mk"

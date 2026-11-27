@@ -94,4 +94,8 @@ SUBST_SED.fix-moc=	-e 's;"${PREFIX}/include",;;g'
 .include "../../graphics/libepoxy/buildlink3.mk"
 .include "../../graphics/vulkan-headers/buildlink3.mk"
 .include "../../x11/libdrm/buildlink3.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	2
+.endif
+
 .include "../../mk/bsd.pkg.mk"

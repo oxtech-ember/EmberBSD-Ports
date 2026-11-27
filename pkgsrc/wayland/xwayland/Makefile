@@ -76,4 +76,8 @@ post-install:
 .include "../../x11/pixman/buildlink3.mk"
 .include "../../x11/xtrans/buildlink3.mk"
 .include "../../devel/meson/build.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1
+.endif
+
 .include "../../mk/bsd.pkg.mk"

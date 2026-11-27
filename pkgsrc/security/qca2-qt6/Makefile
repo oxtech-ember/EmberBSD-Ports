@@ -9,7 +9,11 @@ COMMENT=	Cross-platform crypto API for Qt6
 .include "../../mk/bsd.prefs.mk"
 # The OSSL plugin must also load on images with the older base libcrypto ABI.
 .if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+.  if ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	4
+.  else
 PKGREVISION=	3
+.  endif
 PREFER.openssl=	pkgsrc
 BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
 .endif

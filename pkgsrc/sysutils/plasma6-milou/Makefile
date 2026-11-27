@@ -19,4 +19,9 @@ USE_TOOLS+=	msgmerge
 .include "../../devel/kf6-krunner/buildlink3.mk"
 .include "../../x11/plasma6-libplasma/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1
+.endif
+
 .include "../../mk/bsd.pkg.mk"

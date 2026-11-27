@@ -37,4 +37,9 @@ CMAKE_CONFIGURE_ARGS+=	-DSDL_OSS=OFF
 .include "../../converters/libiconv/buildlink3.mk"
 PTHREAD_OPTS?=	require
 .include "../../mk/pthread.buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1
+.endif
+
 .include "../../mk/bsd.pkg.mk"

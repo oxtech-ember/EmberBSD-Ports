@@ -72,4 +72,8 @@ TOOLS_PATH.md5sum=	${PREFIX}/bin/gmd5sum
 .include "../../x11/plasma6-plasma-activities/buildlink3.mk"
 .include "../../x11/plasma6-plasma-activities-stats/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1
+.endif
+
 .include "../../mk/bsd.pkg.mk"
