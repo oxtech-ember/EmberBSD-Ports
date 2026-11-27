@@ -1,0 +1,22 @@
+Keep the build-host tools that the EmberBSD cross profile selects.
+On a NetBSD-OPSYS build host, tools.NetBSD.mk replaced NATIVE_CC, NATIVE_CXX,
+NATIVE_LD, NATIVE_AR and NATIVE_RANLIB with /usr/bin tools for every cross
+build. An EmberBSD build host has no base compiler, so recipes such as
+devel/gmp failed with "Specified CC_FOR_BUILD doesn't seem to work". The
+profile selects host-prefix tools and checks them; keep the upstream values
+only when no profile selected them.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/mk/tools/tools.NetBSD.mk
++++ b/mk/tools/tools.NetBSD.mk
+@@ -144,7 +144,9 @@
+ .endif
+ TOOLS_PLATFORM.yacc?=		/usr/bin/yacc
+ 
+-.if ${TOOLS_USE_CROSS_COMPILE:U:tl} == yes
++# The EmberBSD cross profile selects and checks its own build-host tools.
++.if ${TOOLS_USE_CROSS_COMPILE:U:tl} == yes && \
++    !defined(_EMBER_NATIVE_CC_COMMAND)
+ NATIVE_CC:=	/usr/bin/cc -B /usr/libexec -B /usr/bin
+ NATIVE_CXX:=	/usr/bin/c++ -B /usr/libexec -B /usr/bin
+ NATIVE_LD:=	/usr/bin/ld
