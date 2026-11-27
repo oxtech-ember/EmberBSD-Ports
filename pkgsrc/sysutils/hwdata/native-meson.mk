@@ -50,5 +50,10 @@ ${_EMBERBSD_GRAPHICS_NATIVE}:
 	${RUN}${ECHO} '[built-in options]' >> ${.TARGET:Q}.tmp
 	${RUN}${ECHO} 'pkg_config_path = []' >> ${.TARGET:Q}.tmp
 	${RUN}${MV} -f ${.TARGET:Q}.tmp ${.TARGET:Q}
+.elif !empty(EMBERBSD_NATIVE_GRAPHICS_PC:Mhwdata\:*)
+# A native build reads pkg-config metadata from the buildlink tree only.
+# Link hwdata.pc there with the same version floor.
+BUILDLINK_API_DEPENDS.hwdata+=	hwdata>=${EMBERBSD_NATIVE_GRAPHICS_PC:Mhwdata\:*:C/^hwdata://}
+.include "../../sysutils/hwdata/buildlink3.mk"
 .endif
 .endif
