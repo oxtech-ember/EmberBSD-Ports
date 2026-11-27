@@ -8,31 +8,34 @@
  # Resolve staged aliases in the target namespace, including directory links.
  # Never follow an absolute target link into the build host's filesystem.
 -function target_path(file,    path, rest, part, nextpath, candidate, cmd, line, link, status, links) {
-+function target_path(file, preserve_external_final,    path, rest, part, nextpath, candidate, cmd, line, link, status, links) {
++function target_path(file, preserve_external_final,    path, rest, part, nextpath, candidate, kind, cmd, line, link, status, links) {
  	if (destdir == "" || index(file, destdir "/") != 1)
  		return file
  	rest = substr(file, length(destdir) + 2)
-@@ -121,8 +121,12 @@
+@@ -121,9 +121,14 @@
  		if (part == "..") { sub(/\/[^\/]*$/, "", path); continue }
  		nextpath = path "/" part
  		candidate = destdir nextpath
 -		if (system("test -e " shquote(candidate) " || test -L " shquote(candidate)) != 0)
-+		if (system("test -e " shquote(candidate) " || test -L " shquote(candidate)) != 0) {
++		kind = staged_type(candidate)
++		if (kind == "missing") {
 +			if (cross_destdir == "") return ""
  			candidate = cross_destdir nextpath
+-		if (system("test -L " shquote(candidate)) == 0) {
 +		}
 +		if (preserve_external_final && rest == "" && cross_destdir != "" &&
 +		    index(candidate, cross_destdir "/") == 1) return candidate
- 		if (system("test -L " shquote(candidate)) == 0) {
++		if (kind == "link" || (kind == "missing" && system("test -L " shquote(candidate)) == 0)) {
  			if (++links > 40) return ""
  			cmd = "readlink " shquote(candidate) " 2>/dev/null; printf '\nEMBER_LINK_STATUS=%s\n' \"$?\""
-@@ -142,10 +146,54 @@
+ 			link = ""
+@@ -142,26 +147,104 @@
  			path = nextpath
  		}
  	}
 +	# The final component may have been . or ..; return its actual location.
 +	candidate = destdir path
-+	if (system("test -e " shquote(candidate) " || test -L " shquote(candidate)) != 0) {
++	if (staged_type(candidate) == "missing") {
 +		if (cross_destdir == "") return ""
 +		candidate = cross_destdir path
 +	}
@@ -40,6 +43,20 @@
  }
  
 -function checkshlib(DSO, needed, rpath, found, dso_rpath, got_rpath, nrpath, header, status, line, file) {
++# The package stage is fixed during this check. The external sysroot is shared.
++function staged_type(file,    quoted) {
++	if (!(file in staged_types)) {
++		quoted = shquote(file)
++		if (system("test -L " quoted) == 0)
++			staged_types[file] = "link"
++		else if (system("test -e " quoted) == 0)
++			staged_types[file] = "entry"
++		else
++			staged_types[file] = "missing"
++	}
++	return staged_types[file]
++}
++
 +# Expand only a leading standard token. Resolve dot components later, after
 +# walking target symlinks, rather than applying lexical host normalization.
 +function runtime_path(value, origin,    rest) {
@@ -82,7 +99,11 @@
  	# Native checks retain their historical handling of non-ELF input.
  	# Metadata must distinguish scripts from broken ELF or a failed tool.
  	if (requires_file != "") {
-@@ -156,12 +204,32 @@
+ 		# The package must install each listed object itself. The sysroot
+ 		# resolves only links and directories, never the object.
+ 		if (destdir != "" && index(DSO, destdir "/") == 1 &&
+-		    system("test -e " shquote(DSO) " || test -L " shquote(DSO)) != 0) {
++		    staged_type(DSO) == "missing") {
  			print DSO ": not installed in DESTDIR"
  			return
  		}
@@ -115,7 +136,7 @@
  		cmd = "od -An -tx1 -N4 " shquote(DSO) " 2>/dev/null; printf '\nEMBER_OD_STATUS=%s\n' \"$?\""
  		header = ""
  		status = -1
-@@ -210,48 +278,75 @@
+@@ -210,48 +293,75 @@
  		print DSO ": readelf failed"
  		return
  	}
@@ -211,7 +232,7 @@
  		if (found == 0)
  			print DSO ": missing library: " lib;
  	}
-@@ -260,9 +355,23 @@
+@@ -260,9 +370,23 @@
  }
  
  BEGIN {
