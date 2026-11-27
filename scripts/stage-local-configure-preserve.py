@@ -233,14 +233,12 @@ def refresh_tools(a, paths, jsonio, command, work):
         print('Refreshed staged pkgsrc tools')
 
 
-def refresh_new_buildlinks(a, command, work):
+def refresh_new_buildlinks(a, command, work, packages):
     """Materialize newly added pkgsrc buildlink providers before configure."""
     live = work / '.buildlink'
     if not os.path.lexists(live):
         return
     require(live.is_dir() and not live.is_symlink(), 'invalid staged buildlink root')
-    packages = subprocess.run(command + ['-V', '${_BLNK_PACKAGES}'], check=True,
-                              text=True, stdout=subprocess.PIPE).stdout.split()
     if not packages:
         return
     fields = ['${TOOLS_CROSS_DESTDIR}']
@@ -296,15 +294,15 @@ def main():
     from emberbsd_sdk import jsonio,paths
     command=[str(a.bmake),'-C',str(a.recipe),*a.make_arg,*a.bmake_args]
     refresh_tools(a, paths, jsonio, command, a.expected_work.resolve(strict=True))
-    result=subprocess.run(command+['_MAKEVARS_MK=defined','show-vars','VARNAMES=WRKDIR WRKSRC CONFIG_SHELL _COOKIE.configure GNU_CONFIGURE CONFIGURE_DIRS'],
+    result=subprocess.run(command+['_MAKEVARS_MK=defined','show-vars','VARNAMES=WRKDIR WRKSRC CONFIG_SHELL _COOKIE.configure GNU_CONFIGURE CONFIGURE_DIRS _BLNK_PACKAGES'],
                           check=True,stdout=subprocess.PIPE,text=True)
-    fields=result.stdout.splitlines();require(len(fields)==6,'invalid configure stage metadata')
-    work,source,shell,cookie=map(Path,fields[:4]);gnu,dirs=fields[4:]
+    fields=result.stdout.splitlines();require(len(fields)==7,'invalid configure stage metadata')
+    work,source,shell,cookie=map(Path,fields[:4]);gnu,dirs,providers=fields[4:]
     require(paths.canonical_existing(str(work))==paths.canonical_existing(str(a.expected_work)),
             'selected WRKDIR differs from locked stage')
     work=Path(paths.canonical_existing(str(work)))
     marker=work/'.emberbsd-configure-preserve.json'
-    refresh_new_buildlinks(a, command, work)
+    refresh_new_buildlinks(a, command, work, providers.split())
     # A partially created stage may not have extracted WRKSRC yet.
     if not os.path.lexists(source):
         require(not os.path.lexists(marker), 'configure source is missing during retry')

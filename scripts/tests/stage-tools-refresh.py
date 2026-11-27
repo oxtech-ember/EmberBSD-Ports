@@ -62,7 +62,7 @@ if '-V' in args:
  else:print((work/'use-tools').read_text().strip()+'\\n'+''' + repr(str(via / 'work')) + '''+'\\n'+''' + repr(str(via / 'work' / '.tools_done')) + ''')
  sys.exit()
 if 'show-vars' in args:
- print(str(work)+'\\n'+str(source)+'\\n'+''' + repr(str(a.shell)) + '''+'\\n'+str(work/'.configure_done')+'\\nyes\\n'+str(source));sys.exit()
+ print(str(work)+'\\n'+str(source)+'\\n'+''' + repr(str(a.shell)) + '''+'\\n'+str(work/'.configure_done')+'\\nyes\\n'+str(source)+'\\n');sys.exit()
 if 'post-tools' in args:sys.exit()
 if 'tools-cookie' in args:
  selected=next((x.split('=',1)[1]+'\\n' for x in args if x.startswith('USE_TOOLS=')),(work/'phase-cache-tools').read_text())
