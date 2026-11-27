@@ -37,6 +37,13 @@ CONFIGURE_ENV+=		PYTHON=${PYTHONBIN}
 
 .include "../../mk/bsd.prefs.mk"
 
+# Without readline, configure checks the bundled libedit, and that check
+# needs tgetent(3). An EmberBSD host has tgetent(3) in libterminfo; libcurses
+# only refers to it.
+.if ${OPSYS} == "NetBSD"
+LIBS+=			-lterminfo
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 PKG_FAIL_REASON+=	"${PKGNAME} provides build-host tools; use it from TOOL_DEPENDS"
 .endif
