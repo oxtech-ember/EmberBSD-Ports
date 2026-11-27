@@ -49,6 +49,9 @@ case "\$target" in
         esac ;;
     show-vars)
         echo "\$pkg" >> "\$out/deps-queries"
+        if [ "\$pkg" = silent ] && mkdir "\$out/silent-first" 2>/dev/null; then
+            exit 1
+        fi
         if [ "\$pkg" = bad ]; then
             echo "bmake: \$dir/Makefile:7: Could not find ../../x/missing/buildlink3.mk" >&2
             echo 'bmake: Fatal errors encountered -- cannot continue' >&2
@@ -82,6 +85,7 @@ if PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tre
 fi
 grep -q '^t/bad order$' "$out/order.err" || fail 'order did not name the unreadable package'
 [ "$(grep -c '^a$' "$out/deps-queries")" = 1 ] || fail 'trim-equivalent queue entries were not deduplicated'
+[ "$(grep -c '^bad$' "$out/deps-queries")" = 1 ] || fail 'retried a reported make error'
 grep -q 'Could not find ../../x/missing/buildlink3.mk' "$out/order.err" || fail 'order hid the make error'
 for file in order edges skipped done; do
     cmp -s "$out/state/$file" "$out/$file.before" || fail "order changed $file after a failed query"
@@ -106,4 +110,13 @@ for file in order edges skipped done; do
     cmp -s "$out/state/$file" "$out/$file.before" || fail "parser failure changed $file"
 done
 [ ! -s "$out/seen-grep-calls" ] || fail 'order ran per-path grep against seen after parser failure'
+mkdir "$out/tree/t/silent" "$out/tree/t/stable" "$out/retry-state"
+printf '%s\n' t/silent t/stable > "$out/retry-list"
+PATH="$out/bin:$PATH" BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_JOBS=2 \
+    sh "$ports/scripts/cross-bulk.sh" order "$out/retry-list" "$out/retry-state" > "$out/retry.out" 2> "$out/retry.err" ||
+    fail 'order did not recover a silent worker'
+[ "$(grep -c '^silent$' "$out/deps-queries")" = 2 ] || fail 'expected one retry for the missing result'
+[ "$(grep -c '^stable$' "$out/deps-queries")" = 1 ] || fail 'repeated a completed query'
+printf '%s\n' 't/silent silent-1.0' 't/stable stable-1.0' > "$out/expected-packages"
+cmp -s "$out/retry-state/packages" "$out/expected-packages" || fail 'incomplete recovered packages'
 echo 'PASS: order refuses unreadable dependencies and retains the previous graph and done records'

@@ -567,6 +567,14 @@ sort_edges()
     return 1
 }
 
+run_query_workers()
+{
+    CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info \
+        CROSS_BULK_OPTIONS_CACHE=$cachearg CROSS_BULK_VARS_CONTEXT="$vars_context" \
+        CROSS_BULK_CROSSFED="$q/crossfed" CROSS_BULK_TARGET_SETTINGS="$target_settings" \
+        "$@"
+}
+
 order()
 {
     order_stop=0
@@ -638,12 +646,7 @@ order()
         if [ -s "$q/frontier" ]; then
             [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
             state_lock_release_safe=no
-            if CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info \
-                CROSS_BULK_OPTIONS_CACHE=$cachearg \
-                CROSS_BULK_VARS_CONTEXT="$vars_context" \
-                CROSS_BULK_CROSSFED="$q/crossfed" \
-                CROSS_BULK_TARGET_SETTINGS="$target_settings" \
-                xargs -P "$jobs" -I '{}' "$controller_shell" "$0" deps '{}' "$q" \
+            if run_query_workers xargs -P "$jobs" -I '{}' "$controller_shell" "$0" deps '{}' "$q" \
                 < "$q/frontier"; then
                 xargs_status=0
             else
@@ -658,27 +661,35 @@ order()
         fi
         : > "$q/frontier-patterns"
         while read -r path key; do
-            cat "$q/$key.err" >> "$state/logs/order.err" 2>/dev/null || :
+            # Retry only a missing parallel result with no diagnostic. The
+            # other nodes in this frontier already have their final results.
+            if [ "$jobs" -gt 1 ] && [ ! -f "$q/$key.deps" ] && [ ! -s "$q/$key.err" ]; then
+                [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
+                run_query_workers "$controller_shell" "$0" deps "$key|$path" "$q" || :
+            fi
+            [ ! -s "$q/$key.err" ] || cat "$q/$key.err" >> "$state/logs/order.err" || return 1
             if [ ! -f "$q/$key.deps" ]; then
                 echo "$path $key" >> "$q/failed"
                 echo "$path order" >> "$state/failed"
                 continue
             fi
-            skip=$(sed -n 1p "$q/$key.deps")
-            if [ -n "$skip" ]; then
-                echo "$path $skip" >> "$state/skipped.new"
-                continue
-            fi
-            cat "$q/$key.package" >> "$state/packages.new" || return 1
-            cat "$q/$key.patterns" >> "$q/frontier-patterns" || return 1
-            [ ! -f "$q/$key.short" ] || cat "$q/$key.short" >> "$q/short"
-            echo "$path $path" >> "$state/edges.new"
-            sed 1d "$q/$key.deps" | while read -r dep soft; do
-                [ -n "$dep" ] || continue
-                echo "$dep $path" >> "$state/edges.new"
-                [ -z "$soft" ] || echo "$dep $path" >> "$state/soft.new"
-                echo "$dep" >> "$state/next"
-            done
+            {
+                IFS= read -r skip || return 1
+                if [ -n "$skip" ]; then
+                    echo "$path $skip" >> "$state/skipped.new" || return 1
+                    continue
+                fi
+                cat "$q/$key.package" >> "$state/packages.new" || return 1
+                cat "$q/$key.patterns" >> "$q/frontier-patterns" || return 1
+                [ ! -f "$q/$key.short" ] || cat "$q/$key.short" >> "$q/short" || return 1
+                echo "$path $path" >> "$state/edges.new" || return 1
+                while read -r dep soft; do
+                    [ -n "$dep" ] || continue
+                    echo "$dep $path" >> "$state/edges.new" || return 1
+                    [ -z "$soft" ] || echo "$dep $path" >> "$state/soft.new" || return 1
+                    echo "$dep" >> "$state/next" || return 1
+                done
+            } < "$q/$key.deps"
         done < "$q/frontier-map"
         if [ -s "$q/failed" ]; then
             echo 'Refused: the dependencies of these packages could not be read:' >&2
