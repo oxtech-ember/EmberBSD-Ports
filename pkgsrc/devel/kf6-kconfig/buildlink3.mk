@@ -15,6 +15,12 @@ BUILDLINK_FILES.kf6-kconfig+=	qt6/metatypes/qt6kf6configgui_metatypes.json
 
 BUILDLINK_FILES.kf6-kconfig+=		libexec/kf6/*
 
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# The native package takes its generators and their CMake import from
+# kf6-kconfig-compiler. KF6ConfigConfig.cmake includes that import.
+.include "../../devel/kf6-kconfig-compiler/buildlink3.mk"
+.endif
+
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .endif	# KF6_KCONFIG_BUILDLINK3_MK
