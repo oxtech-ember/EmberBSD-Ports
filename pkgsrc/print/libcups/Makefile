@@ -42,7 +42,9 @@ PREFER.gettext=	pkgsrc
 PREFER.iconv=	pkgsrc
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} == "NetBSD"
-PKGREVISION=	3	# Updated GnuTLS shared-library requirement.
+_LIBCUPS_ABI_REVISION.aarch64=	4
+_LIBCUPS_ABI_REVISION.x86_64=	3
+PKGREVISION=	${_LIBCUPS_ABI_REVISION.${MACHINE_ARCH}:U3}	# Replace withdrawn producer-path package on AArch64.
 .endif
 .include "options.mk"
 
