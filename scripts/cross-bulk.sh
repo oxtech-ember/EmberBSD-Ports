@@ -2827,6 +2827,32 @@ finish_worker()
     running=$((running - 1))
 }
 
+
+# Read the database and package commands once from each make context.
+# Read the exact records, including empty values and trailing empty lines.
+build_environment()
+{
+    mk -C "$PKGSRCDIR/pkgtools/pkg_install" show-vars \
+        VARNAMES='NATIVE_PKG_ADD_CMD PKG_INFO CROSSTARGETSETTINGS _PKG_DBDIR PACKAGES' \
+        < /dev/null > "$run/environment.tmp" || return 1
+    {
+        IFS= read -r real_pkg_add && IFS= read -r target_pkg_info &&
+        IFS= read -r target_settings && IFS= read -r target_database &&
+        IFS= read -r packages && ! IFS= read -r extra
+    } < "$run/environment.tmp" || { echo 'Unexpected target build metadata' >&2; return 1; }
+    [ -n "$real_pkg_add" ] && [ -n "$target_pkg_info" ] && [ -n "$packages" ] || {
+        echo 'Missing target package commands or archive directory' >&2
+        return 1
+    }
+    mk -C "$PKGSRCDIR/pkgtools/pkg_install" USE_CROSS_COMPILE=no \
+        show-vars VARNAMES='_HOST_PKG_DBDIR PKG_INFO' < /dev/null > "$run/environment.tmp" || return 1
+    {
+        IFS= read -r native_database && IFS= read -r native_pkg_info &&
+        [ -n "$native_pkg_info" ] && ! IFS= read -r extra
+    } < "$run/environment.tmp" || { echo 'Unexpected native build metadata' >&2; return 1; }
+    rm -f "$run/environment.tmp"
+}
+
 build()
 {
     if [ "$stage_supervised" = no ]; then
@@ -2881,14 +2907,9 @@ build()
     rm -rf "$run" "$state/install.lock"
     mkdir "$run"
     : > "$run/status"
-    real_pkg_add=$(var pkgtools/pkg_install NATIVE_PKG_ADD_CMD)
-    [ -n "$real_pkg_add" ] || { echo 'NATIVE_PKG_ADD_CMD is empty' >&2; exit 2; }
+    build_environment || return 1
     pkg_add_wrapper "$real_pkg_add" > "$run/pkg_add"
     chmod +x "$run/pkg_add"
-    native_info
-    target_pkg_info=$(var pkgtools/pkg_install PKG_INFO)
-    [ -n "$target_pkg_info" ] || { echo 'The target PKG_INFO is empty' >&2; exit 2; }
-    target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
     stamp=$(date '+%Y%m%d%H%M%S')
     vars_cache=
     if [ "${CROSS_BULK_VARS_CACHE:-yes}" != no ]; then
@@ -2914,8 +2935,6 @@ build()
             vars_cache=
         fi
     fi
-    target_database=$(var pkgtools/pkg_install _PKG_DBDIR) || return 1
-    native_database=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" USE_CROSS_COMPILE=no show-var VARNAME=_HOST_PKG_DBDIR) || return 1
     shared_pairs_configure
     trash_init
     deleter_pid=
@@ -2927,7 +2946,7 @@ build()
         [ -s "$state/$list_name" ] && mv "$state/$list_name" "$state/$list_name.$stamp"
     done
     touch "$state/done" "$state/failed" "$state/blocked" "$state/skipped"
-    packages=$(var pkgtools/pkg_install PACKAGES)/All
+    packages=$packages/All
     native_packages=${packages%/All}-native
     link_launcher_args
     if [ "$stage_supervised" = no ]; then

@@ -201,6 +201,9 @@ case "\$target" in
             version=\$(cat \$dir/version 2> /dev/null || echo 1.0)
             for field in \$varnames; do
                 case "\$field" in
+                    PACKAGES) echo \$out/packages ;;
+                    PKG_INFO) echo \$out/pkg_info ;;
+                    NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
                     PKGNAME) echo "\$pkg-\$version" ;;
                     WRKDIR) echo "\$out/work/\$pkg" ;;
                     WRKOBJDIR) echo "\$out/work" ;;

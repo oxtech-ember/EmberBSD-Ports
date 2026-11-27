@@ -57,3 +57,36 @@ printf '<%s>\\n' "$real_pkg_add" "$target_pkg_info" "$target_settings" "$package
     result = run('\n'.join(fields), status=1)
     assert result.returncode == 2 and not result.stdout
 print('PASS: one recovery query, intact fields, optional empty settings, malformed/missing values and query failure')
+
+with tempfile.TemporaryDirectory() as temporary:
+    root = Path(temporary)
+    body = source[source.index('build_environment()'):source.index('\nbuild()\n')]
+    script = root / 'build-environment.sh'
+    script.write_text("""set -eu
+run=$1
+PKGSRCDIR=/selected
+mk() {
+    case "$*" in
+        *USE_CROSS_COMPILE=no*) cat "$run/native" ;;
+        *) cat "$run/target" ;;
+    esac
+}
+""" + body + """
+build_environment || exit 1
+printf '%s\\n' "$real_pkg_add" "$target_pkg_info" "$target_settings" "$target_database" \\
+    "$packages" "$native_database" "$native_pkg_info"
+""")
+    target = ['/tools/pkg_add', '/tools/pkg_info -K /target/db', '', '/target/db', '/packages with spaces']
+    native = ['/native/db', '/tools/pkg_info -K /native/db']
+    for target_rows, native_rows, ok in (
+        (target, native, True), (target + [''], native, False),
+        (target[:-1], native, False), (target, native + ['extra'], False),
+        (['', *target[1:]], native, False), (target, [native[0], ''], False),
+    ):
+        for name, rows in [('target', target_rows), ('native', native_rows)]:
+            (root / name).write_text('\n'.join(rows) + '\n')
+        result = subprocess.run(['sh', str(script), str(root)], capture_output=True, text=True)
+        assert (result.returncode == 0) == ok, (target_rows, native_rows, result.stderr)
+        if ok:
+            assert result.stdout.splitlines() == target + native
+print('PASS: target and native build records preserve empty settings and reject invalid records')

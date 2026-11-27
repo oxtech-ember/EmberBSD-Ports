@@ -108,6 +108,11 @@ case "\$target" in
         fi
         for v in \$varnames; do
             case "\$v" in
+                PACKAGES) echo "$out/packages" ;;
+                PKG_INFO) if [ "\$cross" = yes ]; then echo "$out/pkg_info -K $out/native-db"; else echo "$out/pkg_info -K $out/target-db"; fi ;;
+                NATIVE_PKG_ADD_CMD) echo "$out/pkg_add" ;;
+                _PKG_DBDIR) echo "$out/target-db" ;;
+                _HOST_PKG_DBDIR) echo "$out/native-db" ;;
                 OPSYS) echo NetBSD ;;
                 MACHINE_ARCH) echo aarch64 ;;
                 MACHINE_GNU_PLATFORM) echo aarch64--netbsd ;;
