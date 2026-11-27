@@ -50,6 +50,10 @@ TOOLS_PATH.${_rust_tool}= ${TOOLBASE}/bin/${_rust_tool}
 .endfor
 MAKE_ENV+= RUSTC=${TOOLBASE}/bin/rustc
 MAKE_ENV+= CARGO_NET_OFFLINE=true CARGO_BUILD_JOBS=${MAKE_JOBS:U1}
+# Rust uses the selected macOS SDK to link build scripts for the host.
+.if ${NATIVE_OPSYS} == "Darwin"
+MAKE_ENV+= SDKROOT=${OSX_SDK_PATH:Q}
+.endif
 MAKE_ENV+= CARGO_TARGET_${_EMBER_RSVG_RUST_KEY}_LINKER=${WRAPPER_BINDIR}/cc
 # Dependencies may not be installed during the first make parse. Once present,
 # derive the host key only from the matching native compiler's actual identity.
