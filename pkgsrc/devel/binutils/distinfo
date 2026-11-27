@@ -3,6 +3,7 @@ $NetBSD: distinfo,v 1.51 2023/07/31 14:08:34 fcambus Exp $
 BLAKE2s (binutils-2.47.tar.xz) = f640974b84d053afe409ebca49ea494b19f818885461c66edec479bb8f1d1b24
 SHA512 (binutils-2.47.tar.xz) = 3126a1064374d8da40d4d70630c204ed1e75d542c447d53fca9778c7ceff095c28e9b445e15a313fef9729082d7966471ee6b5b715d479aa6d568528743e1d98
 Size (binutils-2.47.tar.xz) = 29034716 bytes
+SHA1 (patch-bfd_doc_chew.c) = a2c7557326d097afd7660bb52cb8f61ccabdfe58
 SHA1 (patch-bfd_dwarf2.c) = cf3fb7a3759a64d88d0e4c523c5c0fee5d53b85b
 SHA1 (patch-gas_config_tc-arm.c) = 5e7e800e799b292784c5bdc534eefdab76844b2b
 SHA1 (patch-include_safe-ctype.h) = 66e636f8200ff5e9b4bfa0a5aee13cd072a23887

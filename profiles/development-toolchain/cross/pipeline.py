@@ -167,11 +167,6 @@ def _build_binutils(target, new_work, make_override=None, native=None):
         configure.append('--with-system-zlib')
     if platform.system() in ('Linux', 'Darwin'):
         configure.append('--disable-libctf')
-    if platform.system() == 'NetBSD':
-        # NetBSD ctype functions are array-indexing macros. Clang then warns
-        # (-Wchar-subscripts) in the build-host documentation tool chew.c,
-        # and the build-host warning flags of Binutils include -Werror.
-        configure.append('--disable-werror')
     logged(configure, work / 'configure.log', env, build)
     logged([make, '-j' + count], work / 'build.log', env, build)
     logged([make, 'install'], work / 'install.log', env, build)
