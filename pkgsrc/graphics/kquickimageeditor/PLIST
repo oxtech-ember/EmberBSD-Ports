@@ -14,6 +14,7 @@ lib/cmake/KQuickImageEditor/KQuickImageEditorTargets.cmake
 lib/libKQuickImageEditor.so
 lib/libKQuickImageEditor.so.0.7.0
 lib/libKQuickImageEditor.so.1
+qt6/mkspecs/modules/qt_KQuickImageEditor.pri
 qt6/qml/org/kde/kquickimageeditor/AnnotationSelectionTool.qml
 qt6/qml/org/kde/kquickimageeditor/BasicResizeHandle.qml
 qt6/qml/org/kde/kquickimageeditor/CropBackground.qml

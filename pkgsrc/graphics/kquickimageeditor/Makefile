@@ -1,7 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	kquickimageeditor-0.7.0.1
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_KDE:=kquickimageeditor/}
 EXTRACT_SUFX=	.tar.xz
@@ -21,6 +21,8 @@ CPPFLAGS+=	-DHWY_COMPILE_ONLY_EMU128
 
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_QMLDIR=qt6/qml
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
+# ECM otherwise takes the qmake module directory, which only native builds find.
+CMAKE_CONFIGURE_ARGS+=	-DECM_MKSPECS_INSTALL_DIR:PATH=${PREFIX}/qt6/mkspecs/modules
 
 .include "../../graphics/libhighway/buildlink3.mk"
 .include "../../devel/kf6-kconfig/buildlink3.mk"
@@ -29,7 +31,7 @@ CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
-PKGREVISION=	2	# Record the base libc SONAME.
+PKGREVISION=	3	# Record the base libc SONAME.
 .endif
 
 .include "../../mk/bsd.pkg.mk"
