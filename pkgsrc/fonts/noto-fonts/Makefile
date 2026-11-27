@@ -7,6 +7,9 @@ MASTER_SITES=	${MASTER_SITE_GITHUB:=notofonts/}
 GITHUB_PROJECT=	notofonts.github.io
 GITHUB_TAG=	noto-monthly-release-2026.11.01
 
+EXTRACT_USING=	bsdtar
+EXTRACT_ELEMENTS=	${DISTNAME}/fonts/LICENSE ${DISTNAME}/fonts/*/hinted/ttf
+
 MAINTAINER=	ryoon@NetBSD.org
 HOMEPAGE=	https://notofonts.github.io/
 COMMENT=	Google Noto fonts, except CJK and Emoji
