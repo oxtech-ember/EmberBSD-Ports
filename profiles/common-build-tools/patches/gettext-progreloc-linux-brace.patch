@@ -1,0 +1,30 @@
+$NetBSD$
+
+Remove a stray closing brace in the Linux /proc/<pid>/exe branch.
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+The brace closes the block before executable_fd is set from buf, so the
+Linux build of progreloc.c fails with "use of undeclared identifier buf".
+Only __linux__ compiles this branch; NetBSD and Darwin objects are unchanged.
+
+--- gettext-runtime/gnulib-lib/progreloc.c.orig
++++ gettext-runtime/gnulib-lib/progreloc.c
+@@ -259,7 +259,6 @@
+     char *link = xreadlink (buf);
+     if (link != NULL && link[0] != '[')
+       return link;
+-    }
+     if (executable_fd < 0)
+       executable_fd = open (buf, O_EXEC | O_CLOEXEC, 0);
+   }
+--- gettext-tools/gnulib-lib/progreloc.c.orig
++++ gettext-tools/gnulib-lib/progreloc.c
+@@ -259,7 +259,6 @@
+     char *link = xreadlink (buf);
+     if (link != NULL && link[0] != '[')
+       return link;
+-    }
+     if (executable_fd < 0)
+       executable_fd = open (buf, O_EXEC | O_CLOEXEC, 0);
+   }
