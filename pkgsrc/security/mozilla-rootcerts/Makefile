@@ -6,7 +6,9 @@
 DISTNAME=	mozilla-rootcerts-1.1.${CERTDATA_DATE}
 PKGREVISION=	1
 CATEGORIES=	security
-MASTER_SITES=	-https://raw.githubusercontent.com/nss-dev/nss/${CERTDATA_COMMIT}/lib/ckfw/builtins/certdata.txt
+# The NSS release tag is reachable; the GitHub mirror lacks the commit.
+MASTER_SITES=	-https://hg.mozilla.org/projects/nss/raw-file/${CERTDATA_NSS_TAG}/lib/ckfw/builtins/certdata.txt
+MASTER_SITES+=	-https://raw.githubusercontent.com/nss-dev/nss/${CERTDATA_COMMIT}/lib/ckfw/builtins/certdata.txt
 EXTRACT_SUFX=	# empty
 DISTFILES=	${CERTDATA}
 
@@ -24,6 +26,7 @@ USE_TOOLS=	awk:run echo:run expr:run ln:run ls:run openssl:run rm:run mkdir:run
 CERTDATA_DATE=		20261113
 # 'git commit hash'
 CERTDATA_COMMIT=	8c60e757c30b1b239bae46532b4f6d4ebb1e1cad
+CERTDATA_NSS_TAG=	NSS_3_134_RTM
 CERTDATA=		certdata-${CERTDATA_DATE}.txt
 
 WRKSRC=		${WRKDIR}
