@@ -1,0 +1,16 @@
+$NetBSD$
+
+Keep build directories out of the installed Qt Quick test library.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- src/quicktestutils/CMakeLists.txt.orig
++++ src/quicktestutils/CMakeLists.txt
+@@ -37,6 +37,8 @@
+     NO_GENERATE_CPP_EXPORTS
+     QT_LICENSE_ID QT_COMMERCIAL_OR_GPL3
+ )
++# This library is installed. Test data belongs to the calling test.
++set_property(TARGET QuickTestUtilsPrivate PROPERTY QT_SKIP_DEFAULT_TESTCASE_DIRS TRUE)
+ 
+ if(TARGET Qt::Quick)
+     qt_internal_extend_target(QuickTestUtilsPrivate
