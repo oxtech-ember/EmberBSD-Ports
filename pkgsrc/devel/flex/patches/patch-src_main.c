@@ -1,6 +1,6 @@
 $NetBSD$
 
-Resolve the Darwin m4 program and message catalogs in the installed prefix.
+Resolve Darwin tools from the installed prefix. Select base m4 for the NetBSD target.
 Origin: EmberBSD contributors (AI-assisted).
 
 --- src/main.c.orig
@@ -53,7 +53,7 @@ Origin: EmberBSD contributors (AI-assisted).
  #endif
  #endif
  
-@@ -320,7 +353,14 @@
+@@ -320,7 +353,16 @@
  
  	output_chain = filter_create_int(NULL, filter_tee_header, env.headerfilename);
  	if ( !(m4 = getenv("M4"))) {
@@ -62,6 +62,8 @@ Origin: EmberBSD contributors (AI-assisted).
 +
 +		darwin_prefix_path (installed_m4, "bin/" FLEX_DARWIN_M4);
 +		m4 = installed_m4;
++#elif defined(FLEX_TARGET_M4) && !defined(USE_CONFIG_FOR_BUILD)
++		m4 = FLEX_TARGET_M4;
 +#else
  		m4 = M4;
 +#endif

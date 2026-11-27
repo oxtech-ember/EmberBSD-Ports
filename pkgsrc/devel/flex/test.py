@@ -26,10 +26,11 @@ def main():
     parser.add_argument('--bmake', required=True, help='bmake with the host mk files')
     parser.add_argument('--makeconf', required=True, help='aarch64 NetBSD 11 cross MAKECONF')
     parser.add_argument('--recipe', required=True, help='exported devel/flex')
+    parser.add_argument('--binary', type=Path, help='also check the built target flex executable')
     args = parser.parse_args()
     recipe = Path(args.recipe).resolve(strict=True)
     names = ['USE_CROSS_COMPILE', 'PKG_FAIL_REASON', 'USE_TOOLS', 'MAKE_ENV',
-             'TOOLS_PATH.gm4', 'SUBST_FILES.m4path', 'SUBST_SED.m4path']
+             'TOOLS_PATH.gm4', 'CPPFLAGS']
     v = query(args, recipe, names)
     assert v['USE_CROSS_COMPILE'].lower() == 'yes', v['USE_CROSS_COMPILE']
     # The old recipe failed here: gm4:run is refused in cross builds.
@@ -38,11 +39,11 @@ def main():
     assert not v['PKG_FAIL_REASON'].strip(), v['PKG_FAIL_REASON']
     # The build-time stage1flex reads M4 from the environment.
     assert 'M4=' + v['TOOLS_PATH.gm4'] in v['MAKE_ENV'].split(), v['MAKE_ENV']
-    assert v['SUBST_FILES.m4path'].strip() == 'src/config.h', v['SUBST_FILES.m4path']
-    host = '#define M4 "%s"\n' % v['TOOLS_PATH.gm4']
-    out = subprocess.run('sed ' + v['SUBST_SED.m4path'], shell=True, input=host,
-                         check=True, capture_output=True, text=True).stdout
-    assert out == '#define M4 "/usr/bin/m4"\n', out
+    assert '-DFLEX_TARGET_M4=' in v['CPPFLAGS'] and '/usr/bin/m4' in v['CPPFLAGS']
+    if args.binary:
+        image = args.binary.read_bytes()
+        assert b'/usr/bin/m4\0' in image, 'target flex does not select base m4'
+        assert os.fsencode(v['TOOLS_PATH.gm4']) not in image, 'target flex contains the host gm4 path'
     print('PASS: gm4 is a build tool; the target flex records /usr/bin/m4.')
 
 

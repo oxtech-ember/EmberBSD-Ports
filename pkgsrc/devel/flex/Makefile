@@ -38,16 +38,11 @@ CPPFLAGS+=		-DFLEX_DARWIN_LOCALEDIR=\"${PKGLOCALEDIR}/locale\"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     !empty(OS_VERSION:M11.*)
-# GNU m4 runs on the build host only: it makes the skeleton and the stage1
-# scanner. Like NetBSD base lex, the target flex runs base /usr/bin/m4.
-# The M4 environment variable selects the host gm4 during the build.
+# The build scanner uses host gm4. The installed scanner uses base m4.
+PKGREVISION=		1
 USE_TOOLS:=		${USE_TOOLS:Ngm4\:run} gm4
 MAKE_ENV+=		M4=${TOOLS_PATH.gm4:Q}
-SUBST_CLASSES+=		m4path
-SUBST_STAGE.m4path=	post-configure
-SUBST_MESSAGE.m4path=	Recording the target m4 path.
-SUBST_FILES.m4path=	src/config.h
-SUBST_SED.m4path=	-e "s,^\#define M4 .*,\#define M4 \"/usr/bin/m4\","
+CPPFLAGS+=		-DFLEX_TARGET_M4=\"/usr/bin/m4\"
 .endif
 
 CFLAGS.AIX+=		-D_LINUX_SOURCE_COMPAT
