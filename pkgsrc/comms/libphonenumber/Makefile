@@ -2,9 +2,8 @@
 
 DISTNAME=	libphonenumber-9.0.44
 CATEGORIES=	comms
-MASTER_SITES=	https://codeload.github.com/google/libphonenumber/tar.gz/refs/tags/v${PKGVERSION_NOREV}/
-DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
-EXTRACT_SUFX=	.tar.gz
+MASTER_SITES=	${MASTER_SITE_GITHUB:=google/}
+GITHUB_TAG=	v${PKGVERSION_NOREV}
 
 HOMEPAGE=	https://github.com/google/libphonenumber
 COMMENT=	Google phone number parsing and formatting library
