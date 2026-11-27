@@ -27,11 +27,12 @@ CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING:BOOL=OFF
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_QMLDIR=qt6/qml
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 
-PLIST_VARS+=	cross_qml
+PLIST_VARS+=	cross_copy
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-# The cross build also installs the declarative plugin below lib/qml.
-# A native build installs it only below KDE_INSTALL_QMLDIR.
-PLIST.cross_qml=	yes
+# The cross build also installs the plugins below lib/plugins and the
+# declarative plugin below lib/qml. A native build installs them only below
+# KDE_INSTALL_QTPLUGINDIR and KDE_INSTALL_QMLDIR.
+PLIST.cross_copy=	yes
 CMAKE_CONFIGURE_ARGS+=	-DWayland_Client_LIBRARY=${CROSS_DESTDIR}/usr/pkg/lib/libwayland-client.so
 CMAKE_CONFIGURE_ARGS+=	-DWayland_Client_INCLUDE_DIR=${CROSS_DESTDIR}/usr/pkg/include
 CMAKE_CONFIGURE_ARGS+=	-DWayland_Cursor_LIBRARY=${CROSS_DESTDIR}/usr/pkg/lib/libwayland-cursor.so
