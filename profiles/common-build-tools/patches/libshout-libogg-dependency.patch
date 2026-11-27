@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD (AI-assisted), declare libogg as a direct runtime dependency.
+--- a/audio/libshout/Makefile
++++ b/audio/libshout/Makefile
+@@ -20,6 +20,8 @@
+ CPPFLAGS.NetBSD+=	-D_NETBSD_SOURCE # for strcasestr(3)
+ 
+ .include "../../audio/libvorbis/buildlink3.mk"
++# libshout links libogg itself; libvorbis records it only for its own use.
++.include "../../multimedia/libogg/buildlink3.mk"
+ .include "../../audio/speex/buildlink3.mk"
+ .include "../../multimedia/libtheora/buildlink3.mk"
+ .include "../../security/openssl/buildlink3.mk"
