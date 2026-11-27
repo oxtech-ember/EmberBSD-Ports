@@ -6,11 +6,14 @@ PKG_OPTIONS_REQUIRED_GROUPS=	crypto
 PKG_OPTIONS_GROUP.crypto=	openssl libgcrypt
 PKG_SUGGESTED_OPTIONS=		gssapi openssl
 
+_LIBSSH_ABI_REVISION.aarch64=	3
+_LIBSSH_ABI_REVISION.x86_64=	2
+
 .include "../../mk/bsd.options.mk"
 
 # Several supported base images expose a different OpenSSL SONAME.
 .if !empty(PKG_OPTIONS:Mopenssl) && ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-PKGREVISION=	2
+PKGREVISION=	${_LIBSSH_ABI_REVISION.${MACHINE_ARCH}}
 PREFER.openssl=	pkgsrc
 BUILDLINK_ABI_DEPENDS.openssl+=	openssl>=4.1.0
 .endif
@@ -20,7 +23,7 @@ CMAKE_CONFIGURE_ARGS+=		-DWITH_GSSAPI:BOOL=ON
 .include "../../mk/krb5.buildlink3.mk"
 .if ${USE_CROSS_COMPILE:U:tl} == "yes" && ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64") && ${KRB5_TYPE} == "heimdal" && ${USE_BUILTIN.heimdal:Uyes:tl} == "no"
 # The host krb5-config can describe MIT while the target provides Heimdal.
-PKGREVISION=	2
+PKGREVISION=	${_LIBSSH_ABI_REVISION.${MACHINE_ARCH}}
 BUILDLINK_FILES.heimdal+=	bin/krb5-config
 CMAKE_CONFIGURE_ARGS+=	-DKRB5_CONFIG:FILEPATH=${BUILDLINK_DIR}/bin/krb5-config
 CMAKE_CONFIGURE_ARGS+=	-DGSSAPI_FLAVOR_HEIMDAL:BOOL=ON
