@@ -3,7 +3,7 @@
 
 DISTNAME=	espeak-ng-1.52.0
 PKGNAME=	${DISTNAME:S/espeak-ng/espeak-ng-generator/}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	audio
 MASTER_SITES=	${MASTER_SITE_GITHUB:=espeak-ng/}
 GITHUB_PROJECT=	espeak-ng
@@ -17,6 +17,10 @@ LICENSE=	gnu-gpl-v3 AND apache-2.0 AND 2-clause-bsd AND unicode
 # The cross recipe selects this exact version. Its compiled phoneme and
 # dictionary tables must come from the same eSpeak NG release.
 ESPEAK_GENERATOR_VERSION=	1.52.0
+# The generator compiles the same source as audio/espeak-ng. Use its
+# distfile record and its portability patches.
+DISTINFO_FILE=	${.CURDIR}/../espeak-ng/distinfo
+PATCHDIR=	${.CURDIR}/../espeak-ng/patches
 
 # The generated tables contain native integer fields. They match the
 # target only for an accepted host ABI: Darwin aarch64 for aarch64, and an

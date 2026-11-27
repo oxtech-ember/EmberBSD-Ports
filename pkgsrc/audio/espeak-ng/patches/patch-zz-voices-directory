@@ -1,0 +1,22 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+LoadVoice opened the voices or lang directory when the voice name was empty,
+for example while it compiled the phoneme data. Linux fgets(3) then fails, but
+BSD read(2) returns the directory entries, and the parser read them as voice
+attributes. Open only a regular file.
+
+--- src/libespeak-ng/voices.c.orig
++++ src/libespeak-ng/voices.c
+@@ -465,7 +465,10 @@
+ 		}
+ 	}
+ 
+-	f_voice = fopen(buf, "r");
++	// A voice is a regular file. An empty name selects the voices or
++	// lang directory, and read(2) of a directory returns its entries on
++	// BSD systems.
++	f_voice = (GetFileLength(buf) >= 0) ? fopen(buf, "r") : NULL;
+ 
+         if (!(control & 8)/*compiling phonemes*/)
+             language_type = ESPEAKNG_DEFAULT_VOICE; // default

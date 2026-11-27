@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.9 2026/09/02 19:00:46 wiz Exp $
 
 DISTNAME=	espeak-ng-1.52.0
-PKGREVISION=	6
+PKGREVISION=	7	# Open only regular voice files.
 CATEGORIES=	audio
 MASTER_SITES=	${MASTER_SITE_GITHUB:=espeak-ng/}
 GITHUB_TAG=	${PKGVERSION_NOREV}
@@ -56,7 +56,7 @@ pre-configure:
 .include "../../audio/pcaudiolib/buildlink3.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-PKGREVISION=	7	# Record the base libc SONAME.
+PKGREVISION=	8	# Open only regular voice files.
 .endif
 
 .include "../../mk/bsd.pkg.mk"
