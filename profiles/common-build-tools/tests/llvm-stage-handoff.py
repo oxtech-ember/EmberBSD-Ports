@@ -48,6 +48,10 @@ with tempfile.TemporaryDirectory(prefix='llvm-stage-handoff-') as tmp:
     assert (same/'lib/runtime.so').read_text() == 'new runtime'
     assert (shared/'include/old.h').read_text() == 'new header'
     assert (devel/'include/old.h').read_text() == 'new header'
+    (same/'lib/runtime.so').write_text('modified package runtime')
+    (devel/'include/old.h').write_text('modified package header')
+    assert (shared/'lib/runtime.so').read_text() == 'new runtime'
+    assert (shared/'include/old.h').read_text() == 'new header'
     manifest('include/new.h')
     changed = stage('changed', 'include/new.h', 'third runtime', 'third header')
     handoff(changed, shared)

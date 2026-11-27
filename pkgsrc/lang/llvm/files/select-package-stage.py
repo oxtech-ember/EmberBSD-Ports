@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Select an audited LLVM staging partition.
+import errno
 import os
 from pathlib import Path
 import re
@@ -9,6 +10,16 @@ import stat
 import sys
 sys.dont_write_bytecode = True
 from sdk_source import load_sdk
+
+
+if sys.platform == 'darwin':
+    import ctypes
+    _clonefile = getattr(ctypes.CDLL(None, use_errno=True), 'clonefile', None)
+    if _clonefile is not None:
+        _clonefile.argtypes = (ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32)
+        _clonefile.restype = ctypes.c_int
+else:
+    _clonefile = None
 
 
 def manifest(path):
@@ -118,7 +129,20 @@ def copy_entries(source, destination, entries):
         if os.path.islink(src):
             os.symlink(os.readlink(src), dst)
         else:
-            shutil.copy2(src, dst)
+            copy_regular(src, dst)
+
+
+def copy_regular(src, dst):
+    # Keep independent inodes. pkgsrc can change the copy during staging.
+    if _clonefile is not None:
+        # CLONE_NOFOLLOW | CLONE_NOOWNERCOPY from Darwin sys/clonefile.h.
+        if _clonefile(os.fsencode(src), os.fsencode(dst), 0x0001 | 0x0002) == 0:
+            shutil.copystat(src, dst)
+            return
+        error = ctypes.get_errno()
+        if error not in (errno.ENOTSUP, errno.EXDEV, errno.ENOSYS, errno.EINVAL):
+            raise OSError(error, os.strerror(error), dst)
+    shutil.copy2(src, dst)
 
 
 def check_empty_destination(destination, entries):
