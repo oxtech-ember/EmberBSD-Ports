@@ -41,16 +41,16 @@ SUBST_SED.visibility+=		-e 's/, visibility("default")//g'
 .include "../../mk/bsd.prefs.mk"
 .include "options.mk"
 
-ADDFONTS=	${PREFIX}/share/fonts/urw,${PREFIX}/share/ghostscript/fonts,${PREFIX}/share/fonts/X11
+# Expand the prefixes when meson runs. A cross build selects the target
+# PREFIX and LOCALBASE after this point; := would record the build host's.
+_FONTCONFIG_ADDFONTS=	${PREFIX}/share/fonts/urw,${PREFIX}/share/ghostscript/fonts,${PREFIX}/share/fonts/X11
 .if ${X11BASE} != ${LOCALBASE}
-ADDFONTS:=	${X11BASE}/lib/X11/fonts,${ADDFONTS}
+_FONTCONFIG_ADDFONTS_FIRST=	${X11BASE}/lib/X11/fonts
 .else
-ADDFONTS:=	${LOCALBASE}/share/fonts/X11,${ADDFONTS}
+_FONTCONFIG_ADDFONTS_FIRST=	${LOCALBASE}/share/fonts/X11
 .endif
-
-.if ${OPSYS} == "Darwin"
-ADDFONTS:=	~/Library/Fonts,/Library/Fonts,/System/Library/Fonts,${ADDFONTS}
-.endif
+_FONTCONFIG_ADDFONTS_OS.Darwin=	~/Library/Fonts,/Library/Fonts,/System/Library/Fonts,
+ADDFONTS=	${_FONTCONFIG_ADDFONTS_OS.${OPSYS}}${_FONTCONFIG_ADDFONTS_FIRST},${_FONTCONFIG_ADDFONTS}
 MESON_ARGS+=	-Dadditional-fonts-dirs=${ADDFONTS}
 
 SUBST_CLASSES+=		prefix
