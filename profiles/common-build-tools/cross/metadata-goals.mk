@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
-# Only pure pkgsrc variable queries defer compiler availability checks.
-_EMBER_METADATA_ONLY=no
-.if !empty(.TARGETS) && empty(.TARGETS:Nshow-var:Nshow-vars)
-_EMBER_METADATA_ONLY=yes
+# Compiler-free metadata and source-integrity goals do not need an executable.
+# A mixed request retains the normal compiler check: `all fetch` must not turn
+# a build into a metadata-only query.
+_EMBER_COMPILER_FREE_GOALS=no
+.if !empty(.TARGETS) && empty(.TARGETS:Nshow-var:Nshow-vars:Nfetch:Nchecksum)
+_EMBER_COMPILER_FREE_GOALS=yes
 .endif

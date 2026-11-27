@@ -25,9 +25,10 @@ USE_LANGUAGES=		c c++
 TOOL_DEPENDS+=	flang-${LLVM_VERSION}{,nb*}:../../lang/flang
 
 # The build-host Flang selected by the host toolset include, as for every
-# Fortran package.
+# Fortran package. Compiler-free metadata and source-integrity goals defer
+# this executable check; build and mixed goals retain it.
 .include "${PKGSRCDIR}/EMBERBSD-METADATA-GOALS.MK"
-.if ${_EMBER_METADATA_ONLY} != "yes"
+.if ${_EMBER_COMPILER_FREE_GOALS} != "yes"
 .if empty(EMBERBSD_FLANG:U:M/*) || !exists(${EMBERBSD_FLANG:U/nonexistent})
 PKG_FAIL_REASON+=	"EMBERBSD_FLANG must select the build-host Ports flang driver"
 .else

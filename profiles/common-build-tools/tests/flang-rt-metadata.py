@@ -17,11 +17,11 @@ def query(*goals):
         "MAKECONF=" + str(a.makeconf), "EMBERBSD_FLANG=" + missing, "USE_CROSS_COMPILE=yes", "_MAKEVARS_MK=defined",
         *goals, "-V", "${PKGNAME}", "-V", "${PKG_FAIL_REASON}"],
         text=True, capture_output=True, timeout=120, check=True)
-for goal in ("show-var", "show-vars"):
+for goal in ("show-var", "show-vars", "fetch", "checksum"):
     r = query(goal)
     assert r.stdout.splitlines()[0].startswith("flang-rt-") and not r.stdout.splitlines()[1], r.stdout
     assert not r.stderr, r.stderr
-for goals in ((), ("all",), ("all", "show-vars")):
+for goals in ((), ("all",), ("all", "show-vars"), ("fetch", "build")):
     r = query(*goals)
     assert "EMBERBSD_FLANG must select the build-host Ports flang driver" in r.stdout, r.stdout
 print("PASS: actual flang-rt metadata and build guard")
