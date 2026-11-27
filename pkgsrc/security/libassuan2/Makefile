@@ -21,4 +21,7 @@ CONFLICTS=	libassuan-1.*
 
 BUILDLINK_API_DEPENDS.libgpg-error+=	libgpg-error>=1.17
 .include "../../security/libgpg-error/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	3	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

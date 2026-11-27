@@ -31,4 +31,7 @@ REPLACE_SH+=	kconf_update/remove_window_decorations_from_gtk_css.sh
 .include "../../x11/kf6-kwindowsystem/buildlink3.mk"
 .include "../../x11/plasma6-kdecoration/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

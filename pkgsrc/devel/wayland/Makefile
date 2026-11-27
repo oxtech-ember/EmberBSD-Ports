@@ -29,8 +29,14 @@ PKGCONFIG_OVERRIDE_STAGE=	pre-install
 PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-scanner.pc
 
 .include "../../mk/bsd.prefs.mk"
+WAYLAND_DEVEL_REVISION=	4
 .if ${OPSYS} == "NetBSD"
 WAYLAND_RUNTIME_REVISION=	3	# Updated libffi shared-library requirement.
+.endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+# Reissue: the earlier amd64 names are in a released record.
+WAYLAND_RUNTIME_REVISION=	4
+WAYLAND_DEVEL_REVISION=	5
 .endif
 
 # EmberBSD: the macOS build host needs only the native wayland-scanner.
@@ -54,7 +60,7 @@ PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-server.pc
 PKG_FAIL_REASON+= "The wayland SDK role belongs to devel/wayland-devel"
 .endif
 PKGNAME=	wayland-devel-${WAYLAND_VERSION}
-PKGREVISION=	4
+PKGREVISION=	${WAYLAND_DEVEL_REVISION}
 COMMENT=	Wayland target SDK for the development-host sysroot
 DISTINFO_FILE=	${EMBERBSD_WAYLAND_PKGDIR}/distinfo
 PATCHDIR=	${EMBERBSD_WAYLAND_PKGDIR}/patches
@@ -70,8 +76,8 @@ PLIST_VARS+=	runtime_split
 PKG_FAIL_REASON+= "The wayland runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
 .if defined(EMBERBSD_WAYLAND_DEVEL)
-.  if ${PKGREVISION} != 4
-PKG_FAIL_REASON+= "The wayland SDK split requires package revision 4"
+.  if ${PKGREVISION} != ${WAYLAND_DEVEL_REVISION}
+PKG_FAIL_REASON+= "The wayland SDK split requires package revision ${WAYLAND_DEVEL_REVISION}"
 .  endif
 .elif ${PKGREVISION} != ${WAYLAND_RUNTIME_REVISION}
 PKG_FAIL_REASON+= "The wayland runtime split requires package revision ${WAYLAND_RUNTIME_REVISION}"

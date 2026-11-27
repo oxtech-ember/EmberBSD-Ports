@@ -35,4 +35,7 @@ BUILDLINK_API_DEPENDS.qt6-qtbase+=	qt6-qtbase>=6.12.0
 CMAKE_CONFIGURE_ARGS+=	-DEMBER_WIREGUARD_LRELEASE:FILEPATH=${QT_HOST_PATH}/bin/lrelease
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

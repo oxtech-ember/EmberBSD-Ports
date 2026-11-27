@@ -19,4 +19,7 @@ DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

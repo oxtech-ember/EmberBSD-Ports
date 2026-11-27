@@ -111,4 +111,7 @@ BUILDLINK_API_DEPENDS.nettle+=		nettle>=3.10
 .include "../../security/nettle/buildlink3.mk"
 .include "../../textproc/libunistring/buildlink3.mk"
 .include "../../mk/readline.buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

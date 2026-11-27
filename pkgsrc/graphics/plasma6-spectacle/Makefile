@@ -37,4 +37,7 @@ post-extract:
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../devel/qt6-qtwayland/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

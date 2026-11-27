@@ -56,4 +56,7 @@ BUILDLINK_API_DEPENDS.libassuan+=	libassuan>=3.0.0
 .include "../../security/libassuan2/buildlink3.mk"
 BUILDLINK_API_DEPENDS.libksba+=		libksba>=1.6.3
 .include "../../security/libksba/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

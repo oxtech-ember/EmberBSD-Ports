@@ -58,4 +58,7 @@ PREFER.gettext=	pkgsrc
 .include "../../devel/libffi/buildlink3.mk"
 .include "../../devel/meson/build.mk"
 .include "../../security/libtasn1/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

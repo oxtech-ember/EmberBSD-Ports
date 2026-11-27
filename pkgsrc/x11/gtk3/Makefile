@@ -133,4 +133,7 @@ BUILDLINK_API_DEPENDS.libepoxy+=	libepoxy>=1.4
 PKGREVISION=	5
 .endif
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	6	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

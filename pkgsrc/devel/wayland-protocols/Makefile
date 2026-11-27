@@ -33,4 +33,7 @@ MESON_BINARY.wayland_scanner=		${TOOLBASE}/bin/wayland-scanner
 .include "../../devel/meson/build.mk"
 BUILDLINK_API_DEPENDS.wayland+= wayland>=1.26.0nb1
 .include "../../devel/wayland/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

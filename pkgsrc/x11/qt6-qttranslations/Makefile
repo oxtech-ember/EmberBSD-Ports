@@ -12,4 +12,7 @@ QT_TARGET_METADATA_MODE= translations
 .include "../../x11/qt6-qtbase/Makefile.common"
 
 .include "../../devel/qt6-qttools/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

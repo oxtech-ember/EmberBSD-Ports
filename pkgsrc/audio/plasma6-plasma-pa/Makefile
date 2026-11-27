@@ -39,4 +39,7 @@ DEPENDS+= kf6-kitemmodels>=6.31.0:../../devel/kf6-kitemmodels
 PKGREVISION=	1
 .endif
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

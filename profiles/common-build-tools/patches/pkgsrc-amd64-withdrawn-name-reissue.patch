@@ -1,0 +1,40 @@
+--- a/devel/boost-headers/Makefile
++++ b/devel/boost-headers/Makefile
+@@ -30,4 +30,7 @@
+ 
+ PTHREAD_OPTS+=		require
+ .include "../../mk/pthread.buildlink3.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	3	# Reissue: the earlier amd64 name is in a released record.
++.endif
+ .include "../../mk/bsd.pkg.mk"
+--- a/multimedia/libass/Makefile
++++ b/multimedia/libass/Makefile
+@@ -31,4 +31,7 @@
+ PKGREVISION=	2
+ .endif
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	3	# Reissue: the earlier amd64 name is in a released record.
++.endif
+ .include "../../mk/bsd.pkg.mk"
+--- a/security/libksba/Makefile
++++ b/security/libksba/Makefile
+@@ -27,4 +27,7 @@
+ .include "../../security/libgcrypt/buildlink3.mk"
+ BUILDLINK_API_DEPENDS.libgpg-error+=	libgpg-error>=1.28
+ .include "../../security/libgpg-error/buildlink3.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	2	# Reissue: the earlier amd64 name is in a released record.
++.endif
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/libxslt/Makefile
++++ b/textproc/libxslt/Makefile
+@@ -43,4 +43,7 @@
+ .include "../../security/libgcrypt/buildlink3.mk"
+ BUILDLINK_API_DEPENDS.libxml2+=	libxml2>=2.15.4
+ .include "../../textproc/libxml2/buildlink3.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
++PKGREVISION=	7	# Reissue: the earlier amd64 name is in a released record.
++.endif
+ .include "../../mk/bsd.pkg.mk"

@@ -65,4 +65,7 @@ BUILDLINK_DEPMETHOD.re2=		build
 .endif
 BUILDLINK_API_DEPENDS.spirv-headers+=	spirv-headers>=1.4.363.0nb1
 .include "../../parallel/spirv-headers/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	6	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

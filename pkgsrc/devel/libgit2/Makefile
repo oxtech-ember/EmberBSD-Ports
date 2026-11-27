@@ -63,4 +63,7 @@ PKGREVISION=	5	# Withdrawn AArch64 package name.
 .include "../../lang/python/pyversion.mk"
 .include "../../www/curl/buildlink3.mk"
 .include "../../www/http-parser/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	5	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

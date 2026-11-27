@@ -52,6 +52,9 @@ CONFIGURE_ENV+= QC_CERTSTORE_PATH=${PREFIX}/share/mozilla-rootcerts/cacert.pem
 pre-configure:
 	${TEST} -f ${CROSS_DESTDIR}${PREFIX}/share/mozilla-rootcerts/cacert.pem
 .endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	4	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"
 
 # qt6 insists on a UTF locale, override setting C in bsd.pkg.mk
