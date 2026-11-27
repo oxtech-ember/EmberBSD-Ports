@@ -19,6 +19,11 @@ USE_LANGUAGES=	c
 # This Wayland profile omits external thumbnailers.
 MESON_ARGS+=	-Dbubblewrap=disabled
 
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+PKGREVISION=	2	# Remove target sysroot paths from runtime metadata.
+.endif
+
 
 # The CinnamonDesktop-3.0 and CDesktopEnums-3.0 typelibs are imported
 # by the shell JS (wall clock, keybindings).

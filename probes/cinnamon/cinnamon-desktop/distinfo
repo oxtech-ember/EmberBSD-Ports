@@ -7,4 +7,4 @@ Size (6.8.1.tar.gz) = 319535 bytes
 SHA1 (patch-libcinnamon-desktop_gnome-desktop-utils.h) = 6ecae5d723ff7384ca4ac1eacf1bd9d7b34b028e
 SHA1 (patch-libcinnamon-desktop_meson.build) = c96277f42a4052c658c4bde5610357832e4947f2
 SHA1 (patch-libcvc_meson.build) = 113b233251a565babfe9ca1e225c18293ce0d7e8
-SHA1 (patch-meson.build) = 43440cd33876b038eb258a1ba1bd066bcd75b291
+SHA1 (patch-meson.build) = efd0a2e0d58544428264ce70a47d95faf84ebce8

@@ -1,7 +1,10 @@
 $NetBSD$
 
 Wayland profile removes unused GTK3, GdkPixbuf and RandR dependencies.
-Require Meson 1.2 for the cross GI environment argument.
+Require Meson 1.4 for the cross runtime-path normalization.
+
+Origin: EmberBSD (AI-assisted). Preserve provider runtime paths during cross
+builds while removing only an exact pkg-config sysroot boundary.
 
 --- meson.build.orig
 +++ meson.build
@@ -10,7 +13,7 @@ Require Meson 1.2 for the cross GI environment argument.
  
  # https://github.com/linuxmint/cinnamon-desktop
 -project('cinnamon-desktop', 'c', version : '6.8.1', meson_version : '>=0.56.0')
-+project('cinnamon-desktop', 'c', version : '6.8.1', meson_version : '>=1.2.0')
++project('cinnamon-desktop', 'c', version : '6.8.1', meson_version : '>=1.4.0')
  
  # Before making a release, the LT_VERSION string should be modified.
  # The string is of the form C.R.A.
@@ -51,3 +54,37 @@ Require Meson 1.2 for the cross GI environment argument.
  ]
  
  if have_bwrap
+@@ -81,8 +75,25 @@
+ 
+ use_alsa = get_option('alsa')
+ 
++runtime_sysroot = meson.is_cross_build() ? meson.get_external_property('sys_root', '') : ''
++runtime_root_prefix = runtime_sysroot.endswith('/') ? runtime_sysroot : runtime_sysroot + '/'
+ xkb_base = xkbconf.get_variable(pkgconfig: 'xkb_base')
+ iso_codes_prefix = iso_codes.get_variable(pkgconfig: 'prefix')
++runtime_path_names = ['xkb_base', 'iso_codes_prefix']
++if have_bwrap
++  fontconfig_cache_path = fontconfig.get_variable(pkgconfig: 'cachedir')
++  runtime_path_names += ['fontconfig_cache_path']
++endif
++if runtime_sysroot not in ['', '/']
++  foreach name : runtime_path_names
++    path = get_variable(name)
++    if path == runtime_sysroot or path.startswith(runtime_root_prefix)
++      relative = import('fs').relative_to(path, runtime_sysroot)
++      path = relative == '.' ? '/' : '/' / relative
++      set_variable(name, path)
++    endif
++  endforeach
++endif
+ 
+ ################################################################################
+ # Config
+@@ -109,7 +120,7 @@
+ conf.set('ENABLE_SECCOMP',      have_bwrap)
+ conf.set('_GNU_SOURCE',         have_bwrap)
+ if have_bwrap
+-  conf.set_quoted('FONTCONFIG_CACHE_PATH', fontconfig.get_variable(pkgconfig: 'cachedir'))
++  conf.set_quoted('FONTCONFIG_CACHE_PATH', fontconfig_cache_path)
+ endif
+ ################################################################################
