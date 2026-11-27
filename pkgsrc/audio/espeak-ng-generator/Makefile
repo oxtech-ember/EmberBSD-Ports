@@ -19,8 +19,9 @@ LICENSE=	gnu-gpl-v3 AND apache-2.0 AND 2-clause-bsd AND unicode
 ESPEAK_GENERATOR_VERSION=	1.52.0
 
 # The generated tables contain native integer fields. They match the
-# aarch64 target only for an accepted host ABI.
-ONLY_FOR_PLATFORM=	Darwin-*-aarch64
+# target only for an accepted host ABI: Darwin aarch64 for aarch64, and an
+# EmberBSD amd64 host for the amd64 target, which has the same ABI.
+ONLY_FOR_PLATFORM=	Darwin-*-aarch64 NetBSD-*-x86_64
 
 USE_TOOLS+=	autoconf automake autoreconf gmake
 GNU_CONFIGURE=	yes
@@ -43,14 +44,21 @@ PKG_FAIL_REASON+=	"${PKGNAME} must be eSpeak NG ${ESPEAK_GENERATOR_VERSION}"
 .endif
 
 # The autotools build omits upstream's macOS endian compatibility include.
-# Expose only endian.h: the compatibility wctype.h breaks libc++.
+# Expose only endian.h: the compatibility wctype.h breaks libc++. EmberBSD
+# has its own endian.h.
+.if ${OPSYS} == "Darwin"
 ESPEAK_COMPAT=	${WRKDIR}/compat
 CPPFLAGS+=	-I${ESPEAK_COMPAT}
+.endif
+# The BSD declarations of the EmberBSD headers that eSpeak NG uses.
+CPPFLAGS.NetBSD+=	-D_NETBSD_SOURCE
 
 # Makefile.am: error: required file './AUTHORS' not found
 pre-configure:
+.if ${OPSYS} == "Darwin"
 	${MKDIR} ${ESPEAK_COMPAT}
 	${LN} -sf ${WRKSRC}/src/include/compat/endian.h ${ESPEAK_COMPAT}/endian.h
+.endif
 	set -e; cd ${WRKSRC} && touch AUTHORS NEWS && autoreconf -fi
 
 post-build:
