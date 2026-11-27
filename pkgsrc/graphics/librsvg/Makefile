@@ -58,6 +58,16 @@ post-install:
 
 .include "cargo-depends.mk"
 
+# NetBSD target builds do not link the Windows GNU import archives.
+# Keep normal extraction for native and non-NetBSD targets.
+.if ${OPSYS} == "NetBSD" && \
+    (${NATIVE_OPSYS} == "Darwin" || ${NATIVE_OPSYS} == "Linux" || \
+    ${NATIVE_OPSYS} == "NetBSD")
+.for crate in ${CARGO_CRATE_DEPENDS:Mwinapi-*-pc-windows-gnu-*}
+EXTRACT_OPTS_TAR.${crate}.crate= --exclude=*/lib/*.a
+.endfor
+.endif
+
 .include "../../devel/meson/build.mk"
 BUILDLINK_DEPMETHOD.gobject-introspection+=	build
 .include "../../devel/gobject-introspection/buildlink3.mk"
