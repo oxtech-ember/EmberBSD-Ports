@@ -16,14 +16,17 @@ pkgsrc=$1 makeconf=$2 pkgpath=${3:-lang/php86}
 bm() { MAKECONF=$makeconf "${BMAKE:-bmake}" -C "$pkgsrc/$pkgpath" MAKECONF="$makeconf" "$@"; }
 [ "$(bm -V '${USE_CROSS_COMPILE:Uno:tl}')" = yes ] ||
 	{ echo "$0: select a MAKECONF for a cross build" >&2; exit 2; }
-build_cc=
-for a in $(bm -V '${CONFIGURE_ENV:MBUILD_CC=*}'); do build_cc=${a#BUILD_CC=}; done
-[ -n "$build_cc" ] || { echo "FAIL: configure gets no BUILD_CC"; exit 1; }
+assignment=$(bm -V '${CONFIGURE_ENV:MBUILD_CC=*}')
+# Read the single shell-quoted assignment exactly as configure receives it.
+eval "set -- $assignment"
+[ "$#" -eq 1 ] && [ "${1#BUILD_CC=}" != "$1" ] ||
+	{ echo "FAIL: configure needs one BUILD_CC assignment"; exit 1; }
+build_cc=${1#BUILD_CC=}
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/php-build-cc.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
-printf 'int main(void) { return 42; }\n' >"$tmp/probe.c"
+printf '#include <math.h>\nint main(void) { return (int)sqrt(1764.0); }\n' >"$tmp/probe.c"
 # BUILD_CC is a command line that configure stores unquoted in the Makefile.
-eval "$build_cc \"\$tmp/probe.c\" -o \"\$tmp/probe\"" >"$tmp/cc.log" 2>&1 ||
+eval "$build_cc \"\$tmp/probe.c\" -lm -o \"\$tmp/probe\"" >"$tmp/cc.log" 2>&1 ||
 	{ tail -3 "$tmp/cc.log"; echo "FAIL: BUILD_CC '$build_cc' cannot build a program"; exit 1; }
 status=0
 "$tmp/probe" 2>/dev/null || status=$?

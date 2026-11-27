@@ -24,11 +24,8 @@ CONFIGURE_ENV+=		lt_cv_path_SED=${SED:Q}
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # The opcache JIT runs minilua, built with BUILD_CC, on the build machine.
 # configure's default "gcc" is the target compiler wrapper in a cross build.
-.  if defined(EMBERBSD_CROSS_BUILD_CC)
-CONFIGURE_ENV+=		BUILD_CC=${EMBERBSD_CROSS_BUILD_CC:Q}
-.  else
 CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
-.  endif
+MAKE_FLAGS+=		BUILD_CC=${NATIVE_CC:Q}
 # ext/phar runs PHP to make phar.php and phar.phar and prefers the
 # sapi/cli/php it has just linked, a target executable in a cross build.
 # Run the native php of the same version in TOOLBASE instead.

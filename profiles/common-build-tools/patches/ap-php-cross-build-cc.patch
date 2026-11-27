@@ -10,18 +10,15 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/www/ap-php/Makefile
 +++ b/www/ap-php/Makefile
-@@ -25,6 +25,16 @@
+@@ -25,6 +25,13 @@
  
  .include "${PHPPKGSRCDIR}/Makefile.php"
  
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +# The opcache JIT runs minilua, built with BUILD_CC, on the build machine.
 +# configure's default "gcc" is the target compiler wrapper in a cross build.
-+.  if defined(EMBERBSD_CROSS_BUILD_CC)
-+CONFIGURE_ENV+=		BUILD_CC=${EMBERBSD_CROSS_BUILD_CC:Q}
-+.  else
 +CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
-+.  endif
++MAKE_FLAGS+=		BUILD_CC=${NATIVE_CC:Q}
 +.endif
 +
  # Ensure we export symbols in the linked shared object.
