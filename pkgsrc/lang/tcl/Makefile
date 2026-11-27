@@ -59,6 +59,23 @@ SUBST_STAGE.tcl-config=	post-build
 SUBST_FILES.tcl-config=	unix/tclConfig.sh
 SUBST_SED.tcl-config+=	-e "s|${WRKSRC}/unix|${TCL_PREFIX}/lib|"
 SUBST_SED.tcl-config+=	-e "s|${WRKSRC}|${TCL_PREFIX}/include/tcl|"
+# Do not ship build-tree paths from the bundled extension config files.
+# Installed consumers use the non-BUILD *_LIB_SPEC and *_INCLUDE_SPEC values;
+# keep their build counterparts usable from the installed prefix as well.
+SUBST_CLASSES+=		ext-config
+SUBST_STAGE.ext-config=	post-build
+SUBST_FILES.ext-config=	unix/pkgs/itcl${ITCL_VERSION}/itclConfig.sh
+SUBST_FILES.ext-config+=	unix/pkgs/tdbc${TDBC_VERSION}/tdbcConfig.sh
+SUBST_SED.ext-config+=	-e "s|${WRKSRC}/unix/pkgs/itcl${ITCL_VERSION}|${TCL_PREFIX}/lib/itcl${ITCL_VERSION}|g"
+SUBST_SED.ext-config+=	-e "s|^itcl_SRC_DIR=.*|itcl_SRC_DIR='${TCL_PREFIX}/lib/itcl${ITCL_VERSION}'|"
+SUBST_SED.ext-config+=	-e "s|^ITCL_SRC_DIR=.*|ITCL_SRC_DIR='${TCL_PREFIX}/lib/itcl${ITCL_VERSION}'|"
+SUBST_SED.ext-config+=	-e "s|${WRKSRC}/pkgs/itcl${ITCL_VERSION}/generic|${TCL_PREFIX}/include|g"
+SUBST_SED.ext-config+=	-e "s|${WRKSRC}/unix/pkgs/tdbc${TDBC_VERSION}|${TCL_PREFIX}/lib/tdbc${TDBC_VERSION}|g"
+SUBST_SED.ext-config+=	-e "s|^tdbc_SRC_DIR=.*|tdbc_SRC_DIR=\"${TCL_PREFIX}/lib/tdbc${TDBC_VERSION}\"|"
+SUBST_SED.ext-config+=	-e "s|^TDBC_SRC_DIR=.*|TDBC_SRC_DIR=\"${TCL_PREFIX}/lib/tdbc${TDBC_VERSION}\"|"
+SUBST_SED.ext-config+=	-e "s|${WRKSRC}/pkgs/tdbc${TDBC_VERSION}/library|${TCL_PREFIX}/lib/tdbc${TDBC_VERSION}|g"
+SUBST_SED.ext-config+=	-e "s|${WRKSRC}/pkgs/tdbc${TDBC_VERSION}/generic|${TCL_PREFIX}/include|g"
+SUBST_SED.tcl-config+=	-e "s|^TCL_RANLIB=.*|TCL_RANLIB='ranlib'|"
 
 # Fix the exec path in bin/sqlite3_analyzer:
 #

@@ -1,0 +1,13 @@
+$NetBSD$
+
+Avoid embedding the build directory in the installed Tcl library.  Runtime
+lookup uses CFG_RUNTIME_SCRDIR/TCL_LIBRARY; tests provide TCL_LIBRARY in
+SHELL_ENV, so the build-time fallback does not need an absolute path.
+
+--- unix/Makefile.in.orig
++++ unix/Makefile.in
+@@ -1411,2 +1411,2 @@ tclInterp.o: $(GENERIC_DIR)/tclInterp.c
+-		-DTCL_BUILDTIME_SCRDIR="\"$(TCL_BUILDTIME_LIBRARY)\"" \
+-		-DTCL_BUILDTIME_BINDIR="\"$(ABS_BUILD_DIR)\"" \
++		-DTCL_BUILDTIME_SCRDIR="\"\"" \
++		-DTCL_BUILDTIME_BINDIR="\"\"" \
