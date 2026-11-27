@@ -1,0 +1,41 @@
+Keep the native libtool C tag on the plain selected compiler.
+Autoconf appended its C23 option to CC, so the generated tag held
+"clang -std=gnu23". Packages whose build calls the compiler without that
+option then stopped with "specify a tag with '--tag'" (libdvdplay on
+native EmberBSD). cross-libtool-plain-c-tag.patch fixes the cross script.
+Consumers require the new revision, so hosts replace the installed script.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/devel/libtool-base/Makefile
++++ b/devel/libtool-base/Makefile
+@@ -31,7 +31,7 @@
+ .include "../../devel/libtool/Makefile.common"
+ 
+ PKGNAME=	${DISTNAME:S/-/-base-/}
+-PKGREVISION=	4
++PKGREVISION=	5
+ 
+ COMMENT=	Generic shared library support script (the script itself)
+ 
+@@ -64,6 +64,10 @@
+ # The installed native script must retain the selected archive tools.
+ CONFIGURE_ENV+= AR=${AR:Q} RANLIB=${RANLIB:Q} NM=${NM:Q} STRIP=${STRIP:Q}
+ .endif
++# Keep the C tag on the plain selected compiler. Autoconf would append its
++# C23 option, and libtool then cannot infer the tag for consumers that call
++# the compiler without that option.
++CONFIGURE_ENV+=	ac_cv_prog_cc_c23=
+ 
+ # libtoolize discovers GNU M4 at runtime; host tools do not satisfy this.
+ DEPENDS+=		m4>=1.4.21:../../devel/m4
+--- a/mk/bsd.pkg.use.mk
++++ b/mk/bsd.pkg.use.mk
+@@ -131,7 +131,7 @@
+ TOOL_DEPENDS+=		libtool-base>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-base
+ _LIBTOOL_PROVIDER_FLOORS+= libtool-base>=${LIBTOOL_REQD}:../../devel/libtool-base \
+ 	libtool-base>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../devel/libtool-base \
+-	libtool-base>=2.6.2nb2:../../devel/libtool-base
++	libtool-base>=2.6.2nb5:../../devel/libtool-base
+ .endif
+ .for _libtool_floor_dep in ${_LIBTOOL_PROVIDER_FLOORS}
+ .  if empty(TOOL_DEPENDS:M${_libtool_floor_dep})
