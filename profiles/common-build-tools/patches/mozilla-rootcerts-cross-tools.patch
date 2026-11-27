@@ -8,10 +8,10 @@
  
 +.include "../../mk/bsd.prefs.mk"
 +
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++.if ${OPSYS} == "NetBSD" && \
 +    !empty(OS_VERSION:M11.*)
 +# NetBSD 11 full base supplies the installed script's standard utilities.
-+# The compiler SDK contains headers and libraries, not base executables.
++# Cross and native builds use them; the SDK has no base executables.
 +# Reclassify only this consumer's named tools. Other :run guards stay active.
 +.for _rootcerts_tool_ in awk echo expr ln ls openssl rm mkdir
 +USE_TOOLS:= ${USE_TOOLS:N${_rootcerts_tool_}\:run}
