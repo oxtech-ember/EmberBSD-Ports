@@ -1,0 +1,35 @@
+--- a/net/avahi/Makefile
++++ b/net/avahi/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=		10
++PKGREVISION=		12
+ 
+ MAINTAINER=		pkgsrc-users@NetBSD.org
+ COMMENT=		Facilitate service discovery on a local network
+@@ -14,8 +14,6 @@
+ PKG_GECOS.${AVAHI_USER}=	Avahi user
+ 
+ RCD_SCRIPTS=		avahidaemon
+-
+-PLIST_SRC+=		${PKGDIR}/PLIST.shared
+ 
+ CONF_FILES+=		${PREFIX}/share/examples/avahi/avahi-daemon.conf \
+ 			${PKG_SYSCONFDIR}/avahi-daemon.conf
+@@ -41,8 +39,4 @@
+ 	${INSTALL_DATA} ${WRKSRC}/docs/README ${DESTDIR}${PREFIX}/share/doc/avahi
+ 	${INSTALL_DATA} ${WRKSRC}/docs/TODO ${DESTDIR}${PREFIX}/share/doc/avahi
+ 
+-.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+-PKGREVISION=	11
+-.endif
+-
+ .include "../../mk/bsd.pkg.mk"
+--- a/net/avahi/PLIST.shared
++++ /dev/null
+@@ -1,3 +0,0 @@
+-@comment $NetBSD: PLIST.shared,v 1.3 2009/06/14 21:00:03 joerg Exp $
+-@unexec ${RMDIR} %D/etc/avahi/services 2>/dev/null || ${TRUE}
+-@unexec ${RMDIR} %D/etc/avahi 2>/dev/null || ${TRUE}
