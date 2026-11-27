@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.8 2026/09/06 10:23:30 markd Exp $
 
 DISTNAME=	ksshaskpass-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	security
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -9,8 +10,10 @@ LICENSE=	gnu-gpl-v2
 
 .include "../../meta-pkgs/kde/plasma6.mk"
 
-# kf6-kdoctools-generators is already installed and conflicts with the full package.
 USE_TOOLS+=	msgmerge
+
+# The manual page needs KDocTools, which CMake finds only when it is present.
+.include "../../devel/kf6-kdoctools/tools.mk"
 
 .include "../../security/kf6-kwallet/buildlink3.mk"
 .include "../../security/qt6-qtkeychain/buildlink3.mk"
