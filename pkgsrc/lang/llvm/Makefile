@@ -106,7 +106,7 @@ BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 PKG_FAIL_REASON+= "The LLVM SDK role belongs to lang/llvm-devel"
 .endif
 PKGNAME= llvm-devel-${LLVM_VERSION}
-PKGREVISION= 1
+PKGREVISION= 2	# The SDK tools depend on the target C++ runtime.
 COMMENT= LLVM target SDK for the development-host sysroot
 DISTINFO_FILE= ${EMBERBSD_LLVM_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_LLVM_PKGDIR}/patches
@@ -151,11 +151,14 @@ PLIST_SRC= ${LLVM_RUNTIME_PLIST_SRC}
 USE_TOOLS+= perl:build
 .endif
 
-# Only the normal shared NetBSD target runtime consumes the selected C++ ABI.
+# The shared NetBSD target runtime and the SDK tools built with it use the
+# selected C++ ABI. Both partitions link libc++, libc++abi and libunwind.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     (${MACHINE_ARCH} == "x86_64" || ${MACHINE_ARCH} == "aarch64") && \
-    ${PKGPATH} == "lang/llvm" && ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang" && \
-    ${LLVM_PACKAGE_PART:U} == "runtime" && ${LLVM_BUILD_LLVM_DYLIB:UOFF:tu} == "ON"
+    ((${PKGPATH} == "lang/llvm" && ${LLVM_PACKAGE_PART:U} == "runtime") || \
+    (${PKGPATH} == "lang/llvm-devel" && ${LLVM_PACKAGE_PART:U} == "devel")) && \
+    ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang" && \
+    ${LLVM_BUILD_LLVM_DYLIB:UOFF:tu} == "ON"
 .include "../../lang/compiler-rt/application-runtime.mk"
 .endif
 
