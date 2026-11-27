@@ -306,7 +306,22 @@ while IFS= read -r file; do
 	*)
 		set -f
 		# shellcheck disable=SC2086
-		sed -E $edit "$file" > "$scratch/out"
+		case "$file" in
+		*.la)
+			# Like pkgsrc libtool-fix-la, drop the temporary library search
+			# directory from installed dependency_libs. Keep target -L flags.
+			if [ -z "${libtool_edit+x}" ]; then
+				libtool_edit=
+				for root in $builddirs; do
+					[ -d "$root/.buildlink/lib" ] || continue
+					quoted=$(sed_quote "$root")
+					libtool_edit="$libtool_edit -e /^dependency_libs=/s#(['[:space:]])-L$quoted/\\.buildlink/lib(['[:space:]]|$)#\\1\\2#g"
+				done
+			fi
+			sed -E $edit -e ':libdir' $libtool_edit -e 't libdir' "$file"
+			;;
+		*)	sed -E $edit "$file" ;;
+		esac > "$scratch/out"
 		set +f
 		if ! cmp -s "$scratch/out" "$file"; then
 			if [ -w "$file" ]; then

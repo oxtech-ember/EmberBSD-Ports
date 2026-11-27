@@ -196,6 +196,12 @@ Path(sys.argv[2]).write_text(t[i:n2 + 1])
 PY
 
 
+# Installed libtool consumers use target libraries. The buildlink search path
+# can appear more than once, including next to another copy of the flag.
+cat > "$dest/usr/pkg/lib/libconsumer.la" <<LA
+dependency_libs='-L$wrk/.buildlink/lib -L$wrk/.buildlink/lib -L$sysroot/usr/pkg/lib -lprovider'
+LA
+
 # CMake .buildlink forms: quoted, unquoted if(...), and ;-separated list
 cat > "$dest/usr/pkg/lib/cmake/Example/ExampleTargets.cmake" <<CM
 set_target_properties(Example::Example PROPERTIES
@@ -354,6 +360,12 @@ grep -q 'regenerated python sysconfig bytecode' "$work/run1.log" || \
 grep -q 'skipping binary file /usr/pkg/bin/blob-config' "$work/run1.log" || fail 'binary *-config not skipped'
 cmp -s "$dest/usr/pkg/bin/blob-config" "$work/blob.expected" || fail 'binary *-config was corrupted'
 
+(
+    . "$dest/usr/pkg/lib/libconsumer.la"
+    set -- $dependency_libs
+    [ "$#" -eq 2 ] && [ "$1" = -L/usr/pkg/lib ] && [ "$2" = -lprovider ]
+) || fail 'libtool dependency flags differ from the target flags'
+
 # Idempotent second run
 cp "$pc" "$work/qalc.once"
 run_hook > "$work/run2.log" 2>&1 || fail 'second run fails'
@@ -391,6 +403,13 @@ if run_hook > "$work/sysrootflag.log" 2> "$work/sysrootflag.err"; then
 fi
 grep -Eq 'build-host path|names build directory|--sysroot|/sysroot/' "$work/sysrootflag.err" ||
 	fail 'foreign --sysroot= rejection missing'
+
+# A different directory under .buildlink can contain private linker inputs.
+stage
+printf "dependency_libs='-L%s/.buildlink/lib/staging -lprovider'\n" "$wrk" > "$dest/usr/pkg/lib/libinvalid.la"
+if run_hook > "$work/libtool.log" 2> "$work/libtool.err"; then
+	fail 'libtool accepted a private search directory'
+fi
 
 # WRKOBJDIR/work path that is not rewritten must be refused.
 stage
