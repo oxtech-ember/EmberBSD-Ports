@@ -28,6 +28,9 @@ CMAKE_CONFIGURE_ARGS+=	-DBUILD_AppStreamPreviewBackend=OFF
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_KF6NewStuff=ON
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_KF6Attica=ON
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_packagekitqt6=ON
+# Telemetry stays off. A native build otherwise finds an installed
+# KUserFeedback outside the buildlink tree and then misses its headers.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_KF6UserFeedback=ON
 # libDiscoverCommon and libDiscoverNotifiers are installed under
 # lib/plasma-discover. The executable must search that directory.
 LDFLAGS+=		${COMPILER_RPATH_FLAG}${PREFIX}/lib/plasma-discover
