@@ -1869,7 +1869,14 @@ exclusive()
     xkey=$1
     shift
     : > "$run/$xkey.replace"
-    until [ -f "$run/$xkey.replacing" ]; do sleep 1; done
+    until [ -f "$run/$xkey.replacing" ]; do
+        # A worker subshell keeps the scheduler's PID in $$.
+        if ! kill -0 "$$" 2>/dev/null; then
+            echo "Package scheduler exited before it approved replacement: $xkey" >&2
+            return 1
+        fi
+        sleep 1
+    done
     xrc=0
     "$@" || xrc=$?
     rm -f "$run/$xkey.replacing"

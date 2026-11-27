@@ -144,4 +144,29 @@ for p in t/a t/b l/perl t/x l/libffi@native; do
     grep -q "^$p " "$out/state/done" || fail "$p not done: $(cat "$out/state/done")"
 done
 [ ! -s "$out/overlaps" ] || fail "a replace ran with other jobs: $(sort -u "$out/overlaps" | tr '\n' ';')"
+
+# A parked worker must leave the prefix alone if its scheduler exits.
+mkdir "$out/lost-scheduler"
+sed -n '/^exclusive()$/,/^}/p' "$ports/scripts/cross-bulk.sh" > "$out/park-worker.sh"
+cat >> "$out/park-worker.sh" <<'WORKER'
+run=$1
+(
+    if exclusive parked touch "$run/changed-prefix"; then
+        echo installed
+    else
+        echo stopped
+    fi > "$run/outcome"
+) &
+while [ ! -f "$run/parked.replace" ]; do sleep 0.1; done
+WORKER
+sh "$out/park-worker.sh" "$out/lost-scheduler"
+for attempt in 1 2 3 4 5; do
+    [ ! -s "$out/lost-scheduler/outcome" ] || break
+    sleep 1
+done
+if ! grep -qx stopped "$out/lost-scheduler/outcome"; then
+    touch "$out/lost-scheduler/parked.replacing"
+    fail 'worker still expects a replacement grant from the dead scheduler'
+fi
+[ ! -e "$out/lost-scheduler/changed-prefix" ] || fail 'orphan replaced a package'
 echo 'PASS: a native or target replace runs alone; the other jobs finish first'
