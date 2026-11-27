@@ -71,7 +71,13 @@ missing = build('missing.so', '$ORIGIN/nonexistent')
 # Run old control as well: it must fail to resolve the real origin dependency.
 old_checker = args.pkgsrc / 'mk/check/check-shlibs-elf.awk'
 pkg_info = args.work / 'pkg-info'
-pkg_info.write_text('#!' + str(args.shell) + '\nprintf "diagnostic-1.0\\n"\n')
+pkg_info.write_text('#!' + str(args.shell) + '''
+case "$1" in
+    -Fe) echo diagnostic-1.0 ;;
+    -qr) echo writer-1.2 ;;
+    *) exit 1 ;;
+esac
+''')
 pkg_info.chmod(0o755)
 depends = args.work / 'depends'
 depends.write_text('')
@@ -168,6 +174,10 @@ check(external_consumer, expected='not a runtime dependency', builtin='unrelated
       system_rpath='/usr/lib')
 assert check(external_consumer, dependency='indirect-full ignored diagnostic-1.0\n', **builtin) == [
     '/usr/pkg/lib/external/libdiagnostic.so.1']
+assert check(external_consumer, dependency='full writer>=1.0 writer-1.1\n', **builtin) == [
+    '/usr/pkg/lib/external/libdiagnostic.so.1']
+check(external_consumer, expected='not a runtime dependency',
+      dependency='build writer>=1.0 writer-1.2\n')
 assert check(external_consumer, dependency='full diagnostic>=0.9 diagnostic-0.9\n', **builtin) == [
     '/usr/pkg/lib/external/libdiagnostic.so.1']
 assert check(external_consumer, dependency='full diagnostic>=2.0 diagnostic-2.1\n', **builtin) == [

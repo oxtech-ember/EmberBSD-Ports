@@ -1,6 +1,6 @@
 --- a/mk/check/check-shlibs-elf.awk
 +++ b/mk/check/check-shlibs-elf.awk
-@@ -68,40 +68,72 @@
+@@ -68,40 +68,87 @@
  	return out;
  }
  
@@ -30,8 +30,7 @@
 +	return pkg
 +}
 +
-+function dependency_role(pkg,    entry, fields, base, count, patterns, i, role) {
-+	if (pkg in resolved_roles) return resolved_roles[pkg]
++function declared_role(pkg,    entry, fields, base, count, patterns, i, role) {
 +	if (!dependencies_read) {
 +		while ((getline entry < depends_file) > 0) {
 +			if (split(entry, fields) < 3) continue
@@ -56,6 +55,22 @@
 +				break
 +			}
 +		}
++	}
++	return role
++}
++
++function dependency_role(pkg,    role, cmd, consumer, found, status) {
++	if (pkg in resolved_roles) return resolved_roles[pkg]
++	role = declared_role(pkg)
++	if (cross_destdir != "" && role != "runtime" && pkg != current_package) {
++		# The reduced dependency file can omit a provider required by a
++		# full dependency. Ask the target package database for its users.
++		cmd = pkg_info_cmd " -qr " shquote(pkg) " 2>/dev/null"
++		while ((cmd | getline consumer) > 0)
++			if (!found && consumer != "" && declared_role(consumer) == "runtime")
++				found = 1
++		status = close(cmd)
++		if (status == 0 && found) role = "runtime"
 +	}
 +	resolved_roles[pkg] = role
 +	return role
@@ -102,7 +117,7 @@
  }
  
  # Resolve staged aliases in the target namespace, including directory links.
-@@ -360,6 +392,7 @@
+@@ -360,6 +407,7 @@
  			}
  			if (!libcache[libfile]) {
  				logicalfile = cross_destdir != "" ? substr(libfile, length(cross_destdir) + 1) : libfile
@@ -110,7 +125,7 @@
  				check_external(DSO, logicalfile)
  				found = 1
  				break
-@@ -400,6 +433,13 @@
+@@ -400,6 +448,13 @@
  		if (plist_status < 0) { print "ELF metadata cannot read PACKAGE_PLIST"; exit 1 }
  	}
  	system_rpath = ENVIRON["PLATFORM_RPATH"]
