@@ -28,6 +28,8 @@ EMBERBSD_LLVM_PKGDIR:= ${.PARSEDIR:tA}
 
 PKGNAME=	llvm-${LLVM_VERSION}
 CATEGORIES=	lang devel
+# Both LLVM packages use this subproject before pkgsrc defines PKGBASE.
+WRKSRC=		${WRKDIR}/${DISTNAME}/llvm
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://llvm.org/
@@ -255,6 +257,24 @@ post-extract:
 	${CP} ../../mk/gnu-config/${f} ${WRKSRC}/cmake/${f}
 .endfor
 
+.endif
+
+# The final Ninja worker can use CPU slots that other packages release.
+# Keep the generator of a configured work directory across Ports updates.
+.if !empty(EMBERBSD_SDK_SOURCE) && !defined(CMAKE_GENERATOR)
+_llvm_cmake_work=	${WRKSRC}/${CMAKE_BUILD_DIR:Ucmake-pkgsrc-build}
+.  if exists(${_llvm_cmake_work}/CMakeCache.txt)
+.    if exists(${_llvm_cmake_work}/Makefile) && !exists(${_llvm_cmake_work}/build.ninja)
+CMAKE_GENERATOR=	make
+.    elif !exists(${_llvm_cmake_work}/build.ninja) || exists(${_llvm_cmake_work}/Makefile)
+# A failed configure can leave a cache without generated build files.
+CMAKE_GENERATOR!=	${SED} -n -e 's/^CMAKE_GENERATOR:INTERNAL=Unix Makefiles$$/make/p' \
+			    -e 's/^CMAKE_GENERATOR:INTERNAL=Ninja$$/ninja/p' ${_llvm_cmake_work:Q}/CMakeCache.txt
+.    endif
+.  endif
+.  if empty(CMAKE_GENERATOR)
+CMAKE_GENERATOR=	ninja
+.  endif
 .endif
 
 .include "../../devel/cmake/build.mk"

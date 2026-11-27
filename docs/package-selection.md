@@ -57,6 +57,9 @@ use the numeric budget. Makefile generators keep their normal make jobs.
 Concurrent Ninja calls in one adaptive worker share the same lock.
 Readers retain their initial allocations while two or more are active.
 
+The SDK uses Ninja for a new LLVM package build. LLVM keeps the generator of
+a configured work directory. An explicit `CMAKE_GENERATOR` selects the tool.
+
 The [tail measurement](../scripts/tests/cross-bulk-ninja-tail.py) runs five
 real Ninja builds with the selected native Clang, a recording pkgsrc fixture
 and the cross-bulk scheduler. Pass `--sdk-source SDK --host-prefix PREFIX`
