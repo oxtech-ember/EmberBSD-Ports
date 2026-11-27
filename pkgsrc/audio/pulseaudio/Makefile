@@ -42,6 +42,7 @@ MESON_ARGS+=		--sysconfdir=${PKG_SYSCONFBASEDIR}
 MESON_ARGS+=		-Dfftw=disabled
 MESON_ARGS+=		-Ddoxygen=false
 MESON_ARGS+=		-Dtests=false
+MESON_ARGS+=		-Drunning-from-build-tree=false
 PKGCONFIG_OVERRIDE+=	libpulse-mainloop-glib.pc.in
 PKGCONFIG_OVERRIDE+=	libpulse-simple.pc.in
 PKGCONFIG_OVERRIDE+=	libpulse.pc.in
