@@ -46,6 +46,8 @@ CMAKE_CONFIGURE_ARGS+=		-DWITH_GCRYPT:BOOL=ON
 .endif
 
 .if !empty(PKG_OPTIONS:Mtests)
+BUILDLINK_DEPMETHOD.cmocka=	build
+.include "../../devel/cmocka/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=		-DUNIT_TESTING=ON
 .else
 CMAKE_CONFIGURE_ARGS+=		-DUNIT_TESTING=OFF

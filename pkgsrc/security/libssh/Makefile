@@ -24,11 +24,5 @@ BUILDLINK_TRANSFORM+=	rm:-Werror=strict-overflow
 .include "options.mk"
 
 .include "../../devel/cmake/build.mk"
-# for examples only
-BUILDLINK_DEPMETHOD.argp=  build
-.include "../../devel/argp/buildlink3.mk"
-# for testing only
-BUILDLINK_DEPMETHOD.cmocka=  build
-.include "../../devel/cmocka/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
