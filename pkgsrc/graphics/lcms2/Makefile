@@ -41,7 +41,7 @@ post-install:
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-PKGREVISION=	3	# Record the base libc SONAME.
+PKGREVISION=	4	# Record the selected base zlib in the package requirements.
 .endif
 
 .include "../../mk/bsd.pkg.mk"
