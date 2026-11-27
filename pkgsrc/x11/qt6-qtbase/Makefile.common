@@ -201,6 +201,6 @@ post-install: qt-module-target-metadata
 qt-module-target-metadata:
 	${EMBERBSD_CROSS_BUILD_PYTHON:Q} -B ${.CURDIR:Q}/../../x11/qt6-qtbase/files/target-metadata.py \
 	    ${DESTDIR:Q}${QTPREFIX:Q} ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q} \
-	    ${TOOLBASE:Q} ${QT_TARGET_CC:Q} ${QT_TARGET_CXX:Q} --${QT_TARGET_METADATA_MODE:Q}
+	    ${TOOLBASE:Q} ${QT_TARGET_CC:Q} ${QT_TARGET_CXX:Q} ${TOOLDIR:Q} --${QT_TARGET_METADATA_MODE:Q}
 .endif
 .endif # EMBERBSD_QT_MAKEFILE_COMMON

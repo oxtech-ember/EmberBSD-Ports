@@ -44,7 +44,7 @@ for file in bin/qt-cmake bin/qt-cmake-create libexec/qt-cmake-private; do
     printf '#!/bin/sh\noriginal_cmake_path="/private/host/cmake"\n' > "$root/$file"
     chmod 755 "$root/$file"
 done
-"$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++
+"$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++ /target-tools
 [ ! -e "$root/bin/host-qmake" ] && [ ! -e "$root/mkspecs/preliminary" ]
 grep -qx 'QMAKE_CC = /usr/pkg/bin/clang' "$root/mkspecs/netbsd-g++/qmake.conf"
 grep -qx 'QMAKE_CXX = /usr/pkg/bin/clang++' "$root/mkspecs/netbsd-g++/qmake.conf"
@@ -57,18 +57,18 @@ grep -qx 'set(__qt_platform_initial_qt_host_path "")' "$root/lib/cmake/Qt6/Qt6De
 grep -Fqx 'INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/../include"' "$root/lib/cmake/Qt6/Qt6Targets.cmake"
 [ -x "$root/bin/qt-cmake" ]
 find "$root" -type f -exec cksum {} \; | sort > "$work/first"
-"$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++
+"$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++ /target-tools
 find "$root" -type f -exec cksum {} \; | sort > "$work/second"
 cmp "$work/first" "$work/second"
 printf 'unexpected = %s/unhandled\n' "$build" > "$root/mkspecs/invalid.pri"
-if "$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++ > "$work/reject.log" 2>&1; then
+if "$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++ /target-tools > "$work/reject.log" 2>&1; then
     echo 'unresolved build path was accepted' >&2; exit 1
 fi
 grep -q 'unresolved build path' "$work/reject.log"
 module="$work/staged module"
 mkdir -p "$module/lib/cmake/Qt6Svg"
 printf 'QMAKE_PRL_LIBS = -L"%s/usr/pkg/lib" -lGL\n' "$sysroot" > "$module/lib/libQt6Svg.prl"
-"$python" -B "$recipe/files/target-metadata.py" "$module" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++ --module
+"$python" -B "$recipe/files/target-metadata.py" "$module" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++ /target-tools --module
 grep -qx 'QMAKE_PRL_LIBS = -L"/usr/pkg/lib" -lGL' "$module/lib/libQt6Svg.prl"
 [ ! -e "$module/bin/qt.conf" ]
 echo 'PASS: target paths, generators, permissions, repeat install and host-path rejection'

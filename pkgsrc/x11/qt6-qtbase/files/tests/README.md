@@ -16,8 +16,9 @@ a local encrypted ping/pong exchange without changing the system trust store.
 
 Run `target-metadata-boundary.py HOST_PYTHON TARGET_METADATA_PY` with the
 selected host Python and this recipe's `target-metadata.py` to check exact
-buildlink, host-prefix, and selected target-compiler mappings, including parent,
-child, and similar-prefix paths.
+buildlink, host-prefix, and selected target-compiler mappings. In SPDX configure
+records, it checks the selected target sysroot and tool directory, their link
+destinations and physical paths, and similar prefixes.
 
 Run `shared-package-stage.sh` with the selected host Perl to check that the
 runtime selector retains a complete Qtbase stage, that the devel package gets

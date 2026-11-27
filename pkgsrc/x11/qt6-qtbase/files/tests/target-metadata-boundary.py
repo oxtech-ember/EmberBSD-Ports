@@ -18,9 +18,13 @@ with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
     work = pathlib.Path(temp) / 'work'
     sysroot = pathlib.Path(temp) / 'sysroot'
     host_tools = pathlib.Path(temp) / 'host-tools'
-    command = [sys.argv[1], '-B', sys.argv[2], str(root), str(sysroot), str(work),
+    tools = pathlib.Path(temp) / 'target-tools'
+    alias = pathlib.Path(temp) / 'sysroot-alias'
+    sysroot.mkdir()
+    alias.symlink_to(sysroot, target_is_directory=True)
+    command = [sys.argv[1], '-B', sys.argv[2], str(root), str(alias), str(work),
                '/usr/pkg', str(host_tools), '/usr/pkg/bin/clang',
-               '/usr/pkg/bin/clang++', '--module']
+               '/usr/pkg/bin/clang++', str(tools), '--module']
     sample.write_text(f'set(ROOT "{work}/.buildlink")\nset(CHILD "{work}/.buildlink/lib")\n'
                       'QMAKE_CC = /old/compiler\nQMAKE_CXX = /old/compiler++\n')
     subprocess.run(command, check=True)
@@ -42,9 +46,13 @@ with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
         'qtbase was configured with:\n'
         f'    qt6/configure -DROOT={work}/.buildlink/lib;{work}/.buildlink/include/python3.15 '
         f'-DCMAKE_FIND_ROOT_PATH={work}/.buildlink;{sysroot} '
+        f'-DCMAKE_AR:FILEPATH={tools}/bin/aarch64--netbsd-ar '
+        f'-DCMAKE_RANLIB:FILEPATH={tools}/bin/aarch64--netbsd-ranlib '
+        f'-DCMAKE_LIBRARY_PATH:STRING={alias}/usr/pkg/llvm/lib '
         f'-DHostPrefix={host_tools} '
         f'-DPython_EXECUTABLE={host_tools}/bin/python3.15 '
-        f'-DSimilarPrefix={host_tools}-extra/bin/tool -DCMAKE_SYSROOT={sysroot}\n'
+        f'-DSimilarPrefix={host_tools}-extra/bin/tool -DNeighbor={tools}-extra/bin/ar '
+        f'-DPHYSICAL={sysroot.resolve()} -DCMAKE_SYSROOT={sysroot}\n'
         '</text>\n'
     )
     external = pathlib.Path(temp) / 'external.spdx'
@@ -59,15 +67,20 @@ with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
         'LicenseConcluded: NOASSERTION\n'
         'qtbase was configured with:\n'
         '    qt6/configure -DROOT=/usr/pkg/lib;/usr/pkg/include/python3.15 '
-        f'-DCMAKE_FIND_ROOT_PATH=/usr/pkg;{sysroot} '
+        '-DCMAKE_FIND_ROOT_PATH=/usr/pkg;${SDK_TARGET_SYSROOT} '
+        '-DCMAKE_AR:FILEPATH=${SDK_TARGET_TOOLDIR}/bin/aarch64--netbsd-ar '
+        '-DCMAKE_RANLIB:FILEPATH=${SDK_TARGET_TOOLDIR}/bin/aarch64--netbsd-ranlib '
+        '-DCMAKE_LIBRARY_PATH:STRING=${SDK_TARGET_SYSROOT}/usr/pkg/llvm/lib '
         '-DHostPrefix=${SDK_NATIVE_PREFIX} '
         '-DPython_EXECUTABLE=${SDK_NATIVE_PREFIX}/bin/python3.15 '
-        f'-DSimilarPrefix={host_tools}-extra/bin/tool -DCMAKE_SYSROOT={sysroot}\n'
+        f'-DSimilarPrefix={host_tools}-extra/bin/tool -DNeighbor={tools}-extra/bin/ar '
+        '-DPHYSICAL=${SDK_TARGET_SYSROOT} -DCMAKE_SYSROOT=${SDK_TARGET_SYSROOT}\n'
         '</text>\n'
     )
     assert f'{host_tools}/' not in sbom.read_text()
     assert f'{host_tools}-extra/bin/tool' in sbom.read_text()
-    assert str(sysroot) in sbom.read_text()
+    assert str(sysroot) not in sbom.read_text()
+    assert str(alias) not in sbom.read_text()
     assert symlink.is_symlink() and external.read_text() == f'Unowned: {work}/.buildlink\n'
     sbom.write_text(
         'SPDXVersion: SPDX-2.3\n'

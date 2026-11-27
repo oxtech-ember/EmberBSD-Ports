@@ -289,7 +289,7 @@ post-install: qt-target-metadata
 qt-target-metadata:
 	${EMBERBSD_CROSS_BUILD_PYTHON:Q} -B ${FILESDIR:Q}/target-metadata.py \
 	    ${_QTBASE_METADATA_ROOT:Q} ${CROSS_DESTDIR:Q} ${WRKDIR:Q} \
-	    ${PREFIX:Q} ${TOOLBASE:Q} ${QT_TARGET_CC:Q} ${QT_TARGET_CXX:Q}
+	    ${PREFIX:Q} ${TOOLBASE:Q} ${QT_TARGET_CC:Q} ${QT_TARGET_CXX:Q} ${TOOLDIR:Q}
 
 .endif
 

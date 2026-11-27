@@ -85,13 +85,9 @@ def target(args):
     module = mode != ""
     if module:
         args = args[:-1]
-    if len(args) != 7:
-        fail(f"usage: {sys.argv[0]} STAGED_QT SYSROOT WORKDIR PREFIX HOST_TOOLS_PREFIX TARGET_CC TARGET_CXX [--module|--translations]")
-    root_arg, sysroot_arg, work_arg, prefix_arg, host_arg, target_cc_arg, target_cxx_arg = args
-    root, sysroot, work, prefix, host_prefix, target_cc, target_cxx = map(
-        absolute_nonroot,
-        (root_arg, sysroot_arg, work_arg, prefix_arg, host_arg, target_cc_arg, target_cxx_arg),
-    )
+    if len(args) != 8:
+        fail(f"usage: {sys.argv[0]} STAGED_QT SYSROOT WORKDIR PREFIX HOST_TOOLS_PREFIX TARGET_CC TARGET_CXX TARGET_TOOLDIR [--module|--translations]")
+    root, sysroot, work, prefix, host_prefix, target_cc, target_cxx, tooldir = map(absolute_nonroot, args)
 
     if mode == "--translations":
         translations = root / "translations"
@@ -159,16 +155,18 @@ def target(args):
 
             def normalize_configure(match):
                 args = match.group(2)
-                args = re.sub(
-                    re.escape(str(work / ".buildlink")) + r'(?=/|["\s);])',
-                    lambda _match: str(prefix),
-                    args,
-                )
-                args = re.sub(
-                    re.escape(str(host_prefix)) + r'(?=/|["\s);])',
-                    "${SDK_NATIVE_PREFIX}",
-                    args,
-                )
+                # CMake also records the link destination and its physical path.
+                paths = {work / ".buildlink": str(prefix), host_prefix: "${SDK_NATIVE_PREFIX}"}
+                for path, role in ((sysroot, "${SDK_TARGET_SYSROOT}"), (tooldir, "${SDK_TARGET_TOOLDIR}")):
+                    physical = path.resolve()
+                    if physical == Path("/"):
+                        fail(f"target path resolves to the filesystem root: {path}")
+                    paths[path] = paths[physical] = role
+                    if path.is_symlink():
+                        paths[path.parent / path.readlink()] = role
+                for path in sorted(paths, key=lambda p: len(str(p)), reverse=True):
+                    args = re.sub(re.escape(str(path)) + r'(?=/|["\s);]|$)',
+                                  lambda _match: paths[path], args)
                 return match.group(1) + args
 
             text = pattern.sub(normalize_configure, text)

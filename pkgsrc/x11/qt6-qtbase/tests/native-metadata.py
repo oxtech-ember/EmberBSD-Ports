@@ -41,7 +41,7 @@ with tempfile.TemporaryDirectory() as tmp:
     extra.write_text('set(QT_SOURCE_TREE "/work/qtbase" CACHE PATH "" FORCE)\n')
     subprocess.run([sys.executable, '-B', str(script), str(root), '/target/sysroot',
                     '/target/work', '/usr/pkg', '/selected/host-tools',
-                    '/usr/pkg/bin/clang', '/usr/pkg/bin/clang++', '--module'], check=True)
+                    '/usr/pkg/bin/clang', '/usr/pkg/bin/clang++', '/target-tools', '--module'], check=True)
     assert '"/target/bin/cc"' in cmake.read_text()
     assert 'set(QT_SOURCE_TREE ""' in extra.read_text()
 print('PASS: native metadata selects compilers, clears source and rejects malformed input')
