@@ -24,4 +24,7 @@ CXXFLAGS+=	-fmacro-prefix-map=${WRKSRC}=.
 PKGCONFIG_OVERRIDE+=	Lerc.pc.in
 
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	2	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

@@ -59,4 +59,8 @@ PLIST.windows-launchers= yes
 .include "../../lang/python/application.mk"
 .include "../../lang/python/batteries-included.mk"
 .include "../../lang/python/wheel.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	4	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

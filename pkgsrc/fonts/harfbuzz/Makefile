@@ -17,4 +17,8 @@ MESON_ARGS+=	-Dpng=enabled
 MESON_ARGS+=	-Dicu=disabled
 
 .include "../../graphics/png/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	1	# Reissue: the earlier amd64 name is in a released record.
+.endif
 .include "../../mk/bsd.pkg.mk"

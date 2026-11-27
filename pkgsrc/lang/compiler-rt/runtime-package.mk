@@ -20,10 +20,11 @@ EMBER_LLVM_CXX_PYTHON?=
 .include "../../mk/bsd.prefs.mk"
 
 # The updated AArch64 and amd64 sysroots supply new shared libraries and
-# libc++.a; the earlier amd64 23.1.6 archives are withdrawn.
-.if (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64") && \
+# libc++.a; the earlier amd64 23.1.6 archives, including all three devel
+# packages, are withdrawn.
+.if (${MACHINE_ARCH} == "aarch64" && \
     (!defined(EMBER_LLVM_CXX_DEVEL) || \
-    ${EMBER_LLVM_CXX_COMPONENT} == "libcxx")
+    ${EMBER_LLVM_CXX_COMPONENT} == "libcxx")) || ${MACHINE_ARCH} == "x86_64"
 PKGREVISION= 1
 .endif
 
