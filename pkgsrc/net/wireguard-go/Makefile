@@ -30,4 +30,8 @@ post-patch:
 .include "go-modules.mk"
 
 .include "../../lang/go/go-module.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	21	# Reissue the withdrawn AArch64 package.
+.endif
 .include "../../mk/bsd.pkg.mk"

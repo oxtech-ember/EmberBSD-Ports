@@ -27,4 +27,8 @@ BUILDLINK_API_DEPENDS.rtl-sdr+=	rtl-sdr>=2.0.3
 BUILDLINK_API_DEPENDS.libusb1+=	libusb1>=1.0.30
 .include "../../devel/libusb1/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	1	# Reissue the withdrawn AArch64 package.
+.endif
 .include "../../mk/bsd.pkg.mk"
