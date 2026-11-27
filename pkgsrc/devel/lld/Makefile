@@ -6,7 +6,7 @@
 EXTRACT_ELEMENTS+= ${DISTNAME}/libunwind/include
 
 PKGNAME=	lld-${LLVM_VERSION}
-PKGREVISION=	2
+PKGREVISION=	4
 CATEGORIES=	devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -31,7 +31,7 @@ post-install:
 .include "../../devel/cmake/build.mk"
 .include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 3
+PKGREVISION= 5
 BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.6nb1
 .endif
 BUILDLINK_API_DEPENDS.llvm+=	llvm-${LLVM_VERSION}{,nb*}
@@ -45,7 +45,6 @@ DEPENDS+= zstd>=1.3.6:../../archivers/zstd
 DEPENDS+= zlib>=1.3.2nb1:../../devel/zlib
 .endif
 .endif
-.include "../../devel/py-llvm-lit/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
@@ -60,14 +59,9 @@ _EMBERBSD_LLD_REAL_SYSROOT!= cd ${CROSS_DESTDIR:Q} && pwd -P
 BUILDLINK_TRANSFORM+= I:${_EMBERBSD_LLD_REAL_SYSROOT}${PREFIX}:${BUILDLINK_DIR}
 .include "../../lang/llvm/cross-llvm-config.mk"
 CMAKE_CONFIGURE_ARGS+= -DLLVM_TABLEGEN_EXE=${EMBERBSD_LLVM_NATIVE_TOOLS:Q}/llvm-tblgen
-TOOL_DEPENDS+= ${PYPKGPREFIX}-llvm-lit>=${LLVM_VERSION}:../../devel/py-llvm-lit
-CMAKE_CONFIGURE_ARGS+= -DLLVM_EXTERNAL_LIT=${TOOLBASE:Q}/bin/llvm-lit
 CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
 .else
 CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${TOOL_PYTHONBIN:Q}
-.endif
-.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-CMAKE_CONFIGURE_ARGS+= -DLLVM_EXTERNAL_LIT=${BUILDLINK_PREFIX.py-llvm-lit:Q}/bin/llvm-lit
 .endif
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_INSTALL_TOOLCHAIN_ONLY=OFF
 .if !empty(PKG_OPTIONS:Mtests) && empty(PKG_BUILD_OPTIONS.llvm:Mtests)
@@ -79,7 +73,9 @@ PKG_FAIL_REASON+= "LLD tests require matching LLVM llvm_gtest exports (tests opt
 pre-configure:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 	${TEST} "$$(${EMBERBSD_LLVM_NATIVE_TOOLS}/llvm-tblgen --version | ${AWK} '/LLVM version/ {print $$3; exit}')" = "${LLVM_VERSION}"
+.if !empty(PKG_OPTIONS:Mtests)
 	${TEST} "$$(${TOOLBASE}/bin/llvm-lit --version | ${AWK} '{sub(/dev$$/, "", $$2); print $$2}')" = "${LLVM_VERSION}"
+.endif
 .endif
 	${TEST} "`${LLVM_CONFIG_PATH} --version`" = "${LLVM_VERSION}"
 

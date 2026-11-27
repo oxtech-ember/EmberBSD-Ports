@@ -1,12 +1,15 @@
 # Cross-build the complete LLD package
 
-LLD 23.1.4 uses the same verified monorepo archive and installed LLVM
+LLD 23.1.6 uses the same verified monorepo archive and installed LLVM
 provider as [the compiler family](../llvm-family.md). The build keeps
 COFF, Common, ELF, MachO, MinGW and Wasm development archives, all linker
-entry points, public headers and CMake exports. Upstream tests stay enabled.
+entry points, public headers and CMake exports.
+On Unix hosts the four driver names link to the same `lld` executable.
 
-Cross configuration selects the matching native `llvm-tblgen`, upstream
-`llvm-lit` and Python interpreter explicitly. Target LLVM CMake metadata
+Cross configuration selects the matching native `llvm-tblgen` and Python
+interpreter. Set `PKG_OPTIONS.lld=tests` before building the package for
+the upstream test run. That option adds the LLVM test sources and the native
+`llvm-lit` runner. Target LLVM CMake metadata
 comes from the selected EmberBSD sysroot. Missing host inputs or mismatched
 tool versions fail configuration; they are not replaced by target executables.
 The matching libunwind source headers supply Mach-O constants. No additional

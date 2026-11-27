@@ -7,7 +7,7 @@ pkgsrc=$1 makeconf=$2 work=$3
 : "${BMAKE:?Set the build-host bmake}"
 : "${READELF:?Set the target readelf}"
 mkdir "$work"
-query() { "$BMAKE" -C "$pkgsrc/devel/lld" MAKECONF="$makeconf" "$@"; }
+query() { "$BMAKE" -C "$pkgsrc/devel/lld" MAKECONF="$makeconf" PKG_OPTIONS.lld=tests "$@"; }
 query -V '${PKG_FAIL_REASON}' > "$work/valid.log"
 [ ! -s "$work/valid.log" ] || [ -z "$(cat "$work/valid.log")" ]
 for variable in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_LLVM_NATIVE_TOOLS; do
@@ -34,5 +34,8 @@ for test in AsLibAll/LLDAsLibAllTests AsLibELF/LLDAsLibELFTests; do
 done
 for library in COFF Common ELF MachO MinGW Wasm; do
     test -s "$wrkdir/.destdir/usr/pkg/lib/liblld$library.a"
+done
+for driver in ld.lld ld64.lld lld-link wasm-ld; do
+    test "$(readlink "$wrkdir/.destdir/usr/pkg/bin/$driver")" = lld
 done
 echo 'PASS: actual LLD cross inputs, missing tools rejected, complete format libraries and both upstream AArch64 test executables'

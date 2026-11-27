@@ -29,7 +29,7 @@ def main():
                         help='pinned combined pkgsrc export used by the native profile')
     parser.add_argument('--makeconf', required=True, type=Path)
     parser.add_argument('--work', required=True, type=Path)
-    parser.add_argument('--lld-options', choices=('tests', '-tests'), default='tests')
+    parser.add_argument('--lld-options', choices=('tests', '-tests'))
     parser.add_argument('--tar', type=Path, help='selected tar; omit to prepare pkgsrc tools')
     parser.add_argument('--environment', action='append', default=[],
                         help='NAME=VALUE passed to bmake (repeatable)')
@@ -57,14 +57,22 @@ def main():
     wrkdir = args.work / 'work'
     common = [args.bmake, '-C', fixture / 'devel/lld',
               'MAKECONF=' + str(args.makeconf.resolve(strict=True)),
-              'PKG_OPTIONS.lld=' + args.lld_options,
               'WRKDIR=' + str(wrkdir)]
+    if args.lld_options:
+        common.append('PKG_OPTIONS.lld=' + args.lld_options)
 
-    def value(name):
-        return run([*common, '-V', '${' + name + '}'], env=env)
-
-    distname = value('DISTNAME')
-    elements = value('EXTRACT_ELEMENTS').split()
+    query = list(common)
+    for name in ('DISTNAME', 'EXTRACT_ELEMENTS', 'TOOL_DEPENDS', 'BUILD_DEPENDS',
+                 'DEPENDS', 'CMAKE_CONFIGURE_ARGS'):
+        query += ['-V', '${' + name + '}']
+    distname, selected, tools, build, depends, cmake = run(query, env=env).splitlines()
+    elements = selected.split()
+    tests = args.lld_options == 'tests'
+    if ((distname + '/llvm' in elements) != tests or
+            ('-DLLVM_INCLUDE_TESTS=ON' in cmake.split()) != tests or
+            ('-DLLVM_EXTERNAL_LIT=' in cmake) != tests or
+            ('-llvm-lit>=' in tools + ' ' + build) != tests or '-llvm-lit>=' in depends):
+        raise SystemExit('LLD must select the LLVM test sources and runner only for tests')
     if not elements:
         raise SystemExit('LLD recipe selects no EXTRACT_ELEMENTS')
     if args.tar is None:

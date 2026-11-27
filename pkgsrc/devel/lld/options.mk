@@ -2,12 +2,13 @@
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.lld
 PKG_SUPPORTED_OPTIONS=	tests
-PKG_SUGGESTED_OPTIONS+=	tests
 
 .include "../../mk/bsd.options.mk"
 
 .if !empty(PKG_OPTIONS:Mtests)
 EXTRACT_ELEMENTS+=	${DISTNAME}/llvm
+TOOL_DEPENDS+=		${PYPKGPREFIX}-llvm-lit>=${LLVM_VERSION}:../../devel/py-llvm-lit
+CMAKE_CONFIGURE_ARGS+=	-DLLVM_EXTERNAL_LIT=${TOOLBASE:Q}/bin/llvm-lit
 BUILDLINK_DEPMETHOD.googletest= build
 .include "../../devel/googletest/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=		-DLLVM_INCLUDE_TESTS=ON
