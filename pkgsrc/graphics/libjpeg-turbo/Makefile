@@ -54,6 +54,15 @@ CHECK_PORTABILITY_SKIP+=	release/makemacpkg.in
 CFLAGS+=	-msse2
 .endif
 
+# NASM has no file prefix map. Each SIMD object of the static libraries keeps
+# the absolute build path of its source in an ELF STT_FILE symbol. Linking
+# does not use these symbols, so remove them from the installed archives.
+.if ${OBJECT_FMT} == "ELF" && (${MACHINE_ARCH} == "x86_64" || ${MACHINE_ARCH} == "i386")
+post-install:
+	${STRIP} --wildcard --strip-symbol='*.asm' \
+	    ${DESTDIR}${PREFIX}/lib/libjpeg.a ${DESTDIR}${PREFIX}/lib/libturbojpeg.a
+.endif
+
 .include "../../devel/cmake/build.mk"
 .include "../../graphics/libspng/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
