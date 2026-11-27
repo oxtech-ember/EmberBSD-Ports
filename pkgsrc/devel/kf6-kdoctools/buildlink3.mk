@@ -15,6 +15,12 @@ BUILDLINK_FILES.kf6-kdoctools+=		share/kf6/kdoctools/customization/*.xsl
 BUILDLINK_FILES.kf6-kdoctools+=		bin/checkXML6
 BUILDLINK_FILES.kf6-kdoctools+=		bin/meinproc6
 
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# The native package takes the library, the generators and their CMake files
+# from kf6-kdoctools-generators.
+.include "../../devel/kf6-kdoctools-generators/buildlink3.mk"
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Relocatable stylesheets load customization data and DocBook XSL through
 # relative paths below the buildlink prefix. Keep the default filter terms.

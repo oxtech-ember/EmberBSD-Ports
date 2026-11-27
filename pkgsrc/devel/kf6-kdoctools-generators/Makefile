@@ -29,8 +29,9 @@ CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_KF6I18n=ON
 CMAKE_CONFIGURE_ARGS+=	-DINSTALL_INTERNAL_TOOLS=ON
 
-# Both install the same native files.
-CONFLICTS+=	kf6-kdoctools-[0-9]*
+# Older full KDocTools packages contain these same files. The revised native
+# kf6-kdoctools depends on this package and installs only the translations.
+CONFLICTS+=	kf6-kdoctools<6.32.0nb2
 
 USE_TOOLS+=	perl
 

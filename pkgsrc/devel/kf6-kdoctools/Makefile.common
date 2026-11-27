@@ -6,7 +6,6 @@
 # used by devel/kf6-kdoctools-generators/Makefile
 
 DISTNAME=	kdoctools-${KF6VER}
-PKGREVISION=	1
 CATEGORIES=	devel
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -17,6 +16,13 @@ DISTINFO_FILE=	${EMBERBSD_KDOCTOOLS_PKGDIR}/distinfo
 PATCHDIR=	${EMBERBSD_KDOCTOOLS_PKGDIR}/patches
 
 .include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+PKGREVISION=	1
+.else
+# The native packages split their files: kf6-kdoctools adds the translations
+# to kf6-kdoctools-generators.
+PKGREVISION=	2
+.endif
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 CMAKE_CONFIGURE_ARGS+=	-DRELOCATABLE_DOCBOOK_FILES=ON
 CMAKE_CONFIGURE_ARGS+=	-DKDE_SKIP_RPATH_SETTINGS=ON
