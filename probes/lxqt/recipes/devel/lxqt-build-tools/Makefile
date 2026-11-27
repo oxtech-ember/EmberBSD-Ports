@@ -3,7 +3,7 @@
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
 DISTNAME=	lxqt-build-tools-2.5.0
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org

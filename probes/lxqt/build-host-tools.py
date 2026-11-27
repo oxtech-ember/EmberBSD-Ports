@@ -16,6 +16,7 @@ def main():
     parser.add_argument("work", type=Path)
     parser.add_argument("--cmake", default="cmake")
     parser.add_argument("--ninja", default="ninja")
+    parser.add_argument("--patch", default="gpatch")
     args = parser.parse_args()
     args.archive = args.archive.resolve()
     args.host_qt = args.host_qt.resolve()
@@ -31,6 +32,10 @@ def main():
     with tarfile.open(args.archive) as archive:
         archive.extractall(args.work, filter="data")
     source = args.work / "lxqt-build-tools-2.5.0"
+    patches = Path(__file__).resolve().parent / "recipes/devel/lxqt-build-tools/patches"
+    for patch in sorted(patches.glob("patch-*")):
+        with patch.open("rb") as source_patch:
+            subprocess.run([args.patch, "-p0", "--forward"], cwd=source, stdin=source_patch, check=True)
     objects = args.work / "objects"
     commands = [
         [args.cmake, "-S", str(source), "-B", str(objects), "-G", "Ninja",

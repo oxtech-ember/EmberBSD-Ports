@@ -1,0 +1,52 @@
+$NetBSD$
+
+Use target paths for cross builds. Make native paths relocatable.
+Origin: EmberBSD (AI-assisted).
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -52,6 +52,18 @@
+ )
+ 
+ 
++# Keep installed paths relative to the prefix of the native modules.
++function(configure_lxqt_config_vars output directory)
++    configure_package_config_file(
++        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/LXQtConfigVars.cmake.in"
++        "${output}"
++        INSTALL_DESTINATION "${directory}"
++        PATH_VARS LXQT_SHARE_DIR LXQT_TRANSLATIONS_DIR LXQT_GRAPHICS_DIR
++                  LXQT_ETC_XDG_DIR LXQT_DATA_DIR
++        NO_SET_AND_CHECK_MACRO NO_CHECK_REQUIRED_COMPONENTS_MACRO
++    )
++endfunction()
++
+ #-----------------------------------------------------------------------------
+ # Superbuild mode
+ #-----------------------------------------------------------------------------
+@@ -78,11 +90,7 @@
+         FIND_MODULES_INSTALL_DIR
+ )
+ 
+-configure_file(
+-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/LXQtConfigVars.cmake.in"
+-    "${MODULES_INSTALL_DIR}/LXQtConfigVars.cmake"
+-    @ONLY
+-)
++configure_lxqt_config_vars("${MODULES_INSTALL_DIR}/LXQtConfigVars.cmake" "${MODULES_INSTALL_DIR}")
+ 
+ configure_file(
+     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/LXQtTranslateTs.cmake.in"
+@@ -107,11 +115,7 @@
+         FIND_MODULES_INSTALL_DIR
+ )
+ 
+-configure_file(
+-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/LXQtConfigVars.cmake.in"
+-    "${CMAKE_CURRENT_BINARY_DIR}/install/LXQtConfigVars.cmake"
+-    @ONLY
+-)
++configure_lxqt_config_vars("${CMAKE_CURRENT_BINARY_DIR}/install/LXQtConfigVars.cmake" "${MODULES_INSTALL_DIR}")
+ 
+ configure_file(
+     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/LXQtTranslateTs.cmake.in"

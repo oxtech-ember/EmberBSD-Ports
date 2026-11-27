@@ -1,0 +1,44 @@
+$NetBSD$
+
+Use target paths for cross builds. Make native paths relocatable.
+Origin: EmberBSD (AI-assisted).
+
+--- cmake/LXQtConfigVars.cmake.in.orig
++++ cmake/LXQtConfigVars.cmake.in
+@@ -18,12 +18,31 @@
+ 
+ set(LXQT_LIBRARY_NAME "@LXQT_LIBRARY_NAME@")
+ set(LXQT_RELATIVE_SHARE_DIR "@LXQT_RELATIVE_SHARE_DIR@")
+-set(LXQT_SHARE_DIR          "@LXQT_SHARE_DIR@")
+ set(LXQT_RELATIVE_TRANSLATIONS_DIR "@LXQT_RELATIVE_TRANSLATIONS_DIR@")
+-set(LXQT_TRANSLATIONS_DIR   "@LXQT_TRANSLATIONS_DIR@")
+-set(LXQT_GRAPHICS_DIR       "@LXQT_GRAPHICS_DIR@")
+-set(LXQT_ETC_XDG_DIR        "@LXQT_ETC_XDG_DIR@")
+-set(LXQT_DATA_DIR           "@LXQT_DATA_DIR@")
++
++if(CMAKE_CROSSCOMPILING)
++    include(GNUInstallDirs)
++    set(LXQT_SHARE_DIR "${CMAKE_INSTALL_FULL_DATAROOTDIR}/${LXQT_RELATIVE_SHARE_DIR}")
++    set(LXQT_TRANSLATIONS_DIR "${LXQT_SHARE_DIR}/translations")
++    set(LXQT_GRAPHICS_DIR "${LXQT_SHARE_DIR}/graphics")
++    if(NOT DEFINED LXQT_ETC_XDG_DIR)
++        set(LXQT_ETC_XDG_DIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg")
++    endif()
++    if(NOT DEFINED LXQT_DATA_DIR)
++        set(LXQT_DATA_DIR "${CMAKE_INSTALL_FULL_DATADIR}")
++    endif()
++else()
++    # Limit PACKAGE_PREFIX_DIR to this module.
++    function(_lxqt_native_config_dirs)
++        @PACKAGE_INIT@
++        set(LXQT_SHARE_DIR "@PACKAGE_LXQT_SHARE_DIR@" PARENT_SCOPE)
++        set(LXQT_TRANSLATIONS_DIR "@PACKAGE_LXQT_TRANSLATIONS_DIR@" PARENT_SCOPE)
++        set(LXQT_GRAPHICS_DIR "@PACKAGE_LXQT_GRAPHICS_DIR@" PARENT_SCOPE)
++        set(LXQT_ETC_XDG_DIR "@PACKAGE_LXQT_ETC_XDG_DIR@" PARENT_SCOPE)
++        set(LXQT_DATA_DIR "@PACKAGE_LXQT_DATA_DIR@" PARENT_SCOPE)
++    endfunction()
++    _lxqt_native_config_dirs()
++endif()
+ 
+ add_definitions("-DLXQT_RELATIVE_SHARE_DIR=\"${LXQT_RELATIVE_SHARE_DIR}\"")
+ add_definitions("-DLXQT_SHARE_DIR=\"${LXQT_SHARE_DIR}\"")

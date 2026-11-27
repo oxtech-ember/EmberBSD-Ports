@@ -27,19 +27,20 @@ Install dependencies with ordinary package tools before building consumers.
 
 LXQt CMake and translation modules need matching host Qt tools.
 They do not require another target Qt or another native Qt library build.
-Prepare these modules from the verified original archive:
+Prepare the modules from the verified original archive and the Ports patches.
 
 ```sh
 python3 probes/lxqt/build-host-tools.py \
     /absolute/distfiles/lxqt-build-tools-2.5.0.tar.xz \
     /absolute/common-host-qt /absolute/new-lxqt-host-work \
-    --cmake /absolute/cmake --ninja /absolute/ninja
+    --cmake /absolute/cmake --ninja /absolute/ninja --patch /absolute/gpatch
 ```
 
 Set `EMBERBSD_LXQT_HOST_TOOLS` to the printed staged prefix.
 Set `EMBERBSD_QT_HOST_PATH` to the existing matching native Qt prefix.
 The cross recipes select its `Qt6LinguistTools` export explicitly.
-The generated LXQt configuration retains the target `/usr/pkg` paths.
+Cross projects use their target data directories and the pkgsrc XDG configuration directory.
+To check the installed modules, run `check-config-paths.py PREFIX --cmake CMAKE --ninja NINJA` from this directory.
 Native pkgsrc builds retain their original `TOOL_DEPENDS` behavior.
 
 The panel also needs the native Qt Wayland protocol generator. Build its
