@@ -1,0 +1,26 @@
+--- a/lang/go/go-module.mk
++++ b/lang/go/go-module.mk
+@@ -67,7 +67,9 @@
+ MAKE_ENV+=	GOARCH=${GOARCH}
+ MAKE_ENV+=	GOOS=${GOOS}
+ 
+-GOPATH_BIN=	bin/${GO_PLATFORM}
++# go install writes bin/${GOOS}_${GOARCH} only for a foreign platform. A
++# cross build on a host of the same platform writes bin.
++GOPATH_BIN=	${"${GO_PLATFORM}" == "${NATIVE_GO_PLATFORM}":?bin:bin/${GO_PLATFORM}}
+ 
+ .else
+ 
+--- a/lang/go/go-package.mk
++++ b/lang/go/go-package.mk
+@@ -89,7 +89,9 @@
+ # Pooh.
+ CHECK_WRKREF_SKIP+=	bin/*
+ 
+-GOPATH_BIN=	bin/${GO_PLATFORM}
++# go install writes bin/${GOOS}_${GOARCH} only for a foreign platform. A
++# cross build on a host of the same platform writes bin.
++GOPATH_BIN=	${"${GO_PLATFORM}" == "${NATIVE_GO_PLATFORM}":?bin:bin/${GO_PLATFORM}}
+ 
+ .else
+ 
