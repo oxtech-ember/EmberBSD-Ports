@@ -11,6 +11,9 @@ The source SHA256 is
 Go retains its upstream BSD license. The recipe changes and regression are
 local, AI-assisted EmberBSD work; they have not been submitted upstream.
 
+Release tools on NetBSD and Darwin use `-trimpath` and retain debug symbols.
+Go locates its installation through the executable path on both systems.
+
 ## NetBSD/AArch64 binary distribution
 
 The common AArch64 cross profile selects `-go-full-distribution`. Its Go

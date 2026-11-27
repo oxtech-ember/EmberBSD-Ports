@@ -5,6 +5,7 @@ GOVERSSUFFIX=	127
 
 DISTNAME=	go${GO${GOVERSSUFFIX}_VERSION}.src
 PKGNAME=	go${GOVERSSUFFIX}-${GO${GOVERSSUFFIX}_VERSION}
+PKGREVISION=	1
 CATEGORIES=	lang
 MASTER_SITES=	https://go.dev/dl/
 
@@ -32,7 +33,7 @@ PLIST_VARS+=           full_go_data
 .if !empty(PKG_OPTIONS:Mgo-full-distribution)
 PLIST.full_go_data=    yes
 .elif ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
-PKGREVISION=           1
+PKGREVISION=           2
 .else
 PKG_FAIL_REASON+=      "The target-only Go distribution requires NetBSD/aarch64"
 .endif

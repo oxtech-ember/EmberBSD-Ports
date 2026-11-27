@@ -30,6 +30,7 @@ DIST_TEST = r'''package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -86,6 +87,41 @@ func TestEmberExplicitHost(t *testing.T) {
 
 func TestEmberNative(t *testing.T) {
 	emberZDefault(t, "darwin", "darwin", "darwin", map[string]string{"CC": "clang", "CXX": "clang++"})
+}
+
+func TestEmberToolPathPolicy(t *testing.T) {
+	oldOS, oldArch, oldRelease := goos, goarch, isRelease
+	defer func() { goos, goarch, isRelease = oldOS, oldArch, oldRelease }()
+
+	cases := []struct {
+		name, target string
+		release bool
+		builder string
+		wantTrimpath bool
+	}{
+		{name: "netbsd release", target: "netbsd", release: true, builder: "", wantTrimpath: true},
+		{name: "darwin builder", target: "darwin", release: false, builder: "ember-builder", wantTrimpath: true},
+		{name: "netbsd development", target: "netbsd", release: false, builder: "", wantTrimpath: false},
+		{name: "linux release", target: "linux", release: true, builder: "", wantTrimpath: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			goos, goarch, isRelease = tc.target, "arm64", tc.release
+			t.Setenv("GO_BUILDER_NAME", tc.builder)
+			var got string
+			for _, item := range toolenv() {
+				if strings.HasPrefix(item, "GOFLAGS=") {
+					got = item
+				}
+			}
+			if tc.wantTrimpath && got != "GOFLAGS=-trimpath" {
+				t.Fatalf("tool path policy returned %q, want GOFLAGS=-trimpath", got)
+			}
+			if !tc.wantTrimpath && got != "" {
+				t.Fatalf("tool path policy returned %q for unselected target", got)
+			}
+		})
+	}
 }
 '''
 
