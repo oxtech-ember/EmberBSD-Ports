@@ -54,6 +54,9 @@ MAKE_ENV+=	LD_LIBRARY_PATH=${WRKSRC}/output/gst-libs/gst/tag:${WRKSRC}/output/gs
 #Timeout:            0
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "NetBSD" && (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
+PKGREVISION=	1
+.endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Host generators, target GType queries; preserve all GIR and typelib outputs.
 TOOL_DEPENDS+= glib2-tools>=2.90.1:../../devel/glib2-tools

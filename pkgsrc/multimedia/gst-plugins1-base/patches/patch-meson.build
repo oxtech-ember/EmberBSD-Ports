@@ -1,0 +1,32 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Keep the GIO runtime paths independent of the cross sysroot.
+
+--- meson.build.orig
++++ meson.build
+@@ -362,12 +362,18 @@
+ core_conf.set('HAVE_GIO_UNIX_2_0', giounix_dep.found())
+ 
+ if gio_dep.type_name() == 'pkgconfig'
+-    core_conf.set_quoted('GIO_MODULE_DIR',
+-        gio_dep.get_variable('giomoduledir'))
+-    core_conf.set_quoted('GIO_LIBDIR',
+-        gio_dep.get_variable('libdir'))
+-    core_conf.set_quoted('GIO_PREFIX',
+-        gio_dep.get_variable('prefix'))
++    # pkgconf can prepend the cross sysroot to absolute variable values.
++    # These directories are used on the target when GIO loads its modules.
++    gio_sysroot = meson.is_cross_build() ? meson.get_external_property('sys_root', '') : ''
++    gio_root_prefix = gio_sysroot.endswith('/') ? gio_sysroot : gio_sysroot + '/'
++    foreach name, variable : {'GIO_MODULE_DIR': 'giomoduledir', 'GIO_LIBDIR': 'libdir', 'GIO_PREFIX': 'prefix'}
++        path = gio_dep.get_variable(variable)
++        if gio_sysroot not in ['', '/'] and (path == gio_sysroot or path.startswith(gio_root_prefix))
++            relative = import('fs').relative_to(path, gio_sysroot)
++            path = relative == '.' ? '/' : '/' / relative
++        endif
++        core_conf.set_quoted(name, path)
++    endforeach
+ else
+     core_conf.set_quoted('GIO_MODULE_DIR', join_paths(get_option('prefix'),
+       get_option('libdir'), 'gio/modules'))
