@@ -34,6 +34,12 @@ CMAKE_CONFIGURE_ARGS+=	-DCCACHE_ALLOWED=OFF
 # The upstream path is a prefix that contains include/spirv. Use the same
 # buildlink view for native and cross inputs. Do not fetch another header tree.
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_EXTERNAL_SPIRV_HEADERS_SOURCE_DIR=${BUILDLINK_DIR}
+
+PKG_OPTIONS_VAR=	PKG_OPTIONS.spirv-llvm-translator
+PKG_SUPPORTED_OPTIONS=	tests
+.include "../../mk/bsd.options.mk"
+
+.if !empty(PKG_OPTIONS:Mtests)
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_SPIRV_INCLUDE_TESTS=ON
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_EXTERNAL_LIT=${TOOLBASE}/bin/llvm-lit
 CMAKE_CONFIGURE_ARGS+=	-DPython3_EXECUTABLE=${TOOL_PYTHONBIN}
@@ -41,6 +47,13 @@ TEST_TARGET=	check-llvm-spirv
 # Clang translates shader test inputs; the selected compiler builds package objects.
 TOOL_DEPENDS+=	clang>=23.1.4<23.2:../../lang/clang
 TOOL_DEPENDS+=	${PYPKGPREFIX}-llvm-lit>=23.1.4<23.2:../../devel/py-llvm-lit
+.include "../../lang/python/tool.mk"
+.else
+CMAKE_CONFIGURE_ARGS+=	-DLLVM_SPIRV_INCLUDE_TESTS=OFF
+pre-test:
+	@${ERROR_MSG} "The upstream suite requires PKG_OPTIONS.spirv-llvm-translator+=tests"
+	${FALSE}
+.endif
 
 PKGCONFIG_OVERRIDE+=	LLVMSPIRVLib.pc.in
 
@@ -51,5 +64,4 @@ BUILDLINK_API_DEPENDS.spirv-headers+= spirv-headers>=1.4.363.0nb2
 .include "../../parallel/spirv-headers/buildlink3.mk"
 BUILDLINK_API_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb1
 .include "../../parallel/spirv-tools/buildlink3.mk"
-.include "../../lang/python/tool.mk"
 .include "../../mk/bsd.pkg.mk"
