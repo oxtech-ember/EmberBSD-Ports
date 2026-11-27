@@ -180,6 +180,10 @@ bulk
 [ "$(parsed)" = 'a b ' ] || fail "first run parsed $(parsed)"
 bulk
 [ -z "$(parsed)" ] || fail "an unchanged done package was parsed again: $(parsed)"
+# Changing the scheduler's capacity or worker count leaves recipe metadata intact.
+bulk CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3
+[ -z "$(parsed)" ] || fail "a scheduling change reparsed package metadata: $(parsed)"
+
 # Parent directories of external configs remain watched conservatively.
 : > "$out/config/main/unrelated.tmp"
 bulk

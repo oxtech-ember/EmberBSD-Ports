@@ -75,6 +75,12 @@ state=$3
 unset binary_selection_file
 binary_selection_file=${CROSS_BULK_BINARY_INSTALLED:-}
 unset CROSS_BULK_BINARY_INSTALLED CROSS_BULK_PKG_ADD_JOB
+# CPU capacity and the worker limit control scheduling. Keep them out
+# of recipe queries and their environment identity.
+unset scheduler_cpus scheduler_jobs
+scheduler_cpus=${CROSS_BULK_CPUS:-}
+scheduler_jobs=${CROSS_BULK_JOBS:-}
+unset CROSS_BULK_CPUS CROSS_BULK_JOBS
 case "$state" in
     /*) ;;
     *) echo "Not an absolute path: $state" >&2; exit 2 ;;
@@ -587,7 +593,7 @@ order()
     else
         vars_context=
     fi
-    jobs=${CROSS_BULK_JOBS:-$(host_cpus)}
+    jobs=${scheduler_jobs:-$(host_cpus)}
     count CROSS_BULK_JOBS "$jobs"
     q=$state/order-query
     rm -rf "$q"
@@ -896,7 +902,7 @@ stage_lock_rows_indexed()
 stage_collect_lock_rows()
 {
     stage_count=$(awk 'NF { n++ } END { print n + 0 }' "$1") || return 1
-    stage_limit=${CROSS_BULK_JOBS:-$cpus}
+    stage_limit=${scheduler_jobs:-$cpus}
     count CROSS_BULK_JOBS "$stage_limit"
     if [ "$stage_limit" -gt "$cpus" ]; then
         echo "CROSS_BULK_JOBS=$stage_limit exceeds resolved CPU capacity=$cpus" >&2
@@ -1002,7 +1008,8 @@ stage_supervise()
         "$@" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"
     if [ "$stage_mode" = build ]; then
         # A signal to the state owner must reach its trap while the supervisor runs.
-        CROSS_BULK_BINARY_INSTALLED="$binary_selection_file" "$@" < /dev/null &
+        CROSS_BULK_CPUS="$scheduler_cpus" CROSS_BULK_JOBS="$scheduler_jobs" \
+            CROSS_BULK_BINARY_INSTALLED="$binary_selection_file" "$@" < /dev/null &
         stage_pid=$!
         while :; do
             stage_status=0
@@ -1010,7 +1017,8 @@ stage_supervise()
             [ "$stage_status" -gt 128 ] && kill -0 "$stage_pid" 2>/dev/null || break
         done
     else
-        CROSS_BULK_BINARY_INSTALLED="$binary_selection_file" "$@" || stage_status=$?
+        CROSS_BULK_CPUS="$scheduler_cpus" CROSS_BULK_JOBS="$scheduler_jobs" \
+            CROSS_BULK_BINARY_INSTALLED="$binary_selection_file" "$@" || stage_status=$?
     fi
     # A normal supervisor exit proves that the owned session was drained.
     if [ "$stage_status" -lt 128 ]; then state_lock_release_safe=yes; fi
@@ -1031,7 +1039,7 @@ stage_supervise()
 host_cpus()
 {
     set --
-    [ -z "${CROSS_BULK_CPUS:-}" ] || set -- --jobs "$CROSS_BULK_CPUS"
+    [ -z "$scheduler_cpus" ] || set -- --jobs "$scheduler_cpus"
     selected=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" \
         show-vars VARNAMES='EMBERBSD_HOST_PYTHON EMBERBSD_SDK_SOURCE' < /dev/null) || {
         echo 'Cannot read the selected SDK source and host Python from MAKECONF' >&2
@@ -2830,9 +2838,9 @@ build()
     cpus=$(cat "$cpu_file")
     rm -f "$cpu_file"
     workers_explicit=no
-    if [ -n "${CROSS_BULK_JOBS:-}" ]; then
+    if [ -n "$scheduler_jobs" ]; then
         workers_explicit=yes
-        workers=$CROSS_BULK_JOBS
+        workers=$scheduler_jobs
     else
         workers=$(( (cpus + 1) / 2 ))
     fi
