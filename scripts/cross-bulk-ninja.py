@@ -89,7 +89,13 @@ def worker_makeflags(inherited, fifo):
         if not re.fullmatch(r'-j\d+|-J\d+,\d+|--jobs=\d+|--jobserver-(?:auth|fds|style)=.*', word):
             kept.append(word)
         word = next(words, None)
-    kept.extend(('-j', f'--jobserver-auth=fifo:{fifo}'))
+    job_options = ['-j', f'--jobserver-auth=fifo:{fifo}']
+    # Ninja treats 'n' in the first bare word as GNU make's dry-run flag.
+    # bmake may put a package variable assignment in that position.
+    if kept and not kept[0].startswith('-') and '=' in kept[0]:
+        kept = job_options + kept
+    else:
+        kept.extend(job_options)
     if word == '--':
         kept.extend((word, *words))
     return ' '.join(kept)

@@ -77,6 +77,16 @@ class WorkerTests(unittest.TestCase):
         self.assertNotIn('stale', flags)
         self.assertEqual(self.run_fake('-j1', inherited=original), [['-j1'], original])
 
+    def test_bmake_assignment_is_not_a_gnu_make_flag_word(self):
+        assignment = 'DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency'
+        _, flags = self.run_fake(inherited=f'{assignment} -j2')
+        self.assertTrue(flags.split()[0].startswith('-'))
+        self.assertIn(assignment, flags.split())
+        self.assertIn('--jobserver-auth=fifo:', flags)
+
+        _, flags = self.run_fake(inherited=f'kn {assignment} -j2')
+        self.assertEqual(flags.split()[0], 'kn')
+
     def test_nested_pkgsrc_invocation_runs_in_its_parent_slot(self):
         outer = self.root / 'outer'
         nested = self.argv([self.fake, '-j5'])
