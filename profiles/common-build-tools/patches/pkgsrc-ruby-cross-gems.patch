@@ -86,7 +86,7 @@ against the target Ruby configuration and stage generated executables.
 -		${RUBYGEM} install --backtrace ${RUBYGEM_OPTIONS} ${_RUBYGEM_OPTIONS}
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +	${RUN} ${_RUBYGEM_BUILD_RUBY:Q} -ryaml -e \
-+	    'puts({ :custom_shebang => ARGV.fetch(0), :rdoc => ["--exclude", "(?:^|/)ext/(?:.*/)?Makefile\z"] }.to_yaml)' \
++	    'puts({ :custom_shebang => ARGV.fetch(0), :rdoc => ["--exclude", "(?:^|/)ext/(?:.*/)?Makefile\\z"] }.to_yaml.gsub("\\\\z", "\\z"))' \
 +	    ${PREFIX:Q}/bin/${RUBY_NAME:Q} > ${WRKDIR:Q}/gem-target.yml
 +.endif
 +	${RUN} ${SETENV} ${MAKE_ENV} ${RUBYGEM_ENV} ${_RUBYGEM_INSTALL_ENV} \
