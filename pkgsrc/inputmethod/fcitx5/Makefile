@@ -142,7 +142,15 @@ CMAKE_CONFIGURE_ARGS+=	-DLibIntl_INCLUDE_DIR=${BUILDLINK_DIR}/include
 .include "../../x11/xcb-util-wm/buildlink3.mk"
 .include "../../x11/xkeyboard-config/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
-.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
+.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.  if ${MACHINE_ARCH} == "aarch64"
+PKGREVISION=	10
+.  elif ${MACHINE_ARCH} == "x86_64"
+PKGREVISION=	9
+.  else
+PKGREVISION=	8
+.  endif
+.elif ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
 PKGREVISION=	9
 .elif ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
 PKGREVISION=	8

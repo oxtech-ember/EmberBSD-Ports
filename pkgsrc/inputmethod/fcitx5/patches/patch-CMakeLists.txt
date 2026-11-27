@@ -1,12 +1,30 @@
 $NetBSD$
 
-Keep installed keyboard data paths independent of the build sysroot.
+Keep installed keyboard paths and the D-Bus address independent of the sysroot.
 
 Origin: EmberBSD (AI-assisted). Not submitted upstream.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
-@@ -250,6 +250,7 @@
+@@ -105,7 +105,17 @@
+ 
+ if (ENABLE_DBUS AND NOT (FCITX_EVENT_LOOP_BACKEND STREQUAL systemd))
+     pkg_check_modules(DBus REQUIRED IMPORTED_TARGET "dbus-1")
++    # The D-Bus address is an opaque value in the target .pc file.
++    if(DEFINED ENV{PKG_CONFIG_FDO_SYSROOT_RULES})
++        set(_fcitx_had_fdo_rules TRUE)
++    else()
++        set(_fcitx_had_fdo_rules FALSE)
++        set(ENV{PKG_CONFIG_FDO_SYSROOT_RULES} 1)
++    endif()
+     pkg_get_variable(DBUS_SYSTEM_BUS_DEFAULT_ADDRESS "dbus-1" "system_bus_default_address")
++    if(NOT _fcitx_had_fdo_rules)
++        unset(ENV{PKG_CONFIG_FDO_SYSROOT_RULES})
++    endif()
+ endif()
+ 
+ if (FCITX_EVENT_LOOP_BACKEND STREQUAL "")
+@@ -250,6 +260,7 @@
  check_include_file(sys/mman.h HAVE_SYS_MMAN_H)
  check_include_file(sys/uio.h HAVE_SYS_UIO_H)
  
