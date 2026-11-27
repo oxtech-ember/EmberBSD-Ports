@@ -6,7 +6,9 @@
 Run after implementation with PORTS_ROOT, EMBERBSD_SDK_SOURCE, EXPORT_TEST_GIT,
 EXPORT_TEST_PATCH and a Python supporting tarfile filters. Never uses a live tree.
 """
+import errno
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -332,6 +334,22 @@ class ScopedUpdateTests(unittest.TestCase):
         self.assertEqual(self.receipt.read_bytes(), self.old_receipt)
         self.assertEqual((self.tree / 'cat/pkg/Makefile').read_bytes(), before)
         self.assertFalse(self.marker.exists())
+
+    def test_failed_initial_marker_write_leaves_previous_export_usable(self):
+        self.newer_inputs()
+        script = self.ports / 'scripts/pkgsrc-shared-update.py'
+        spec = importlib.util.spec_from_file_location('shared_update', script)
+        updater = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(updater)
+        with mock.patch.object(os, 'fsync', side_effect=OSError(errno.ENOSPC, 'disk full')):
+            with self.assertRaises(OSError) as failure:
+                updater.update(self.export, self.ports, GIT, str(SDK), PATCH, ['cat/pkg'], ['misc/owner.txt'])
+        self.assertEqual(failure.exception.errno, errno.ENOSPC)
+        self.assertFalse(self.marker.exists())
+        self.assertEqual(self.receipt.read_bytes(), self.old_receipt)
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=fixture-1\n')
+        result = self.update()
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_patch_transition_resume(self):
         self.newer_inputs()

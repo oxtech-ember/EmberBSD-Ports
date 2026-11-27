@@ -678,14 +678,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             finally:
                 os.close(descriptor)
 
-        if pending is None:
-            with marker.open('x') as stream:
-                json.dump({'packages': packages, 'files': selected_files,
-                           'previous_receipt': receipt, 'new_identity': current}, stream)
-                stream.flush()
-                os.fsync(stream.fileno())
-            sync_dir(directory)
-        def replace(path, content, mode):
+        def replace(path, content, mode, *, exclusive=False):
             path.parent.mkdir(parents=True, exist_ok=True)
             fd, name = tempfile.mkstemp(prefix='.pkgsrc-update-', dir=path.parent)
             try:
@@ -694,11 +687,18 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                     stream.flush()
                     os.fsync(stream.fileno())
                 os.chmod(name, mode)
-                os.replace(name, path)
+                if exclusive:
+                    os.link(name, path)
+                else:
+                    os.replace(name, path)
                 sync_dir(path.parent)
             finally:
                 if os.path.exists(name):
                     os.unlink(name)
+        if pending is None:
+            initial = {'packages': packages, 'files': selected_files,
+                       'previous_receipt': receipt, 'new_identity': current}
+            replace(marker, json.dumps(initial).encode(), 0o600, exclusive=True)
         if dirty_content:
             if os.path.lexists(cache) and (cache.is_symlink() or not cache.is_dir()):
                 raise ValueError('invalid dirty input cache')
