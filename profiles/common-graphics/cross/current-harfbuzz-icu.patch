@@ -1,17 +1,15 @@
 --- a/fonts/harfbuzz-icu/Makefile
 +++ b/fonts/harfbuzz-icu/Makefile
-@@ -3,7 +3,6 @@
- # XXX: hack to override meson installation
- INSTALL_DIRS=
- 
--PKGREVISION= 1
- .include "../../fonts/harfbuzz/Makefile.common"
- 
- PKGNAME=	${DISTNAME:S/^harfbuzz-/harfbuzz-icu-/1}
-@@ -14,7 +13,6 @@
+@@ -14,7 +14,12 @@
  
  MESON_ARGS+=	-Ddocs=disabled
  MESON_ARGS+=	-Dicu=enabled
++.if empty(PKG_OPTIONS:Mintrospection) && empty(PKG_OPTIONS:Mtests)
++MESON_BUILD_TARGET=	src/libharfbuzz-icu.so.0.${SOVER}.0
++.if ${OPSYS} == "Darwin"
++MESON_BUILD_TARGET=	src/libharfbuzz-icu.0.dylib
++.endif
++.endif
 -MESON_ARGS+=	-Dtests=disabled # FIXME: build takes forever
  
  INSTALLATION_DIRS+=	include/harfbuzz

@@ -4,7 +4,9 @@ PKG_OPTIONS_VAR=	PKG_OPTIONS.harfbuzz
 PKG_SUPPORTED_OPTIONS+=	introspection tests
 PKG_SUGGESTED_OPTIONS=
 
+.if ${PKGPATH} != "fonts/harfbuzz-icu"
 PKG_SUGGESTED_OPTIONS+=	introspection
+.endif
 
 .include "../../mk/bsd.options.mk"
 
