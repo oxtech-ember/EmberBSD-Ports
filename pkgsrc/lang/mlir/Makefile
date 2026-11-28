@@ -42,6 +42,12 @@ post-install:
 .include "../../mk/configure/ember-cmake-generator.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../lang/llvm/buildlink3.mk"
+# The native Darwin generators load both compression libraries directly.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKGREVISION=	1
+.include "../../archivers/zstd/buildlink3.mk"
+.include "../../devel/zlib/buildlink3.mk"
+.endif
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
