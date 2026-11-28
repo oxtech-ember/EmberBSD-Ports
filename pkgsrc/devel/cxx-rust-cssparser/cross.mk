@@ -20,6 +20,10 @@ RUST_TARGET= ${_EMBER_CSS_RUST_TARGET:Uunsupported}
 PKG_FAIL_REASON+= "cxx-rust-cssparser requires matching NetBSD 11 Rust and compiler targets"
 .endif
 TOOL_DEPENDS+= rust-bin-1.100.0{,nb[0-9]*}:../../lang/rust-bin
+# On a host with the target Rust triple, the host rust-bin supplies the std.
+.if ${EMBERBSD_CROSS_RUST_HOST_STD:Uno} == "yes"
+.undef _EMBER_CSS_STD_PACKAGE
+.endif
 .if defined(_EMBER_CSS_STD_PACKAGE)
 TOOL_DEPENDS+= ${_EMBER_CSS_STD_PACKAGE}-1.100.0{,nb[0-9]*}:../../lang/${_EMBER_CSS_STD_PACKAGE}
 .endif

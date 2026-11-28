@@ -15,6 +15,10 @@ _EMBER_GLYCIN_TRIPLET= x86_64--netbsd
 .else
 PKG_FAIL_REASON+= "glycin requires a supported Rust cross target"
 .endif
+# On a host with the target Rust triple, the host rust-bin supplies the std.
+.if ${EMBERBSD_CROSS_RUST_HOST_STD:Uno} == "yes"
+.undef _EMBER_GLYCIN_STD_PACKAGE
+.endif
 .if defined(_EMBER_GLYCIN_STD_PACKAGE)
 TOOL_DEPENDS+= ${_EMBER_GLYCIN_STD_PACKAGE}-1.100.0{,nb[0-9]*}:../../lang/${_EMBER_GLYCIN_STD_PACKAGE}
 .endif

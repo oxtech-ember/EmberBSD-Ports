@@ -49,6 +49,10 @@ show:
     assert not amd['PKG_FAIL_REASON'] and amd['RUST_TARGET'] == 'x86_64-unknown-netbsd'
     assert amd['_EMBER_CSS_CC'] == str(work / 'wrappers/cc') and amd['_EMBER_CSS_CXX'] == str(work / 'wrappers/c++')
     assert amd['_EMBER_CSS_GNU_TRIPLET'] == 'x86_64--netbsd' and 'rust-std-x86_64-netbsd-1.100.0' in amd['TOOL_DEPENDS']
+    same = query('CROSS_MACHINE_ARCH=x86_64', 'MACHINE_ARCH=x86_64', 'MACHINE_GNU_PLATFORM=x86_64--netbsd',
+                 'EMBERBSD_CROSS_RUST_HOST_STD=yes')
+    assert not same['PKG_FAIL_REASON'] and 'rust-std-' not in same['TOOL_DEPENDS']
+    assert 'rust-bin-1.100.0' in same['TOOL_DEPENDS']
     assert query('CROSS_MACHINE_ARCH=riscv64')['PKG_FAIL_REASON']
     assert query('CROSS_MACHINE_ARCH=x86_64')['PKG_FAIL_REASON']
     assert query('RUST_TARGET=x86_64-unknown-netbsd')['PKG_FAIL_REASON']

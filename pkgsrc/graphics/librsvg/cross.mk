@@ -20,6 +20,10 @@ RUST_TARGET= ${_EMBER_RSVG_RUST_TARGET:Uunsupported}
 .if "${RUST_TARGET}" != "${_EMBER_RSVG_RUST_TARGET:U}"
 PKG_FAIL_REASON+= "librsvg Rust target must match the selected GI/GNU target"
 .endif
+# On a host with the target Rust triple, the host rust-bin supplies the std.
+.if ${EMBERBSD_CROSS_RUST_HOST_STD:Uno} == "yes"
+.undef _EMBER_RSVG_STD_PACKAGE
+.endif
 .if defined(_EMBER_RSVG_STD_PACKAGE)
 TOOL_DEPENDS+= ${_EMBER_RSVG_STD_PACKAGE}-1.100.0{,nb[0-9]*}:../../lang/${_EMBER_RSVG_STD_PACKAGE}
 .endif
