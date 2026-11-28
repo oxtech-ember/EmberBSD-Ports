@@ -7,5 +7,5 @@ SHA1 (patch-cmake_KF6I18nMacros.cmake.in) = 78804a55ab95c98e8dc59432b72b6d0ad009
 SHA1 (patch-cmake_build-tsfiles.cmake) = f5dc0145cbf1674c8e02f5836b9b99cb9828b495
 SHA1 (patch-src_i18n-qml_CMakeLists.txt) = 8e7f03a80d858718d986d2631e85e4fcf528fa5d
 SHA1 (patch-src_i18n_CMakeLists.txt) = 24958983172878b7cc94055e27d5430d90d30b61
-SHA1 (patch-src_localedata_CMakeLists.txt) = 428707c3edba4f39d9634924613bad329d79cc2d
+SHA1 (patch-src_localedata_CMakeLists.txt) = c3376da33d43f8d18b8289c266c9c8b2738c1467
 SHA1 (patch-src_localedata_isocodescache.cpp) = ee15e5402618f6dc0fd4558a1b2d895df0bdfab7

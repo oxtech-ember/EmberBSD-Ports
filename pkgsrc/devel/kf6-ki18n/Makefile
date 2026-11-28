@@ -13,7 +13,7 @@ CMAKE_CONFIGURE_ARGS+=	-DLibIntl_INCLUDE_DIRS=${BUILDLINK_PREFIX.gettext}/includ
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
-.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+.if ${OPSYS} == "Darwin" || ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 PKGREVISION=	1
 .endif
 

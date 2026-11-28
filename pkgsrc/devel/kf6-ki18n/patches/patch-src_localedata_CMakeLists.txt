@@ -1,11 +1,38 @@
 $NetBSD$
 
 Origin: EmberBSD contributors (AI-assisted).
-Locate the SDK iso-codes data relative to its Darwin shared library.
+Use a target prefix for runtime ISO data in cross builds.
+Locate native Darwin data relative to the installed shared library.
 
 --- src/localedata/CMakeLists.txt.orig
 +++ src/localedata/CMakeLists.txt
-@@ -73,6 +73,10 @@
+@@ -3,7 +3,24 @@
+ 
+ option(KI18N_EMBEDDED_ISO_CODES_CACHE "Use compiled-in iso-codes data." OFF)
+ 
+-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config-localedata.h.in" "${CMAKE_CURRENT_BINARY_DIR}/config-localedata.h")
++# Keep the build-time prefix for cachegen. The installed library uses a target path.
++block()
++    if(CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT AND IS_ABSOLUTE "${IsoCodes_PREFIX}")
++        set(_root "${CMAKE_SYSROOT}")
++        set(_prefix "${IsoCodes_PREFIX}")
++        cmake_path(IS_PREFIX _root "${_prefix}" NORMALIZE _in_root)
++        if(NOT _in_root AND IS_DIRECTORY "${_root}" AND IS_DIRECTORY "${_prefix}")
++            file(REAL_PATH "${_root}" _root)
++            file(REAL_PATH "${_prefix}" _prefix)
++            cmake_path(IS_PREFIX _root "${_prefix}" NORMALIZE _in_root)
++        endif()
++        if(_in_root)
++            cmake_path(RELATIVE_PATH _prefix BASE_DIRECTORY "${_root}")
++            cmake_path(SET IsoCodes_PREFIX NORMALIZE "/${_prefix}")
++        endif()
++    endif()
++    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config-localedata.h.in" "${CMAKE_CURRENT_BINARY_DIR}/config-localedata.h")
++endblock()
+ add_subdirectory(cachegen)
+ 
+ add_library(KF6I18nLocaleData)
+@@ -73,6 +90,10 @@
  
  target_link_libraries(KF6I18nLocaleData PUBLIC Qt6::Core)
  target_link_libraries(KF6I18nLocaleData PRIVATE KF6I18n)
