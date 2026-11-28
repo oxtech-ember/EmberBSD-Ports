@@ -47,6 +47,7 @@ and the Meson build, test and install targets use those slots with Ninja 1.13
 or newer. A short file lock coordinates the grant with starting the worker's
 Ninja FIFO. Package completion and replacement requests trigger the grant.
 The package install and replacement locks still control access to shared files.
+Fresh KDE Frameworks builds also use this budget. Existing CMake work directories keep their configured generator.
 
 An explicit `CROSS_BULK_MAKE_JOBS` keeps the fixed allocation.
 `MAKE_JOBS_SAFE=no` stays serial and `MAKE_JOBS.<PKGPATH>` or an explicit

@@ -11,6 +11,12 @@ BUILDLINK_API_DEPENDS.extra-cmake-modules+=	extra-cmake-modules>=5.19.0
 
 USE_LANGUAGES+=	c c++
 CMAKE_BUILD_DIR=	_KDE_build
+# Select the SDK generator for the common Frameworks recipes.
+.if !empty(EMBERBSD_SDK_SOURCE) && !empty(_EMBERBSD_KF6VER_RECIPES:M${PKGPATH})
+# The generator reads the release source directory before bsd.pkg.mk.
+WRKSRC?=		${WRKDIR}/${DISTNAME}
+.include "../../mk/configure/ember-cmake-generator.mk"
+.endif
 .include "../../devel/cmake/build.mk"
 
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_USE_QT_SYS_PATHS=ON

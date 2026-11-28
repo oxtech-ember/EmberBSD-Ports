@@ -33,8 +33,11 @@ def main():
         query("Unix Makefiles", "CMAKE_GENERATOR=make")
         query("Unix Makefiles", "CMAKE_GENERATORS_INCOMPATIBLE=ninja")
         query("Ninja", package="lang/llvm-devel")
+        query("Unix Makefiles", "MAKECONF=/dev/null", "USE_CROSS_COMPILE=no",
+              "EMBERBSD_SDK_SOURCE=", package="x11/kf6-kwidgetsaddons")
         for package in ("lang/mlir", "lang/flang", "devel/protobuf", "devel/protobuf-devel",
-                        "multimedia/assimp"):
+                        "multimedia/assimp", "x11/kf6-kwidgetsaddons",
+                        "textproc/kf6-sonnet-parsetrigrams", "textproc/kf6-syntax-highlighting-indexer"):
             previous, _ = query("Ninja", package=package)
             previous.mkdir(parents=True, exist_ok=True)
             cache = previous / "CMakeCache.txt"
