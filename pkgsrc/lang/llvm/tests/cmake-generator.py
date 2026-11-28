@@ -33,7 +33,7 @@ def main():
         query("Unix Makefiles", "CMAKE_GENERATOR=make")
         query("Unix Makefiles", "CMAKE_GENERATORS_INCOMPATIBLE=ninja")
         query("Ninja", package="lang/llvm-devel")
-        for package in ("lang/mlir", "devel/protobuf", "devel/protobuf-devel",
+        for package in ("lang/mlir", "lang/flang", "devel/protobuf", "devel/protobuf-devel",
                         "multimedia/assimp"):
             previous, _ = query("Ninja", package=package)
             previous.mkdir(parents=True, exist_ok=True)

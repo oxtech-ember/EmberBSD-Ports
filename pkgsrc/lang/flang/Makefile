@@ -4,6 +4,7 @@
 
 PKGNAME=	flang-${LLVM_VERSION}
 CATEGORIES=	lang devel
+WRKSRC=		${WRKDIR}/${DISTNAME}/flang
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://flang.llvm.org/docs/
@@ -26,6 +27,7 @@ CMAKE_CONFIGURE_ARGS+=	-DMLIR_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.mlir}/li
 # LLVM itself is still linked through libLLVM.
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_SHARED_LIBS=OFF
 
+.include "../../mk/configure/ember-cmake-generator.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../lang/clang/buildlink3.mk"
 .include "../../lang/llvm/buildlink3.mk"
