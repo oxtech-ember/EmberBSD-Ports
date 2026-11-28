@@ -1,9 +1,33 @@
 --- a/mk/check/check-shlibs-macho.awk
 +++ b/mk/check/check-shlibs-macho.awk
-@@ -134,10 +134,39 @@
- 	return system(lipo_cmd " " shquote(provider_path(path)) " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
+@@ -127,17 +127,58 @@
+ 	return path
  }
  
+-function present(path) { return exists(provider_path(path)) }
+-
+-function compatible(path, arch) {
+-	if (!present(path)) return 0
+-	return system(lipo_cmd " " shquote(provider_path(path)) " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
++# The stage and provider prefixes are fixed for one package scan.
++function provider_file(path,    physical) {
++	if (!(path in provider_files)) {
++		physical = provider_path(path)
++		provider_files[path] = exists(physical) ? physical : ""
++	}
++	return provider_files[path]
++}
++
++function compatible(path, arch,    physical) {
++	physical = provider_file(path)
++	if (physical == "") return 0
++	if (!((physical, arch) in provider_arch)) {
++		provider_arch[physical, arch] = system(lipo_cmd " " shquote(physical) \
++		    " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
++	}
++	return provider_arch[physical, arch]
++}
++
 +# Follow package input links in the staging tree before looking at an image.
 +# A package-owned target must never be satisfied by an older installed file.
 +function input_image(DSO,    path, logical, parent, link, seen, lines, count, depth) {
@@ -32,8 +56,8 @@
 +	}
 +	print DSO ": symbolic link depth exceeded"
 +	return ""
-+}
-+
+ }
+ 
  function checkshlib(DSO,    physical, header, magic, lines, count, archline, archs, n, i) {
 -	physical = DSO
 -	if (physical !~ /^\//) physical = destdir prefix "/" physical
@@ -43,7 +67,25 @@
  	if (!exists(physical)) { print DSO ": missing input image"; return }
  	if (od_cmd == "" || lipo_cmd == "" || otool_cmd == "") {
  		print DSO ": missing Mach-O tool selection"
-@@ -316,6 +345,14 @@
+@@ -235,7 +276,7 @@
+ 			print DSO ": path relative to WRKDIR: " resolved
+ 			continue
+ 		}
+-		if (!present(resolved)) {
++		if (provider_file(resolved) == "") {
+ 			print DSO ": missing library: " resolved
+ 			continue
+ 		}
+@@ -243,7 +284,7 @@
+ 			print DSO ": incompatible library architecture " arch ": " resolved
+ 			continue
+ 		}
+-		if (destdir == "" || !exists(destdir resolved))
++		if (destdir == "" || provider_file(resolved) != (destdir resolved))
+ 			check_pkg(DSO, resolved)
+ 		if (requires_file != "") print resolved >> requires_file
+ 	}
+@@ -316,6 +357,14 @@
  	wrkdir = ENVIRON["WRKDIR"]
  	pkg_info_cmd = ENVIRON["PKG_INFO_CMD"]
  	depends_file = ENVIRON["DEPENDS_FILE"]

@@ -27,6 +27,8 @@ The CAFEBABE overlap follows
 [LLVM `identify_magic`](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/llvm/lib/BinaryFormat/Magic.cpp).
 The same low-byte bound separates Java class candidates from universal Mach-O.
 Selected object tools validate recognized containers and their slices.
+During one package scan, the resolver checks each selected library path once per
+requested architecture. A new scan resolves the providers again.
 `otool -hv` supplies each slice's file type. Only `EXECUTE` images resolve
 `@executable_path` relative to their own directory. Runpath, architecture,
 provider ownership and build-directory checks keep their existing behavior.
