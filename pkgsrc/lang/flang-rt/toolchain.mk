@@ -1,0 +1,4 @@
+# $NetBSD$
+
+EMBERBSD_FLANG?=	${TOOLBASE}/bin/flang
+FLANG_RT_API_DEPENDS=	flang-rt>=23.1.6

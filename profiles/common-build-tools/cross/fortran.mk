@@ -29,10 +29,14 @@ _EMBER_FLANG_MODE=native
 # a hard link that has no host library directory beside it.
 .if ${_EMBER_FLANG_MODE} == "native" || ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
-# Use the runtime's pinned ABI floor as the exact host compiler package name.
-_EMBER_FLANG_TOOL_DEPENDS=${BUILDLINK_API_DEPENDS.flang-rt:S/^flang-rt/flang/}
-TOOL_DEPENDS+=${_EMBER_FLANG_TOOL_DEPENDS}:../../lang/flang
+.else
+# The host script links probes against the target sysroot.
+.include "${PKGSRCDIR}/lang/flang-rt/toolchain.mk"
+EMBERBSD_TARGET_BUILD_DEPENDS+=${FLANG_RT_API_DEPENDS}:../../lang/flang-rt
 .endif
+.for _ember_flang_req in ${BUILDLINK_API_DEPENDS.flang-rt:U${FLANG_RT_API_DEPENDS}}
+TOOL_DEPENDS+=${_ember_flang_req:S/^flang-rt/flang/}:../../lang/flang
+.endfor
 .if ${_EMBER_COMPILER_FREE_GOALS} != "yes"
 .if empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG})
 PKG_FAIL_REASON+="EMBERBSD_FLANG must select the build-host Ports flang driver"

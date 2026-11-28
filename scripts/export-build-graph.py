@@ -26,12 +26,13 @@ VARIABLES = (
     '.MAKE.MAKEFILES', 'PATCHDIR', 'FILESDIR', 'DISTINFO_FILE', 'PLIST_SRC',
     'PKG_SKIP_REASON', 'PKG_FAIL_REASON', 'PKG_OPTIONS', 'DISTFILES', 'LOCALPATCHES',
     'CONFIGURE_ARGS', 'CONFIGURE_ENV', 'MAKE_ENV', 'CFLAGS', 'CXXFLAGS',
-    'CPPFLAGS', 'LDFLAGS',
+    'CPPFLAGS', 'LDFLAGS', 'EMBERBSD_TARGET_BUILD_DEPENDS',
 )
 DEPENDENCIES = {
     'BOOTSTRAP_DEPENDS': 'tool', 'TOOL_DEPENDS': 'tool',
     'BUILD_DEPENDS': 'build', 'DEPENDS': 'runtime', 'TEST_DEPENDS': 'test',
     'INDIRECT_BUILD_DEPENDS': 'build', 'INDIRECT_DEPENDS': 'runtime',
+    'EMBERBSD_TARGET_BUILD_DEPENDS': 'build',
 }
 RESERVED_MAKE_VARIABLES = {
     '_EMBER_GRAPH_CLANG_DRIVER', '_EMBER_GRAPH_CLANG_VERSION', '_EMBER_GRAPH_CLANG_OBSERVED',
@@ -401,7 +402,8 @@ class Exporter:
                 records.append([logical, checksum])
         # PKGBASE selects an installed provider. Its resolved identity is already
         # bound to the node and moving the query must preserve existing locks.
-        inputs = {k: v for k, v in metadata.items() if k != 'PKGBASE'}
+        inputs = {k: v for k, v in metadata.items() if k != 'PKGBASE'
+                  and (k != 'EMBERBSD_TARGET_BUILD_DEPENDS' or v)}
         return digest(canonical({'files': sorted(records), 'missing': sorted(missing), 'metadata': inputs}))
 
     def visit(self, package, cross, settings, environment, pattern=None):
@@ -527,6 +529,8 @@ class Exporter:
                 if current and kind == 'test':
                     continue
                 child_cross = 'no' if kind == 'tool' else cross
+                if variable == 'EMBERBSD_TARGET_BUILD_DEPENDS':
+                    child_cross = 'yes'
                 # Follow pkgformat/pkg/depends.mk, including TEST_DEPENDS.
                 child_settings = assignments(metadata['CROSSTARGETSETTINGS']) if kind == 'tool' and cross == 'yes' else {}
                 if any(not key.startswith('TARGET_') for key in child_settings):

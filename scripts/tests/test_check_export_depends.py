@@ -138,6 +138,16 @@ class CheckTests(unittest.TestCase):
         self.assertIn('target:devel/helper', consumers)
         self.assertIn('host:devel/helper', consumers)
 
+    def test_host_tool_checks_the_target_sysroot(self):
+        path = self.pkgsrc / 'metadata.json'
+        metadata = json.loads(path.read_text())
+        metadata['cross/cross-tool']['no'] = {
+            'EMBERBSD_TARGET_BUILD_DEPENDS': 'generator>=2:../../devel/generator'}
+        path.write_text(json.dumps(metadata))
+        _, findings = self.check('x11/session')
+        self.assertTrue(any(row[2:5] == ('EMBERBSD_TARGET_BUILD_DEPENDS', 'generator>=2',
+                                        'target:devel/generator') for row in findings))
+
     def test_pass(self):
         completed, rows = self.check('devel/good', 'lang/py-binding')
         self.assertEqual(completed.returncode, 0, completed.stderr)

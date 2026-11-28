@@ -4,8 +4,7 @@
 """Check that a prepared pkgsrc export satisfies its own dependency patterns.
 
 For each selected package, bmake reports its PKGNAME and the expanded
-DEPENDS, BUILD_DEPENDS, TEST_DEPENDS, TOOL_DEPENDS and BOOTSTRAP_DEPENDS
-entries. Buildlink API patterns are part of these entries. Each pattern must
+dependency entries, including target build inputs for host tools. Buildlink API patterns are part of these entries. Each pattern must
 match the PKGNAME of the provider directory in the same export, as native
 pkg_admin pmatch decides. An empty package database is used, so installed
 packages cannot hide a gap. Any unsatisfied pattern, missing provider or
@@ -20,9 +19,10 @@ import sys
 import threading
 from pathlib import Path
 
+TARGET_BUILD = 'EMBERBSD_TARGET_BUILD_DEPENDS'
 SAME_ROLE = ('DEPENDS', 'BUILD_DEPENDS', 'TEST_DEPENDS')
 HOST_ROLE = ('TOOL_DEPENDS', 'BOOTSTRAP_DEPENDS')
-QUERY = ('PKGNAME',) + SAME_ROLE + HOST_ROLE + ('PKG_FAIL_REASON', 'PKG_SKIP_REASON',
+QUERY = ('PKGNAME',) + SAME_ROLE + HOST_ROLE + (TARGET_BUILD, 'PKG_FAIL_REASON', 'PKG_SKIP_REASON',
                                                  'CROSSTARGETSETTINGS')
 HOST_FACT = re.compile(r'(OSX|NATIVE)_[A-Z0-9_]+=')
 NOT_PACKAGES = {'bootstrap', 'doc', 'licenses', 'mk', 'regress', 'templates', 'wip'}
@@ -164,10 +164,12 @@ class Checker:
         for reason in ('PKG_FAIL_REASON', 'PKG_SKIP_REASON'):
             if result[reason]:
                 self.rejected.append((label, result['PKGNAME'], reason, result[reason]))
-        for kind in SAME_ROLE + HOST_ROLE:
+        for kind in SAME_ROLE + HOST_ROLE + (TARGET_BUILD,):
             provider_role = 'no' if kind in HOST_ROLE else role
             provider_settings = settings
-            if kind in HOST_ROLE and role == 'yes':
+            if kind == TARGET_BUILD:
+                provider_role, provider_settings = 'yes', ''
+            elif kind in HOST_ROLE and role == 'yes':
                 provider_settings = result['CROSSTARGETSETTINGS']
             for entry in result[kind].split():
                 pattern, provider, problem = self.provider(path, entry)

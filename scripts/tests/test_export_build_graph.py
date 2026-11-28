@@ -334,6 +334,14 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
             'target:devel/tests', 'host:devel/bootstrap', 'host:devel/generator',
             'host:devel/hostlib'})
 
+    def test_host_generator_reads_a_target_build_dependency(self):
+        self.packages['devel/generator']['EMBERBSD_TARGET_BUILD_DEPENDS'] = 'library>=1:../../devel/library'
+        nodes = self.nodes(self.run_export('--dependency-phase', 'build'))
+        generator = next(key for key in nodes if key.startswith('host:devel/generator@'))
+        self.assertIn({'id': 'target:devel/library', 'kind': 'build', 'patterns': ['library>=1']},
+                      nodes[generator]['dependencies'])
+        self.assertNotIn('host:devel/library', nodes)
+
     def test_cross_roles_follow_native_installer(self):
         graph = self.run_export()
         self.assertNotIn('host-pkg-info-argv', graph['context']['shared_inputs'])

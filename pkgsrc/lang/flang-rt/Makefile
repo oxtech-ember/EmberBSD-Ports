@@ -27,6 +27,8 @@ TOOL_DEPENDS+=	flang-${LLVM_VERSION}{,nb*}:../../lang/flang
 # The build-host Flang selected by the host toolset include, as for every
 # Fortran package. Compiler-free metadata and source-integrity goals defer
 # this executable check; build and mixed goals retain it.
+.include "../../mk/bsd.prefs.mk"
+.include "toolchain.mk"
 .include "${PKGSRCDIR}/EMBERBSD-METADATA-GOALS.MK"
 .if ${_EMBER_COMPILER_FREE_GOALS} != "yes"
 .if empty(EMBERBSD_FLANG:U:M/*) || !exists(${EMBERBSD_FLANG:U/nonexistent})

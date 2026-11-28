@@ -18,7 +18,10 @@ with tempfile.TemporaryDirectory(prefix='fortran-metadata-') as tmp:
     root = Path(tmp)
     buildlink = root / 'lang/flang-rt/buildlink3.mk'
     buildlink.parent.mkdir(parents=True)
-    buildlink.write_text('BUILDLINK_API_DEPENDS.flang-rt+= flang-rt>=23.1.6\nDEPENDS+= flang-rt>=23.1.6:../../lang/flang-rt\n')
+    (buildlink.parent / 'toolchain.mk').write_text('FLANG_RT_API_DEPENDS= flang-rt>=23.1.6\n')
+    buildlink.write_text('.include "${.PARSEDIR}/toolchain.mk"\n'
+                         'BUILDLINK_API_DEPENDS.flang-rt+= ${FLANG_RT_API_DEPENDS}\n'
+                         'DEPENDS+= ${FLANG_RT_API_DEPENDS}:../../lang/flang-rt\n')
     (root / 'EMBERBSD-METADATA-GOALS.MK').write_bytes(a.metadata_include.read_bytes())
     policy = root / 'fortran.mk'
     policy.write_bytes(a.policy.read_bytes())
@@ -39,9 +42,9 @@ EMBERBSD_FORTRAN_PORTS_SOURCE= /nonexistent/ports
 EMBERBSD_SDK_SOURCE= /nonexistent/sdk
 .include "%s"
 show-var show-vars all:
-\t@printf 'depends=%%s\\nbuild=%%s\\ntools=%%s\\nfc=%%s\\nfail=%%s\\n' '${DEPENDS}' '${BUILD_DEPENDS}' '${TOOL_DEPENDS}' '${FC}' '${PKG_FAIL_REASON}'
+\t@printf 'depends=%%s\\nbuild=%%s\\ntarget_build=%%s\\ntools=%%s\\nfc=%%s\\nfail=%%s\\n' '${DEPENDS}' '${BUILD_DEPENDS}' '${EMBERBSD_TARGET_BUILD_DEPENDS}' '${TOOL_DEPENDS}' '${FC}' '${PKG_FAIL_REASON}'
 fetch checksum build stage:
-\t@printf 'depends=%%s\\nbuild=%%s\\ntools=%%s\\nfc=%%s\\nfail=%%s\\n' '${DEPENDS}' '${BUILD_DEPENDS}' '${TOOL_DEPENDS}' '${FC}' '${PKG_FAIL_REASON}'
+\t@printf 'depends=%%s\\nbuild=%%s\\ntarget_build=%%s\\ntools=%%s\\nfc=%%s\\nfail=%%s\\n' '${DEPENDS}' '${BUILD_DEPENDS}' '${EMBERBSD_TARGET_BUILD_DEPENDS}' '${TOOL_DEPENDS}' '${FC}' '${PKG_FAIL_REASON}'
 ''' % (root, root, policy))
     def run(*goals, family='clang', compiler='clang', extra=()):
         return subprocess.run([str(a.bmake), '-r', '-f', str(makefile),
@@ -61,7 +64,13 @@ fetch checksum build stage:
     native = run('show-vars', extra=('TOOLS_USE_CROSS_COMPILE=no', 'EMBERBSD_HOST_COMPILER_FAMILY=clang'))
     assert native.returncode == 0 and 'flang-rt>=23.1.6' in native.stdout and 'flang>=23.1.6:../../lang/flang' in native.stdout and not native.stderr, (native.stdout, native.stderr)
     fake = run('show-vars', extra=('USE_CROSS_COMPILE=no',))
-    assert fake.returncode == 0 and 'flang-rt>=23.1.6' not in fake.stdout and 'flang>=23.1.6:../../lang/flang' not in fake.stdout and not fake.stderr, (fake.stdout, fake.stderr)
+    assert fake.returncode == 0 and not fake.stderr, (fake.stdout, fake.stderr)
+    fields = dict(line.split('=', 1) for line in fake.stdout.splitlines())
+    assert not fields['depends'] and not fields['build'], fields
+    assert fields['tools'].split() == ['flang>=23.1.6:../../lang/flang'], fields
+    assert fields['target_build'].split() == ['flang-rt>=23.1.6:../../lang/flang-rt'], fields
+    strict = run('show-vars', extra=('BUILDLINK_API_DEPENDS.flang-rt=flang-rt>=24.0',))
+    assert strict.returncode == 0 and 'flang>=24.0:../../lang/flang' in strict.stdout, strict.stdout
     no_fortran = run('show-vars', extra=('USE_LANGUAGES=c',))
     assert no_fortran.returncode == 0 and 'flang-rt' not in no_fortran.stdout and 'lang/flang' not in no_fortran.stdout and not no_fortran.stderr, (no_fortran.stdout, no_fortran.stderr)
     for goals in (('all',), ('all', 'show-vars'), ('all', 'fetch'), ('fetch', 'all'),

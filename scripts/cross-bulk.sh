@@ -450,7 +450,7 @@ node_deps()
     # (WRKDIR/.PHASE_makevars.mk), and a parse includes the latest of them
     # unless _MAKEVARS_MK is defined: a USE_BUILTIN.openssl=yes saved before
     # security/heimdal chose PREFER.openssl=pkgsrc dropped its openssl edge.
-    vars=$(pkg_vars "$dir" 'PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME' "$@") ||
+    vars=$(pkg_vars "$dir" 'PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME EMBERBSD_TARGET_BUILD_DEPENDS' "$@") ||
         return 1
     printf '%s\n' "$vars" | sed -n 1p || return 1
     # Reuse this already evaluated identity for binary-first clients.
@@ -502,9 +502,10 @@ node_deps()
                 fail("dependency path is not a category/package: " rel " from " base)
             return stack[1] "/" stack[2]
         }
-        NR == 1 || NR > 5 || (current == "yes" && NR != 2) { next }
+        NR == 1 || NR == 6 || NR == 7 || (current == "yes" && NR != 2) { next }
         {
             s = NR <= 3 ? suffix : "@native"
+            if (NR == 8) s = ""
             n = split($0, w, " ")
             for (i = 1; i <= n; i++) {
                 if (w[i] == "") continue
@@ -523,7 +524,7 @@ node_deps()
     soft_rows=$(set -f
         while read -r dep pattern; do
             [ -n "$dep" ] || continue
-            if [ -n "$suffix" ] && $native_pkg_info -e "$pattern" > /dev/null; then
+            if [ -n "$suffix" ] && [ "${dep%@native}" != "$dep" ] && $native_pkg_info -e "$pattern" > /dev/null; then
                 echo "$dep 1"
             else
                 rc=$?

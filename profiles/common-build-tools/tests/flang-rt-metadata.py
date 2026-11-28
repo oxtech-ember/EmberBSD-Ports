@@ -12,6 +12,12 @@ a = p.parse_args()
 assert all(x.is_absolute() for x in vars(a).values())
 tmp = tempfile.TemporaryDirectory(prefix="flang-rt-missing-")
 missing = str(Path(tmp.name) / "absent-flang")
+default = subprocess.run([str(a.bmake), "-C", str(a.pkgsrc / "lang/flang-rt"),
+    "MAKECONF=" + str(a.makeconf), "USE_CROSS_COMPILE=yes", "_MAKEVARS_MK=defined",
+    "show-vars", "VARNAMES=EMBERBSD_FLANG TOOLBASE"], check=True, text=True, capture_output=True)
+driver, tools = default.stdout.splitlines()
+assert Path(tools).is_absolute() and Path(driver) == Path(tools) / "bin/flang", default.stdout
+
 def query(*goals):
     return subprocess.run([str(a.bmake), "-C", str(a.pkgsrc / "lang/flang-rt"),
         "MAKECONF=" + str(a.makeconf), "EMBERBSD_FLANG=" + missing, "USE_CROSS_COMPILE=yes", "_MAKEVARS_MK=defined",

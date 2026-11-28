@@ -9,7 +9,7 @@ out=$1
 case "$out" in /*) ;; *) exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
-for p in pkgtools/pkg_install t/app t/mid t/deep cross/cross-libtool-base d/only d/extra; do mkdir -p "$out/tree/$p"; done
+for p in pkgtools/pkg_install t/app t/mid t/deep cross/cross-libtool-base d/generator t/runtime d/only d/extra; do mkdir -p "$out/tree/$p"; done
 mkdir -p "$out/native-db" "$out/sdk/scripts"
 : > "$out/mk.conf"
 printf 'print(1)\n' > "$out/sdk/scripts/resolve-jobs.py"
@@ -17,6 +17,7 @@ printf 'print(1)\n' > "$out/sdk/scripts/resolve-jobs.py"
 printf '#!%s\n' "${TEST_SHELL:?}" > "$out/pkg_info"
 cat >> "$out/pkg_info" <<'WRAP'
 case "$*" in
+  *'runtime>=1'*) touch "${0%/*}/wrong-native-runtime-query"; exit 0 ;;
   *'cross-libtool-base-NetBSD-11.0-x86_64>=2.6.2nb5'*) exit 0 ;;
   *) exit 1 ;;
 esac
@@ -42,12 +43,14 @@ value() {
  case "\$pkg:\$role:\$1" in
   app:target:DEPENDS) echo 'mid>=1:../../t/mid' ;;
   mid:target:DEPENDS) echo 'deep>=1:../../t/deep' ;;
-  deep:target:TOOL_DEPENDS) echo 'cross-libtool-base-NetBSD-11.0-x86_64>=2.6.2nb5:../../cross/cross-libtool-base' ;;
+  deep:target:TOOL_DEPENDS) echo 'cross-libtool-base-NetBSD-11.0-x86_64>=2.6.2nb5:../../cross/cross-libtool-base generator>=1:../../d/generator' ;;
   cross-libtool-base:native:PKGNAME)
    if [ "\$targetfed" = yes ]; then echo cross-libtool-base-NetBSD-11.0-x86_64-2.6.2nb5; else echo cross-libtool-base----2.6.2nb5; fi ;;
   cross-libtool-base:native:PKGBASE)
    if [ "\$targetfed" = yes ]; then echo cross-libtool-base-NetBSD-11.0-x86_64; else echo cross-libtool-base---; fi ;;
   cross-libtool-base:native:TOOL_DEPENDS) echo 'extra>=1:../../d/extra' ;;
+  generator:native:EMBERBSD_TARGET_BUILD_DEPENDS|cross-libtool-base:native:EMBERBSD_TARGET_BUILD_DEPENDS)
+   echo 'runtime>=1:../../t/runtime' ;;
   only:native:PKGNAME) [ "\$targetfed" = no ] || exit 8; echo only-1.0 ;;
   only:native:PKGBASE) echo only ;;
   *:*:PKGNAME) echo "\$pkg-1.0" ;;
@@ -78,4 +81,9 @@ BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=
 ! grep -q '^d/extra@native ' "$out/state/packages"
 grep -q '^d/only@native only-1.0$' "$out/state/packages"
 grep -q '^cross/cross-libtool-base@native t/deep$' "$out/state/edges"
-echo 'PASS: target-fed native identity, installed leaf, native-only root'
+grep -q '^t/runtime d/generator@native$' "$out/state/edges"
+! grep -q '^t/runtime cross/cross-libtool-base@native$' "$out/state/edges"
+[ ! -e "$out/wrong-native-runtime-query" ]
+awk '$0 == "t/runtime" { first=NR } $0 == "d/generator@native" { second=NR }
+     END { exit !(first && first < second) }' "$out/state/order"
+echo 'PASS: target-fed native identity, installed leaf, target build input, native-only root'

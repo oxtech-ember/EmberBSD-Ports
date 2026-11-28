@@ -177,6 +177,14 @@ For cycle diagnosis, `--diagnostic-graph PATH` writes the evaluated raw graph
 only when SDK graph locking fails. Keep this separate scratch output distinct
 from the accepted graph and test-requirements paths.
 
+A host tool that links probes for a target can declare
+`EMBERBSD_TARGET_BUILD_DEPENDS` with the usual `pattern:../../category/package`
+syntax. The build order and the build graph select the target sysroot for these
+packages. Use `TOOL_DEPENDS` for the compiler that runs on the host.
+For example, cross-libtool-fortran needs host Flang and target Flang-RT to
+configure its Fortran tags. The profile selects `bin/flang` from `TOOLBASE`.
+Set `EMBERBSD_FLANG` to select an explicit SDK driver.
+
 pkgsrc installs `TEST_DEPENDS` through its separate `test-depends` stage.
 This can create a cycle if all stages share one graph: Perl builds with GNU
 make, while GNU make tests with Perl. For a build plan, explicitly select
