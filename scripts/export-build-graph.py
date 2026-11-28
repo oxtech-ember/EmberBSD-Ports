@@ -34,6 +34,7 @@ DEPENDENCIES = {
     'INDIRECT_BUILD_DEPENDS': 'build', 'INDIRECT_DEPENDS': 'runtime',
 }
 RESERVED_MAKE_VARIABLES = {
+    '_EMBER_GRAPH_CLANG_DRIVER', '_EMBER_GRAPH_CLANG_VERSION', '_EMBER_GRAPH_CLANG_OBSERVED',
     'MAKECONF', 'USE_CROSS_COMPILE', 'MAKEFLAGS', 'MFLAGS', '.MAKEFLAGS',
     'MAKEFILE', 'MAKEOBJDIR', 'MAKEOBJDIRPREFIX', 'PKGNAME_REQD', '_MAKEVARS_MK',
     'EMBERBSD_NATIVE_TOOLSET_VERIFIED',
@@ -125,6 +126,53 @@ def host_pkg_info_argv(command, host_db, target_db):
     return words
 
 
+class BoundClang:
+    """Identify the selected SDK driver for the lifetime of one graph export."""
+
+    def __init__(self, driver, manifest, program):
+        self.driver = str(driver)
+        self.files = (driver, manifest, program)
+        self.initial = self.identities()
+        self.versions = {}
+
+    @staticmethod
+    def signature(path):
+        info = path.stat()
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+    def identities(self):
+        return tuple(self.signature(path) for path in self.files)
+
+    def check(self):
+        if self.identities() != self.initial:
+            raise ExportError('selected compiler changed during graph export; retry')
+
+    @classmethod
+    def from_manifest(cls, manifest):
+        if manifest.name != 'commands.json':
+            return None
+        manifest = manifest.absolute()
+        driver = manifest.parent.parent / 'bin/clang'
+        try:
+            if not driver.samefile(manifest.parent / 'cc'):
+                return None
+            before = cls.signature(manifest)
+            record = json.loads(manifest.read_bytes())
+            if not isinstance(record, dict) or record.get('format') != 'emberbsd-compiler-binding':
+                return None
+            program = Path(record['commands']['cc'][0])
+            if (not program.is_absolute() or not re.fullmatch(r'clang(?:-[0-9]+)?', program.name) or
+                    not program.is_file()):
+                return None
+            binding = cls(driver, manifest, program)
+            if before != binding.initial[1]:
+                return None
+            return binding
+        except (OSError, ValueError, KeyError, IndexError, TypeError):
+            # The graph also accepts opaque toolchain inputs and external drivers.
+            return None
+
+
 class Exporter:
     def __init__(self, args, sha256_file):
         self.sha256_file = sha256_file
@@ -169,6 +217,8 @@ class Exporter:
         self.test_requirements = {}
         self.query_results = {}
         self.file_digests = {}
+        self.clang = (BoundClang.from_manifest(args.toolchain_input)
+                      if args.mode == 'cross' else None)
         self.match_results = {}
         self.host_argv = None
         self.host_names = None
@@ -197,6 +247,14 @@ class Exporter:
     def query(self, package, cross, settings, environment, pattern):
         query_environment = dict(environment)
         query_environment.pop('EMBERBSD_NATIVE_TOOLSET_VERIFIED', None)
+        for key in ('_EMBER_GRAPH_CLANG_DRIVER', '_EMBER_GRAPH_CLANG_VERSION', '_EMBER_GRAPH_CLANG_OBSERVED'):
+            query_environment.pop(key, None)
+        probe = self.clang if cross == 'yes' else None
+        if probe:
+            probe_context = (tuple(sorted(query_environment.items())), tuple(sorted(settings.items())))
+            query_environment['_EMBER_GRAPH_CLANG_DRIVER'] = probe.driver
+            if probe_context in probe.versions:
+                query_environment['_EMBER_GRAPH_CLANG_VERSION'] = probe.versions[probe_context]
         native = self.native_toolset_seed
         if native:
             query_environment['EMBERBSD_NATIVE_TOOLSET_VERIFIED'] = native
@@ -216,6 +274,8 @@ class Exporter:
         queries = []
         variables = VARIABLES + (('PKGBASE',) if self.host_current and cross == 'no' else ()) + (
             'EMBERBSD_NATIVE_TOOLSET_VERIFIED',)
+        if probe:
+            variables += ('_EMBER_GRAPH_CLANG_OBSERVED',)
         for variable in variables:
             queries += ['-V', '${' + variable + '}']
         # bmake has no GNU .VARIABLES inventory. Its native input graph lists
@@ -233,6 +293,11 @@ class Exporter:
         if len(values) != len(variables):
             raise ExportError('unexpected bmake metadata line count for ' + package)
         result = dict(zip(variables, values))
+        if probe:
+            value = result.pop('_EMBER_GRAPH_CLANG_OBSERVED')
+            if re.fullmatch(r'[0-9]+(?:\.[0-9]+)+(?:[-+][A-Za-z0-9_.-]+)?', value):
+                if probe.versions.setdefault(probe_context, value) != value:
+                    raise ExportError('selected compiler changed during graph export; retry')
         verified = result.pop('EMBERBSD_NATIVE_TOOLSET_VERIFIED')
         verified = verified_native_toolset(verified, 'bmake metadata')
         result['_VERIFIED_NATIVE_TOOLSET'] = verified
@@ -679,6 +744,8 @@ class Exporter:
             if not sep or not re.fullmatch(r'[a-zA-Z0-9_.-]+', name) or name in shared:
                 raise ExportError('invalid or duplicate --shared-input name')
             shared[name] = self.file_digest(path)
+        if self.clang and self.clang.versions:
+            self.clang.check()
         def summary(variables):
             return ', '.join(key + '=' + value for key, value in variables.items()) or 'none'
         source = ('pkgsrc native metadata (' + self.args.mode +

@@ -20,3 +20,21 @@
  CXX=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-g++
 +.endif
  LD=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-ld
+
+--- a/mk/compiler/clang.mk
++++ b/mk/compiler/clang.mk
+@@ -41,7 +41,14 @@
+ 
+ .if !defined(CC_VERSION)
+ .  if exists(${CCPATH})
++.    if defined(_EMBER_GRAPH_CLANG_VERSION) && "${_EMBER_GRAPH_CLANG_DRIVER:U}" == "${CCPATH}"
++CLANG_VERSION:=		${_EMBER_GRAPH_CLANG_VERSION}
++.    else
+ CLANG_VERSION!=		${CCPATH} -dumpversion 2>&1 || ${ECHO} 0
++.      if "${_EMBER_GRAPH_CLANG_DRIVER:U}" == "${CCPATH}"
++_EMBER_GRAPH_CLANG_OBSERVED:=	${CLANG_VERSION}
++.      endif
++.    endif
+ .  else
+ CLANG_VERSION=		0
+ .  endif

@@ -80,6 +80,10 @@ A persistent inventory error reports the package, role, and exit status.
 Completed queries keep their results. For a shared pkgsrc export, pass
 the revision from its receipt. The graph records the export input digest.
 
+With a prepared SDK Clang binding, the exporter reuses the version reported by
+the selected target driver within one graph run. A different driver uses its own
+probe. If the binding or compiler changes during the run, repeat the export.
+
 Pass an early MAKECONF policy input as a repeatable `--make-variable NAME=VALUE`
 option, for example `--make-variable EMBERBSD_DARWIN_BOOTSTRAP=yes`. The
 assignment is passed to every bmake metadata query, including recursive and

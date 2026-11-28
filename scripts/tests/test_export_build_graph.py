@@ -22,6 +22,40 @@ graph = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(graph)
 
 
+class ClangProbeTests(unittest.TestCase):
+    def test_selected_binding_and_compiler_replacement(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            commands = root / 'commands'
+            commands.mkdir()
+            (root / 'bin').mkdir()
+            driver = root / 'bin/clang'
+            bound = commands / 'cc'
+            bound.touch()
+            driver.symlink_to(bound)
+            program = root / 'clang'
+            program.write_text('first binary')
+            manifest = commands / 'commands.json'
+            manifest.write_text(json.dumps({'format': 'emberbsd-compiler-binding',
+                                            'commands': {'cc': [str(program)]}}))
+            selected = graph.BoundClang.from_manifest(manifest)
+            self.assertEqual(selected.driver, str(driver))
+            selected.check()
+            program.write_text('other binary')
+            os.utime(program, ns=(1_000_000_000, 1_000_000_000))
+            with self.assertRaisesRegex(graph.ExportError, 'compiler changed'):
+                selected.check()
+            selected = graph.BoundClang.from_manifest(manifest)
+            replacement = root / 'updated'
+            replacement.write_text('other binary')
+            replacement.replace(program)
+            with self.assertRaisesRegex(graph.ExportError, 'compiler changed'):
+                selected.check()
+            driver.unlink()
+            driver.symlink_to(program)
+            self.assertIsNone(graph.BoundClang.from_manifest(manifest))
+
+
 class ExportTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -73,7 +107,10 @@ if 'show-var' in args and 'show-vars' not in args:
     with (root / 'calls.jsonl').open('a') as stream:
         stream.write(json.dumps({'package': package, 'settings': settings,
                                  'targets': ['show-var'], 'variable': varname,
-                                 'verified_env': os.environ.get('EMBERBSD_NATIVE_TOOLSET_VERIFIED')}) + '\n')
+                                 'verified_env': os.environ.get('EMBERBSD_NATIVE_TOOLSET_VERIFIED'),
+                                 'clang_driver': os.environ.get('_EMBER_GRAPH_CLANG_DRIVER'),
+                                 'clang_version': os.environ.get('_EMBER_GRAPH_CLANG_VERSION'),
+                                 'ccpath': os.environ.get('CCPATH')}) + '\n')
     if package == 'pkgtools/pkg_install':
         host_path = root / 'host-current.json'
         if not host_path.exists():
@@ -123,6 +160,8 @@ if tracked:
     __import__('time').sleep(0.05)
 values = json.loads((root / 'metadata.json').read_text())[package]
 values = dict(values)
+if settings.get('USE_CROSS_COMPILE') == 'yes':
+    values['_EMBER_GRAPH_CLANG_OBSERVED'] = '23.1.6'
 path_options = values.pop('_options_by_path_and_required', {})
 if path_options:
     selected = path_options.get(__import__('os').environ['PATH'], {})
@@ -153,7 +192,10 @@ if host_path.exists() and verified_env != verified_value:
 with (root / 'calls.jsonl').open('a') as stream:
     stream.write(json.dumps({'package': package, 'settings': settings,
                                  'targets': [arg for arg in args if arg == 'show-vars'],
-                                 'verified_env': verified_env}) + '\n')
+                                 'verified_env': verified_env,
+                                 'clang_driver': os.environ.get('_EMBER_GRAPH_CLANG_DRIVER'),
+                                 'clang_version': os.environ.get('_EMBER_GRAPH_CLANG_VERSION'),
+                                 'ccpath': os.environ.get('CCPATH')}) + '\n')
 if '-dg1' in args:
     print('#*** Global Variables:', file=sys.stderr)
     for name in sorted(values):
@@ -240,6 +282,42 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.assertTrue(metadata)
         self.assertTrue(all(call['verified_env'] is None for call in metadata))
         self.assertFalse((self.pkgsrc / 'native-verifier-count').exists())
+
+    def test_clang_probe_is_seeded_once_for_target_and_never_native(self):
+        compiler = self.path / 'compiler'
+        commands = compiler / 'commands'
+        binary = compiler / 'clang'
+        driver = compiler / 'bin/clang'
+        commands.mkdir(parents=True)
+        driver.parent.mkdir()
+        binary.write_text('selected clang\n')
+        driver.symlink_to(binary)
+        (commands / 'cc').symlink_to(binary)
+        (commands / 'commands.json').write_text(json.dumps({
+            'format': 'emberbsd-compiler-binding',
+            'commands': {'cc': [str(binary)]}}))
+        self.toolchain = commands / 'commands.json'
+
+        self.run_export(environment={
+            'CCPATH': 'ambient-ccpath',
+            '_EMBER_GRAPH_CLANG_DRIVER': 'ambient-driver',
+            '_EMBER_GRAPH_CLANG_VERSION': 'ambient-version'})
+        calls = [json.loads(line) for line in
+                 (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        target = [call for call in calls
+                  if call['settings'].get('USE_CROSS_COMPILE') == 'yes' and
+                  'show-vars' in call['targets']]
+        native = [call for call in calls
+                  if call['settings'].get('USE_CROSS_COMPILE') == 'no' and
+                  'show-vars' in call['targets']]
+        self.assertGreaterEqual(len(target), 2)
+        self.assertEqual(target[0]['clang_driver'], str(driver))
+        self.assertIsNone(target[0]['clang_version'])
+        self.assertTrue(any(call['clang_version'] == '23.1.6' for call in target[1:]))
+        self.assertTrue(all(call['clang_driver'] is None for call in native))
+        self.assertTrue(all(call['clang_version'] is None for call in native))
+        self.assertTrue(all(call['verified_env'] is None for call in native))
+        self.assertTrue(all(call['ccpath'] is None for call in calls))
 
     def test_verified_native_key_is_reused_and_ambient_value_is_ignored(self):
         self.enable_host_db(['generator-2'])
@@ -351,7 +429,8 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         for error in failures:
             with self.subTest(error=type(error).__name__):
                 args = types.SimpleNamespace(pkgsrc=self.pkgsrc, makeconf=self.config, bmake=self.bmake,
-                                             pkg_admin=self.pkg_admin, make_variable=[], max_nodes=10, jobs=2)
+                                             pkg_admin=self.pkg_admin, make_variable=[], max_nodes=10, jobs=2,
+                                             mode='cross', toolchain_input=self.toolchain)
                 exporter = graph.Exporter(args, lambda path: '')
                 exporter.native_toolset_initialized = True
                 calls = []
@@ -855,7 +934,8 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         spec.loader.exec_module(module)
         args = types.SimpleNamespace(make_variable=[], native_make_variable=[], pkgsrc=self.pkgsrc,
                                      makeconf=self.config, bmake=self.bmake,
-                                     pkg_admin=self.pkg_admin)
+                                     pkg_admin=self.pkg_admin, mode='cross',
+                                     toolchain_input=self.toolchain)
         calls = []
 
         def hash_file(path):
