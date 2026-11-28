@@ -17,6 +17,9 @@
 set -eu
 [ "$#" = 1 ] || { echo 'Usage: cross-bulk-native-tools.sh NEW_OUTPUT' >&2; exit 2; }
 out=$1
+: "${CROSS_BULK_TEST_HOST_PYTHON:?set the selected SDK Python}"
+: "${CROSS_BULK_TEST_SDK_SOURCE:?set the selected SDK source}"
+retry_injection=${CROSS_BULK_TEST_NATIVE_REFRESH_FAIL_ONCE:-no}
 case "$out" in /*) ;; *) echo 'NEW_OUTPUT must be absolute' >&2; exit 2 ;; esac
 case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
@@ -51,6 +54,11 @@ mkdir $out/adding-\$db 2> /dev/null || echo "OVERLAP \$db \$3" >> $out/errors
 sleep 0.5
 rmdir $out/adding-\$db
 : > "\$2/\$3"
+if [ "\$db" = native-db ]; then
+    mkdir -p "\$2/\$3-1.0"
+    case "\$3" in gen) file=bin/generator ;; *) file=lib/libbase.a ;; esac
+    echo "\$file" > "\$2/\$3-1.0/+CONTENTS"
+fi
 WRAP
 # The database names packages by PKGBASE; each is at the tree's version
 # 1.0, so it satisfies BASE>=1.0 (scripts/tests/cross-bulk-native-version.sh
@@ -81,6 +89,9 @@ pkg=\${dir##*/}
 kind=\$(basename "\$(dirname "\$dir")")
 needs()
 {
+    if [ "\$kind/\$pkg" = t/a ] && [ ! -f "\$out/generator-ready" ]; then
+        echo 'native generator selection was stale at its consumer' >> "\$out/errors"
+    fi
     for tool in \$(cat \$dir/tools 2> /dev/null); do
         [ -e \$out/native-db/\$tool ] || echo "ORDER \$pkg before native \$tool" >> \$out/errors
     done
@@ -106,7 +117,17 @@ list()
 case "\$target" in
     show-var)
         case "\$varname" in
-            EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
+            EMBERBSD_NATIVE_TOOLSET_VERIFIED)
+                if [ -f "\$out/native-db/gen-1.0/+CONTENTS" ]; then
+                    if [ "$retry_injection" = yes ] && [ ! -f "\$out/refresh-failed-once" ]; then
+                        : > "\$out/refresh-failed-once"
+                        exit 1
+                    fi
+                    : > "\$out/generator-ready"
+                elif [ -f "\$out/native-db/base-1.0/+CONTENTS" ]; then
+                    echo 'library-only install rechecked the tool selection' >> "\$out/errors"
+                fi
+                echo fake ;;
             PACKAGES) echo \$out/packages ;;
             NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
             PKG_INFO) echo "\$out/pkg_info -K \$out/native-db" ;;
@@ -148,10 +169,20 @@ chmod +x "$out/bmake" "$out/pkg_add" "$out/pkg_info"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 bulk()
 {
+    run_bulk "$1" "$out/list" "$out/$2" > "$out/$1.log" 2>&1 ||
+        fail "$1: $(cat "$out/$1.log")"
+}
+run_bulk()
+{
     BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
         MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=8 CROSS_BULK_JOBS=4 \
-        sh "$ports/scripts/cross-bulk.sh" "$1" "$out/list" "$out/$2" > "$out/$1.log" 2>&1 ||
-        fail "$1: $(cat "$out/$1.log")"
+        sh "$ports/scripts/cross-bulk.sh" "$@"
+}
+bulk_expect_failure()
+{
+    if run_bulk "$1" "$out/list" "$out/$2" > "$out/$1-failed.log" 2>&1; then
+        fail "$1 unexpectedly succeeded"
+    fi
 }
 before() { [ "$(grep -nFx "$1" "$2" | cut -d : -f 1)" -lt "$(grep -nFx "$3" "$2" | cut -d : -f 1)" ]; }
 
@@ -166,15 +197,35 @@ before n/gen@native "$out/state/order" t/a || fail 'n/gen@native is not ordered 
 before n/base@native "$out/state/order" n/gen@native || fail 'n/base@native is not ordered before n/gen@native'
 grep -q 'n/cyc' "$out/state/edges" && fail 'the installed n/old@native was asked for its tools'
 
-bulk build state
+if [ "$retry_injection" = yes ]; then
+    bulk_expect_failure build state
+    [ -f "$out/refresh-failed-once" ] || fail 'the failure/retry fixture did not force a refresh failure'
+    grep -qFx 'n/gen@native native-tools-refresh' "$out/state/failed" ||
+        fail 'the first refresh failure was not recorded for the generator'
+    grep -qFx 't/a n/gen@native' "$out/state/blocked" ||
+        fail 'the consumer was not blocked by the failed refresh'
+    [ ! -e "$out/work/t-a.built" ] || fail 'the consumer started before retry'
+    bulk build state
+    expected_done='n/base@native t/a t/b t/c t/d '
+    [ -e "$out/work/t-a.built" ] || fail 'the consumer did not start after retry'
+else
+    bulk build state
+    expected_done='n/base@native n/gen@native t/a t/b t/c t/d '
+fi
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
-[ "$(cut -d ' ' -f 1 "$out/state/done" | sort | tr '\n' ' ')" = 'n/base@native n/gen@native t/a t/b t/c t/d ' ] ||
+[ "$(cut -d ' ' -f 1 "$out/state/done" | sort -u | tr '\n' ' ')" = "$expected_done" ] ||
     fail "done: $(cat "$out/state/done")"
 [ ! -s "$out/state/failed" ] && [ ! -s "$out/state/blocked" ] || fail "failed or blocked: $(cat "$out/state/failed" "$out/state/blocked")"
 [ "$(sort "$out/native-builds" | tr '\n' ' ')" = 'base native gen TARGET_OPSYS=NetBSD ' ] ||
     fail "native builds: $(cat "$out/native-builds")"
+[ "$(grep -c '^gen ' "$out/native-builds")" = 1 ] ||
+    fail 'the retry rebuilt the already-installed native generator'
 grep -q ' n/old' "$out/state/progress" && fail 'the installed native tool n/old was built again'
 [ "$(ls "$out/target-db" | tr '\n' ' ')" = 'a b c d ' ] || fail "target installs: $(ls "$out/target-db")"
+if [ "$retry_injection" = yes ]; then
+    echo 'PASS: native refresh failure blocked the consumer and startup retry reused the installed generator'
+    exit 0
+fi
 # A cycle among tools that the native prefix lacks is refused.
 mkdir -p "$out/tree/t/e" "$out/tree/n/x" "$out/tree/n/y" "$out/state2"
 echo x > "$out/tree/t/e/tools"
@@ -390,4 +441,7 @@ done
 cmp -s "$out/order-serial-fail/failed" "$out/order-parallel-fail/failed" ||
     fail 'parallel query failure changed the failed nodes'
 grep -qFx 't/shared order' "$out/order-parallel-fail/failed" || fail 'parallel query failure was lost'
+retry_out=$out/retry
+CROSS_BULK_TEST_NATIVE_REFRESH_FAIL_ONCE=yes \
+    "$0" "$retry_out"
 echo 'PASS: native tools are graph nodes, a long depends step blocks nobody, installs into one database never overlap, installed tools are leaves, a tool cycle is refused'

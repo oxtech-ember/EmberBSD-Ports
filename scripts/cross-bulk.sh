@@ -201,11 +201,15 @@ case "$mode" in
     *) env_identity= ;;
 esac
 export CROSS_BULK_ENV_IDENTITY=$env_identity
+refresh_native_tools()
+{
+    "$@" -C "$PKGSRCDIR/pkgtools/pkg_install" EMBERBSD_NATIVE_TOOLSET_REFRESH=yes \
+        show-var VARNAME=EMBERBSD_NATIVE_TOOLSET_VERIFIED < /dev/null
+}
 if [ "$mode" = deps ] && [ -n "${CROSS_BULK_NATIVE:-}" ]; then
     native=$CROSS_BULK_NATIVE
 else
-    native=$("$BMAKE" -C "$PKGSRCDIR/pkgtools/pkg_install" EMBERBSD_NATIVE_TOOLSET_REFRESH=yes show-var \
-        VARNAME=EMBERBSD_NATIVE_TOOLSET_VERIFIED < /dev/null) || {
+    native=$(refresh_native_tools "$BMAKE") || {
         echo 'The native host prefix selection failed verification' >&2
         exit 2
     }
@@ -1675,6 +1679,26 @@ stage_verify_locked()
         [ -f "$CROSS_BULK_STAGE_MANIFEST" ] && grep -qFx "$1" "$CROSS_BULK_STAGE_MANIFEST"
 }
 
+# The adapter selects commands in these directories. A missing manifest
+# cannot rule out a command. Do not scan the rest of the package database.
+native_package_has_commands()
+{
+    [ -n "$native_db" ] && [ -r "$native_db/$1/+CONTENTS" ] || return 0
+    grep -Eq '^(gnu/|qt6/)?bin/' "$native_db/$1/+CONTENTS" || [ "$?" -ne 1 ]
+}
+
+refresh_installed_native_tools()
+{
+    set -- "$BMAKE"
+    if [ -n "$native_db" ]; then
+        selected_bmake=$(command -v "$BMAKE") || return 1
+        case "$selected_bmake" in /*) ;; *) selected_bmake="$PWD/$selected_bmake" ;; esac
+        set -- "$host_python" -B -E -S "$sdk_source/scripts/prefix-lock.py" read \
+            --database "$native_db" -- "$selected_bmake"
+    fi
+    verified=$(refresh_native_tools "$@") && [ "$verified" = "$native" ]
+}
+
 build_native()
 {
     unset CROSS_BULK_PKG_ADD_JOB
@@ -1734,9 +1758,12 @@ build_native()
             case $? in 1) ;; *) result "$key" "failed $nnode native-pkgdb"; return 0 ;; esac
         fi
     fi
-    install=install why=build
+    install=install why=build old_commands=no
     set -f
-    [ -z "$base" ] || ! $native_pkg_info -e "$base" > /dev/null 2>&1 || install=replace
+    if [ -n "$base" ] && previous=$($native_pkg_info -e "$base" 2>/dev/null); then
+        install=replace
+        if native_package_has_commands "$previous"; then old_commands=yes; fi
+    fi
     set +f
     if [ "${package_only:-no}" != yes ] && [ -f "$state/native-requirements" ] &&
         { [ "${stage_local:-no}" != yes ] || ! $native_pkg_info -e "$name" > /dev/null; }; then
@@ -1778,6 +1805,13 @@ build_native()
         else
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1
         fi; then
+        if [ "${package_only:-no}" != yes ] &&
+            { [ "$old_commands" = yes ] || native_package_has_commands "$name"; }; then
+            refresh_installed_native_tools >> "$log" 2>&1 || {
+                result "$key" "failed $nnode native-tools-refresh"
+                return 0
+            }
+        fi
         [ "${stage_local:-no}" = yes ] || finish_build_inputs "$wrkdir"
         [ "${stage_local:-no}" = yes ] || clean_success "$@"
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $nnode" >> "$state/progress"

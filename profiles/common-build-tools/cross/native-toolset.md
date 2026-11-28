@@ -113,6 +113,9 @@ Generate the ordinary make-variable include with the selected Python:
 
 At startup, cross-bulk adds tools from newly installed native packages to the generated include.
 It accepts the old include only if every byte matches the previous selection with the same prefix and ABI.
+After a native install or replacement, cross-bulk checks the package file list.
+If the package supplies or replaces host commands, it refreshes the bindings before dependent packages start.
+Library-only installs and package-only builds skip this check of the bindings.
 An unchanged selection reuses the file. Use `verify --makeconf FILE` for a read-only check.
 Use `refresh --makeconf FILE` with the original selection options to accept installed additions.
 
