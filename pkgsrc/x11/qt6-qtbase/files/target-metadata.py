@@ -153,23 +153,30 @@ def target(args):
                 re.MULTILINE | re.DOTALL,
             )
 
+            # CMake also records the link destination and its physical path.
+            paths = {work / ".buildlink": str(prefix), host_prefix: "${SDK_NATIVE_PREFIX}"}
+            for selected, role in ((sysroot, "${SDK_TARGET_SYSROOT}"), (tooldir, "${SDK_TARGET_TOOLDIR}")):
+                physical = selected.resolve()
+                if physical == Path("/"):
+                    fail(f"target path resolves to the filesystem root: {selected}")
+                paths[selected] = paths[physical] = role
+                if selected.is_symlink():
+                    paths[selected.parent / selected.readlink()] = role
+
             def normalize_configure(match):
                 args = match.group(2)
-                # CMake also records the link destination and its physical path.
-                paths = {work / ".buildlink": str(prefix), host_prefix: "${SDK_NATIVE_PREFIX}"}
-                for path, role in ((sysroot, "${SDK_TARGET_SYSROOT}"), (tooldir, "${SDK_TARGET_TOOLDIR}")):
-                    physical = path.resolve()
-                    if physical == Path("/"):
-                        fail(f"target path resolves to the filesystem root: {path}")
-                    paths[path] = paths[physical] = role
-                    if path.is_symlink():
-                        paths[path.parent / path.readlink()] = role
                 for path in sorted(paths, key=lambda p: len(str(p)), reverse=True):
                     args = re.sub(re.escape(str(path)) + r'(?=/|["\s);]|$)',
                                   lambda _match: paths[path], args)
                 return match.group(1) + args
 
             text = pattern.sub(normalize_configure, text)
+
+            # Qt records the origin of each attribution entry in a package comment.
+            sysroots = [re.escape(str(p)) for p, role in paths.items() if role == "${SDK_TARGET_SYSROOT}"]
+            attribution = (r"(^PackageComment: <text>\nCMake target name: [^\n]+\n"
+                           r"    Information extracted from:\n     )(?:" + "|".join(sysroots) + r")(?=/)")
+            text = re.sub(attribution, r"\g<1>/sysroot_dir", text, flags=re.MULTILINE)
         else:
             text = re.sub(re.escape(str(sysroot)) + r"(?=/)", "", text)
             text = re.sub(

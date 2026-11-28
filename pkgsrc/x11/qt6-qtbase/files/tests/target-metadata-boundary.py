@@ -104,6 +104,17 @@ with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
         f'-DSimilarPrefix={host_tools}-extra/bin/tool\n'
         '</text>\n'
     )
+    comment = ('PackageComment: <text>\nCMake target name: WaylandCompositor_Attribution_xml\n'
+               '    Information extracted from:\n     {}\n    Entry index: 0\n</text>\n')
+    source = '/usr/pkg/qt6/share/qt6/wayland/protocols/example/qt_attribution.json'
+    sibling = f'{alias}-other{source}'
+    license_text = (f'ExtractedText: <text>\n    Information extracted from:\n'
+                    f'     {sysroot.resolve()}{source}\n</text>\n')
+    paths = [f'{alias}{source}', f'{sysroot.resolve()}{source}', sibling, f'/src_dir{source}']
+    sbom.write_text(''.join(comment.format(p) for p in paths) + license_text)
+    subprocess.run(command, check=True)
+    expected = [f'/sysroot_dir{source}', f'/sysroot_dir{source}', *paths[2:]]
+    assert sbom.read_text() == ''.join(comment.format(p) for p in expected) + license_text
     catalog_root = pathlib.Path(temp) / 'translations-only'
     catalogs = catalog_root / 'translations'
     catalogs.mkdir(parents=True)

@@ -30,7 +30,7 @@ PLIST.vulkan=	yes
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
     (${MACHINE_ARCH} == "aarch64" || ${MACHINE_ARCH} == "x86_64")
-PKGREVISION=	1	# Record the base libc SONAME.
+PKGREVISION=	2	# Use portable SPDX attribution paths.
 .endif
 
 .include "../../mk/bsd.pkg.mk"
