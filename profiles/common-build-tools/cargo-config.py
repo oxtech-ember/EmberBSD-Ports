@@ -93,7 +93,9 @@ def configure(config, vendor, output, rustc, shell, tool_path, mode, target,
     else:
         require(target and re.fullmatch(r"[a-z0-9_]+(?:-[a-z0-9_.]+){2,}", target),
                 "cross mode requires an explicit Rust target triple")
-        require(target != host, "cross host and target triples must differ")
+        # An EmberBSD host builds for its own Rust triple. Cargo then has one
+        # target table, and the target tools link the package and its build
+        # scripts against the sysroot.
     selected = {}
     for side, cc, cxx, ar, ldflags, cppflags, launcher in (
             ("host", host_cc, host_cxx, host_ar, host_ldflags, host_cppflags, host_linker_launcher),
@@ -137,7 +139,8 @@ def configure(config, vendor, output, rustc, shell, tool_path, mode, target,
     text += '\ntarget-dir = ' + quote(str(output)) + '\n'
     text += '\n[source.crates-io]\nreplace-with = "vendored-sources"\n'
     text += '\n[source.vendored-sources]\ndirectory = ' + quote(str(vendor)) + '\n'
-    for triple, side in (((host, "host"),) if target == host else ((host, "host"), (target, "target"))):
+    single = ((target, "target" if mode == "cross" else "host"),)
+    for triple, side in (single if target == host else ((host, "host"), (target, "target"))):
         text += '\n[target.' + quote(triple) + ']\nlinker = ' + quote(selected_paths[side]["linker"]) + '\n'
         if triple == target:
             text += "rustflags = " + quote(flags) + "\n"

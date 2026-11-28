@@ -157,10 +157,21 @@ class ConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'native mode'):
             self.configure(target_cc='clang')
 
-    def test_cross_requires_different_explicit_target(self):
-        for target in ('',HOST,'../../bad'):
+    def test_cross_requires_explicit_target(self):
+        for target in ('','../../bad'):
             with self.subTest(target=target), self.assertRaises(ValueError):
                 self.configure(mode='cross',target=target)
+
+    def test_same_triple_cross_uses_target_tools_in_one_table(self):
+        c = self.configure(mode='cross', target=HOST, target_cc='clang --sysroot=/target',
+                           target_cxx='clang++ --sysroot=/target', target_ar='llvm-ar',
+                           rustflags='-C opt-level=2')
+        self.assertEqual(c['build']['target'], HOST)
+        self.assertEqual(list(c['target']), [HOST])
+        self.assertEqual(c['target'][HOST]['rustflags'], ['-C', 'opt-level=2'])
+        self.assertEqual(self.invoke_wrapper(c, 'TARGET_CC', '-c', 'x.c'), ['--sysroot=/target', '-c', 'x.c'])
+        linker = json.loads(subprocess.check_output([c['target'][HOST]['linker'], 'a.o'], text=True))
+        self.assertEqual(linker, ['--sysroot=/target', 'a.o'])
 
     def test_ambiguous_rust_host_rejected(self):
         self.rustc.write_text('#!'+sys.executable+'\nprint("host: '+HOST+'\\nhost: '+TARGET+'")\n')
