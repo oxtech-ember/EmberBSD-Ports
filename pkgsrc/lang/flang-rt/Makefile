@@ -94,5 +94,6 @@ post-install:
 	    > ${DESTDIR}${PREFIX}/${FLANG_RT_DRIVER_CFG}
 .endif
 
+.include "../../mk/configure/ember-cmake-generator.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"

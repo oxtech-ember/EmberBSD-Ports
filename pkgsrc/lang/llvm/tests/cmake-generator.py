@@ -23,11 +23,11 @@ def main():
         def query(expected, *options, package="lang/llvm"):
             command = [tools / "bmake", "-C", args.pkgsrc / package,
                        "WRKDIR=" + str(work), *options, "show-vars",
-                       "VARNAMES=_CMAKE_BUILD_SYSTEM WRKSRC CMAKE_BUILD_DIR INSTALL_TARGET"]
-            system, source, subdir, install = subprocess.check_output(
+                       "VARNAMES=_CMAKE_BUILD_SYSTEM WRKSRC CONFIGURE_DIR CMAKE_BUILD_DIR INSTALL_TARGET"]
+            system, source, configure_dir, subdir, install = subprocess.check_output(
                 command, env=env, text=True).splitlines()
             assert system == expected, (package, options, system, expected)
-            return Path(source) / subdir, install
+            return Path(source) / configure_dir / subdir, install
 
         build, install = query("Ninja")
         query("Unix Makefiles", "CMAKE_GENERATOR=make")
@@ -35,7 +35,7 @@ def main():
         query("Ninja", package="lang/llvm-devel")
         query("Unix Makefiles", "MAKECONF=/dev/null", "USE_CROSS_COMPILE=no",
               "EMBERBSD_SDK_SOURCE=", package="x11/kf6-kwidgetsaddons")
-        for package in ("lang/mlir", "lang/flang", "devel/protobuf", "devel/protobuf-devel",
+        for package in ("lang/mlir", "lang/flang", "lang/flang-rt", "devel/protobuf", "devel/protobuf-devel",
                         "multimedia/assimp", "x11/kf6-kwidgetsaddons",
                         "textproc/kf6-sonnet-parsetrigrams", "textproc/kf6-syntax-highlighting-indexer"):
             previous, _ = query("Ninja", package=package)

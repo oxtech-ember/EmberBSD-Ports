@@ -2,7 +2,7 @@
 # Select a stable CMake generator for SDK builds without changing configured workdirs.
 
 .if !empty(EMBERBSD_SDK_SOURCE) && !defined(CMAKE_GENERATOR)
-_EMBER_CMAKE_WORK=	${WRKSRC}/${CMAKE_BUILD_DIR:Ucmake-pkgsrc-build}
+_EMBER_CMAKE_WORK=	${WRKSRC}/${CONFIGURE_DIR:U.}/${CMAKE_BUILD_DIR:Ucmake-pkgsrc-build}
 .  if exists(${_EMBER_CMAKE_WORK}/CMakeCache.txt)
 .    if exists(${_EMBER_CMAKE_WORK}/Makefile) && !exists(${_EMBER_CMAKE_WORK}/build.ninja)
 CMAKE_GENERATOR=	make
