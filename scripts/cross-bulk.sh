@@ -204,7 +204,7 @@ export CROSS_BULK_ENV_IDENTITY=$env_identity
 if [ "$mode" = deps ] && [ -n "${CROSS_BULK_NATIVE:-}" ]; then
     native=$CROSS_BULK_NATIVE
 else
-    native=$("$BMAKE" -C "$PKGSRCDIR/pkgtools/pkg_install" show-var \
+    native=$("$BMAKE" -C "$PKGSRCDIR/pkgtools/pkg_install" EMBERBSD_NATIVE_TOOLSET_REFRESH=yes show-var \
         VARNAME=EMBERBSD_NATIVE_TOOLSET_VERIFIED < /dev/null) || {
         echo 'The native host prefix selection failed verification' >&2
         exit 2

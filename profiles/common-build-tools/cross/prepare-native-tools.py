@@ -190,7 +190,13 @@ def literal(value):
     return value
 
 
-def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
+def pinned_variable(role):
+    return '_EMBER_SDK_' + role.upper().replace('-', '_')
+
+
+def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None, *, optional_roles=None):
+    if optional_roles is None:
+        optional_roles = toolset.tools
     lines = ['# Generated from the selected Ports host prefix. Do not edit.']
     family = toolset.compiler_family
     if native_cxx and any(list(toolset.abi_flags[name]) != native_cxx['flags'][name]
@@ -212,10 +218,10 @@ def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
                  native_cxx['adapters'][role] if native_cxx and role in ('cc', 'cxx', 'cpp') else toolset.tool(role))
                 for role, variable in ROLE_VARIABLES.items()]
     selected += [(role, variable, toolset.tool(role))
-                 for role, variable in OPTIONAL_ROLES.items() if role in toolset.tools]
-    if 'bsdtar' in toolset.tools:
+                 for role, variable in OPTIONAL_ROLES.items() if role in optional_roles]
+    if 'bsdtar' in optional_roles:
         selected.append(('tar', 'TOOLS_PLATFORM.tar', toolset.tool('bsdtar')))
-    if 'flex' in toolset.tools:
+    if 'flex' in optional_roles:
         selected.append(('lex', 'TOOLS_PLATFORM.lex', toolset.tool('flex')))
     selected += [(role + '-dir', variable, os.path.dirname(toolset.tool(role)))
                  for role, variable in ROLE_DIRECTORIES.items()]
@@ -231,7 +237,7 @@ def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
         if "'" in value:
             from emberbsd_sdk.errors import SDKError
             raise SDKError('The native make mapping does not support quotes in tool paths')
-        pinned = '_EMBER_SDK_' + role.upper().replace('-', '_')
+        pinned = pinned_variable(role)
         assignment = variable + '?= ${' + pinned + '}'
         if role == 'readelf':
             # bsd.tools.mk may define this variable empty before MAKECONF.
@@ -264,15 +270,15 @@ def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
     # Empty platform mappings make pkgsrc resolve these build tools through
     # the native package dependency rather than /usr/bin when absent.
     for role, variable in OPTIONAL_ROLES.items():
-        if variable.startswith('TOOLS_PLATFORM.') and role not in toolset.tools:
+        if variable.startswith('TOOLS_PLATFORM.') and role not in optional_roles:
             lines += [variable + '?=', '.if !empty(' + variable + ')',
                       '.error ' + variable + ' was not selected from the host prefix', '.endif']
-    if 'flex' not in toolset.tools:
+    if 'flex' not in optional_roles:
         lines += ['TOOLS_PLATFORM.lex?=', '.if !empty(TOOLS_PLATFORM.lex)',
                   '.error TOOLS_PLATFORM.lex was not selected from the host prefix', '.endif']
     # pkgsrc probes system directories for rpcgen independently of
     # TOOLS_PLATFORM. Refuse execution until the native package is installed.
-    if 'rpcgen' not in toolset.tools:
+    if 'rpcgen' not in optional_roles:
         lines += ['TOOLS_PATH.rpcgen?= ${TOOLS_DIR}/bin/false',
                   '.if "${TOOLS_PATH.rpcgen}" != "${TOOLS_DIR}/bin/false"',
                   '.error TOOLS_PATH.rpcgen was not selected from the host prefix', '.endif']
@@ -439,10 +445,17 @@ def select_native_cxx(toolset, selected_record, stage_root=None):
 def write(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
+    from emberbsd_sdk.process import ContextLocks
     if not Path(destination).is_absolute():
         raise SDKError('Use an absolute native include destination')
     output = Path(paths.canonical_new(destination))
     data = render(toolset, qt, fetch_mode, native_cxx)
+    with ContextLocks([str(output)], str(output.parent), wait=True):
+        replace_include(output, data)
+    return {'makeconf': str(output)}
+
+
+def replace_include(output, data):
     # Replace only the requested configuration file, after a complete write.
     with tempfile.NamedTemporaryFile(prefix='.native-tools-', dir=output.parent,
                                      delete=False) as temporary:
@@ -453,7 +466,6 @@ def write(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
             os.replace(stage, output)
         finally:
             stage.unlink(missing_ok=True)
-    return {'makeconf': str(output)}
 
 
 # Bare host tool names required by nested GNU configure/build scripts.
@@ -513,7 +525,7 @@ def main(arguments):
     if arguments[:1] == ['exec-tool']:
         return exec_tool(arguments[1:])
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('write', 'verify', 'aliases'))
+    parser.add_argument('operation', choices=('write', 'verify', 'refresh', 'aliases'))
     parser.add_argument('--host-prefix', required=True)
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--fetch-mode', choices=('fetch', 'manual'), default='fetch')
@@ -528,16 +540,18 @@ def main(arguments):
         if not args.output or args.makeconf:
             parser.error('write requires only --output')
     elif not args.makeconf or args.output:
-        parser.error('verify requires only --makeconf')
+        parser.error(args.operation + ' requires only --makeconf')
     toolset = selection(args)
     native_cxx = select_native_cxx(toolset, args.native_cxx_binding_record, args.native_cxx_stage_root)
     if args.operation == 'aliases':
         print(json.dumps(write_aliases(toolset, args.output, native_cxx)))
         return
-    qt = qt_host_paths(args.host_prefix, toolset.path) + mlir_host_tools(args.host_prefix) + \
-        flang_host_tool(args.host_prefix) + darwin_host_tools(args.host_prefix, toolset)
+    groups = (qt_host_paths(args.host_prefix, toolset.path), mlir_host_tools(args.host_prefix),
+              flang_host_tool(args.host_prefix))
+    platform = darwin_host_tools(args.host_prefix, toolset)
+    bindings = tuple(binding for group in groups for binding in group) + platform
     if args.operation == 'write':
-        print(json.dumps(write(toolset, args.output, qt, args.fetch_mode, native_cxx)))
+        print(json.dumps(write(toolset, args.output, bindings, args.fetch_mode, native_cxx)))
         return
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
@@ -546,8 +560,25 @@ def main(arguments):
     path = Path(paths.canonical_existing(args.makeconf))
     paths.regular_file(str(path))
     data = path.read_bytes()
-    if data != render(toolset, qt, args.fetch_mode, native_cxx):
-        raise SDKError('Regenerate the native include for the selected host prefix')
+    expected = render(toolset, bindings, args.fetch_mode, native_cxx)
+    if data != expected:
+        if args.operation != 'refresh':
+            raise SDKError('Regenerate the native include for the selected host prefix')
+        from emberbsd_sdk.process import ContextLocks
+        with ContextLocks([str(path)], str(path.parent), wait=True):
+            data = path.read_bytes()
+            if data != expected:
+                # The old names select a candidate. Every byte must match the canonical include.
+                declared = {line.partition(b':= ')[0] for line in data.splitlines()
+                            if line.startswith(b'_EMBER_SDK_')}
+                roles = {role for role in OPTIONAL_ROLES
+                         if role in toolset.tools and pinned_variable(role).encode() in declared}
+                previous = tuple(binding for group in groups
+                                 if group and pinned_variable(group[0][0]).encode() in declared
+                                 for binding in group) + platform
+                if data != render(toolset, previous, args.fetch_mode, native_cxx, optional_roles=roles):
+                    raise SDKError('Regenerate the native include for the selected host prefix')
+                replace_include(path, expected)
     print('VERIFIED')
 
 

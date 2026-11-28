@@ -241,6 +241,15 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                 assert b'TOOLS_PLATFORM.lex?=\n' in include.read_bytes()
             tools[role] = str(root / ('sdk-' + role))
             executable.touch()
+            if role in ('flex', 'bsdtar'):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    adapter.main(['refresh', *pins, '--makeconf', str(include)])
+                assert include.read_bytes() == adapter.render(selected)
+                executable.unlink()
+                saved = tools.pop(role)
+                refused(adapter.main, ['refresh', *pins, '--makeconf', str(include)])
+                tools[role] = saved
+                executable.touch()
         rpcgen = root / 'host-pkg-llvm/bin/rpcgen'
         rpcgen.touch()
         tools['rpcgen'] = str(root / 'sdk-rpcgen')
@@ -276,6 +285,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert output.getvalue() == 'VERIFIED\n'
         selected.abi_flags = dict(selected.abi_flags, cppflags=('-isysroot', '/missing'))
         refused(adapter.main, ['verify', *pins, '--host-abi-cppflags=-isysroot /missing', '--makeconf', str(include)])
+        refused(adapter.main, ['refresh', *pins, '--host-abi-cppflags=-isysroot /missing', '--makeconf', str(include)])
         selected.abi_flags = dict(flags, cppflags=('-isysroot',
             '/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk', '-mmacosx-version-min=27.0'))
         with contextlib.redirect_stdout(io.StringIO()):
@@ -294,9 +304,18 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
             if count + 1 < len(adapter.MLIR_HOST_TOOLS):
                 refused(adapter.main, ['write', *pins, '--output', str(destination)])
                 assert include.read_bytes() == without_qt
+        refused(adapter.main, ['verify', *pins, '--makeconf', str(include)])
+        include.write_bytes(without_qt + b'.include "/unselected.mk"\n')
+        refused(adapter.main, ['refresh', *pins, '--makeconf', str(include)])
+        assert include.read_bytes().endswith(b'.include "/unselected.mk"\n')
+        include.write_bytes(without_qt)
         with contextlib.redirect_stdout(io.StringIO()):
-            adapter.main(['write', *pins, '--output', str(destination)])
+            adapter.main(['refresh', *pins, '--makeconf', str(include)])
         with_mlir = include.read_bytes()
+        previous_stat = include.stat()
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['refresh', *pins, '--makeconf', str(include)])
+        assert include.stat().st_ino == previous_stat.st_ino
         mlir_dir = str(mlir_bin.resolve())
         assert b'EMBERBSD_MLIR_NATIVE_TOOLS?= ${_EMBER_SDK_MLIR_TOOLS_DIR}\n' in with_mlir
         assert ('.if "${EMBERBSD_MLIR_NATIVE_TOOLS}" != "' + mlir_dir + '"').encode() in with_mlir

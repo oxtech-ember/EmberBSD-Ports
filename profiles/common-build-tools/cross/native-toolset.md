@@ -111,6 +111,11 @@ Generate the ordinary make-variable include with the selected Python:
     --host-prefix /absolute/host-pkg-llvm --output /absolute/host-tools.mk
 ```
 
+At startup, cross-bulk adds tools from newly installed native packages to the generated include.
+It accepts the old include only if every byte matches the previous selection with the same prefix and ABI.
+An unchanged selection reuses the file. Use `verify --makeconf FILE` for a read-only check.
+Use `refresh --makeconf FILE` with the original selection options to accept installed additions.
+
 For a Darwin host ABI, pass the same explicit flags when generating the include
 and in the pkgsrc make configuration. `native-tools.mk` verifies this selection
 and incorporates these values in `EMBERBSD_NATIVE_TOOLSET_VERIFIED`:
