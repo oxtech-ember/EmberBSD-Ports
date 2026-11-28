@@ -105,11 +105,7 @@ CONFIGURE_ARGS+=	--with-configdir=${SMB_CONFIG}
 CONFIGURE_ARGS+=	--with-libiconv=${BUILDLINK_PREFIX.iconv}
 CONFIGURE_ARGS+=	--abi-check-disable
 CONFIGURE_ARGS+=	--disable-symbol-versions
-.if defined(MAKE_JOBS) && !empty(MAKE_JOBS) && !(defined(MAKE_JOBS_SAFE) && ${MAKE_JOBS_SAFE:U:tl} == no)
-CONFIGURE_ARGS+=	--jobs=${MAKE_JOBS}
-.else
-CONFIGURE_ARGS+=	--jobs=1
-.endif
+CONFIGURE_ARGS+=	--jobs=${_MAKE_JOBS_N}
 CONFIGURE_ARGS+=	--without-gpgme
 
 # Depends on ncurses, explicitly disable for now.
@@ -117,6 +113,8 @@ CONFIGURE_ARGS+=	--without-regedit
 
 PY_PATCHPLIST=		yes
 MAKE_FLAGS+=		WAF_BINARY=${TOOL_PYTHONBIN}\ ${WRKSRC}/buildtools/bin/waf
+# Waf reads the GNU make job limit when it relinks libraries for installation.
+INSTALL_TARGET=		-j${_MAKE_JOBS_N} install
 
 # for winbind option build.
 .if "${OPSYS}" != "Darwin" && "${OPSYS}" != "SunOS"

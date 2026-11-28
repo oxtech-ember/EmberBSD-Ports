@@ -192,6 +192,17 @@ class Recipes(unittest.TestCase):
         self.assertEqual(key, 'PYTHON_CONFIG')
         self.assertEqual(shlex.split(arguments), [interpreter, f'{library}/config-{version}/python-config.py'])
 
+    def test_samba_configure_and_install_use_the_package_job_limit(self):
+        for extra, jobs in (([], 3), (['MAKE_JOBS.net/samba4=2'], 2), (['MAKE_JOBS_SAFE=no'], 1)):
+            with self.subTest(extra=extra):
+                result = bmake('net/samba4', 'MAKE_JOBS=3', *extra,
+                               '-V', '${CONFIGURE_ARGS:M--jobs=*}',
+                               '-V', '${MAKE_FLAGS} ${INSTALL_MAKE_FLAGS} -f ${MAKE_FILE} ${INSTALL_TARGET}')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                configure, install = result.stdout.strip().splitlines()
+                self.assertEqual(configure.strip(), f'--jobs={jobs}')
+                self.assertIn(f'-j{jobs}', shlex.split(install))
+
     def test_default_replays_without_a_target(self):
         for recipe in RECIPES:
             with self.subTest(recipe=recipe):
