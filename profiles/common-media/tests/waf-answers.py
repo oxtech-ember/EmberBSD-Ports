@@ -18,6 +18,7 @@ import argparse
 import importlib.util
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -179,6 +180,17 @@ class Recipes(unittest.TestCase):
     def identity(self, recipe):
         return (value(recipe, '${CROSS_OPSYS}-${CROSS_OS_VERSION}-${MACHINE_ARCH}'), recipe,
                 value(recipe, '${PKGNAME_NOREV}'))
+
+    def test_samba_uses_the_target_python_config(self):
+        result = bmake('net/samba4', '-V', '${CONFIGURE_ENV:MPYTHON_CONFIG=*}',
+                       '-V', '${TOOL_PYTHONBIN}', '-V', '${CROSS_DESTDIR}${LOCALBASE}/${PYLIB}',
+                       '-V', '${PYVERSSUFFIX}')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command, interpreter, library, version = result.stdout.strip().splitlines()
+        assignment, = shlex.split(command)
+        key, arguments = assignment.split('=', 1)
+        self.assertEqual(key, 'PYTHON_CONFIG')
+        self.assertEqual(shlex.split(arguments), [interpreter, f'{library}/config-{version}/python-config.py'])
 
     def test_default_replays_without_a_target(self):
         for recipe in RECIPES:
