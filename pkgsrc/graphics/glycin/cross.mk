@@ -47,7 +47,11 @@ _EMBER_GLYCIN_RUST_HOST!= ${TOOLBASE:Q}/bin/rustc -vV | ${_EMBER_GLYCIN_AWK:Q} \
 PKG_FAIL_REASON+= "glycin requires the shared official native Rust 1.100.0 provider"
 .else
 _EMBER_GLYCIN_HOST_KEY= ${_EMBER_GLYCIN_RUST_HOST:tu:S/-/_/g}
+# With one Rust triple for host and target, Cargo has one linker key; the
+# target linker then also links build scripts against the sysroot.
+.if ${_EMBER_GLYCIN_HOST_KEY} != ${_EMBER_GLYCIN_RUST_KEY}
 MAKE_ENV+= CARGO_TARGET_${_EMBER_GLYCIN_HOST_KEY}_LINKER=${EMBERBSD_CROSS_BUILD_CC}
+.endif
 .endif
 .endif
 MAKE_ENV+= HOST_CC=${EMBERBSD_CROSS_BUILD_CC} HOST_CXX=${EMBERBSD_CROSS_BUILD_CXX}

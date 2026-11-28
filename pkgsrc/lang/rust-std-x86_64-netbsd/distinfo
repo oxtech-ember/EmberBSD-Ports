@@ -7,4 +7,3 @@ SHA1 (patch-stage0-cross-std) = e8a3c60740f33fb12faee3914b90df96df2f4d8c
 SHA1 (patch-netbsd-llvm-unwind) = a1279cbc4e88a6823fbb159d69f7c4531feb6eb8
 SHA1 (patch-bootstrap-darwin-loader) = d16df1dfa05138e03f54d151a82ba307be126cde
 SHA1 (patch-stage0-cargo-sysroot-lints) = ba33b810d2cefee6f86af40a394ca87f2ee7e998
-SHA1 (patch-stage0-native-std) = eed0dc589f38b5a96164f154cd359ed3b36085be

@@ -38,8 +38,6 @@ RUST_HOST_TRIPLE= aarch64-apple-darwin
 RUST_HOST_TRIPLE= x86_64-apple-darwin
 .elif ${OPSYS} == "Linux" && ${MACHINE_ARCH} == "x86_64"
 RUST_HOST_TRIPLE= x86_64-unknown-linux-gnu
-.elif ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
-RUST_HOST_TRIPLE= x86_64-unknown-netbsd
 .else
 PKG_FAIL_REASON+= "Unsupported Rust build host"
 .endif

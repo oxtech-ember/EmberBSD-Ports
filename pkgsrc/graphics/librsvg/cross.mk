@@ -66,7 +66,11 @@ _EMBER_RSVG_RUST_HOST!= ${TOOLBASE:Q}/bin/rustc -vV | ${_EMBER_RSVG_AWK:Q} \
 PKG_FAIL_REASON+= "librsvg requires the shared official native Rust 1.100.0 provider"
 .else
 _EMBER_RSVG_HOST_KEY= ${_EMBER_RSVG_RUST_HOST:tu:S/-/_/g}
+# With one Rust triple for host and target, Cargo has one linker key; the
+# target linker then also links build scripts against the sysroot.
+.if ${_EMBER_RSVG_HOST_KEY} != ${_EMBER_RSVG_RUST_KEY}
 MAKE_ENV+= CARGO_TARGET_${_EMBER_RSVG_HOST_KEY}_LINKER=${EMBERBSD_CROSS_BUILD_CC}
+.endif
 .endif
 .endif
 MAKE_ENV+= HOST_CC=${EMBERBSD_CROSS_BUILD_CC} HOST_CXX=${EMBERBSD_CROSS_BUILD_CXX}
@@ -89,7 +93,6 @@ emberbsd-librsvg-rust:
 	"$$rustc" -vV | ${_EMBER_RSVG_AWK:Q} -v expected=${_EMBER_RSVG_RUST_HOST:Q} \
 	    '/^release: / {release=$$2} /^commit-hash: / {commit=$$2} /^host: / {host=$$2} \
 	     END {if (release != "1.100.0" || commit != "0ef1bc386059596dada8fb65b50425aab2ea637a" || host != expected) exit 1}'; \
-	test '${_EMBER_RSVG_RUST_HOST}' != '${RUST_TARGET}'; \
 	"$$cargo" -V | ${GREP} -q '^cargo 1[.]100[.]0 '; \
 	${SH:Q} ${_PKGSRCDIR:Q}/mk/emberbsd-verify-target-drivers.sh ${WRAPPER_BINDIR:Q}/cc ${WRAPPER_BINDIR:Q}/c++ \
 	    ${_EMBER_GI_TRIPLET:Q} ${RUST_TARGET:Q}; \

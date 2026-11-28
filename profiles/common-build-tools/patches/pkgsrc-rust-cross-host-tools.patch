@@ -8,7 +8,7 @@ Not submitted upstream.
 
 --- a/lang/rust/rust.mk
 +++ b/lang/rust/rust.mk
-@@ -63,6 +63,28 @@
+@@ -63,6 +63,33 @@
  .  include "${RUST_DIR}/buildlink3.mk"
  .endif
  
@@ -17,6 +17,8 @@ Not submitted upstream.
 +.  if !empty(EMBERBSD_CROSS_RUST_STD:U)
 +_RUST_STD_TARGET_CMD=	${MAKE} -C ${PKGSRCDIR:Q}/lang/${EMBERBSD_CROSS_RUST_STD:Q} -V '$${STD_SUBDIR:T}'
 +RUST_SELECTED_TARGET_TRIPLE=	${_RUST_STD_TARGET_CMD:sh}
++.  elif ${EMBERBSD_CROSS_RUST_HOST_STD:Uno} == "yes"
++RUST_SELECTED_TARGET_TRIPLE=	${_EMBER_CROSS_RUST_TARGET}
 +.  else
 +RUST_SELECTED_TARGET_TRIPLE=	${RUST_TARGET_TRIPLE:U}
 +.  endif
@@ -26,10 +28,13 @@ Not submitted upstream.
 +# the host rust-bin and the std of the target, both as tool dependencies.
 +# A native build in native mode, such as a host tool dependency of a cross
 +# package, runs the same host compiler without a target std.
++# On a host with the target triple, the host rust-bin also supplies the std.
 +.if ${RUST_TYPE} == "native" && ${USE_CROSS_COMPILE:Uno:tl} == "yes" && \
-+    !empty(EMBERBSD_CROSS_RUST_STD)
++    (!empty(EMBERBSD_CROSS_RUST_STD) || ${EMBERBSD_CROSS_RUST_HOST_STD:Uno} == "yes")
 +TOOL_DEPENDS+=	rust-bin>=${RUST_REQ}:../../lang/rust-bin
++.  if !empty(EMBERBSD_CROSS_RUST_STD)
 +TOOL_DEPENDS+=	${EMBERBSD_CROSS_RUST_STD}-[0-9]*:../../lang/${EMBERBSD_CROSS_RUST_STD}
++.  endif
 +.elif ${RUST_TYPE} == "native" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 +TOOL_DEPENDS+=	rust-bin>=${RUST_REQ}:../../lang/rust-bin
 +.endif
