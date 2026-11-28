@@ -39,7 +39,9 @@ selection does not overwrite the persistent full-build root list.
 ### CPU allocation at the end of a build
 
 Cross-bulk divides the selected CPU budget among ready workers. If no new
-package can start, active Ninja workers share the available slots. A sole
+package can start, active Ninja workers share the available slots. When an
+operator signals the build to stop, finishing Ninja workers also share slots
+released by their peers. A sole
 worker can also receive slots before it starts Ninja. A worker waiting for
 an exclusive replacement returns its allocation. The scheduler restores the
 allocation before the replacement starts. The pkgsrc CMake Ninja generator

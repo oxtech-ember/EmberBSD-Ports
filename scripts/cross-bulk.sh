@@ -3242,11 +3242,11 @@ build()
             fi
             break
         fi
-        # A waiting writer prevents new dispatch. Give idle slots to readers
-        # when the ready frontier is empty or the writer already blocks it.
-        if [ -n "$ninja_worker" ] && [ "$stop" = 0 ] && [ "$replacing" = 0 ] &&
+        # Give idle slots to readers when no new worker can start. A requested
+        # drain still finishes live compilations. Preserve failure recovery.
+        if [ -n "$ninja_worker" ] && [ "$stop_status" != 1 ] && [ "$replacing" = 0 ] &&
            [ "$running" -gt "$waiting" ] && [ "$jobs_in_use" -lt "$cpus" ] &&
-           { [ "$waiting" -gt 0 ] || ! grep -q '^R ' "$run/ready"; }; then
+           { [ "$stop" = 1 ] || [ "$waiting" -gt 0 ] || ! grep -q '^R ' "$run/ready"; }; then
             for fifo in "$run"/*.ninja; do
                 [ "$running" -eq "$((waiting + 1))" ] || [ -p "$fifo" ] || continue
                 if allocated=$("$host_python" -B -E -S "$ninja_worker" share "$run" "$cpus"); then

@@ -12,8 +12,8 @@
 # a package gets one build run (package-install) after show-vars and clean.
 # Usage: cross-bulk-parallel.sh NEW_OUTPUT
 set -eu
-[ "$#" = 1 ] || { [ "$#" = 2 ] && { [ "$2" = --ninja-tail ] || [ "$2" = --ninja-replace ]; }; } || {
-    echo 'Usage: cross-bulk-parallel.sh NEW_OUTPUT [--ninja-tail|--ninja-replace]' >&2
+[ "$#" = 1 ] || { [ "$#" = 2 ] && { [ "$2" = --ninja-tail ] || [ "$2" = --ninja-replace ] || [ "$2" = --ninja-drain ]; }; } || {
+    echo 'Usage: cross-bulk-parallel.sh NEW_OUTPUT [--ninja-tail|--ninja-replace|--ninja-drain]' >&2
     exit 2
 }
 out=$1
@@ -387,7 +387,8 @@ reject_budget_case()
 calls() { awk -v dir="$out/tree/t/$1" 'index($0,"-C " dir " ") && $NF ~ /^(clean|package-install|package|replace)$/ {n++} END {print n+0}' "$out/calls"; }
 
 if [ "$#" = 2 ]; then
-    : "${CROSS_BULK_TEST_HOST_PYTHON:?}" "${CROSS_BULK_TEST_SDK_SOURCE:?}" "${CROSS_BULK_TEST_NINJA_PROBE:?}"
+    : "${CROSS_BULK_TEST_HOST_PYTHON:?}" "${CROSS_BULK_TEST_SDK_SOURCE:?}"
+    [ "$2" = --ninja-drain ] || : "${CROSS_BULK_TEST_NINJA_PROBE:?}"
     : > "$out/edges"
     case "$2" in
         --ninja-tail) packages='long short1 short2 short3 short4'; capacity=10 jobs=5 ;;
@@ -396,12 +397,90 @@ if [ "$#" = 2 ]; then
             for next in next1 next2; do
                 for prev in long short1; do echo "t/$prev t/$next" >> "$out/edges"; done
             done ;;
+        --ninja-drain)
+            packages='long short late'; capacity=4 jobs=2
+            echo 't/long t/late' >> "$out/edges"
+            echo 't/short t/late' >> "$out/edges" ;;
     esac
     for pkg in $packages; do
         mkdir -p "$out/tree/t/$pkg"
         echo "t/$pkg t/$pkg" >> "$out/edges"
     done
     newstate
+    if [ "$2" = --ninja-drain ]; then
+        drain_probe=$out/ninja-drain-probe.py
+        cat > "$drain_probe" <<'PY'
+import os
+from pathlib import Path
+import sys
+import time
+
+root = Path(os.environ['CROSS_BULK_TEST_OUT'])
+mode, package, jobs = sys.argv[1:]
+budget = Path(os.environ['EMBERBSD_BULK_NINJA_BUDGET'])
+if mode != 'worker':
+    raise SystemExit('unknown fixture action')
+if package == 'long':
+    os.mkfifo(budget.with_suffix('.ninja'))
+while not (root / 'release/all').exists() and not (root / 'release' / package).exists():
+    time.sleep(0.025)
+if package == 'long':
+    budget.with_suffix('.ninja').unlink()
+PY
+        chmod +x "$drain_probe"
+        mkdir -p "$out/release"
+        : > "$out/budget-events"
+        CROSS_BULK_TEST_OUT=$out \
+        CROSS_BULK_TEST_NINJA_PROBE=$drain_probe \
+        PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
+            CROSS_BULK_CPUS=$capacity CROSS_BULK_JOBS=$jobs \
+            sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/drain.log" 2>&1 &
+        drain_pid=$!
+        drain_cleanup()
+        {
+            : > "$out/release/all"
+            if [ -n "${drain_pid:-}" ]; then
+                kill -TERM "$drain_pid" 2> /dev/null || :
+                wait "$drain_pid" 2> /dev/null || :
+            fi
+        }
+        trap 'drain_cleanup' EXIT HUP INT TERM
+        n=0
+        while [ "$(grep -c '^start ' "$out/budget-events")" -lt 2 ] || [ ! -p "$out/state/run/t_long.ninja" ]; do
+            n=$((n + 1)); [ "$n" -lt 400 ] || fail "live Ninja workers did not start: $(cat "$out/drain.log")"
+            sleep 0.05
+        done
+        [ "$(cat "$out/state/build.lock/pid")" = "$drain_pid" ] || fail 'drain signal target is not the scheduler PID'
+        [ "$(grep -c '^start ' "$out/budget-events")" = 2 ] || fail 'queued package started before the drain signal'
+        [ "$(cat "$out/state/run/t_long.jobs")" = 2 ] || fail 'long worker did not start with half the CPU budget'
+        [ "$(cat "$out/state/run/t_short.jobs")" = 2 ] || fail 'short worker did not start with half the CPU budget'
+        kill -TERM "$drain_pid"
+        n=0
+        while [ ! -f "$out/state/build.lock/stop" ]; do
+            n=$((n + 1)); [ "$n" -lt 100 ] || fail 'scheduler did not acknowledge TERM'
+            sleep 0.05
+        done
+        : > "$out/release/short"
+        n=0
+        while [ "$(cat "$out/state/run/t_long.jobs" 2>/dev/null || echo 0)" != 4 ]; do
+            [ "$(grep -c '^start ' "$out/budget-events")" = 2 ] || fail 'queued package started after TERM'
+            n=$((n + 1)); [ "$n" -lt 200 ] || fail 'live worker did not receive the freed CPU budget'
+            sleep 0.05
+        done
+        [ "$(cat "$out/state/run/t_long.jobs")" = "$capacity" ] || fail 'live worker allocation exceeds or misses CPU capacity'
+        [ "$(grep -c '^finish short ' "$out/budget-events")" = 1 ] || fail 'short worker has not completed'
+        [ "$(grep -c '^start ' "$out/budget-events")" = 2 ] || fail 'queued package started while draining'
+        : > "$out/release/long"
+        rc=0
+        wait "$drain_pid" || rc=$?
+        drain_pid=
+        [ "$rc" = 143 ] || fail "drained Ninja build exited $rc, expected 143"
+        [ "$(grep -c '^start ' "$out/budget-events")" = 2 ] || fail 'queued package started after TERM'
+        [ ! -e "$out/state/build.lock" ] || fail 'drained Ninja build left its lock'
+        trap - EXIT HUP INT TERM
+        echo 'PASS: Ninja workers reclaim freed MAKE_JOBS slots after TERM without new package dispatch'
+        exit 0
+    fi
     # The normal scheduler, package-install barrier and selected CPU resolver.
     # The replacement case uses real pkg_add on its isolated database.
     BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
