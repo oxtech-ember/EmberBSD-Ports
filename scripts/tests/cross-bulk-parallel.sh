@@ -106,7 +106,20 @@ db=\$(basename "\$2")
 mkdir $out/adding-\$db 2> /dev/null || echo "OVERLAP \$db \$3" >> $out/errors
 sleep 0.3
 rmdir $out/adding-\$db
-: > "\$2/\$3"
+case "\$3" in
+    */early-1.0.tgz)
+        if [ ! -e "$out/early-wrapper" ]; then
+            [ "\${CROSS_BULK_PKG_ADD_JOB:-}" = t_early ] && [ -f "$out/early-state/run/t_early.archive" ] &&
+                { [ -f "$out/early-state/run/t_early.packaged.result" ] ||
+                  grep -q '^t/early early-1.0 ' "$out/early-state/packaged"; } || {
+                echo 'pkg_add ran before the target archive receipt' >> "$out/errors"
+                exit 41
+            }
+            cp "$out/early-state/run/pkg_add" "$out/early-wrapper" || exit 1
+        fi
+        : > "\$2/early-1.0" ;;
+    *) : > "\$2/\$3" ;;
+esac
 WRAP
 mkdir -p "$out/registrations"
 cat > "$out/pkg_info" <<WRAP
@@ -204,6 +217,8 @@ case "\$target" in
                     PACKAGES) echo \$out/packages ;;
                     PKG_INFO) echo \$out/pkg_info ;;
                     NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
+                    _PKG_DBDIR) echo \$out/target-db ;;
+                    _HOST_PKG_DBDIR) echo \$out/native-db ;;
                     PKGNAME) echo "\$pkg-\$version" ;;
                     WRKDIR) echo "\$out/work/\$pkg" ;;
                     WRKOBJDIR) echo "\$out/work" ;;
@@ -225,10 +240,16 @@ case "\$target" in
     replace) "\$CROSS_BULK_TEST_HOST_PYTHON" -B "\$CROSS_BULK_TEST_NINJA_PROBE" replace "\$pkg" "\$jobs" ;;
     package-install)
         work
-        \$add -K \$out/target-db \$pkg || exit 1
         name=\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0)
-        echo "@name \$name" > \$out/packages/All/\$name.tgz
-        cp \$out/packages/All/\$name.tgz \$out/registrations/\$name
+        archive=\$out/packages/All/\$name.tgz
+        if [ "\$pkg" = early ]; then
+            echo "@name \$name" > \$archive
+            \$add -K \$out/target-db \$archive || exit 1
+        else
+            \$add -K \$out/target-db \$pkg || exit 1
+            echo "@name \$name" > \$archive
+        fi
+        cp \$archive \$out/registrations/\$name
         stage_cookies "\$name" ;;
     *) echo "UNKNOWN \$target" >> \$out/errors; exit 1 ;;
 esac
@@ -583,4 +604,71 @@ grep -Fq 't_no-result exited without a result' "$out/lost.log" ||
 [ ! -s "$out/lost-state/done" ] && [ ! -s "$out/lost-state/failed" ] ||
     fail 'a missing worker result changed package receipts'
 [ ! -e "$out/lost-state/build.lock" ] || fail 'lost worker left the build locked'
+
+# A fresh target package must create its packaged receipt before pkg_add
+# changes target-db. This uses the generated STATE/run/pkg_add wrapper and
+# the archive passed by pkgsrc, rather than duplicating wrapper logic.
+mkdir -p "$out/tree/t/early" "$out/early-state"
+echo 't/early t/early' > "$out/early-edges"
+cp "$out/early-edges" "$out/early-state/edges"
+tsort "$out/early-edges" > "$out/early-state/order"
+: > "$out/early-state/done"
+: > "$out/early-state/failed"
+: > "$out/early-state/blocked"
+: > "$out/early-state/skipped"
+rc=0
+PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
+    CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=1 \
+    run_bulk build "$out/early-state/order" "$out/early-state" > "$out/early.log" 2>&1 || rc=$?
+[ "$rc" = 0 ] || fail "fresh receipt package failed: $(cat "$out/early.log")"
+grep -q '^t/early early-1.0 ' "$out/early-state/packaged" ||
+    fail 'fresh package did not record its early packaged receipt'
+grep -Fq 't/early early-1.0 ' "$out/early-state/done" ||
+    fail 'fresh package did not complete after receipt'
+[ -f "$out/target-db/early-1.0" ] || fail 'fresh package did not register target-db'
+fresh_archive=$out/packages/All/early-1.0.tgz
+fresh_sha=$(shasum -a 256 "$fresh_archive" | cut -d ' ' -f 1)
+grep -Fxq "t/early early-1.0 $fresh_sha" "$out/early-state/done" ||
+    fail 'fresh package receipt SHA differs from archive'
+
+# The generated wrapper accepts an identical archive by cmp, but never
+# records a same-basename archive for a different target package database.
+mkdir -p "$out/receipt-cases/foreign-db" "$out/receipt-cases/copy" \
+    "$out/receipt-cases/hardlink" "$out/receipt-cases/bad" "$out/no-shasum"
+cp "$fresh_archive" "$out/receipt-cases/copy/early-1.0.tgz"
+ln "$fresh_archive" "$out/receipt-cases/hardlink/early-1.0.tgz"
+printf '%s\n' wrong-bytes > "$out/receipt-cases/bad/early-1.0.tgz"
+receipt_wrapper=$out/early-wrapper
+run_receipt_case()
+{
+    CROSS_BULK_PKG_ADD_JOB=$1 \
+    CROSS_BULK_RECEIPT_ROOT=t/early \
+    CROSS_BULK_RECEIPT_NAME=early-1.0 \
+    CROSS_BULK_RECEIPT_ARCHIVE=$fresh_archive \
+        "$receipt_wrapper" -K "$2" "$3"
+}
+run_receipt_case copy "$out/target-db" "$out/receipt-cases/copy/early-1.0.tgz"
+run_receipt_case hardlink "$out/target-db" "$out/receipt-cases/hardlink/early-1.0.tgz"
+[ -f "$out/copy.packaged.result" ] || fail 'cmp-equivalent archive did not get a receipt'
+[ -f "$out/hardlink.packaged.result" ] || fail 'hardlink archive did not get a receipt'
+run_receipt_case foreign "$out/receipt-cases/foreign-db" "$out/receipt-cases/copy/early-1.0.tgz"
+[ -f "$out/receipt-cases/foreign-db/early-1.0" ] || fail 'foreign pkgdb did not receive its package'
+[ ! -e "$out/foreign.packaged.result" ] || fail 'foreign pkgdb created a target receipt'
+run_receipt_case bad "$out/target-db" "$out/receipt-cases/bad/early-1.0.tgz"
+[ ! -e "$out/bad.packaged.result" ] || fail 'same-basename changed archive was trusted'
+
+# A fresh helper call works without an external shasum command, proving the
+# selected SDK Python hashlib path. A later mutation of the cached archive
+# is rejected by its recorded identity and SHA.
+PATH="$out/no-shasum" "$host_python" -B -E -S \
+    "$ports/scripts/cross-bulk-package-receipt.py" "$out/fresh-hash" \
+    t/early early-1.0 "$fresh_archive" > "$out/fresh-hash.out"
+grep -Eq '^[0-9a-f]{64}$' "$out/fresh-hash.out" || fail 'hashlib receipt was not a SHA256'
+printf '%s\n' mutated > "$fresh_archive"
+if PATH="$out/no-shasum" "$host_python" -B -E -S \
+    "$ports/scripts/cross-bulk-package-receipt.py" "$out/fresh-hash" \
+    t/early early-1.0 "$fresh_archive" > "$out/mutated-hash.out" 2> "$out/mutated-hash.err"; then
+    fail 'mutated archive reused a cached receipt'
+fi
+
 echo 'PASS: parallel packages, dependency order, one install per database, blocking, resume and SIGTERM drain'

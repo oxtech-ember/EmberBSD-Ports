@@ -19,7 +19,9 @@ case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 for p in t/a t/b t/x l/libffi l/perl; do mkdir -p "$out/tree/$p"; done
-mkdir -p "$out/packages/All" "$out/work" "$out/native-db" "$out/target-db" "$out/vars" "$out/active"
+mkdir -p "$out/packages/All" "$out/work" "$out/native-db" "$out/target-db" "$out/vars" "$out/active" "$out/tmp"
+TMPDIR=$out/tmp
+export TMPDIR
 : > "$out/native-db/libffi-3.5"
 : > "$out/target-db/perl-5.44.0nb9"
 : > "$out/overlaps"
@@ -89,6 +91,13 @@ work() {
         sleep 0.3
         i=\$((i + 1))
     done
+    case "\$pkg.\$1" in
+        a.build|b.build)
+            while [ ! -f "\$out/checked-receipt" ] && [ "\$i" -lt 400 ]; do
+                sleep 0.05
+                i=\$((i + 1))
+            done ;;
+    esac
     rm -f \$out/active/\$pkg.\$1
 }
 case "\$target" in
@@ -134,7 +143,29 @@ printf '%s\n' t/a t/b l/perl t/x > "$out/list"
 bulk order "$out/list" "$out/state" > "$out/order.log" 2>&1 || fail "order: $(cat "$out/order.log")"
 grep -qx 'l/libffi@native t/x' "$out/state/edges" || fail "t/x does not wait for l/libffi@native: $(cat "$out/state/edges")"
 : > "$out/calls"
-bulk build "$out/state/order" "$out/state" > "$out/build.log" 2>&1 || fail "build: $(cat "$out/build.log")"
+printf 'l/perl perl-5.44.0nb10 %064d\n' 0 > "$out/state/packaged"
+printf 'l/perl previous-failed-attempt\n' > "$out/state/failed"
+bulk build "$out/state/order" "$out/state" > "$out/build.log" 2>&1 &
+build_pid=$!
+archive=$out/packages/All/perl-5.44.0nb10.tgz
+digest=$(printf 'perl\n' | shasum -a 256)
+expected_row="l/perl perl-5.44.0nb10 ${digest%% *}"
+early=no
+i=0
+while [ "$i" -lt 200 ]; do
+    if [ -f "$out/state/run/l_perl.replace" ] && [ -f "$archive" ] &&
+        [ -f "$out/active/a.build" ] && [ -f "$out/active/b.build" ] &&
+        [ "$(awk '$1 == "l/perl" { print }' "$out/state/packaged")" = "$expected_row" ] &&
+        ! grep -q '^l/perl ' "$out/state/done"; then
+        early=yes
+        break
+    fi
+    kill -0 "$build_pid" 2>/dev/null || break
+    sleep 0.05
+    i=$((i + 1))
+done
+: > "$out/checked-receipt"
+wait "$build_pid" || fail "build: $(cat "$out/build.log")"
 [ ! -s "$out/state/failed" ] || fail "failed: $(cat "$out/state/failed")"
 grep -q '/l/libffi .* replace' "$out/calls" || fail 'the older native libffi was not replaced'
 grep -q '/l/perl replace' "$out/calls" || fail 'the older target perl was not replaced'
@@ -144,6 +175,13 @@ for p in t/a t/b l/perl t/x l/libffi@native; do
     grep -q "^$p " "$out/state/done" || fail "$p not done: $(cat "$out/state/done")"
 done
 [ ! -s "$out/overlaps" ] || fail "a replace ran with other jobs: $(sort -u "$out/overlaps" | tr '\n' ';')"
+final_sha=$(shasum -a 256 "$archive") || fail 'could not hash completed package archive'
+final_sha=${final_sha%% *}
+grep -qx "l/perl perl-5.44.0nb10 $final_sha" "$out/state/done" ||
+    fail "done receipt does not contain the final archive SHA256: $(awk '$1 == "l/perl"' "$out/state/done")"
+grep -Fq "$out/tree/l/perl package" "$out/calls" ||
+    fail 'stale packaged/failed rows skipped the ordinary package build'
+[ "$early" = yes ] || fail "missing unique archive receipt before replacement: $expected_row"
 
 # A parked worker must leave the prefix alone if its scheduler exits.
 mkdir "$out/lost-scheduler"

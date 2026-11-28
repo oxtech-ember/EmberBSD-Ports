@@ -75,6 +75,7 @@ state=$3
 unset binary_selection_file
 binary_selection_file=${CROSS_BULK_BINARY_INSTALLED:-}
 unset CROSS_BULK_BINARY_INSTALLED CROSS_BULK_PKG_ADD_JOB
+unset CROSS_BULK_RECEIPT_ROOT CROSS_BULK_RECEIPT_NAME CROSS_BULK_RECEIPT_ARCHIVE
 # CPU capacity and the worker limit control scheduling. Keep them out
 # of recipe queries and their environment identity.
 unset scheduler_cpus scheduler_jobs
@@ -1118,6 +1119,8 @@ pkg_add_wrapper()
 # Written by scripts/cross-bulk.sh build: one pkg_add per package database.
 host_python='$host_python'
 prefix_lock='$sdk_source/scripts/prefix-lock.py'
+receipt_tool='$(cd "$(dirname "$0")" && pwd -P)/cross-bulk-package-receipt.py'
+target_db='${target_database:-}'
 native_db='$native_db'
 WRAPPER
     cat <<'WRAPPER'
@@ -1143,6 +1146,19 @@ case "${CROSS_BULK_PKG_ADD_JOB:-}" in
     ''|*/*) ;;
     *) report=${0%/*}/$CROSS_BULK_PKG_ADD_JOB.pkg-add ;;
 esac
+# The public archive exists when pkgsrc calls pkg_add. Report it before the
+# writer lock, including when this installation must wait for other jobs.
+if [ -n "$report" ] && [ -n "$writer" ] && [ -n "${CROSS_BULK_RECEIPT_ARCHIVE:-}" ] &&
+    { [ "$writer" = "$target_db" ] || [ "$writer" -ef "$target_db" ]; } &&
+    [ ! -f "${report%.pkg-add}.archive" ]; then
+    for archive_arg do :; done
+    if [ "${archive_arg##*/}" = "${CROSS_BULK_RECEIPT_ARCHIVE##*/}" ] &&
+        { [ "$archive_arg" -ef "$CROSS_BULK_RECEIPT_ARCHIVE" ] ||
+          cmp -s "$archive_arg" "$CROSS_BULK_RECEIPT_ARCHIVE"; }; then
+        "$host_python" -B -E -S "$receipt_tool" "${report%.pkg-add}" \
+            "$CROSS_BULK_RECEIPT_ROOT" "$CROSS_BULK_RECEIPT_NAME" "$CROSS_BULK_RECEIPT_ARCHIVE" > /dev/null || exit 1
+    fi
+fi
 if [ -n "$writer" ] && [ "${CROSS_BULK_PREFIX_WRITER:-}" != "$db" ]; then
     CROSS_BULK_PREFIX_WRITER=$db
     export CROSS_BULK_PREFIX_WRITER
@@ -2449,7 +2465,8 @@ build_one()
         if (source_archive_current); then
             remember_source_producer || { result "$key" "failed $path source-input-record"; return 0; }
             shared_pair_retire_producer "$path"
-            result "$key" "done $path"
+            read -r stored_name archive_sha stored_inputs < "$state/source-inputs/$key" || return 1
+            result "$key" "archive-current $path $name $archive_sha"
             return 0
         elif [ "$?" = 2 ]; then
             result "$key" "failed $path archive-integrity"
@@ -2488,6 +2505,9 @@ build_one()
     # The replace runs alone (see exclusive).
     install=package-install
     replace=
+    if [ "${stage_local:-no}" != yes ]; then
+        export CROSS_BULK_RECEIPT_ROOT="$path" CROSS_BULK_RECEIPT_NAME="$name" CROSS_BULK_RECEIPT_ARCHIVE="$package_file"
+    fi
     set -f
     if [ "${package_only:-no}" = yes ]; then
         install=package
@@ -2502,6 +2522,7 @@ build_one()
         { [ -z "$replace" ] || if [ "${stage_local:-no}" = yes ]; then
             target_install "$path" replace >> "$log" 2>&1
         else
+            "$host_python" -B -E -S "$receipt_tool" "$run/$key" "$path" "$name" "$package_file" >> "$log" 2>&1 &&
             exclusive "$key" target_install "$path" replace >> "$log" 2>&1
         fi; } && {
         if [ ! -f "$package_file" ]; then
@@ -2509,7 +2530,12 @@ build_one()
             result "$key" "failed $path package-archive"
             return 0
         fi
-        if ! digest_output=$(shasum -a 256 "$package_file" 2>> "$log"); then
+        if [ "${stage_local:-no}" = yes ]; then
+            digest_output=$(shasum -a 256 "$package_file" 2>> "$log") || digest_output=
+        else
+            digest_output=$("$host_python" -B -E -S "$receipt_tool" "$run/$key" "$path" "$name" "$package_file" 2>> "$log") || digest_output=
+        fi
+        if [ -z "$digest_output" ]; then
             echo "Could not compute SHA256 for package archive: $package_file" >> "$log"
             result "$key" "failed $path package-hash"
             return 0
@@ -2539,6 +2565,13 @@ build_one()
         result "$key" "built $path $name $package_sha"
         return 0
     }
+    # A failed install can leave a valid archive. Withdraw its receipt only
+    # if that archive changed or disappeared during the failed operation.
+    if [ "${stage_local:-no}" != yes ] && [ -f "$run/$key.archive" ] &&
+        ! "$host_python" -B -E -S "$receipt_tool" "$run/$key" "$path" "$name" "$package_file" > /dev/null 2>> "$log"; then
+        result "$key" "failed $path package-hash"
+        return 0
+    fi
     package_failure "$key" "$path" build
 }
 
@@ -2551,9 +2584,9 @@ state_path_row()
     spr_file=$1 spr_path=$2 spr_row=${3:-}
     spr_tmp=$spr_file.tmp.$$
     [ -f "$spr_file" ] || : > "$spr_file"
-    awk -v p="$spr_path" '$1 != p { print }' "$spr_file" > "$spr_tmp"
-    [ -z "$spr_row" ] || printf '%s\n' "$spr_row" >> "$spr_tmp"
-    mv "$spr_tmp" "$spr_file"
+    awk -v p="$spr_path" '$1 != p { print }' "$spr_file" > "$spr_tmp" &&
+        { [ -z "$spr_row" ] || printf '%s\n' "$spr_row" >> "$spr_tmp"; } &&
+        mv "$spr_tmp" "$spr_file"
 }
 
 package_install_one()
@@ -2937,6 +2970,7 @@ build()
        [ -f "$sdk_source/src/emberbsd_sdk/jobserver.py" ] && [ -f "$sdk_source/src/emberbsd_sdk/profile_build.py" ]; then
         ninja_worker=$(cd "$(dirname "$0")" && pwd -P)/cross-bulk-ninja.py
     fi
+    receipt_tool=$(cd "$(dirname "$0")" && pwd -P)/cross-bulk-package-receipt.py
     run=$state/run
     # Locks and results of an interrupted run; its packages are rebuilt.
     rm -rf "$run" "$state/install.lock"
@@ -2980,7 +3014,8 @@ build()
     for list_name in failed blocked; do
         [ -s "$state/$list_name" ] && mv "$state/$list_name" "$state/$list_name.$stamp"
     done
-    touch "$state/done" "$state/failed" "$state/blocked" "$state/skipped"
+    touch "$state/done" "$state/failed" "$state/blocked" "$state/skipped" "$state/packaged"
+    prior_archives=$(awk '$1 !~ /@native$/ {printf "%s ", $1}' "$state/packaged") || return 1
     packages=$packages/All
     native_packages=${packages%/All}-native
     link_launcher_args
@@ -3019,11 +3054,27 @@ build()
             what=$1 path=$2
             shift 2
             case "$what" in
+                packaged|archive-current)
+                    state_path_row "$state/packaged" "$path" "$path $*" || return 1
+                    if [ -s "$state/package-failed" ]; then
+                        state_path_row "$state/package-failed" "$path" || return 1
+                    fi
+                    if [ "$what" = packaged ]; then
+                        rm -f "$res"
+                        continue
+                    fi
+                    echo "$path done" >> "$run/status"
+                    ;;
                 built) echo "$path $*" >> "$state/done"; echo "$path done" >> "$run/status" ;;
                 done) echo "$path done" >> "$run/status" ;;
                 deferred) echo "$path deferred" >> "$run/status"; prefix_deferred=yes ;;
                 skipped) echo "$path $*" >> "$state/skipped"; echo "$path skipped" >> "$run/status" ;;
                 *)
+                    case "${1:-}" in
+                        package-archive|package-hash|archive-integrity)
+                            state_path_row "$state/packaged" "$path" || return 1
+                            state_path_row "$state/package-failed" "$path" "$path $1" || return 1 ;;
+                    esac
                     echo "$path $*" >> "$state/failed"
                     echo "$path failed" >> "$run/status"
                     worker_key=$(echo "$path" | tr / _)
@@ -3136,10 +3187,19 @@ build()
                         [ "$available" -lt "$slots" ] && slots=$available
                         worker_make_jobs=$(((available + slots - 1) / slots))
                     fi
+                    # Remove a previous receipt before this worker can replace its archive.
+                    budget_key=$(echo "$path" | tr / _)
+                    if [ -f "$run/$budget_key.archive" ]; then
+                        state_path_row "$state/packaged" "$path" || return 1
+                        rm "$run/$budget_key.archive" || return 1
+                    else
+                        case " $prior_archives" in
+                            *" $path "*) state_path_row "$state/packaged" "$path" || return 1 ;;
+                        esac
+                    fi
                     echo "$path running" >> "$run/status"
                     running=$((running + 1))
                     job=$((job + 1))
-                    budget_key=$(echo "$path" | tr / _)
                     printf '%s\n' "$worker_make_jobs" > "$run/$budget_key.jobs"
                     jobs_in_use=$((jobs_in_use + worker_make_jobs))
                     ready_left=$((ready_left - 1))

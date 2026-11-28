@@ -115,6 +115,12 @@ recovery keep their existing rebuild rules. Native packages retain their
 existing installed-version reuse. Derive this input from the installed package metadata. Honor an explicitly
 requested source rebuild.
 
+During a target build, `STATE/packaged` records the package path, exact package
+name and SHA256 when its archive is ready. A publisher can verify the archive
+and its runtime dependencies while the worker waits to install or replace it.
+`STATE/done` records successful registration. The publisher can accept a
+verified archive while an unrelated sysroot operation holds the writer lock.
+
 For binary package updates, use the SDK client's
 [`installed`, `plan --installed` and `update` commands](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/sdk-client.md#installed-versions-and-updates).
 They use actual pkgdb package identities and published runtime dependencies.
