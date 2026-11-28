@@ -21,6 +21,9 @@ CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_HTML_DOCS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_MAN_DOCS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_QTHELP_DOCS=OFF
+# docs/CMakeLists.txt looks for Qt6 ToolsTools even without QtHelp docs. A
+# cross Qt in the sysroot then requires QT_HOST_PATH. ECM installs no Qt code.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_Qt6:BOOL=TRUE
 
 CHECK_INTERPRETER_SKIP+=	share/ECM/kde-modules/kde-git-commit-hooks/clang-format.sh
 CHECK_INTERPRETER_SKIP+=	share/ECM/kde-modules/kde-git-commit-hooks/json-schema.py
