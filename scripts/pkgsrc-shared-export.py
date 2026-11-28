@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--update', action='store_true',
                         help='refresh selected packages and file outputs; unsupported changes fail closed')
     parser.add_argument('--resume', action='store_true', help='resume an interrupted selected update')
-    parser.add_argument('--package', action='append', help='selected package to update (repeatable)')
+    parser.add_argument('--package', action='append', default=[], help='selected package to update (repeatable)')
     parser.add_argument('--file', action='append', default=[], help='selected file output to update')
     args = parser.parse_args()
     sdk_source.load_sdk(['--sdk-source', args.sdk_source])
@@ -41,8 +41,8 @@ def main():
     selector = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(selector)
     if args.update:
-        if not args.package:
-            parser.error('--update requires --package')
+        if not args.package and not args.file:
+            parser.error('--update requires --package or --file')
         spec = importlib.util.spec_from_file_location('pkgsrc_shared_update', PORTS / 'scripts/pkgsrc-shared-update.py')
         updater = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(updater)

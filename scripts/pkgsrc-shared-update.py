@@ -38,8 +38,10 @@ def update(directory, ports, git, sdk, patch, package, selected_files, *, resume
                               stderr=subprocess.PIPE).stdout
     patch_options = exporter.patch_safety_options(PatchSelection(), patch_probe)
     packages = [exporter.package_path(item, 'selected package') for item in ([package] if isinstance(package, str) else package)]
-    if not packages or len(set(packages)) != len(packages):
-        raise ValueError('empty or duplicate selected package')
+    if not packages and not selected_files:
+        raise ValueError('select at least one package or file')
+    if len(set(packages)) != len(packages):
+        raise ValueError('duplicate selected package')
     packages.sort()
     if (not directory.is_absolute() or directory.is_symlink() or not directory.is_dir() or
             not (directory / 'pkgsrc').is_dir() or (directory / 'pkgsrc').is_symlink()):
@@ -357,15 +359,15 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             data = read_source(name, old)
             sections = ident._update_patch_sections(data)
             if sections is None:
-                raise ValueError('changed patch extends outside selected package: ' + name)
+                raise ValueError('changed patch extends outside selected outputs: ' + name)
             for paths, part in sections:
                 selected = [selected_output(path) or path in global_files for path in paths]
                 if not any(selected):
                     outside[old].append(part)
                 elif not all(selected):
-                    raise ValueError('changed patch extends outside selected package: ' + name)
+                    raise ValueError('changed patch extends outside selected outputs: ' + name)
         if outside[True] != outside[False]:
-            raise ValueError('changed patch extends outside selected package: ' + name)
+            raise ValueError('changed patch extends outside selected outputs: ' + name)
         if outside[True]:
             # A retained section also requires the same patch command and order.
             if any(row[0] == 'git-apply' and row[1] == name for rows in (old_records, new_records) for row in rows):

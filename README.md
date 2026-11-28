@@ -952,6 +952,10 @@ python3 -B scripts/pkgsrc-shared-export.py /absolute/shared-export \
   --file EMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py
 ```
 
+For a change to the shared cross profile, use
+`--update --file EMBERBSD-CROSS-MK.CONF`. Select each changed output.
+Package trees stay in place when the selection contains only files.
+
 The updater proves the previous input identity, replays the selected package's
 ordered overlays and checks their old contents before replacing changed files.
 For a plain patch shared by several packages, select the outputs whose hunks

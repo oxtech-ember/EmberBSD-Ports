@@ -484,10 +484,15 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         conf = self.ports / 'pkgsrc/export.conf'
         conf.write_text(conf.read_text() + 'patch\tpatches/one.patch\npatch\tpatches/two.patch\n')
         commit(self.ports, 'global patch chain')
+        def update(*flags):
+            return run(self.command + ['--update', *flags], self.ports, check=False)
+
+        empty = update()
+        self.assertIn('--update requires --package or --file', empty.stderr)
         args = ['--file', names[0], '--file', names[1]]
         neighbor = self.tree / 'mk/neighbor.mk'
         stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
-        rejected = self.update('--file', names[0])
+        rejected = update('--file', names[0])
         self.assertNotEqual(rejected.returncode, 0)
         self.assertEqual((self.tree / names[0]).read_text(), 'makevars=0\n')
         code = r"""import importlib.util,sys
@@ -500,13 +505,16 @@ def fail_after_one(*args):
     if calls[0] == 2: raise OSError('injected interruption')
     return replace(*args)
 with patch.object(m.os, 'replace', side_effect=fail_after_one):
-    m.update(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6], ['cat/pkg'], ['misc/owner.txt', 'mk/bsd.makevars.mk', 'mk/buildlink3/bsd.buildlink3.mk'])
+    m.update(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6], [], ['mk/bsd.makevars.mk', 'mk/buildlink3/bsd.buildlink3.mk'])
 """
         result = run([sys.executable, '-B', '-c', code, self.ports / 'scripts/pkgsrc-shared-update.py',
                       self.export, self.ports, GIT, SDK, PATCH], self.ports, check=False)
         self.assertIn('injected interruption', result.stderr)
         self.assertTrue(self.marker.exists())
-        result = self.update(*args, '--resume')
+        mismatch = update('--package', 'cat/pkg', *args, '--resume')
+        self.assertIn('resume selection differs', mismatch.stderr)
+        self.assertTrue(self.marker.exists())
+        result = update(*args, '--resume')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.tree / names[0]).read_text(), 'makevars=2\n')
         self.assertEqual((self.tree / names[1]).read_text(), 'buildlink=2\n')
@@ -516,11 +524,11 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         commit(self.ports, 'change second global patch')
         selected = self.tree / names[0]
         selected.write_text('local drift\n')
-        refused = self.update(*args)
+        refused = update(*args)
         self.assertNotEqual(refused.returncode, 0)
         self.assertEqual(selected.read_text(), 'local drift\n')
         selected.write_text('makevars=2\n')
-        result = self.update(*args)
+        result = update(*args)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(selected.read_text(), 'makevars=3\n')
         self.assertEqual((self.tree / names[1]).read_text(), 'buildlink=3\n')
@@ -551,7 +559,7 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
             write(self.ports, 'patches/next.patch', patch(old, new, 1, 2))
             result = self.update('--file', name)
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn('changed patch extends outside selected package', result.stderr)
+            self.assertIn('changed patch extends outside selected outputs', result.stderr)
             self.assertEqual((self.tree / name).read_text(), 'makevars=2\n')
         self.assertEqual((self.tree / 'mk/neighbor.mk').read_text(), 'neighbor=0\n')
 
@@ -1343,10 +1351,17 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
     def test_selected_file_mode_change_without_content_change(self):
         (self.ports / 'resources/owner.txt').chmod(0o755)
         commit(self.ports, 'change file mode')
-        result = self.update()
+        result = run(self.command + ['--update', '--file', 'misc/owner.txt'], self.ports, check=False)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.tree / 'misc/owner.txt').stat().st_mode & 0o777, 0o755)
         self.assertEqual((self.tree / 'misc/owner.txt').read_text(), 'old-owner\n')
+
+    def test_file_update_rejects_an_unselected_recipe(self):
+        self.newer_inputs()
+        result = run(self.command + ['--update', '--file', 'misc/owner.txt'], self.ports, check=False)
+        self.assertIn('changed patch extends outside selected outputs: patches/fixture.patch', result.stderr)
+        self.assert_refused_unchanged(result)
+        self.assertFalse(self.marker.exists())
 
     def test_refuses_modified_live_input(self):
         self.newer_inputs()
